@@ -2,11 +2,18 @@ from conans import ConanFile, tools
 import os
 
 
-def convert_arch(arch):
+def convert_os(dest_os):
+    ret = {
+        "Windows": "win",
+        "Linux": "linux"
+    }.get(str(dest_os))
+    return ret
+
+def convert_arch(dest_arch):
     ret = {
         "x86": "x86",
         "x86_64": "x64"
-    }.get(str(arch))
+    }.get(str(dest_arch))
     return ret
 
 
@@ -31,12 +38,14 @@ class JScriptConan(ConanFile):
 #        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
 
     def build(self):
+        dest_os = convert_os(self.settings.os)
+        dest_arch = convert_arch(self.settings.arch)
         flags = [
             #"--ninja",
-            "--shared"
+            "--shared",
+            "--dest-os=%s" % dest_os,
+            "--dest-cpu=%s" % dest_arch
         ]
-        arch = convert_arch(self.settings.arch)
-        flags.append("--dest-cpu=%s" % arch)
         if self.settings.build_type == "Debug":
             flags.append("--debug")
         env = {}
@@ -51,7 +60,7 @@ class JScriptConan(ConanFile):
             self.run("set")
             self.run("python configure %s" % " ".join(flags))
             build_type = str(self.settings.build_type)
-            self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, arch))
+            self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, dest_arch))
             
     def package(self):
         self.copy("*jscript.h", dst="include", keep_path=False)
