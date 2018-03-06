@@ -114,7 +114,7 @@
       [ 'OS=="win" and '
         'node_use_openssl=="true" and '
         'node_shared_openssl=="false"', {
-        'use_openssl_def': 1,
+        'use_openssl_def': 0,
       }, {
         'use_openssl_def': 0,
       }],
@@ -379,7 +379,7 @@
                       'sources': ['<(SHARED_INTERMEDIATE_DIR)/openssl.def'],
                     }],
                     ['OS=="win" and use_openssl_def==0', {
-                      'sources': ['deps/zlib/win32/zlib.def'],
+                      #'sources': ['deps/zlib/win32/zlib.def'],
                     }],
                   ],
                 }],
