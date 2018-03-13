@@ -7,7 +7,7 @@ const std::wstring executeFilePath;
 const std::wstring executeFolderPath;
 const std::wstring instanceScript;
 
-std::atomic<bool> is_initilized = false;
+std::atomic<bool> is_initilized{false};
 
 static const int kContextJSInstanceDataIndex = NODE_CONTEXT_EMBEDDER_DATA_INDEX + 1;
 
@@ -34,7 +34,9 @@ public:
                                argv,
                                exec_argc,
                                exec_argv,
-                               use_debug_agent_flag) { }
+                               use_debug_agent_flag)
+            _is_shutdown{false}
+            {}
 
     ~JSInstanceImpl() {
         try {
@@ -63,7 +65,7 @@ public:
 private:
     void LoadEnvironment();
 
-    std::atomic<bool> _is_shutdown = false;
+    std::atomic<bool> _is_shutdown;
 };
 
 void JSInstanceImpl::LoadEnvironment() {
@@ -519,7 +521,7 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance) {
 }
 
 void _async_execute_script(uv_async_t* handle) {
-    static std::atomic<unsigned int> s_async_id = 0;
+    static std::atomic<unsigned int> s_async_id{0};
 
     JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
     if (async_info == nullptr)
