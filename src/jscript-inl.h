@@ -34,7 +34,7 @@ public:
                                argv,
                                exec_argc,
                                exec_argv,
-                               use_debug_agent_flag)
+                               use_debug_agent_flag),
             _is_shutdown{false}
             {}
 
