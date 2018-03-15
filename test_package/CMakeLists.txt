@@ -19,3 +19,16 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND test_jscript_CONAN_PKG
 )
+
+add_executable(test_node_CONAN_PKG test_node.cpp)
+target_link_libraries(test_node_CONAN_PKG CONAN_PKG::jscript)
+set_target_properties(test_node_CONAN_PKG
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_node_CONAN_PKG
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_node_CONAN_PKG
+)
