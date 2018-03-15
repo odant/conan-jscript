@@ -64,10 +64,14 @@ class JScriptConan(ConanFile):
             
     def package(self):
         self.copy("*jscript.h", dst="include", keep_path=False)
-        src_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
-        self.copy("*.h", src=src_headers, dst="include", keep_path=True)
+        self.copy("*node.h", dst="include", keep_path=False)
+        self.copy("*node_version.h", dst="include", keep_path=False)
+        #self.copy("*node_internals.h", dst="include", keep_path=False)
+        src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
+        self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
         self.copy("*node.lib", dst="lib", keep_path=False)
         self.copy("*node.dll", dst="bin", keep_path=False)
+        self.copy("*node.pdb", dst="bin", keep_path=False)
 
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
