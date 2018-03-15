@@ -114,6 +114,7 @@
         'variables': {
           'v8_enable_handle_zapping': 0,
         },
+        'defines': [ 'NDEBUG' ],
         'cflags': [ '-O3' ],
         'conditions': [
           ['target_arch=="x64"', {
