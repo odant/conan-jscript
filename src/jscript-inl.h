@@ -3,8 +3,8 @@
 namespace jscript {
 using namespace node;
 
-const std::wstring executeFilePath;
-const std::wstring executeFolderPath;
+//const std::wstring executeFilePath;
+//const std::wstring executeFolderPath;
 const std::wstring instanceScript;
 
 std::atomic<bool> is_initilized{false};
@@ -334,22 +334,37 @@ JSCRIPT_EXTERN void Initialize(int argc, const wchar_t* const wargv[]) {
     V8::Initialize();
 }
 
-JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& externalOrigin) {
+void empty_handler(int param) { }
+
+JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& externalOrigin,
+                               const std::wstring& executeFile, const std::wstring& coreFolder, const std::wstring& nodeFolder) {
+
+    auto h1 = signal(SIGKILL, empty_handler);
+    auto h2 = signal(SIGABRT, empty_handler);
+    auto h3 = signal(SIGTERM, empty_handler);
+
+#if defined(_M_X64) //&& _MSC_VER == 1800
+                // РѕС‚РєР»СЋС‡РµРЅРёРµ AVX РґР»СЏ VS 2013 РёР·-Р·Р° РѕС€РёР±РєРё
+                _set_FMA3_enable(0);
+#endif
+    // Path to node modules
+    BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolder.c_str());
+    CHECK_NE(res, 0);
+
+    // Р”РѕР±Р°РІР»РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ РєРѕРјР°РЅРґРЅРѕР№ СЃС‚СЂРѕРєРё
     argc = 0;
     std::array<const wchar_t*, 20> wargv;
 
-    //          Добавление параметров командной строки
-
-    // добавление пути к исполняемому файлу
-    wargv[argc++] = executeFilePath.c_str();
+    // РґРѕР±Р°РІР»РµРЅРёРµ РїСѓС‚Рё Рє РёСЃРїРѕР»РЅСЏРµРјРѕРјСѓ С„Р°Р№Р»Сѓ
+    wargv[argc++] = executeFile.c_str();
     CHECK_LT(argc, wargv.size());
 
-    // построение пути расположения ядра odant.js
-    std::wstring corePath = executeFolderPath;
-    std::replace(corePath.begin(), corePath.end(), L'\\', L'/');
-    corePath += L"/web/core/odant.js";
+    // РїРѕСЃС‚СЂРѕРµРЅРёРµ РїСѓС‚Рё СЂР°СЃРїРѕР»РѕР¶РµРЅРёСЏ СЏРґСЂР° odant.js
+    const std::wstring coreScript = coreFolder + L"/web/core/odant.js";
+    //std::replace(corePath.begin(), corePath.end(), L'\\', L'/');
+    //corePath += L"/web/core/odant.js";
 
-    // добавление основного скрипта JSInstance через параметры командной строки
+    // РґРѕР±Р°РІР»РµРЅРёРµ РѕСЃРЅРѕРІРЅРѕРіРѕ СЃРєСЂРёРїС‚Р° JSInstance С‡РµСЂРµР· РїР°СЂР°РјРµС‚СЂС‹ РєРѕРјР°РЅРґРЅРѕР№ СЃС‚СЂРѕРєРё
     wargv[argc++] = L"-e";
 
     const_cast<std::wstring&>(instanceScript) =
@@ -371,7 +386,7 @@ JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& e
 
     const_cast<std::wstring&>(instanceScript) +=
         L"console.log('Start load framework.');\r\n"
-        L"global.odantFramework = require('" + corePath + L"');\r\n"
+        L"global.odantFramework = require('" + coreScript + L"');\r\n"
         L"global.odantFramework.then(core => {\r\n"
         L"  console.log('framework loaded!');\r\n"
 #ifdef _DEBUG
@@ -692,7 +707,7 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const wchar_t* scrip
     if (instance != nullptr)
         info->instance = static_cast<JSInstanceImpl*>(instance);
     else {
-        // создание инстанса
+        // СЃРѕР·РґР°РЅРёРµ РёРЅСЃС‚Р°РЅСЃР°
         JSInstance* newInstance = nullptr;
         auto createResult = CreateInstance(&newInstance);
         if (createResult != JS_SUCCESS)
@@ -720,6 +735,7 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const wchar_t* scrip
 
 }
 
+#if 0
 void empty_handler(int param) { }
 
 extern "C" {
@@ -731,10 +747,10 @@ extern "C" {
                 auto h3 = signal(SIGTERM, empty_handler);
 
 #if defined(_M_X64) && _MSC_VER == 1800
-                // отключение AVX для VS 2013 из-за ошибки
+                // РѕС‚РєР»СЋС‡РµРЅРёРµ AVX РґР»СЏ VS 2013 РёР·-Р·Р° РѕС€РёР±РєРё
                 _set_FMA3_enable(0);
 #endif
-                // Получение пути к исполняемому файлу
+                // РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё Рє РёСЃРїРѕР»РЅСЏРµРјРѕРјСѓ С„Р°Р№Р»Сѓ
                 std::array<wchar_t, MAX_PATH> filePath;
                 DWORD length = ::GetModuleFileNameW(NULL, filePath.data(), filePath.size());
                 if (length == 0) {
@@ -765,3 +781,4 @@ extern "C" {
         return TRUE;
     }
 }
+#endif

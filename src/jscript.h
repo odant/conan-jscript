@@ -30,7 +30,8 @@ struct JSCallbackInfo {
 class JSInstance { };
 
 JSCRIPT_EXTERN void Initialize(int argc, const wchar_t* const wargv[]);
-JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& externalOrigin);
+JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& externalOrigin,
+                               const std::wstring& executeFile, const std::wstring& coreFolder, const std::wstring& nodeFolder);
 
 JSCRIPT_EXTERN void Uninitilize();
 
