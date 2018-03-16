@@ -1,0 +1,8 @@
+console.log("I`m fake Odant framework!");
+
+var ret = new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve(42);
+    }, 100);
+});
+module.exports = ret;
