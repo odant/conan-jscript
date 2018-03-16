@@ -1,11 +1,13 @@
 #include "jscript.h"
 
+#include <cstring>
+
 namespace jscript {
 using namespace node;
 
 //const std::wstring executeFilePath;
 //const std::wstring executeFolderPath;
-const std::wstring instanceScript;
+const std::string instanceScript;
 
 std::atomic<bool> is_initilized{false};
 
@@ -269,7 +271,7 @@ void JSInstanceImpl::StartNodeInstance() {
 }
 
 
-JSCRIPT_EXTERN void Initialize(int argc, const wchar_t* const wargv[]) {
+JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
     if (is_initilized.exchange(true))
         return;
 
@@ -277,39 +279,14 @@ JSCRIPT_EXTERN void Initialize(int argc, const wchar_t* const wargv[]) {
 
     CHECK_GT(argc, 0);
 
-    // Convert wargv to to UTF8
-    argv = new char*[argc + 1];
+    // Copy args
+    char** argv = new char*[argc + 1];
     for (int i = 0; i < argc; i++) {
-        // Compute the size of the required buffer
-        DWORD size = WideCharToMultiByte(CP_UTF8,
-                                         0,
-                                         wargv[i],
-                                         -1,
-                                         nullptr,
-                                         0,
-                                         nullptr,
-                                         nullptr);
-        if (size == 0) {
-            // This should never happen.
-            fprintf(stderr, "Could not convert arguments to utf8.");
-            exit(1);
-        }
-        // Do the actual conversion
-        argv[i] = new char[size];
-        DWORD result = WideCharToMultiByte(CP_UTF8,
-                                           0,
-                                           wargv[i],
-                                           -1,
-                                           argv[i],
-                                           size,
-                                           nullptr,
-                                           nullptr);
-        if (result == 0) {
-            // This should never happen.
-            fprintf(stderr, "Could not convert arguments to utf8.");
-            exit(1);
-        }
+        const std::size_t len = std::strlen(argv_[i]);
+        argv[i] = new char[len + 1]; // +1 for null-terminate
+        std::strcpy(argv[i], argv_[i]);
     }
+
     argv[argc] = nullptr;
 
     // Hack around with the argv pointer. Used for process.title = "blah".
@@ -336,77 +313,82 @@ JSCRIPT_EXTERN void Initialize(int argc, const wchar_t* const wargv[]) {
 
 void empty_handler(int param) { }
 
-JSCRIPT_EXTERN void Initialize(const std::wstring& origin, const std::wstring& externalOrigin,
-                               const std::wstring& executeFile, const std::wstring& coreFolder, const std::wstring& nodeFolder) {
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder) {
 
     auto h1 = signal(SIGKILL, empty_handler);
     auto h2 = signal(SIGABRT, empty_handler);
     auto h3 = signal(SIGTERM, empty_handler);
 
-#if defined(_M_X64) //&& _MSC_VER == 1800
+#if defined(_M_X64) && _MSC_VER == 1800
                 // отключение AVX для VS 2013 из-за ошибки
                 _set_FMA3_enable(0);
 #endif
+
     // Path to node modules
-    BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolder.c_str());
+#ifdef _WIN32  
+    const int nodeFolderW_len = ::MultiByteToWideChar(CP_UTF8, NULL, nodeFolder.c_str(), nodeFolder.length(), NULL, 0);
+    auto nodeFolderW = std::make_unique<wchar_t[]>(nodeFolderW_len + 1); // +1 for null-terminate
+    ::MultiByteToWideChar(CP_UTF8, NULL, nodeFolder.c_str(), nodeFolder.length(), nodeFolderW.get(), nodeFolderW_len);
+    BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
     CHECK_NE(res, 0);
+#elif
+#error "Please realise putenv"
+#endif
 
     // Добавление параметров командной строки
-    argc = 0;
-    std::array<const wchar_t*, 20> wargv;
+    int argc = 0;
+    std::array<const char*, 20> argv;
 
     // добавление пути к исполняемому файлу
-    wargv[argc++] = executeFile.c_str();
-    CHECK_LT(argc, wargv.size());
-
-    // построение пути расположения ядра odant.js
-    const std::wstring coreScript = coreFolder + L"/web/core/odant.js";
-    //std::replace(corePath.begin(), corePath.end(), L'\\', L'/');
-    //corePath += L"/web/core/odant.js";
+    argv[argc++] = executeFile.c_str();
+    CHECK_LT(argc, argv.size());
 
     // добавление основного скрипта JSInstance через параметры командной строки
-    wargv[argc++] = L"-e";
-
-    const_cast<std::wstring&>(instanceScript) =
-        L"'use strict';\r\n"
-        L"process.on('uncaughtException', err => {\r\n"
-        L"    console.log(err);\r\n"
-        L"});\r\n"
-        L"process.on('unhandledRejection', err => {\r\n"
-        L"    console.log(err);\r\n"
-        L"});\r\n";
+    argv[argc++] = "-e";
+    
+    // построение пути расположения ядра odant.js
+    const std::string coreScript = coreFolder + "/web/core/odant.js";
+    const_cast<std::string&>(instanceScript) =
+        "'use strict';\r\n"
+        "process.on('uncaughtException', err => {\r\n"
+        "    console.log(err);\r\n"
+        "});\r\n"
+        "process.on('unhandledRejection', err => {\r\n"
+        "    console.log(err);\r\n"
+        "});\r\n";
     
     if (!origin.empty())
-        const_cast<std::wstring&>(instanceScript) +=
-            L"global.DEFAULTORIGIN = '" + origin + L"';\r\n";
+        const_cast<std::string&>(instanceScript) +=
+            "global.DEFAULTORIGIN = '" + origin + "';\r\n";
 
     if (!externalOrigin.empty())
-        const_cast<std::wstring&>(instanceScript) +=
-            L"global.EXTERNALORIGIN = '" + externalOrigin + L"';\r\n";
+        const_cast<std::string&>(instanceScript) +=
+            "global.EXTERNALORIGIN = '" + externalOrigin + "';\r\n";
 
-    const_cast<std::wstring&>(instanceScript) +=
-        L"console.log('Start load framework.');\r\n"
-        L"global.odantFramework = require('" + coreScript + L"');\r\n"
-        L"global.odantFramework.then(core => {\r\n"
-        L"  console.log('framework loaded!');\r\n"
+    const_cast<std::string&>(instanceScript) +=
+        "console.log('Start load framework.');\r\n"
+        "global.odantFramework = require('" + coreScript + "');\r\n"
+        "global.odantFramework.then(core => {\r\n"
+        "  console.log('framework loaded!');\r\n"
 #ifdef _DEBUG
-        L"  console.log(root.DEFAULTORIGIN);\r\n"
+        "  console.log(root.DEFAULTORIGIN);\r\n"
 #endif
-        L"}).catch((error)=>{\r\n"
-        L"  console.log(error);\r\n"
-        L"});\r\n"
-        L"var infiniteFunction = function() {\r\n"
-        L"  setTimeout(function() {\r\n"
-        L"      infiniteFunction();\r\n"
-        L"  }, 1000);\r\n"
-        L"};\r\n"
-        L"infiniteFunction();";
+        "}).catch((error)=>{\r\n"
+        "  console.log(error);\r\n"
+        "});\r\n"
+        "var infiniteFunction = function() {\r\n"
+        "  setTimeout(function() {\r\n"
+        "      infiniteFunction();\r\n"
+        "  }, 1000);\r\n"
+        "};\r\n"
+        "infiniteFunction();";
 
-    wargv[argc++] = instanceScript.c_str();
+    argv[argc++] = instanceScript.c_str();
 
-    wargv[argc] = { nullptr };
+    argv[argc] = nullptr;
     
-    Initialize(argc, wargv.data());
+    Initialize(argc, argv.data());
 }
 
 JSCRIPT_EXTERN void Uninitilize() {
@@ -454,14 +436,14 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
     return JS_SUCCESS;
 }
 
-JSCRIPT_EXTERN result_t RunScriptText(const wchar_t* script) {
-    return RunScriptText(nullptr, script, { nullptr} );
+JSCRIPT_EXTERN result_t RunScriptText(const char* script) {
+    return RunScriptText(nullptr, script, nullptr);
 }
-JSCRIPT_EXTERN result_t RunScriptText(const wchar_t* script, JSCallbackInfo* callbacks[]) {
+JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]) {
     return RunScriptText(nullptr, script, callbacks);
 }
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const wchar_t* script) {
-    return RunScriptText(instance, script, { nullptr });
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script) {
+    return RunScriptText(instance, script, nullptr);
 }
 
 struct JSCallBackInfoInternal {
@@ -629,39 +611,16 @@ void _async_execute_script(uv_async_t* handle) {
 }
 
 
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const wchar_t* script, JSCallbackInfo* callbacks[]) {
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]) {
     if (script == nullptr)
         return JS_ERROR;
     
     std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
 
-    // Compute the size of the required buffer
-    DWORD size = WideCharToMultiByte(CP_UTF8,
-                                     0,
-                                     script,
-                                     -1,
-                                     nullptr,
-                                     0,
-                                     nullptr,
-                                     nullptr);
-    if (size == 0) {
-        // This should never happen.
-        return JS_ERROR;
-    }
-    
-    // Do the actual conversion
-    info->script.reset(new char[size]);
-    DWORD result = WideCharToMultiByte(CP_UTF8,
-                                       0,
-                                       script,
-                                       -1,
-                                       info->script.get(),
-                                       size,
-                                       nullptr,
-                                       nullptr);
-    if (result == 0) {
-        return JS_ERROR;
-    }
+    // Copy script
+    const std::size_t len = std::strlen(script);
+    info->script.reset(new char[len + 1]); // +1 for null-terminate
+    std::strcpy(info->script.get(), script);
 
     if (callbacks != nullptr) {
         for (JSCallbackInfo** callbackPtr = callbacks; *callbackPtr != nullptr; ++callbackPtr) {
@@ -673,31 +632,13 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const wchar_t* scrip
             if (callback->function == nullptr)
                 break;
 
-            DWORD size = WideCharToMultiByte(CP_UTF8,
-                                             0,
-                                             callback->name,
-                                             -1,
-                                             nullptr,
-                                             0,
-                                             nullptr,
-                                             nullptr);
-            if (size == 0)
-                return JS_ERROR;
-
             JSCallBackInfoInternal callback_info;
 
-            callback_info.name.reset(new char[size]);
-            DWORD result = WideCharToMultiByte(CP_UTF8,
-                                               0,
-                                               callback->name,
-                                               -1,
-                                               callback_info.name.get(),
-                                               size,
-                                               nullptr,
-                                               nullptr);
-            if (result == 0)
-                return JS_ERROR;
-
+            // Copy name
+            const std::size_t len = std::strlen(callback->name);
+            callback_info.name.reset(new char[len + 1]); // +1 for null-terminate
+            std::strcpy(callback_info.name.get(), callback->name);
+            
             callback_info.external = callback->external;
             callback_info.function = callback->function;
             info->callbacks.push_back(std::move(callback_info));
