@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.0)
 include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
+# Copy fake Odant framework and node module
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/web ${CMAKE_BINARY_DIR}/bin/web)
+
 enable_testing()
 
 # CONAN_PKG imported targets

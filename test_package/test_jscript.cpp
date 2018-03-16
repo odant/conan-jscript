@@ -5,8 +5,23 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <memory>
+#include <algorithm>
 
-int main(int, char**) {
+// For GetCwd
+#include <cstdio>
+#ifdef _WIN32
+    #include <direct.h>
+    #define _GetCwd _getcwd
+#else
+    #include <unistd.h>
+    #define _GetCwd getcwd
+#endif
+
+
+std::string GetCwd();
+
+int main(int argc, char** argv) {
     std::cout << "--------Running--------" << std::endl;
 /*    
     const wchar_t* argv[] = {
@@ -18,8 +33,8 @@ int main(int, char**) {
 */    
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
-    const std::string executeFile = "D:/TEST/Test.exe";
-    const std::string coreFolder = "D:/ODA";
+    const std::string executeFile = argv[0];
+    const std::string coreFolder = GetCwd();
     const std::string nodeFolder = coreFolder + "/web/node_modules";
     
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
@@ -57,4 +72,20 @@ int main(int, char**) {
     std::cout << "jscript::Uninitilize() done" << std::endl;
     
     return EXIT_SUCCESS;
+}
+
+
+std::string GetCwd() {
+
+    auto buffer = std::make_unique<char[]>(FILENAME_MAX);
+
+    if ( !_GetCwd(buffer.get(), FILENAME_MAX) ) {
+        std::cout << "Error. Can`t get current directory" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    
+    std::string ret{buffer.get()};
+    std:replace(std::begin(ret), std::end(ret), '\\', '/');
+
+    return std::move(ret);
 }
