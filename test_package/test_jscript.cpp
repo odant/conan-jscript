@@ -3,10 +3,11 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
-#include <chrono>
-#include <thread>
 #include <memory>
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 // For GetCwd
 #include <cstdio>
@@ -21,16 +22,22 @@
 
 std::string GetCwd();
 
+
+static std::atomic_bool script_done{false};
+static bool is_script_done() {
+    return script_done;
+}
+static std::mutex script_mutex;
+static std::condition_variable script_cv;
+static void script_cb(const v8::FunctionCallbackInfo<v8::Value>&) {
+    std::cout << "Call script_cb(const v8::FunctionCallbackInfo<v8::Value>&)" << std::endl;
+    script_done = true;
+    script_cv.notify_all();
+}
+
+
 int main(int argc, char** argv) {
-    std::cout << "--------Running--------" << std::endl;
-/*    
-    const wchar_t* argv[] = {
-        L"test_jscript",
-        L"--version"
-    };
-    jscript::Initialize(2, argv);
-    jscript::Uninitilize();
-*/    
+
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
@@ -48,22 +55,43 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance created" << std::endl;
-    
+
     const char* script = ""
-        "console.log(\"Is work?\");\n"
+        "console.log('Test NODE_PATH...');\n"
         "var m = require('fake_module');\n"
         "m.printMessage();\n"
+        "console.log('Test callback');\n"
+        "var promise = new Promise((resolve, reject) => {\n"
+        "   setTimeout(() => {\n"
+        "       resolve(42);\n"
+        "   }, 100);\n"
+        "});\n"
+        "promise.then(resolve).catch(reject);\n"
         "";
-    res = RunScriptText(instance, script);
+
+    jscript::JSCallbackInfo resolveInfo;
+    resolveInfo.external = reinterpret_cast<void*>(1);
+    resolveInfo.name = "resolve";
+    resolveInfo.function = script_cb;
+
+    jscript::JSCallbackInfo rejectInfo;
+    rejectInfo.external = reinterpret_cast<void*>(1);
+    rejectInfo.name = "reject";
+    rejectInfo.function = script_cb;
+
+    node::jscript::JSCallbackInfo* callbacks[] = { &resolveInfo, &rejectInfo, nullptr };
+
+    res = RunScriptText(instance, script, callbacks);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);
     }
+    
+    std::cout << "Script running, waiting..." << std::endl;    
+    std::unique_lock<std::mutex> script_lock{script_mutex};
+    script_cv.wait(script_lock, [] { return is_script_done(); });
         
-    std::cout << "Script running, waiting..." << std::endl;
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(20s);
-    std::cout << "End waiting" << std::endl;
+    std::cout << "Script done" << std::endl;
     
     res = StopInstance(instance);
     if (res != jscript::JS_SUCCESS) {
