@@ -286,15 +286,22 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
 
     CHECK_GT(argc, 0);
 
-    // Copy args
-    char** argv = new char*[argc + 1];
+    // Copy args, use continuous memory
+    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
+    std::size_t args_len = 0;
     for (int i = 0; i < argc; i++) {
-        const std::size_t len = std::strlen(argv_[i]);
-        argv[i] = new char[len + 1]; // +1 for null-terminate
+        args_len += std::strlen(argv_[i]) + 1;
+    }
+    char** argv = new char*[argc];
+    char* args_ptr = new char[args_len];
+    for (int i = 0; i < argc; i++) {
+        argv[i] = args_ptr;
         std::strcpy(argv[i], argv_[i]);
+        args_ptr += std::strlen(argv_[i]) + 1; // +1 for null-terminate
     }
 
-    argv[argc] = nullptr;
+    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
+    // argv[argc] = nullptr;
 
     // Hack around with the argv pointer. Used for process.title = "blah".
     argv = uv_setup_args(argc, argv);
@@ -396,8 +403,9 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
 
     argv[argc++] = instanceScript.c_str();
 
-    argv[argc] = nullptr;
-    
+    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
+    //argv[argc] = nullptr;
+
     Initialize(argc, argv.data());
 }
 
