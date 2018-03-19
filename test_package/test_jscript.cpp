@@ -14,6 +14,7 @@
 #ifdef _WIN32
     #include <direct.h>
     #define _GetCwd _getcwd
+    #include "Windows.h"
 #else
     #include <unistd.h>
     #define _GetCwd getcwd
@@ -48,7 +49,21 @@ int main(int argc, char** argv) {
     const std::string nodeFolder = coreFolder + "/node_modules";
     
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
-    std::cout << "jscript::Initialize() done. NODE_PATH=" << std::getenv("NODE_PATH") << std::endl;
+    std::cout << "jscript::Initialize() done" << std::endl;
+    {
+#ifndef _WIN32
+        const char* node_path = std::getenv("NODE_PATH");
+        if (node_path != nullptr) {
+            std::cout << "NODE_PATH=" << node_path << std::endl;
+        } else {
+            std::cout << "NODE_PATH not set" << std::endl;
+        }
+#else
+        auto node_path = std::make_unique<wchar_t[]>(32768);
+        auto res = ::GetEnvironmentVariableW(L"NODE_PATH", node_path.get(), 32768);
+        std::wcout << L"NODE_PATH=" << node_path.get() << std::endl;
+#endif
+    }
     
     jscript::result_t res;
     jscript::JSInstance* instance{nullptr};
