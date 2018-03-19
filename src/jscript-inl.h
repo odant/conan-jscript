@@ -1,10 +1,12 @@
 #include "jscript.h"
 
 #include <cstring>
+#include <iostream>
 
 // For setenv
 #ifndef _WIN32
 #include <stdlib.h>
+#include <errno.h>
 #endif
 
 namespace jscript {
@@ -338,7 +340,10 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
     CHECK_NE(res, 0);
 #else
-    setenv("NODE_PATH", nodeFolder.c_str(), 1);
+    if (setenv("NODE_PATH", nodeFolder.c_str(), 1) != 0) {
+        std::cerr << "Set NODE_PATH failed, errno: " << errno << ", exit." << std::endl;
+        exit(EXIT_FAILURE);
+    }
 #endif
 
     // Добавление параметров командной строки
