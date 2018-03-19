@@ -101,7 +101,7 @@ namespace node {
 
 EXTERN_C DECLSPEC_SELECTANY HANDLE NodeCounterProvider = nullptr;
 
-std::atomic<int> _init_count = 0;
+std::atomic<int> _init_count{0};
 
 void InitPerfCountersWin32() {
   if (_init_count++ != 0)

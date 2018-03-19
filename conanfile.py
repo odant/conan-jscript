@@ -59,21 +59,38 @@ class JScriptConan(ConanFile):
         with tools.chdir("src"), tools.environment_append(env):
             self.run("set")
             self.run("python configure %s" % " ".join(flags))
-            build_type = str(self.settings.build_type)
-            self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, dest_arch))
-            
+            if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
+                build_type = str(self.settings.build_type)
+                self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, dest_arch))
+            else:
+                self.run("make -j %s" % tools.cpu_count())
+
     def package(self):
+        # Headers
         self.copy("*jscript.h", dst="include", keep_path=False)
         self.copy("*node.h", dst="include", keep_path=False)
         self.copy("*node_version.h", dst="include", keep_path=False)
         #self.copy("*node_internals.h", dst="include", keep_path=False)
         src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
         self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
+        # Libraries
         self.copy("*node.lib", dst="lib", keep_path=False)
         self.copy("*node.dll", dst="bin", keep_path=False)
+        if self.settings.os == "Linux":
+            src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib.target")
+            self.copy("*.so.*", src=src_lib_folder, dst="lib", keep_path=False)
+            # Symlink
+            lib_folder = os.path.join(self.package_folder, "lib")
+            if not os.path.isdir(lib_folder):
+                return
+            with tools.chdir(lib_folder):
+                for fname in os.listdir("."):
+                    extension = ".so"
+                    symlink = fname[0:fname.rfind(extension) + len(extension)]
+                    self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
+        # PDB
         self.copy("*node.pdb", dst="bin", keep_path=False)
 
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
-        if self.settings.os == "Windows":
-            self.cpp_info.defines = ["USE_JSCRIPT"]
+        self.cpp_info.defines = ["USE_JSCRIPT"]

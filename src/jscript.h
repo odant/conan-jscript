@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <string>
+
 #ifdef _WIN32
 # ifndef USE_JSCRIPT
 #   define JSCRIPT_EXTERN __declspec(dllexport)

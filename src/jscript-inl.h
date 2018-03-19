@@ -2,6 +2,11 @@
 
 #include <cstring>
 
+// For setenv
+#ifndef _WIN32
+#include <stdlib.h>
+#endif
+
 namespace jscript {
 using namespace node;
 
@@ -41,12 +46,12 @@ public:
             {}
 
     ~JSInstanceImpl() {
-        try {
+//        try {
             uv_loop_t* event_loop_ = event_loop();
             if (event_loop_ != uv_default_loop())
                 uv_loop_delete(event_loop_);
-        }
-        catch (...) { }
+//        }
+//        catch (...) { }
     }
 
     void StartNodeInstance();
@@ -326,14 +331,14 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
 #endif
 
     // Path to node modules
-#ifdef _WIN32  
+#ifdef _WIN32
     const int nodeFolderW_len = ::MultiByteToWideChar(CP_UTF8, NULL, nodeFolder.c_str(), nodeFolder.length(), NULL, 0);
     auto nodeFolderW = std::make_unique<wchar_t[]>(nodeFolderW_len + 1); // +1 for null-terminate
     ::MultiByteToWideChar(CP_UTF8, NULL, nodeFolder.c_str(), nodeFolder.length(), nodeFolderW.get(), nodeFolderW_len);
     BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
     CHECK_NE(res, 0);
-#elif
-#error "Please realise putenv"
+#else
+    setenv("NODE_PATH", nodeFolder.c_str(), 1);
 #endif
 
     // Добавление параметров командной строки
