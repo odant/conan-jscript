@@ -1,6 +1,3 @@
-#ifndef JSCRIPT_HPP_
-#define JSCRIPT_HPP_
-
 #pragma once
 
 #include <string>
@@ -60,4 +57,3 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
 namespace jscript = node::jscript;
 #endif
 
-#endif

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "jscript.h"
 
 #include <cstring>
@@ -12,8 +14,6 @@
 namespace jscript {
 using namespace node;
 
-//const std::wstring executeFilePath;
-//const std::wstring executeFolderPath;
 const std::string instanceScript;
 
 std::atomic<bool> is_initilized{false};
@@ -48,12 +48,10 @@ public:
             {}
 
     ~JSInstanceImpl() {
-//        try {
-            uv_loop_t* event_loop_ = event_loop();
-            if (event_loop_ != uv_default_loop())
-                uv_loop_delete(event_loop_);
-//        }
-//        catch (...) { }
+        uv_loop_t* event_loop_ = event_loop();
+        if (event_loop_ != uv_default_loop()) {
+            uv_loop_delete(event_loop_);
+        }
     }
 
     void StartNodeInstance();
@@ -300,9 +298,6 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
         args_ptr += std::strlen(argv_[i]) + 1; // +1 for null-terminate
     }
 
-    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
-    // argv[argc] = nullptr;
-
     // Hack around with the argv pointer. Used for process.title = "blah".
     argv = uv_setup_args(argc, argv);
 
@@ -402,9 +397,6 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
         "infiniteFunction();";
 
     argv[argc++] = instanceScript.c_str();
-
-    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
-    //argv[argc] = nullptr;
 
     Initialize(argc, argv.data());
 }
@@ -691,53 +683,5 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
     return JS_ERROR;
 }
 
+}   // namespace jscript
 
-}
-
-#if 0
-void empty_handler(int param) { }
-
-extern "C" {
-    BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved) {
-        switch (dwReason) {
-            case DLL_PROCESS_ATTACH: {
-                auto h1 = signal(SIGKILL, empty_handler);
-                auto h2 = signal(SIGABRT, empty_handler);
-                auto h3 = signal(SIGTERM, empty_handler);
-
-#if defined(_M_X64) && _MSC_VER == 1800
-                // отключение AVX для VS 2013 из-за ошибки
-                _set_FMA3_enable(0);
-#endif
-                // Получение пути к исполняемому файлу
-                std::array<wchar_t, MAX_PATH> filePath;
-                DWORD length = ::GetModuleFileNameW(NULL, filePath.data(), filePath.size());
-                if (length == 0) {
-                    // This should never happen.
-                    fprintf(stderr, "Could not get file path.");
-                    exit(1);
-                }
-                const_cast<std::wstring&>(jscript::executeFilePath) = std::move(std::wstring(filePath.data(), length));
-
-                std::size_t slashPos = jscript::executeFilePath.find_last_of(L"/\\");
-                if (slashPos != std::wstring::npos)
-                    const_cast<std::wstring&>(jscript::executeFolderPath) = jscript::executeFilePath.substr(0, slashPos);
-                else
-                    const_cast<std::wstring&>(jscript::executeFolderPath) = jscript::executeFilePath;
-
-                BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", (jscript::executeFolderPath + L"\\web\\node_modules").c_str());
-                CHECK_NE(res, 0);
-            } break;
-            
-            case DLL_THREAD_ATTACH: { } break;
-
-            case DLL_THREAD_DETACH: { } break;
-            
-            case DLL_PROCESS_DETACH: {
-                jscript::Uninitilize();
-            } break;
-        }
-        return TRUE;
-    }
-}
-#endif
