@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
     const std::string coreFolder = GetCwd();
-    const std::string nodeFolder = coreFolder + "/web/node_modules";
+    const std::string nodeFolder = coreFolder + "/node_modules";
     
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
     std::cout << "jscript::Initialize() done" << std::endl;
@@ -49,7 +49,11 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance created" << std::endl;
     
-    const char* script = "console.log(\"Is work?\");";
+    const char* script = ""
+        "console.log(\"Is work?\");\n"
+        "var m = require('fake_module');\n"
+        "m.printMessage();\n"
+        "";
     res = RunScriptText(instance, script);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
@@ -85,7 +89,7 @@ std::string GetCwd() {
     }
     
     std::string ret{buffer.get()};
-    std:replace(std::begin(ret), std::end(ret), '\\', '/');
+    std::replace(std::begin(ret), std::end(ret), '\\', '/');
 
     return std::move(ret);
 }
