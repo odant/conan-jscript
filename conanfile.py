@@ -19,7 +19,7 @@ def convert_arch(dest_arch):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "6.10.1.3"
+    version = "6.10.1.4"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
