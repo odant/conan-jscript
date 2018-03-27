@@ -61,6 +61,8 @@ class JScriptConan(ConanFile):
             self.run("python configure %s" % " ".join(flags))
             if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 build_type = str(self.settings.build_type)
+                if dest_arch == "x86":
+                    dest_arch = "Win32"
                 self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, dest_arch))
             else:
                 self.run("make -j %s" % tools.cpu_count())
