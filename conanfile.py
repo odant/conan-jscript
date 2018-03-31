@@ -2,21 +2,6 @@ from conans import ConanFile, tools
 import os
 
 
-def convert_os(dest_os):
-    ret = {
-        "Windows": "win",
-        "Linux": "linux"
-    }.get(str(dest_os))
-    return ret
-
-def convert_arch(dest_arch):
-    ret = {
-        "x86": "x86",
-        "x86_64": "x64"
-    }.get(str(dest_arch))
-    return ret
-
-
 class JScriptConan(ConanFile):
     name = "jscript"
     version = "6.10.1.4"
@@ -38,9 +23,6 @@ class JScriptConan(ConanFile):
 #        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
 
     def build(self):
-        dest_os = convert_os(self.settings.os)
-        dest_arch = convert_arch(self.settings.arch)
-        #
         output_name = "jscript"
         if self.settings.os == "Windows":
             output_name += {
@@ -53,8 +35,14 @@ class JScriptConan(ConanFile):
         flags = [
             #"--ninja",
             "--shared",
-            "--dest-os=%s" % dest_os,
-            "--dest-cpu=%s" % dest_arch,
+            "--dest-os=%s" % {
+                                "Windows": "win",
+                                "Linux": "linux"
+                            }.get(str(self.settings.os)),
+            "--dest-cpu=%s" % {
+                                "x86": "ia32",
+                                "x86_64": "x64"
+                            }.get(str(self.settings.arch)),
             "--node_core_target_name=%s" % output_name
         ]
         #
@@ -65,18 +53,19 @@ class JScriptConan(ConanFile):
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings)
             env["GYP_MSVS_VERSION"] = {
-                "14": "2015",
-                "15": "2017"
-            }.get(str(self.settings.compiler.version))
+                                        "14": "2015",
+                                        "15": "2017"
+                                    }.get(str(self.settings.compiler.version))
         self.run("python --version")
         with tools.chdir("src"), tools.environment_append(env):
-            self.run("set")
             self.run("python configure %s" % " ".join(flags))
             if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 build_type = str(self.settings.build_type)
-                if dest_arch == "x86":
-                    dest_arch = "Win32"
-                self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, dest_arch))
+                arch = {
+                        "x86": "Win32",
+                        "x86_64": "x64"
+                    }.get(str(self.settings.arch))
+                self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, arch))
             else:
                 self.run("make -j %s" % tools.cpu_count())
 
