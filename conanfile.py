@@ -40,14 +40,27 @@ class JScriptConan(ConanFile):
     def build(self):
         dest_os = convert_os(self.settings.os)
         dest_arch = convert_arch(self.settings.arch)
+        #
+        output_name = "jscript"
+        if self.settings.os == "Windows":
+            output_name += {
+                            "x86": "32",
+                            "x86_64": "64"
+                        }.get(str(self.settings.arch))
+            if self.settings.build_type == "Debug":
+                output_name += "d"
+        #
         flags = [
             #"--ninja",
             "--shared",
             "--dest-os=%s" % dest_os,
-            "--dest-cpu=%s" % dest_arch
+            "--dest-cpu=%s" % dest_arch,
+            "--node_core_target_name=%s" % output_name
         ]
+        #
         if self.settings.build_type == "Debug":
             flags.append("--debug")
+        # Run build
         env = {}
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings)
@@ -76,11 +89,11 @@ class JScriptConan(ConanFile):
         src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
         self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
         # Libraries
-        self.copy("*node.lib", dst="lib", keep_path=False)
-        self.copy("*node.dll", dst="bin", keep_path=False)
+        self.copy("*jscript*.lib", dst="lib", keep_path=False)
+        self.copy("*jscript*.dll", dst="bin", keep_path=False)
         if self.settings.os == "Linux":
             src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib.target")
-            self.copy("*.so.*", src=src_lib_folder, dst="lib", keep_path=False)
+            self.copy("*jscript.so.*", src=src_lib_folder, dst="lib", keep_path=False)
             # Symlink
             lib_folder = os.path.join(self.package_folder, "lib")
             if not os.path.isdir(lib_folder):
