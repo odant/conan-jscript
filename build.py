@@ -2,7 +2,7 @@ import platform, os
 from copy import deepcopy
 from conan.packager import ConanMultiPackager
 
-package_name = "nghttp2"
+package_name = "jscript"
 
 # Common settings
 username = "odant" if "CONAN_USERNAME" not in os.environ else None

@@ -1,5 +1,13 @@
 from conans import ConanFile, tools
-import os
+from conans.errors import ConanException
+import os, glob
+
+
+def get_safe(options, name):
+    try:
+        return getattr(options, name, None)
+    except ConanException:
+        return None
 
 
 class JScriptConan(ConanFile):
@@ -14,13 +22,27 @@ class JScriptConan(ConanFile):
         "build_type": ["Debug", "Release"],
         "arch": ["x86_64", "x86"]
     }
+    options = {
+        "dll_sign": [False, True]
+    }
+    default_options = "dll_sign=True"
     exports_sources = "src/*"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
 
-#    def build_requirements(self):
+    def configure(self):
+        # Only C++11
+        if self.settings.compiler.get_safe("libcxx") == "libstdc++":
+            raise ConanException("This package is only compatible with libstdc++11")
+        # DLL sign, only Windows
+        if self.settings.os != "Windows":
+            del self.options.dll_sign
+
+    def build_requirements(self):
 #        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
+        if get_safe(self.options, "dll_sign"):
+            self.build_requires("windows_signtool/1.0@%s/stable" % self.user)
 
     def build(self):
         output_name = "jscript"
@@ -94,6 +116,17 @@ class JScriptConan(ConanFile):
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
         # PDB
         self.copy("*node.pdb", dst="bin", keep_path=False)
+        # Sign DLL
+        if get_safe(self.options, "dll_sign"):
+            import windows_signtool
+            pattern = os.path.join(self.package_folder, "bin", "*.dll")
+            for fpath in glob.glob(pattern):
+                fpath = fpath.replace("\\", "/")
+                for alg in ["sha1", "sha256"]:
+                    is_timestamp = True if self.settings.build_type == "Release" else False
+                    cmd = windows_signtool.get_sign_command(fpath, digest_algorithm=alg, timestamp=is_timestamp)
+                    self.output.info("Sign %s" % fpath)
+                    self.run(cmd)
 
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
