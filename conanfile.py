@@ -42,7 +42,7 @@ class JScriptConan(ConanFile):
     def build_requirements(self):
 #        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
         if get_safe(self.options, "dll_sign"):
-            self.build_requires("windows_signtool/1.0@%s/stable" % self.user)
+            self.build_requires("windows_signtool/[~=1.0]@%s/stable" % self.user)
 
     def build(self):
         output_name = "jscript"
