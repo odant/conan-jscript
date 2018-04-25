@@ -1,3 +1,7 @@
+# jscript Conan package manager
+# Dmitriy Vetutnev, Odant, 2018
+
+
 from conans import ConanFile, tools
 from conans.errors import ConanException
 import os, glob

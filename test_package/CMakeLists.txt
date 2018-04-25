@@ -1,14 +1,22 @@
+# Test for jscript Conan package manager
+# Dmitriy Vetutnev, Odant, 2018
+
+
 project(PackageTest CXX)
 cmake_minimum_required(VERSION 3.0)
 
+
 include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
+
 
 # Copy fake Odant framework and node module
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/web ${CMAKE_BINARY_DIR}/bin/web)
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules ${CMAKE_BINARY_DIR}/bin/node_modules)
 
+
 enable_testing()
+
 
 # CONAN_PKG imported targets
 add_executable(test_jscript_CONAN_PKG test_jscript.cpp)

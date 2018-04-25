@@ -1,3 +1,7 @@
+# Test for jscript Conan package manager
+# Dmitriy Vetutnev, Odant, 2018
+
+
 from conans import ConanFile, CMake
 
 

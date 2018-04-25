@@ -1,4 +1,9 @@
+// Test for jscript Conan package manager
+// Dmitriy Vetutnev, Odant, 2018
+
+
 #include <jscript.h>
+
 
 #include <iostream>
 #include <cstdlib>
@@ -8,6 +13,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+
 
 // For GetCwd
 #include <cstdio>
