@@ -120,6 +120,9 @@ class JScriptConan(ConanFile):
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
         # PDB
         self.copy("*node.pdb", dst="bin", keep_path=False)
+        self.copy("*noded.pdb", dst="bin", keep_path=False)
+        self.copy("*node64.pdb", dst="bin", keep_path=False)
+        self.copy("*node64d.pdb", dst="bin", keep_path=False)
         # Sign DLL
         if get_safe(self.options, "dll_sign"):
             import windows_signtool
