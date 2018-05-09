@@ -24,7 +24,7 @@ class JScriptConan(ConanFile):
         "os": ["Windows", "Linux"],
         "compiler": ["Visual Studio", "gcc"],
         "build_type": ["Debug", "Release"],
-        "arch": ["x86_64", "x86"]
+        "arch": ["x86_64", "x86", "mips"]
     }
     options = {
         "dll_sign": [False, True]
@@ -67,7 +67,8 @@ class JScriptConan(ConanFile):
                             }.get(str(self.settings.os)),
             "--dest-cpu=%s" % {
                                 "x86": "ia32",
-                                "x86_64": "x64"
+                                "x86_64": "x64",
+                                "mips": "mipsel"
                             }.get(str(self.settings.arch)),
             "--node_core_target_name=%s" % output_name
         ]
