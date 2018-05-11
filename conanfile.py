@@ -78,7 +78,7 @@ class JScriptConan(ConanFile):
         # Run build
         env = {}
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
-            env = tools.vcvars_dict(self.settings)
+            env = tools.vcvars_dict(self.settings, force=True)
             env["GYP_MSVS_VERSION"] = {
                                         "14": "2015",
                                         "15": "2017"
