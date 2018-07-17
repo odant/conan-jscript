@@ -853,7 +853,7 @@ index 9403e68be7..1f6913a337 100644
 +    auto h3 = signal(SIGTERM, empty_handler);
 +
 +#if defined(_M_X64) && _MSC_VER == 1800
-+                // отключение AVX для VS 2013 из-за ошибки
++                // Disable AVX for VS 2013
 +                _set_FMA3_enable(0);
 +#endif
 +
@@ -871,18 +871,18 @@ index 9403e68be7..1f6913a337 100644
 +    }
 +#endif
 +
-+    // Добавление параметров командной строки
++    // Add cmd parasm
 +    int argc = 0;
 +    std::array<const char*, 20> argv;
 +
-+    // добавление пути к исполняемому файлу
++    // Add excutable path
 +    argv[argc++] = executeFile.c_str();
 +    CHECK_LT(argc, argv.size());
 +
-+    // добавление основного скрипта JSInstance через параметры командной строки
++    // Add main script to JSInstance
 +    argv[argc++] = "-e";
 +    
-+    // построение пути расположения ядра odant.js
++    // Path to odant.js
 +    const std::string coreScript = coreFolder + "/web/core/odant.js";
 +    const_cast<std::string&>(instanceScript) =
 +        "'use strict';\r\n"
@@ -1187,7 +1187,7 @@ index 9403e68be7..1f6913a337 100644
 +    if (instance != nullptr)
 +        info->instance = static_cast<JSInstanceImpl*>(instance);
 +    else {
-+        // создание инстанса
++        // create instance
 +        JSInstance* newInstance = nullptr;
 +        auto createResult = CreateInstance(&newInstance);
 +        if (createResult != JS_SUCCESS)
@@ -1214,3 +1214,4 @@ index 9403e68be7..1f6913a337 100644
 +
 +}   // namespace jscript
 +}   // namsepace node
+
