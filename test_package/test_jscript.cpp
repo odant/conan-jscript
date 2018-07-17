@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     const std::string executeFile = argv[0];
     const std::string coreFolder = cwd;
     const std::string nodeFolder = coreFolder + "/node_modules";
-    
+
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
     std::cout << "jscript::Initialize() done" << std::endl;
     {
@@ -70,10 +70,10 @@ int main(int argc, char** argv) {
         std::wcout << L"NODE_PATH=" << node_path.get() << std::endl;
 #endif
     }
-    
+
     jscript::result_t res;
     jscript::JSInstance* instance{nullptr};
-    res = CreateInstance(&instance);
+    res = jscript::CreateInstance(&instance);
     if (res != jscript::JS_SUCCESS || !instance) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
@@ -114,21 +114,21 @@ int main(int argc, char** argv) {
     rejectInfo.name = "reject";
     rejectInfo.function = script_cb;
 
-    node::jscript::JSCallbackInfo* callbacks[] = { &resolveInfo, &rejectInfo, nullptr };
+    jscript::JSCallbackInfo* callbacks[] = { &resolveInfo, &rejectInfo, nullptr };
 
-    res = RunScriptText(instance, script, callbacks);
+    res = jscript::RunScriptText(instance, script, callbacks);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    
+
     std::cout << "Script running, waiting..." << std::endl;    
     std::unique_lock<std::mutex> script_lock{script_mutex};
     script_cv.wait(script_lock, [] { return is_script_done(); });
         
     std::cout << "Script done" << std::endl;
     
-    res = StopInstance(instance);
+    res = jscript::StopInstance(instance);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
         
     jscript::Uninitilize();
     std::cout << "jscript::Uninitilize() done" << std::endl;
-    
+
     return EXIT_SUCCESS;
 }
 

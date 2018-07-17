@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "6.10.1.5"
+    version = "8.11.3.2"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -30,7 +30,7 @@ class JScriptConan(ConanFile):
         "dll_sign": [False, True]
     }
     default_options = "dll_sign=True"
-    exports_sources = "src/*"
+    exports_sources = "src/*", "build.patch", "source.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -47,6 +47,10 @@ class JScriptConan(ConanFile):
 #        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
         if get_safe(self.options, "dll_sign"):
             self.build_requires("windows_signtool/[~=1.0]@%s/stable" % self.user)
+
+    def source(self):
+        tools.patch(patch_file="build.patch")
+        tools.patch(patch_file="source.patch")
 
     def build(self):
         output_name = "jscript"
@@ -83,6 +87,10 @@ class JScriptConan(ConanFile):
                                         "14": "2015",
                                         "15": "2017"
                                     }.get(str(self.settings.compiler.version))
+            env["PLATFORM_TOOLSET"] = {
+                                        "14": "v140",
+                                        "15": "v141"
+                                    }.get(str(self.settings.compiler.version))
         self.run("python --version")
         with tools.chdir("src"), tools.environment_append(env):
             self.run("python configure %s" % " ".join(flags))
@@ -105,8 +113,14 @@ class JScriptConan(ConanFile):
         src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
         self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
         # Libraries
-        self.copy("*jscript*.lib", dst="lib", keep_path=False)
-        self.copy("*jscript*.dll", dst="bin", keep_path=False)
+        self.copy("*jscript.lib", dst="lib", keep_path=False)
+        self.copy("*jscript.dll", dst="bin", keep_path=False)
+        self.copy("*jscriptd.lib", dst="lib", keep_path=False)
+        self.copy("*jscriptd.dll", dst="bin", keep_path=False)
+        self.copy("*jscript64.lib", dst="lib", keep_path=False)
+        self.copy("*jscript64.dll", dst="bin", keep_path=False)
+        self.copy("*jscript64d.lib", dst="lib", keep_path=False)
+        self.copy("*jscript64d.dll", dst="bin", keep_path=False)
         if self.settings.os == "Linux":
             src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib.target")
             self.copy("*jscript.so.*", src=src_lib_folder, dst="lib", keep_path=False)
@@ -120,10 +134,10 @@ class JScriptConan(ConanFile):
                     symlink = fname[0:fname.rfind(extension) + len(extension)]
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
         # PDB
-        self.copy("*node.pdb", dst="bin", keep_path=False)
-        self.copy("*noded.pdb", dst="bin", keep_path=False)
-        self.copy("*node64.pdb", dst="bin", keep_path=False)
-        self.copy("*node64d.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript.pdb", dst="bin", keep_path=False)
+        self.copy("*jscriptd.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript64.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript64d.pdb", dst="bin", keep_path=False)
         # Sign DLL
         if get_safe(self.options, "dll_sign"):
             import windows_signtool

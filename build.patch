@@ -1,0 +1,92 @@
+diff --git a/src/common.gypi b/src/common.gypi
+index b89a8afff0..a65b44390b 100644
+--- a/src/common.gypi
++++ b/src/common.gypi
+@@ -117,6 +117,8 @@
+             'AdditionalOptions': [
+               '/bigobj', # prevent error C1128 in VS2015
+               '/MP', # compile across multiple CPUs
++              '/wd4251',
++              '/wd4091'
+             ],
+           },
+           'VCLinkerTool': {
+@@ -131,6 +133,7 @@
+         'variables': {
+           'v8_enable_handle_zapping': 0,
+         },
++        'defines': [ 'NDEBUG' ],
+         'cflags': [ '-O3' ],
+         'conditions': [
+           ['target_arch=="x64"', {
+@@ -174,6 +177,8 @@
+             'RuntimeTypeInfo': 'false',
+             'AdditionalOptions': [
+               '/MP', # compile across multiple CPUs
++              '/wd4251',
++              '/wd4091'
+             ],
+           },
+           'VCLibrarianTool': {
+diff --git a/src/configure b/src/configure
+index e6b55c6da0..2604b5663c 100755
+--- a/src/configure
++++ b/src/configure
+@@ -548,6 +548,11 @@ parser.add_option('--without-bundled-v8',
+     help='do not use V8 includes from the bundled deps folder. ' +
+          '(This mode is not officially supported for regular applications)')
+ 
++parser.add_option('--node_core_target_name',
++    action='store',
++    dest='node_core_target_name',
++    help='custom output name')
++
+ # Create compile_commands.json in out/Debug and out/Release.
+ parser.add_option('-C',
+     action='store_true',
+@@ -883,6 +888,9 @@ def configure_node(o):
+   if flavor == 'aix':
+     o['variables']['node_target_type'] = 'static_library'
+ 
++  if options.node_core_target_name:
++    o['variables']['node_core_target_name'] = options.node_core_target_name
++
+   if target_arch in ('x86', 'x64', 'ia32', 'x32'):
+     o['variables']['node_enable_v8_vtunejit'] = b(options.enable_vtune_profiling)
+   elif options.enable_vtune_profiling:
+diff --git a/src/node.gyp b/src/node.gyp
+index ee4157567f..ec7f3473ec 100644
+--- a/src/node.gyp
++++ b/src/node.gyp
+@@ -164,7 +164,8 @@
+       [ 'OS=="win" and '
+         'node_use_openssl=="true" and '
+         'node_shared_openssl=="false"', {
+-        'use_openssl_def': 1,
++        #'use_openssl_def': 1,
++        'use_openssl_def': 0,
+       }, {
+         'use_openssl_def': 0,
+       }],
+@@ -870,7 +871,7 @@
+                 '<(PRODUCT_DIR)/<(node_core_target_name).exe',
+               ],
+               'action': [
+-                'mv', '<@(_inputs)', '<@(_outputs)',
++                'move', '<@(_inputs)', '<@(_outputs)',
+               ],
+             },
+           ],
+diff --git a/src/node.gypi b/src/node.gypi
+index 386601906f..5d89d5a5ac 100644
+--- a/src/node.gypi
++++ b/src/node.gypi
+@@ -255,7 +255,7 @@
+                   'sources': ['<(SHARED_INTERMEDIATE_DIR)/openssl.def'],
+                 }],
+                 ['OS=="win" and use_openssl_def==0', {
+-                  'sources': ['deps/zlib/win32/zlib.def'],
++                  #'sources': ['deps/zlib/win32/zlib.def'],
+                 }],
+               ],
+             }],
