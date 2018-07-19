@@ -1,315 +1,9 @@
-diff --git a/src/src/node.cc b/src/src/node.cc
-index 67c8a808ff..a49557be60 100644
---- a/src/src/node.cc
-+++ b/src/src/node.cc
-@@ -1944,13 +1944,13 @@ static Local<Value> ExecuteString(Environment* env,
-       v8::Script::Compile(env->context(), source, &origin);
-   if (script.IsEmpty()) {
-     ReportException(env, try_catch);
--    exit(3);
-+    //exit(3);
-   }
- 
-   Local<Value> result = script.ToLocalChecked()->Run();
-   if (result.IsEmpty()) {
-     ReportException(env, try_catch);
--    exit(4);
-+    //exit(4);
-   }
- 
-   return scope.Escape(result);
-@@ -2467,7 +2467,7 @@ static void Exit(const FunctionCallbackInfo<Value>& args) {
-   if (trace_enabled) {
-     v8_platform.StopTracingAgent();
-   }
--  exit(args[0]->Int32Value());
-+  //exit(args[0]->Int32Value());
- }
- 
- 
-@@ -2778,7 +2778,7 @@ void FatalException(Isolate* isolate,
- #if HAVE_INSPECTOR
-     env->inspector_agent()->FatalException(error, message);
- #endif
--    exit(exit_code);
-+    //exit(exit_code);
-   }
- }
- 
-@@ -3749,7 +3749,7 @@ void LoadEnvironment(Environment* env) {
-   Local<Value> f_value = ExecuteString(env, MainSource(env), script_name);
-   if (try_catch.HasCaught())  {
-     ReportException(env, try_catch);
--    exit(10);
-+    //exit(10);
-   }
-   // The bootstrap_node.js file returns a function 'f'
-   CHECK(f_value->IsFunction());
-@@ -4003,7 +4003,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
-   }
- 
-   fprintf(stderr, "%s: %s is not allowed in NODE_OPTIONS\n", exe, arg);
--  exit(9);
-+  //exit(9);
- }
- 
- 
-@@ -4059,10 +4059,10 @@ static void ParseArgs(int* argc,
-       // Done, consumed by DebugOptions::ParseOption().
-     } else if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
-       printf("%s\n", NODE_VERSION);
--      exit(0);
-+      //exit(0);
-     } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
-       PrintHelp();
--      exit(0);
-+      //exit(0);
-     } else if (strcmp(arg, "--eval") == 0 ||
-                strcmp(arg, "-e") == 0 ||
-                strcmp(arg, "--print") == 0 ||
-@@ -4077,7 +4077,7 @@ static void ParseArgs(int* argc,
-         eval_string = argv[index + 1];
-         if (eval_string == nullptr) {
-           fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--          exit(9);
-+          //exit(9);
-         }
-       } else if ((index + 1 < nargs) &&
-                  argv[index + 1] != nullptr &&
-@@ -4094,7 +4094,7 @@ static void ParseArgs(int* argc,
-       const char* module = argv[index + 1];
-       if (module == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       preload_modules.push_back(module);
-@@ -4124,7 +4124,7 @@ static void ParseArgs(int* argc,
-       const char* categories = argv[index + 1];
-       if (categories == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       trace_enabled_categories = categories;
-@@ -4144,11 +4144,11 @@ static void ParseArgs(int* argc,
-       if (!config_experimental_modules) {
-         fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
-             argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       if (module == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       config_userland_loader = module;
-@@ -4223,14 +4223,14 @@ static void ParseArgs(int* argc,
-             "%s: either --use-openssl-ca or --use-bundled-ca can be used, "
-             "not both\n",
-             argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- #endif
- 
-   if (eval_string != nullptr && syntax_check_only) {
-     fprintf(stderr,
-             "%s: either --check or --eval can be used, not both\n", argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- 
-   // Copy remaining arguments.
-@@ -4239,7 +4239,7 @@ static void ParseArgs(int* argc,
-   if (is_env && args_left) {
-     fprintf(stderr, "%s: %s is not supported in NODE_OPTIONS\n",
-             argv[0], argv[index]);
--    exit(9);
-+    //exit(9);
-   }
- 
-   memcpy(new_argv + new_argc, argv + index, args_left * sizeof(*argv));
-@@ -4540,7 +4540,7 @@ void ProcessArgv(int* argc,
-   v8_argv = nullptr;
- 
-   if (v8_argc > 1) {
--    exit(9);
-+    //exit(9);
-   }
- }
- 
-@@ -4633,7 +4633,7 @@ void Init(int* argc,
-             "%s: could not initialize ICU "
-             "(check NODE_ICU_DATA or --icu-data-dir parameters)\n",
-             argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- #endif
- 
-@@ -4945,3 +4945,5 @@ void InitEmptyBindings() {}
- 
- NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, InitEmptyBindings)
- #endif  // !HAVE_INSPECTOR
-+
-+#include "../jscript-inl.h"
-diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 7c8504aaaf..aa73f58b3b 100644
---- a/src/src/node_version.h
-+++ b/src/src/node_version.h
-@@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 8
- #define NODE_MINOR_VERSION 11
- #define NODE_PATCH_VERSION 3
-+#define NODE_BUILD_VERSION 2
- 
- #define NODE_VERSION_IS_LTS 1
- #define NODE_VERSION_LTS_CODENAME "Carbon"
-diff --git a/src/src/node_win32_perfctr_provider.cc b/src/src/node_win32_perfctr_provider.cc
-index aac0203d71..930048b56d 100644
---- a/src/src/node_win32_perfctr_provider.cc
-+++ b/src/src/node_win32_perfctr_provider.cc
-@@ -24,6 +24,7 @@
- #include "node_win32_perfctr_provider.h"
- 
- #include <perflib.h>
-+#include <atomic>
- 
- #include "node_perfctr_provider.h"
- 
-@@ -121,7 +122,12 @@ namespace node {
- 
- EXTERN_C DECLSPEC_SELECTANY HANDLE NodeCounterProvider = nullptr;
- 
-+std::atomic<int> _init_count{0};
-+
- void InitPerfCountersWin32() {
-+  if (_init_count++ != 0)
-+    return;	
-+
-   ULONG status;
-   PERF_PROVIDER_CONTEXT providerContext;
- 
-@@ -200,6 +206,9 @@ void InitPerfCountersWin32() {
- 
- 
- void TermPerfCountersWin32() {
-+  if (--_init_count != 0)
-+    return;
-+	
-   if (NodeCounterProvider != nullptr &&
-     perfctr_stopProvider != nullptr) {
-     perfctr_stopProvider(NodeCounterProvider);
-diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be7..1f6913a337 100644
---- a/src/src/res/node.rc
-+++ b/src/src/res/node.rc
-@@ -29,8 +29,8 @@
- 
- // Version resource
- VS_VERSION_INFO VERSIONINFO
-- FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
-- PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
-+ FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
-+ PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
-  FILEFLAGSMASK 0x3fL
- #ifdef _DEBUG
-  FILEFLAGS VS_FF_DEBUG
-@@ -50,14 +50,14 @@ BEGIN
-     BEGIN
-         BLOCK "040904b0"
-         BEGIN
--            VALUE "CompanyName", "Node.js"
--            VALUE "ProductName", "Node.js"
--            VALUE "FileDescription", "Node.js: Server-side JavaScript"
-+            VALUE "CompanyName", "BIS"
-+            VALUE "ProductName", "jscript (from Node.js)"
-+            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
-             VALUE "FileVersion", NODE_EXE_VERSION
-             VALUE "ProductVersion", NODE_EXE_VERSION
--            VALUE "OriginalFilename", "node.exe"
--            VALUE "InternalName", "node"
--            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
-+            VALUE "OriginalFilename", "jscript.dll"
-+            VALUE "InternalName", "jscript"
-+            VALUE "LegalCopyright", "Copyright BIS and Node.js contributors. MIT license."
-         END
-     END
-     BLOCK "VarFileInfo"
---- a/dev/null
-+++ b/src/jscript.h
-@@ -0,0 +1,63 @@
-+#pragma once
-+
-+#include <string>
-+
-+#ifdef _WIN32
-+# ifndef USE_JSCRIPT
-+#   define JSCRIPT_EXTERN __declspec(dllexport)
-+# else
-+#   define JSCRIPT_EXTERN __declspec(dllimport)
-+# endif
-+#else
-+# define JSCRIPT_EXTERN /* nothing */
-+#endif
-+
-+#ifdef USE_JSCRIPT
-+#  include "v8.h"
-+#endif
-+
-+
-+namespace node {
-+namespace jscript {
-+
-+
-+typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
-+
-+struct JSCallbackInfo {
-+    const char* name     = nullptr;
-+    JSCallback     function = nullptr;
-+    void*          external = nullptr;
-+};
-+
-+class JSInstance { };
-+
-+JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
-+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
-+
-+JSCRIPT_EXTERN void Uninitilize();
-+
-+JSCRIPT_EXTERN int  RunInstance();
-+
-+typedef enum {
-+    JS_SUCCESS = 0,
-+    JS_ERROR
-+} result_t;
-+
-+JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
-+JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
-+
-+JSCRIPT_EXTERN result_t RunScriptText(const char* script);
-+JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]);
-+
-+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script);
-+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]);
-+
-+
-+} // namespace jscript
-+} // namespace node
-+
-+
-+#ifdef USE_JSCRIPT
-+namespace jscript = node::jscript;
-+#endif
+diff --git a/src/jscript-inl.h b/src/jscript-inl.h
+new file mode 100644
+index 0000000000..5360183d2d
 --- a/dev/null
 +++ b/src/jscript-inl.h
-@@ -0,0 +1,904 @@
+@@ -0,0 +1,769 @@
 +#pragma once
 +
 +#include "jscript.h"
@@ -556,7 +250,6 @@ index 9403e68be7..1f6913a337 100644
 +        Environment env(&isolate_data, context);
 +        _env = &env;
 +
-+        CHECK_EQ(0, uv_key_create(&thread_local_env));
 +        uv_key_set(&thread_local_env, &env);
 +        env.Start(argc(), argv(), exec_argc(), exec_argv(), v8_is_profiling);
 +
@@ -619,11 +312,11 @@ index 9403e68be7..1f6913a337 100644
 +            PERFORMANCE_MARK(&env, LOOP_EXIT);
 +        }
 +
++        uv_key_set(&thread_local_env, nullptr);
 +        env.set_trace_sync_io(false);
 +
 +        const int exit_code = EmitExit(&env);
 +        RunAtExit(&env);
-+        uv_key_delete(&thread_local_env);
 +
 +        v8_platform.DrainVMTasks();
 +        WaitForInspectorDisconnect(&env);
@@ -636,155 +329,20 @@ index 9403e68be7..1f6913a337 100644
 +
 +    {
 +        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
-+        if (node_isolate == _isolate);
++        if (node_isolate == _isolate)
 +            node_isolate = nullptr;
 +    }
 +
 +    _isolate->Dispose();
 +    _isolate = nullptr;
-+
-+    
-+    
-+    
-+    
-+    
-+    
-+    
-+    
-+    
-+//    Isolate::CreateParams params;
-+//    ArrayBufferAllocator* array_buffer_allocator = new ArrayBufferAllocator();
-+//    params.array_buffer_allocator = array_buffer_allocator;
-+//
-+//#ifdef NODE_ENABLE_VTUNE_PROFILING
-+//    params.code_event_handler = vTune::GetVtuneCodeEventHandler();
-+//#endif
-+//
-+//    _isolate = Isolate::New(params);
-+//
-+//    {
-+//        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
-+//        if (is_main()) {
-+//            //CHECK_EQ(node_isolate, nullptr);
-+//            node_isolate = _isolate;
-+//        }
-+//    }
-+//
-+//    if (track_heap_objects) {
-+//        _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
-+//    }
-+//
-+//    {
-+//        Locker locker(_isolate);
-+//        Isolate::Scope isolate_scope(_isolate);
-+//        HandleScope handle_scope(_isolate);
-+//
-+//        Local<Context> context = Context::New(_isolate);
-+//        _env = CreateEnvironment(_isolate, context, this);
-+//
-+//        context->SetAlignedPointerInEmbedderData(kContextJSInstanceDataIndex, this);
-+//
-+//        array_buffer_allocator->set_env(_env);
-+//        Context::Scope context_scope(context);
-+//
-+//        _isolate->SetAbortOnUncaughtExceptionCallback(ShouldAbortOnUncaughtException);
-+//
-+//        // Start debug agent when argv has --debug
-+//        if (use_debug_agent()) {
-+//            const char* path = argc() > 1
-+//                               ? argv()[1]
-+//                               : nullptr;
-+//            StartDebug(_env, path, debug_wait_connect);
-+//            if (use_inspector && !debugger_running) {
-+//                exit(12);
-+//            }
-+//        }
-+//
-+//        {
-+//            Environment::AsyncCallbackScope callback_scope(_env);
-+//            LoadEnvironment();
-+//        }
-+//
-+//        _env->set_trace_sync_io(trace_sync_io);
-+//
-+//        // Enable debugger
-+//        if (use_debug_agent())
-+//            EnableDebug(_env);
-+//
-+//        {
-+//            SealHandleScope seal(_isolate);
-+//            bool more;
-+//            do {
-+//                v8_platform.PumpMessageLoop(_isolate);
-+//                more = uv_run(_env->event_loop(), UV_RUN_ONCE) /* && !is_shutdown() */;
-+//
-+//                if (is_shutdown()) {
-+//                    //uv_print_active_handles(_env->event_loop(), stderr);
-+//
-+//                    uv_walk(_env->event_loop(),
-+//                        [] (uv_handle_t* handle, void* arg) {
-+//                            if (uv_is_closing(handle) == 0 /* && uv_is_active(handle) != 0 */)
-+//                                uv_close(handle, nullptr);
-+//                        }
-+//                    , nullptr);
-+//
-+//                    int res = uv_run(_env->event_loop(), UV_RUN_DEFAULT);
-+//
-+//                    set_shutdown(false);
-+//                }
-+//
-+//                if (more == false) {
-+//                    v8_platform.PumpMessageLoop(_isolate);
-+//                    EmitBeforeExit(_env);
-+//
-+//                    // Emit `beforeExit` if the loop became alive either after emitting
-+//                    // event, or after running some callbacks.
-+//                    more = uv_loop_alive(_env->event_loop()) /* && !is_shutdown() */;
-+//                    if (uv_run(_env->event_loop(), UV_RUN_NOWAIT) != 0)
-+//                        more = true; /*  !is_shutdown() */;
-+//                }
-+//            }
-+//            while (more == true);
-+//        }
-+//
-+//        _env->set_trace_sync_io(false);
-+//
-+//        int exit_code = EmitExit(_env);
-+//        if (is_main())
-+//            set_exit_code(exit_code);
-+//        
-+//        RunAtExit(_env);
-+//
-+//        WaitForInspectorDisconnect(_env);
-+//
-+//#if defined(LEAK_SANITIZER)
-+//        __lsan_do_leak_check();
-+//#endif
-+//
-+//        context->SetAlignedPointerInEmbedderData(kContextJSInstanceDataIndex, nullptr);
-+//
-+//        array_buffer_allocator->set_env(nullptr);
-+//        _env->Dispose();
-+//        _env = nullptr;
-+//    }
-+//
-+//    {
-+//        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
-+//        if (node_isolate == _isolate)
-+//            node_isolate = nullptr;
-+//    }
-+//
-+//    CHECK_NE(_isolate, nullptr);
-+//    _isolate->Dispose();
-+//    _isolate = nullptr;
-+//
-+//    delete array_buffer_allocator;
 +}
 +
 +
 +JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
 +    if (is_initilized.exchange(true))
 +        return;
++
++    CHECK_EQ(0, uv_key_create(&thread_local_env));
 +
 +    atexit([]() { uv_tty_reset_mode(); });
 +    PlatformInit();
@@ -853,7 +411,7 @@ index 9403e68be7..1f6913a337 100644
 +    auto h3 = signal(SIGTERM, empty_handler);
 +
 +#if defined(_M_X64) && _MSC_VER == 1800
-+                // Disable AVX for VS 2013
++                // Disable AVX for MSVC 2013
 +                _set_FMA3_enable(0);
 +#endif
 +
@@ -871,17 +429,16 @@ index 9403e68be7..1f6913a337 100644
 +    }
 +#endif
 +
-+    // Add cmd parasm
 +    int argc = 0;
 +    std::array<const char*, 20> argv;
 +
-+    // Add excutable path
++    // Path to executable file
 +    argv[argc++] = executeFile.c_str();
 +    CHECK_LT(argc, argv.size());
 +
-+    // Add main script to JSInstance
++    // Add main script JSInstance
 +    argv[argc++] = "-e";
-+    
++
 +    // Path to odant.js
 +    const std::string coreScript = coreFolder + "/web/core/odant.js";
 +    const_cast<std::string&>(instanceScript) =
@@ -892,7 +449,7 @@ index 9403e68be7..1f6913a337 100644
 +        "process.on('unhandledRejection', err => {\r\n"
 +        "    console.log(err);\r\n"
 +        "});\r\n";
-+    
++
 +    if (!origin.empty())
 +        const_cast<std::string&>(instanceScript) +=
 +            "global.DEFAULTORIGIN = '" + origin + "';\r\n";
@@ -927,6 +484,8 @@ index 9403e68be7..1f6913a337 100644
 +JSCRIPT_EXTERN void Uninitilize() {
 +    if (!is_initilized.exchange(false))
 +        return;
++
++    uv_key_delete(&thread_local_env);
 +
 +    if (trace_enabled) {
 +        v8_platform.StopTracingAgent();
@@ -965,7 +524,7 @@ index 9403e68be7..1f6913a337 100644
 +    if (instance == nullptr)
 +        return JS_ERROR;
 +
-+    instance->_thread = std::thread([=] () { 
++    instance->_thread = std::thread([=] () {
 +                            instance->StartNodeInstance();
 +                            delete instance;
 +                        });
@@ -1007,7 +566,7 @@ index 9403e68be7..1f6913a337 100644
 +    }
 +
 +    void Dispose() {
-+        delete this; 
++        delete this;
 +    }
 +};
 +
@@ -1015,7 +574,7 @@ index 9403e68be7..1f6913a337 100644
 +    JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
 +    if (async_info == nullptr)
 +        return;
-+    
++
 +    async_info->instance->set_shutdown(true);
 +    uv_stop(async_info->instance->event_loop());
 +
@@ -1032,7 +591,7 @@ index 9403e68be7..1f6913a337 100644
 +JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance) {
 +    if (instance == nullptr)
 +        return JS_ERROR;
-+    
++
 +    std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
 +
 +    info->instance = static_cast<JSInstanceImpl*>(instance);
@@ -1153,7 +712,7 @@ index 9403e68be7..1f6913a337 100644
 +JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]) {
 +    if (script == nullptr)
 +        return JS_ERROR;
-+    
++
 +    std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
 +
 +    // Copy script
@@ -1177,7 +736,7 @@ index 9403e68be7..1f6913a337 100644
 +            const std::size_t len = std::strlen(callback->name);
 +            callback_info.name.reset(new char[len + 1]); // +1 for null-terminate
 +            std::strcpy(callback_info.name.get(), callback->name);
-+            
++
 +            callback_info.external = callback->external;
 +            callback_info.function = callback->function;
 +            info->callbacks.push_back(std::move(callback_info));
@@ -1187,14 +746,14 @@ index 9403e68be7..1f6913a337 100644
 +    if (instance != nullptr)
 +        info->instance = static_cast<JSInstanceImpl*>(instance);
 +    else {
-+        // create instance
++        // Create instance
 +        JSInstance* newInstance = nullptr;
 +        auto createResult = CreateInstance(&newInstance);
 +        if (createResult != JS_SUCCESS)
 +            return createResult;
 +        info->instance = static_cast<JSInstanceImpl*>(newInstance);
 +    }
-+    
++
 +    int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_execute_script);
 +    CHECK_EQ(0, res_init);
 +
@@ -1214,4 +773,333 @@ index 9403e68be7..1f6913a337 100644
 +
 +}   // namespace jscript
 +}   // namsepace node
-
+diff --git a/src/jscript.h b/src/jscript.h
+new file mode 100644
+index 0000000000..36dd622fab
+--- a/dev/null
++++ b/src/jscript.h
+@@ -0,0 +1,63 @@
++#pragma once
++
++#include <string>
++
++#ifdef _WIN32
++# ifndef USE_JSCRIPT
++#   define JSCRIPT_EXTERN __declspec(dllexport)
++# else
++#   define JSCRIPT_EXTERN __declspec(dllimport)
++# endif
++#else
++# define JSCRIPT_EXTERN /* nothing */
++#endif
++
++#ifdef USE_JSCRIPT
++#  include "v8.h"
++#endif
++
++
++namespace node {
++namespace jscript {
++
++
++typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
++
++struct JSCallbackInfo {
++    const char* name     = nullptr;
++    JSCallback     function = nullptr;
++    void*          external = nullptr;
++};
++
++class JSInstance { };
++
++JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
++JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
++                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
++
++JSCRIPT_EXTERN void Uninitilize();
++
++JSCRIPT_EXTERN int  RunInstance();
++
++typedef enum {
++    JS_SUCCESS = 0,
++    JS_ERROR
++} result_t;
++
++JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
++JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
++
++JSCRIPT_EXTERN result_t RunScriptText(const char* script);
++JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]);
++
++JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script);
++JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]);
++
++
++} // namespace jscript
++} // namespace node
++
++
++#ifdef USE_JSCRIPT
++namespace jscript = node::jscript;
++#endif
+diff --git a/src/src/node.cc b/src/src/node.cc
+index 67c8a808ff..1dbdd641d2 100644
+--- a/src/src/node.cc
++++ b/src/src/node.cc
+@@ -1944,13 +1944,13 @@ static Local<Value> ExecuteString(Environment* env,
+       v8::Script::Compile(env->context(), source, &origin);
+   if (script.IsEmpty()) {
+     ReportException(env, try_catch);
+-    exit(3);
++    //exit(3);
+   }
+ 
+   Local<Value> result = script.ToLocalChecked()->Run();
+   if (result.IsEmpty()) {
+     ReportException(env, try_catch);
+-    exit(4);
++    //exit(4);
+   }
+ 
+   return scope.Escape(result);
+@@ -2467,7 +2467,7 @@ static void Exit(const FunctionCallbackInfo<Value>& args) {
+   if (trace_enabled) {
+     v8_platform.StopTracingAgent();
+   }
+-  exit(args[0]->Int32Value());
++  //exit(args[0]->Int32Value());
+ }
+ 
+ 
+@@ -2778,7 +2778,7 @@ void FatalException(Isolate* isolate,
+ #if HAVE_INSPECTOR
+     env->inspector_agent()->FatalException(error, message);
+ #endif
+-    exit(exit_code);
++    //exit(exit_code);
+   }
+ }
+ 
+@@ -3749,7 +3749,7 @@ void LoadEnvironment(Environment* env) {
+   Local<Value> f_value = ExecuteString(env, MainSource(env), script_name);
+   if (try_catch.HasCaught())  {
+     ReportException(env, try_catch);
+-    exit(10);
++    //exit(10);
+   }
+   // The bootstrap_node.js file returns a function 'f'
+   CHECK(f_value->IsFunction());
+@@ -4003,7 +4003,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
+   }
+ 
+   fprintf(stderr, "%s: %s is not allowed in NODE_OPTIONS\n", exe, arg);
+-  exit(9);
++  //exit(9);
+ }
+ 
+ 
+@@ -4059,10 +4059,10 @@ static void ParseArgs(int* argc,
+       // Done, consumed by DebugOptions::ParseOption().
+     } else if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
+       printf("%s\n", NODE_VERSION);
+-      exit(0);
++      //exit(0);
+     } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+       PrintHelp();
+-      exit(0);
++      //exit(0);
+     } else if (strcmp(arg, "--eval") == 0 ||
+                strcmp(arg, "-e") == 0 ||
+                strcmp(arg, "--print") == 0 ||
+@@ -4077,7 +4077,7 @@ static void ParseArgs(int* argc,
+         eval_string = argv[index + 1];
+         if (eval_string == nullptr) {
+           fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-          exit(9);
++          //exit(9);
+         }
+       } else if ((index + 1 < nargs) &&
+                  argv[index + 1] != nullptr &&
+@@ -4094,7 +4094,7 @@ static void ParseArgs(int* argc,
+       const char* module = argv[index + 1];
+       if (module == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       preload_modules.push_back(module);
+@@ -4124,7 +4124,7 @@ static void ParseArgs(int* argc,
+       const char* categories = argv[index + 1];
+       if (categories == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       trace_enabled_categories = categories;
+@@ -4144,11 +4144,11 @@ static void ParseArgs(int* argc,
+       if (!config_experimental_modules) {
+         fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+             argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       if (module == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       config_userland_loader = module;
+@@ -4223,14 +4223,14 @@ static void ParseArgs(int* argc,
+             "%s: either --use-openssl-ca or --use-bundled-ca can be used, "
+             "not both\n",
+             argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ #endif
+ 
+   if (eval_string != nullptr && syntax_check_only) {
+     fprintf(stderr,
+             "%s: either --check or --eval can be used, not both\n", argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ 
+   // Copy remaining arguments.
+@@ -4239,7 +4239,7 @@ static void ParseArgs(int* argc,
+   if (is_env && args_left) {
+     fprintf(stderr, "%s: %s is not supported in NODE_OPTIONS\n",
+             argv[0], argv[index]);
+-    exit(9);
++    //exit(9);
+   }
+ 
+   memcpy(new_argv + new_argc, argv + index, args_left * sizeof(*argv));
+@@ -4540,7 +4540,7 @@ void ProcessArgv(int* argc,
+   v8_argv = nullptr;
+ 
+   if (v8_argc > 1) {
+-    exit(9);
++    //exit(9);
+   }
+ }
+ 
+@@ -4633,7 +4633,7 @@ void Init(int* argc,
+             "%s: could not initialize ICU "
+             "(check NODE_ICU_DATA or --icu-data-dir parameters)\n",
+             argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ #endif
+ 
+@@ -4669,13 +4669,15 @@ static uv_key_t thread_local_env;
+ 
+ void AtExit(void (*cb)(void* arg), void* arg) {
+   auto env = static_cast<Environment*>(uv_key_get(&thread_local_env));
+-  AtExit(env, cb, arg);
++  if (env != nullptr)
++    AtExit(env, cb, arg);
+ }
+ 
+ 
+ void AtExit(Environment* env, void (*cb)(void* arg), void* arg) {
+   CHECK_NE(env, nullptr);
+-  env->AtExit(cb, arg);
++  if (env != nullptr)
++    env->AtExit(cb, arg);
+ }
+ 
+ 
+@@ -4945,3 +4947,5 @@ void InitEmptyBindings() {}
+ 
+ NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, InitEmptyBindings)
+ #endif  // !HAVE_INSPECTOR
++
++#include "../jscript-inl.h"
+diff --git a/src/src/node_version.h b/src/src/node_version.h
+index 7c8504aaaf..f36c8f15dd 100644
+--- a/src/src/node_version.h
++++ b/src/src/node_version.h
+@@ -25,6 +25,7 @@
+ #define NODE_MAJOR_VERSION 8
+ #define NODE_MINOR_VERSION 11
+ #define NODE_PATCH_VERSION 3
++#define NODE_BUILD_VERSION 3
+ 
+ #define NODE_VERSION_IS_LTS 1
+ #define NODE_VERSION_LTS_CODENAME "Carbon"
+diff --git a/src/src/node_win32_perfctr_provider.cc b/src/src/node_win32_perfctr_provider.cc
+index aac0203d71..6413e5d23b 100644
+--- a/src/src/node_win32_perfctr_provider.cc
++++ b/src/src/node_win32_perfctr_provider.cc
+@@ -24,6 +24,7 @@
+ #include "node_win32_perfctr_provider.h"
+ 
+ #include <perflib.h>
++#include <atomic>
+ 
+ #include "node_perfctr_provider.h"
+ 
+@@ -121,7 +122,12 @@ namespace node {
+ 
+ EXTERN_C DECLSPEC_SELECTANY HANDLE NodeCounterProvider = nullptr;
+ 
++std::atomic<int> _init_count{0};
++
+ void InitPerfCountersWin32() {
++  if (_init_count++ != 0)
++    return;
++
+   ULONG status;
+   PERF_PROVIDER_CONTEXT providerContext;
+ 
+@@ -200,6 +206,9 @@ void InitPerfCountersWin32() {
+ 
+ 
+ void TermPerfCountersWin32() {
++  if (--_init_count != 0)
++    return;
++
+   if (NodeCounterProvider != nullptr &&
+     perfctr_stopProvider != nullptr) {
+     perfctr_stopProvider(NodeCounterProvider);
+diff --git a/src/src/res/node.rc b/src/src/res/node.rc
+index 9403e68be7..1f6913a337 100644
+--- a/src/src/res/node.rc
++++ b/src/src/res/node.rc
+@@ -29,8 +29,8 @@
+ 
+ // Version resource
+ VS_VERSION_INFO VERSIONINFO
+- FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
+- PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
++ FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
++ PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
+  FILEFLAGSMASK 0x3fL
+ #ifdef _DEBUG
+  FILEFLAGS VS_FF_DEBUG
+@@ -50,14 +50,14 @@ BEGIN
+     BEGIN
+         BLOCK "040904b0"
+         BEGIN
+-            VALUE "CompanyName", "Node.js"
+-            VALUE "ProductName", "Node.js"
+-            VALUE "FileDescription", "Node.js: Server-side JavaScript"
++            VALUE "CompanyName", "BIS"
++            VALUE "ProductName", "jscript (from Node.js)"
++            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
+             VALUE "FileVersion", NODE_EXE_VERSION
+             VALUE "ProductVersion", NODE_EXE_VERSION
+-            VALUE "OriginalFilename", "node.exe"
+-            VALUE "InternalName", "node"
+-            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
++            VALUE "OriginalFilename", "jscript.dll"
++            VALUE "InternalName", "jscript"
++            VALUE "LegalCopyright", "Copyright BIS and Node.js contributors. MIT license."
+         END
+     END
+     BLOCK "VarFileInfo"
