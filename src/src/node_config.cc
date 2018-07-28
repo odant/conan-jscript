@@ -36,11 +36,17 @@ using v8::Value;
                            value, ReadOnly).FromJust();                       \
   } while (0)
 
-static void InitConfig(Local<Object> target,
+static void Initialize(Local<Object> target,
                        Local<Value> unused,
                        Local<Context> context) {
   Environment* env = Environment::GetCurrent(context);
   Isolate* isolate = env->isolate();
+
+#ifdef NODE_FIPS_MODE
+  READONLY_BOOLEAN_PROPERTY("fipsMode");
+  if (force_fips_crypto)
+    READONLY_BOOLEAN_PROPERTY("fipsForced");
+#endif
 
 #ifdef NODE_HAVE_I18N_SUPPORT
 
@@ -49,6 +55,10 @@ static void InitConfig(Local<Object> target,
 #ifdef NODE_HAVE_SMALL_ICU
   READONLY_BOOLEAN_PROPERTY("hasSmallICU");
 #endif  // NODE_HAVE_SMALL_ICU
+
+#if NODE_USE_V8_PLATFORM
+  READONLY_BOOLEAN_PROPERTY("hasTracing");
+#endif
 
   target->DefineOwnProperty(
       context,
@@ -62,6 +72,8 @@ static void InitConfig(Local<Object> target,
 
   if (config_preserve_symlinks)
     READONLY_BOOLEAN_PROPERTY("preserveSymlinks");
+  if (config_preserve_symlinks_main)
+    READONLY_BOOLEAN_PROPERTY("preserveSymlinksMain");
 
   if (config_experimental_modules) {
     READONLY_BOOLEAN_PROPERTY("experimentalModules");
@@ -76,14 +88,23 @@ static void InitConfig(Local<Object> target,
     }
   }
 
+  if (config_experimental_vm_modules)
+    READONLY_BOOLEAN_PROPERTY("experimentalVMModules");
+
+  if (config_experimental_worker)
+    READONLY_BOOLEAN_PROPERTY("experimentalWorker");
+
+  if (config_experimental_repl_await)
+    READONLY_BOOLEAN_PROPERTY("experimentalREPLAwait");
+
   if (config_pending_deprecation)
     READONLY_BOOLEAN_PROPERTY("pendingDeprecation");
 
   if (config_expose_internals)
     READONLY_BOOLEAN_PROPERTY("exposeInternals");
 
-  if (config_expose_http2)
-    READONLY_BOOLEAN_PROPERTY("exposeHTTP2");
+  if (env->abort_on_uncaught_exception())
+    READONLY_BOOLEAN_PROPERTY("shouldAbortOnUncaughtException");
 
   READONLY_PROPERTY(target,
                     "bits",
@@ -129,4 +150,4 @@ static void InitConfig(Local<Object> target,
 
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(config, node::InitConfig)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(config, node::Initialize)

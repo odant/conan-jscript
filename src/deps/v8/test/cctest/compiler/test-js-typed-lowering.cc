@@ -10,13 +10,9 @@
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/simplified-operator.h"
 #include "src/compiler/typer.h"
-#include "src/factory.h"
+#include "src/heap/factory-inl.h"
 #include "src/isolate.h"
-#include "src/objects-inl.h"
-// FIXME(mstarzinger, marja): This is weird, but required because of the missing
-// (disallowed) include: src/feedback-vector.h ->
-// src/feedback-vector-inl.h
-#include "src/feedback-vector-inl.h"
+#include "src/objects.h"
 #include "test/cctest/cctest.h"
 
 namespace v8 {
@@ -27,15 +23,15 @@ class JSTypedLoweringTester : public HandleAndZoneScope {
  public:
   explicit JSTypedLoweringTester(int num_parameters = 0)
       : isolate(main_isolate()),
-        binop(NULL),
-        unop(NULL),
+        binop(nullptr),
+        unop(nullptr),
         javascript(main_zone()),
         machine(main_zone()),
         simplified(main_zone()),
         common(main_zone()),
         graph(main_zone()),
         typer(main_isolate(), Typer::kNoFlags, &graph),
-        context_node(NULL) {
+        context_node(nullptr) {
     graph.SetStart(graph.NewNode(common.Start(num_parameters)));
     graph.SetEnd(graph.NewNode(common.End(1), graph.start()));
     typer.Run();
@@ -99,7 +95,7 @@ class JSTypedLoweringTester : public HandleAndZoneScope {
   Node* start() { return graph.start(); }
 
   Node* context() {
-    if (context_node == NULL) {
+    if (context_node == nullptr) {
       context_node = graph.NewNode(common.Parameter(-1), graph.start());
     }
     return context_node;
@@ -166,12 +162,12 @@ class JSTypedLoweringTester : public HandleAndZoneScope {
 
   void CheckNumberConstant(double expected, Node* result) {
     CHECK_EQ(IrOpcode::kNumberConstant, result->opcode());
-    CHECK_EQ(expected, OpParameter<double>(result));
+    CHECK_EQ(expected, OpParameter<double>(result->op()));
   }
 
   void CheckNaN(Node* result) {
     CHECK_EQ(IrOpcode::kNumberConstant, result->opcode());
-    double value = OpParameter<double>(result);
+    double value = OpParameter<double>(result->op());
     CHECK(std::isnan(value));
   }
 
@@ -185,14 +181,12 @@ class JSTypedLoweringTester : public HandleAndZoneScope {
 
   void CheckHandle(Handle<HeapObject> expected, Node* result) {
     CHECK_EQ(IrOpcode::kHeapConstant, result->opcode());
-    Handle<HeapObject> value = OpParameter<Handle<HeapObject>>(result);
+    Handle<HeapObject> value = HeapConstantOf(result->op());
     CHECK_EQ(*expected, *value);
   }
 };
 
-static Type* kStringTypes[] = {Type::InternalizedString(), Type::OtherString(),
-                               Type::String()};
-
+static Type* kStringTypes[] = {Type::InternalizedString(), Type::String()};
 
 static Type* kInt32Types[] = {Type::UnsignedSmall(), Type::Negative32(),
                               Type::Unsigned31(),    Type::SignedSmall(),
@@ -290,7 +284,7 @@ static void CheckToI32(Node* old_input, Node* new_input, bool is_signed) {
   if (old_type->Is(expected_type)) {
     CHECK_EQ(old_input, new_input);
   } else if (new_input->opcode() == IrOpcode::kNumberConstant) {
-    double v = OpParameter<double>(new_input);
+    double v = OpParameter<double>(new_input->op());
     double e = static_cast<double>(is_signed ? FastD2I(v) : FastD2UI(v));
     CHECK_EQ(e, v);
   }
@@ -524,7 +518,7 @@ TEST(JSToString1) {
 
   {  // ToString(number)
     Node* r = R.ReduceUnop(op, Type::Number());
-    CHECK_EQ(IrOpcode::kJSToString, r->opcode());
+    CHECK_EQ(IrOpcode::kNumberToString, r->opcode());
   }
 
   {  // ToString(string)
@@ -683,13 +677,13 @@ TEST(MixedComparison1) {
 TEST(RemoveToNumberEffects) {
   JSTypedLoweringTester R;
 
-  Node* effect_use = NULL;
+  Node* effect_use = nullptr;
   Node* zero = R.graph.NewNode(R.common.NumberConstant(0));
   for (int i = 0; i < 10; i++) {
     Node* p0 = R.Parameter(Type::Number());
     Node* ton = R.Unop(R.javascript.ToNumber(), p0);
     Node* frame_state = R.EmptyFrameState(R.context());
-    effect_use = NULL;
+    effect_use = nullptr;
 
     switch (i) {
       case 0:
@@ -706,6 +700,7 @@ TEST(RemoveToNumberEffects) {
         break;
       case 2:
         effect_use = R.graph.NewNode(R.common.EffectPhi(1), ton, R.start());
+        break;
       case 3:
         effect_use = R.graph.NewNode(R.javascript.Add(R.binop_hints), ton, ton,
                                      R.context(), frame_state, ton, R.start());
@@ -724,13 +719,13 @@ TEST(RemoveToNumberEffects) {
     }
 
     R.CheckEffectInput(R.start(), ton);
-    if (effect_use != NULL) R.CheckEffectInput(ton, effect_use);
+    if (effect_use != nullptr) R.CheckEffectInput(ton, effect_use);
 
     Node* r = R.reduce(ton);
     CHECK_EQ(p0, r);
     CHECK_NE(R.start(), r);
 
-    if (effect_use != NULL) {
+    if (effect_use != nullptr) {
       R.CheckEffectInput(R.start(), effect_use);
       // Check that value uses of ToNumber() do not go to start().
       for (int i = 0; i < effect_use->op()->ValueInputCount(); i++) {

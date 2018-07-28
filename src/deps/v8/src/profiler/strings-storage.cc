@@ -23,7 +23,7 @@ StringsStorage::StringsStorage(Heap* heap)
 
 
 StringsStorage::~StringsStorage() {
-  for (base::HashMap::Entry* p = names_.Start(); p != NULL;
+  for (base::HashMap::Entry* p = names_.Start(); p != nullptr;
        p = names_.Next(p)) {
     DeleteArray(reinterpret_cast<const char*>(p->value));
   }
@@ -33,7 +33,7 @@ StringsStorage::~StringsStorage() {
 const char* StringsStorage::GetCopy(const char* src) {
   int len = static_cast<int>(strlen(src));
   base::HashMap::Entry* entry = GetEntry(src, len);
-  if (entry->value == NULL) {
+  if (entry->value == nullptr) {
     Vector<char> dst = Vector<char>::New(len + 1);
     StrNCpy(dst, src, len);
     dst[len] = '\0';
@@ -55,7 +55,7 @@ const char* StringsStorage::GetFormatted(const char* format, ...) {
 
 const char* StringsStorage::AddOrDisposeString(char* str, int len) {
   base::HashMap::Entry* entry = GetEntry(str, len);
-  if (entry->value == NULL) {
+  if (entry->value == nullptr) {
     // New entry added.
     entry->key = str;
     entry->value = str;
@@ -80,7 +80,7 @@ const char* StringsStorage::GetVFormatted(const char* format, va_list args) {
 const char* StringsStorage::GetName(Name* name) {
   if (name->IsString()) {
     String* str = String::cast(name);
-    int length = Min(kMaxNameSize, str->length());
+    int length = Min(FLAG_heap_snapshot_string_limit, str->length());
     int actual_length = 0;
     std::unique_ptr<char[]> data = str->ToCString(
         DISALLOW_NULLS, ROBUST_STRING_TRAVERSAL, 0, length, &actual_length);

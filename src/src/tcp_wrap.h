@@ -44,7 +44,9 @@ class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context);
 
-  size_t self_size() const override { return sizeof(*this); }
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+  }
 
  private:
   typedef uv_tcp_t HandleType;
@@ -55,7 +57,6 @@ class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
 
   TCPWrap(Environment* env, v8::Local<v8::Object> object,
           ProviderType provider);
-  ~TCPWrap();
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetNoDelay(const v8::FunctionCallbackInfo<v8::Value>& args);

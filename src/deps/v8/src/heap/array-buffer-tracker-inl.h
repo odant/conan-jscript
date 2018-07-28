@@ -14,13 +14,12 @@ namespace v8 {
 namespace internal {
 
 void ArrayBufferTracker::RegisterNew(Heap* heap, JSArrayBuffer* buffer) {
-  void* data = buffer->backing_store();
-  if (!data) return;
+  if (buffer->backing_store() == nullptr) return;
 
-  size_t length = buffer->allocation_length();
+  const size_t length = NumberToSize(buffer->byte_length());
   Page* page = Page::FromAddress(buffer->address());
   {
-    base::LockGuard<base::RecursiveMutex> guard(page->mutex());
+    base::LockGuard<base::Mutex> guard(page->mutex());
     LocalArrayBufferTracker* tracker = page->local_tracker();
     if (tracker == nullptr) {
       page->AllocateLocalTracker();
@@ -36,13 +35,12 @@ void ArrayBufferTracker::RegisterNew(Heap* heap, JSArrayBuffer* buffer) {
 }
 
 void ArrayBufferTracker::Unregister(Heap* heap, JSArrayBuffer* buffer) {
-  void* data = buffer->backing_store();
-  if (!data) return;
+  if (buffer->backing_store() == nullptr) return;
 
   Page* page = Page::FromAddress(buffer->address());
-  size_t length = buffer->allocation_length();
+  const size_t length = NumberToSize(buffer->byte_length());
   {
-    base::LockGuard<base::RecursiveMutex> guard(page->mutex());
+    base::LockGuard<base::Mutex> guard(page->mutex());
     LocalArrayBufferTracker* tracker = page->local_tracker();
     DCHECK_NOT_NULL(tracker);
     tracker->Remove(buffer, length);
@@ -52,26 +50,28 @@ void ArrayBufferTracker::Unregister(Heap* heap, JSArrayBuffer* buffer) {
 
 template <typename Callback>
 void LocalArrayBufferTracker::Free(Callback should_free) {
-  size_t freed_memory = 0;
-  size_t retained_size = 0;
+  size_t new_retained_size = 0;
+  Isolate* isolate = heap_->isolate();
   for (TrackingData::iterator it = array_buffers_.begin();
        it != array_buffers_.end();) {
-    JSArrayBuffer* buffer = reinterpret_cast<JSArrayBuffer*>(*it);
-    const size_t length = buffer->allocation_length();
+    JSArrayBuffer* buffer = reinterpret_cast<JSArrayBuffer*>(it->first);
+    const size_t length = it->second;
     if (should_free(buffer)) {
-      freed_memory += length;
-      buffer->FreeBackingStore();
+      JSArrayBuffer::FreeBackingStore(
+          isolate, {buffer->backing_store(), length, buffer->backing_store(),
+                    buffer->allocation_mode(), buffer->is_wasm_memory()});
       it = array_buffers_.erase(it);
     } else {
-      retained_size += length;
+      new_retained_size += length;
       ++it;
     }
   }
-  retained_size_ = retained_size;
+  const size_t freed_memory = retained_size_ - new_retained_size;
   if (freed_memory > 0) {
     heap_->update_external_memory_concurrently_freed(
         static_cast<intptr_t>(freed_memory));
   }
+  retained_size_ = new_retained_size;
 }
 
 template <typename MarkingState>
@@ -90,7 +90,7 @@ void ArrayBufferTracker::FreeDead(Page* page, MarkingState* marking_state) {
 void LocalArrayBufferTracker::Add(JSArrayBuffer* buffer, size_t length) {
   DCHECK_GE(retained_size_ + length, retained_size_);
   retained_size_ += length;
-  auto ret = array_buffers_.insert(buffer);
+  auto ret = array_buffers_.insert({buffer, length});
   USE(ret);
   // Check that we indeed inserted a new value and did not overwrite an existing
   // one (which would be a bug).
@@ -103,6 +103,7 @@ void LocalArrayBufferTracker::Remove(JSArrayBuffer* buffer, size_t length) {
   TrackingData::iterator it = array_buffers_.find(buffer);
   // Check that we indeed find a key to remove.
   DCHECK(it != array_buffers_.end());
+  DCHECK_EQ(length, it->second);
   array_buffers_.erase(it);
 }
 

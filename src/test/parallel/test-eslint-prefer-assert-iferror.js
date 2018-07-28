@@ -4,7 +4,7 @@ const common = require('../common');
 
 common.skipIfEslintMissing();
 
-const RuleTester = require('../../tools/eslint').RuleTester;
+const RuleTester = require('../../tools/node_modules/eslint').RuleTester;
 const rule = require('../../tools/eslint-rules/prefer-assert-iferror');
 
 new RuleTester().run('prefer-assert-iferror', rule, {

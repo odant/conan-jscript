@@ -33,7 +33,21 @@ testNumber(Number.MAX_VALUE + 10);
 
 testNumber(Number.POSITIVE_INFINITY);
 testNumber(Number.NEGATIVE_INFINITY);
-assert(Object.is(NaN, test_number.Test(NaN)));
+testNumber(Number.NaN);
+
+function testUint32(input, expected = input) {
+  assert.strictEqual(expected, test_number.TestUint32Truncation(input));
+}
+
+// Test zero
+testUint32(0.0, 0);
+testUint32(-0.0, 0);
+
+// Test overflow scenarios
+testUint32(4294967295);
+testUint32(4294967296, 0);
+testUint32(4294967297, 1);
+testUint32(17 * 4294967296 + 1, 1);
 
 // validate documented behavior when value is retrieved as 32-bit integer with
 // `napi_get_value_int32`

@@ -19,6 +19,7 @@ namespace internal {
 #define FORWARD_DECLARE(Name) \
   Object* Builtin_##Name(int argc, Object** args, Isolate* isolate);
 BUILTIN_LIST_C(FORWARD_DECLARE)
+#undef FORWARD_DECLARE
 
 namespace {
 
@@ -85,8 +86,9 @@ Builtins::Name Builtins::GetBuiltinFromBailoutId(BailoutId id) {
 void Builtins::TearDown() { initialized_ = false; }
 
 void Builtins::IterateBuiltins(RootVisitor* v) {
-  v->VisitRootPointers(Root::kBuiltins, &builtins_[0],
-                       &builtins_[0] + builtin_count);
+  for (int i = 0; i < builtin_count; i++) {
+    v->VisitRootPointer(Root::kBuiltins, name(i), &builtins_[i]);
+  }
 }
 
 const char* Builtins::Lookup(byte* pc) {
@@ -97,7 +99,7 @@ const char* Builtins::Lookup(byte* pc) {
       if (entry->contains(pc)) return name(i);
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 Handle<Code> Builtins::NewFunctionContext(ScopeType scope_type) {
@@ -106,19 +108,6 @@ Handle<Code> Builtins::NewFunctionContext(ScopeType scope_type) {
       return builtin_handle(kFastNewFunctionContextEval);
     case ScopeType::FUNCTION_SCOPE:
       return builtin_handle(kFastNewFunctionContextFunction);
-    default:
-      UNREACHABLE();
-  }
-  return Handle<Code>::null();
-}
-
-Handle<Code> Builtins::NewCloneShallowArray(
-    AllocationSiteMode allocation_mode) {
-  switch (allocation_mode) {
-    case TRACK_ALLOCATION_SITE:
-      return builtin_handle(kFastCloneShallowArrayTrack);
-    case DONT_TRACK_ALLOCATION_SITE:
-      return builtin_handle(kFastCloneShallowArrayDontTrack);
     default:
       UNREACHABLE();
   }
@@ -147,8 +136,17 @@ Handle<Code> Builtins::OrdinaryToPrimitive(OrdinaryToPrimitiveHint hint) {
   UNREACHABLE();
 }
 
-Handle<Code> Builtins::builtin_handle(Name name) {
-  return Handle<Code>(reinterpret_cast<Code**>(builtin_address(name)));
+void Builtins::set_builtin(int index, HeapObject* builtin) {
+  DCHECK(Builtins::IsBuiltinId(index));
+  DCHECK(Internals::HasHeapObjectTag(builtin));
+  // The given builtin may be completely uninitialized thus we cannot check its
+  // type here.
+  builtins_[index] = builtin;
+}
+
+Handle<Code> Builtins::builtin_handle(int index) {
+  DCHECK(IsBuiltinId(index));
+  return Handle<Code>(reinterpret_cast<Code**>(builtin_address(index)));
 }
 
 // static
@@ -173,34 +171,11 @@ Callable Builtins::CallableFor(Isolate* isolate, Name name) {
     BUILTIN_LIST(IGNORE_BUILTIN, IGNORE_BUILTIN, IGNORE_BUILTIN, CASE_OTHER,
                  CASE_OTHER, CASE_OTHER, IGNORE_BUILTIN)
 #undef CASE_OTHER
-    case kConsoleAssert: {
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
-    case kArrayForEach: {
-      Handle<Code> code = BUILTIN_CODE(isolate, ArrayForEach);
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
-    case kArrayForEachLoopEagerDeoptContinuation: {
-      Handle<Code> code =
-          BUILTIN_CODE(isolate, ArrayForEachLoopEagerDeoptContinuation);
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
-    case kArrayForEachLoopLazyDeoptContinuation: {
-      Handle<Code> code =
-          BUILTIN_CODE(isolate, ArrayForEachLoopLazyDeoptContinuation);
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
-    case kArrayMapLoopEagerDeoptContinuation: {
-      Handle<Code> code =
-          BUILTIN_CODE(isolate, ArrayMapLoopEagerDeoptContinuation);
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
-    case kArrayMapLoopLazyDeoptContinuation: {
-      Handle<Code> code =
-          BUILTIN_CODE(isolate, ArrayMapLoopLazyDeoptContinuation);
-      return Callable(code, BuiltinDescriptor(isolate));
-    }
     default:
+      Builtins::Kind kind = Builtins::KindOf(name);
+      if (kind == TFJ || kind == CPP) {
+        return Callable(code, BuiltinDescriptor(isolate));
+      }
       UNREACHABLE();
   }
   CallInterfaceDescriptor descriptor(isolate, key);
@@ -209,7 +184,7 @@ Callable Builtins::CallableFor(Isolate* isolate, Name name) {
 
 // static
 const char* Builtins::name(int index) {
-  DCHECK(0 <= index && index < builtin_count);
+  DCHECK(IsBuiltinId(index));
   return builtin_metadata[index].name;
 }
 
@@ -220,8 +195,478 @@ Address Builtins::CppEntryOf(int index) {
 }
 
 // static
+bool Builtins::IsBuiltin(const Code* code) {
+  return Builtins::IsBuiltinId(code->builtin_index());
+}
+
+// static
+bool Builtins::IsEmbeddedBuiltin(const Code* code) {
+#ifdef V8_EMBEDDED_BUILTINS
+  return Builtins::IsBuiltinId(code->builtin_index()) &&
+         Builtins::IsIsolateIndependent(code->builtin_index());
+#else
+  return false;
+#endif
+}
+
+// static
+bool Builtins::IsLazy(int index) {
+  DCHECK(IsBuiltinId(index));
+
+#ifdef V8_EMBEDDED_BUILTINS
+  // We don't want to lazy-deserialize off-heap builtins.
+  if (Builtins::IsIsolateIndependent(index)) return false;
+#endif
+
+  // There are a couple of reasons that builtins can require eager-loading,
+  // i.e. deserialization at isolate creation instead of on-demand. For
+  // instance:
+  // * DeserializeLazy implements lazy loading.
+  // * Immovability requirement. This can only conveniently be guaranteed at
+  //   isolate creation (at runtime, we'd have to allocate in LO space).
+  // * To avoid conflicts in SharedFunctionInfo::function_data (Illegal,
+  //   HandleApiCall, interpreter entry trampolines).
+  // * Frequent use makes lazy loading unnecessary (CompileLazy).
+  // TODO(wasm): Remove wasm builtins once immovability is no longer required.
+  switch (index) {
+    case kAbort:  // Required by wasm.
+    case kArrayEveryLoopEagerDeoptContinuation:
+    case kArrayEveryLoopLazyDeoptContinuation:
+    case kArrayFilterLoopEagerDeoptContinuation:
+    case kArrayFilterLoopLazyDeoptContinuation:
+    case kArrayFindIndexLoopAfterCallbackLazyDeoptContinuation:
+    case kArrayFindIndexLoopEagerDeoptContinuation:
+    case kArrayFindIndexLoopLazyDeoptContinuation:
+    case kArrayFindLoopAfterCallbackLazyDeoptContinuation:
+    case kArrayFindLoopEagerDeoptContinuation:
+    case kArrayFindLoopLazyDeoptContinuation:
+    case kArrayForEachLoopEagerDeoptContinuation:
+    case kArrayForEachLoopLazyDeoptContinuation:
+    case kArrayMapLoopEagerDeoptContinuation:
+    case kArrayMapLoopLazyDeoptContinuation:
+    case kArrayReduceLoopEagerDeoptContinuation:
+    case kArrayReduceLoopLazyDeoptContinuation:
+    case kArrayReducePreLoopEagerDeoptContinuation:
+    case kArrayReduceRightLoopEagerDeoptContinuation:
+    case kArrayReduceRightLoopLazyDeoptContinuation:
+    case kArrayReduceRightPreLoopEagerDeoptContinuation:
+    case kArraySomeLoopEagerDeoptContinuation:
+    case kArraySomeLoopLazyDeoptContinuation:
+    case kAsyncGeneratorAwaitCaught:            // https://crbug.com/v8/6786.
+    case kAsyncGeneratorAwaitUncaught:          // https://crbug.com/v8/6786.
+    case kCompileLazy:
+    case kDebugBreakTrampoline:
+    case kDeserializeLazy:
+    case kFunctionPrototypeHasInstance:  // https://crbug.com/v8/6786.
+    case kHandleApiCall:
+    case kIllegal:
+    case kInstantiateAsmJs:
+    case kInterpreterEnterBytecodeAdvance:
+    case kInterpreterEnterBytecodeDispatch:
+    case kInterpreterEntryTrampoline:
+    case kPromiseConstructorLazyDeoptContinuation:
+    case kRecordWrite:  // https://crbug.com/chromium/765301.
+    case kThrowWasmTrapDivByZero:             // Required by wasm.
+    case kThrowWasmTrapDivUnrepresentable:    // Required by wasm.
+    case kThrowWasmTrapFloatUnrepresentable:  // Required by wasm.
+    case kThrowWasmTrapFuncInvalid:           // Required by wasm.
+    case kThrowWasmTrapFuncSigMismatch:       // Required by wasm.
+    case kThrowWasmTrapMemOutOfBounds:        // Required by wasm.
+    case kThrowWasmTrapRemByZero:             // Required by wasm.
+    case kThrowWasmTrapUnreachable:           // Required by wasm.
+    case kToBooleanLazyDeoptContinuation:
+    case kToNumber:                           // Required by wasm.
+    case kTypedArrayConstructorLazyDeoptContinuation:
+    case kWasmCompileLazy:                    // Required by wasm.
+    case kWasmStackGuard:                     // Required by wasm.
+      return false;
+    default:
+      // TODO(6624): Extend to other kinds.
+      return KindOf(index) == TFJ;
+  }
+  UNREACHABLE();
+}
+
+// static
+bool Builtins::IsIsolateIndependent(int index) {
+  DCHECK(IsBuiltinId(index));
+  switch (index) {
+#ifdef DEBUG
+    case kAbortJS:
+    case kContinueToCodeStubBuiltin:
+    case kContinueToCodeStubBuiltinWithResult:
+    case kContinueToJavaScriptBuiltin:
+    case kContinueToJavaScriptBuiltinWithResult:
+    case kKeyedLoadIC_Slow:
+    case kKeyedStoreIC_Slow:
+    case kLoadGlobalIC_Slow:
+    case kLoadIC_Slow:
+    case kStoreGlobalIC_Slow:
+    case kWasmStackGuard:
+    case kThrowWasmTrapUnreachable:
+    case kThrowWasmTrapMemOutOfBounds:
+    case kThrowWasmTrapDivByZero:
+    case kThrowWasmTrapDivUnrepresentable:
+    case kThrowWasmTrapRemByZero:
+    case kThrowWasmTrapFloatUnrepresentable:
+    case kThrowWasmTrapFuncInvalid:
+    case kThrowWasmTrapFuncSigMismatch:
+#else
+    case kAbortJS:
+    case kAdd:
+    case kAllocateHeapNumber:
+    case kArrayEvery:
+    case kArrayEveryLoopContinuation:
+    case kArrayEveryLoopEagerDeoptContinuation:
+    case kArrayEveryLoopLazyDeoptContinuation:
+    case kArrayFilterLoopEagerDeoptContinuation:
+    case kArrayFilterLoopLazyDeoptContinuation:
+    case kArrayFindIndexLoopAfterCallbackLazyDeoptContinuation:
+    case kArrayFindIndexLoopContinuation:
+    case kArrayFindIndexLoopEagerDeoptContinuation:
+    case kArrayFindIndexLoopLazyDeoptContinuation:
+    case kArrayFindLoopAfterCallbackLazyDeoptContinuation:
+    case kArrayFindLoopContinuation:
+    case kArrayFindLoopEagerDeoptContinuation:
+    case kArrayFindLoopLazyDeoptContinuation:
+    case kArrayForEach:
+    case kArrayForEachLoopContinuation:
+    case kArrayForEachLoopEagerDeoptContinuation:
+    case kArrayForEachLoopLazyDeoptContinuation:
+    case kArrayFrom:
+    case kArrayIncludes:
+    case kArrayIndexOf:
+    case kArrayIsArray:
+    case kArrayMapLoopContinuation:
+    case kArrayMapLoopEagerDeoptContinuation:
+    case kArrayMapLoopLazyDeoptContinuation:
+    case kArrayOf:
+    case kArrayPrototypeEntries:
+    case kArrayPrototypeFind:
+    case kArrayPrototypeFindIndex:
+    case kArrayPrototypeKeys:
+    case kArrayPrototypeSlice:
+    case kArrayPrototypeValues:
+    case kArrayReduce:
+    case kArrayReduceLoopContinuation:
+    case kArrayReduceLoopEagerDeoptContinuation:
+    case kArrayReduceLoopLazyDeoptContinuation:
+    case kArrayReducePreLoopEagerDeoptContinuation:
+    case kArrayReduceRight:
+    case kArrayReduceRightLoopContinuation:
+    case kArrayReduceRightLoopEagerDeoptContinuation:
+    case kArrayReduceRightLoopLazyDeoptContinuation:
+    case kArrayReduceRightPreLoopEagerDeoptContinuation:
+    case kArraySome:
+    case kArraySomeLoopContinuation:
+    case kArraySomeLoopEagerDeoptContinuation:
+    case kArraySomeLoopLazyDeoptContinuation:
+    case kAsyncFromSyncIteratorPrototypeNext:
+    case kAsyncFromSyncIteratorPrototypeReturn:
+    case kAsyncFromSyncIteratorPrototypeThrow:
+    case kAsyncFunctionAwaitCaught:
+    case kAsyncFunctionPromiseCreate:
+    case kAsyncFunctionPromiseRelease:
+    case kAsyncGeneratorResumeNext:
+    case kAsyncGeneratorReturnClosedRejectClosure:
+    case kAsyncGeneratorReturn:
+    case kAsyncIteratorValueUnwrap:
+    case kBitwiseNot:
+    case kBooleanPrototypeToString:
+    case kBooleanPrototypeValueOf:
+    case kContinueToCodeStubBuiltin:
+    case kContinueToCodeStubBuiltinWithResult:
+    case kContinueToJavaScriptBuiltin:
+    case kContinueToJavaScriptBuiltinWithResult:
+    case kCreateGeneratorObject:
+    case kCreateIterResultObject:
+    case kCreateRegExpLiteral:
+    case kDatePrototypeGetDate:
+    case kDatePrototypeGetDay:
+    case kDatePrototypeGetFullYear:
+    case kDatePrototypeGetHours:
+    case kDatePrototypeGetMilliseconds:
+    case kDatePrototypeGetMinutes:
+    case kDatePrototypeGetMonth:
+    case kDatePrototypeGetSeconds:
+    case kDatePrototypeGetTime:
+    case kDatePrototypeGetTimezoneOffset:
+    case kDatePrototypeGetUTCDate:
+    case kDatePrototypeGetUTCDay:
+    case kDatePrototypeGetUTCFullYear:
+    case kDatePrototypeGetUTCHours:
+    case kDatePrototypeGetUTCMilliseconds:
+    case kDatePrototypeGetUTCMinutes:
+    case kDatePrototypeGetUTCMonth:
+    case kDatePrototypeGetUTCSeconds:
+    case kDatePrototypeToPrimitive:
+    case kDatePrototypeValueOf:
+    case kDecrement:
+    case kDeleteProperty:
+    case kDivide:
+    case kEqual:
+    case kFastConsoleAssert:
+    case kFastNewClosure:
+    case kFastNewFunctionContextEval:
+    case kFastNewFunctionContextFunction:
+    case kFastNewObject:
+    case kFindOrderedHashMapEntry:
+    case kForInEnumerate:
+    case kForInFilter:
+    case kFunctionPrototypeHasInstance:
+    case kGeneratorPrototypeNext:
+    case kGeneratorPrototypeReturn:
+    case kGeneratorPrototypeThrow:
+    case kGetSuperConstructor:
+    case kGlobalIsFinite:
+    case kGlobalIsNaN:
+    case kGreaterThan:
+    case kGreaterThanOrEqual:
+    case kHasProperty:
+    case kIncrement:
+    case kInstanceOf:
+    case kKeyedLoadIC_Megamorphic:
+    case kKeyedLoadIC_PolymorphicName:
+    case kKeyedLoadIC_Slow:
+    case kKeyedLoadICTrampoline:
+    case kKeyedStoreIC_Slow:
+    case kKeyedStoreICTrampoline:
+    case kLessThan:
+    case kLessThanOrEqual:
+    case kLoadField:
+    case kLoadGlobalIC:
+    case kLoadGlobalICInsideTypeof:
+    case kLoadGlobalICInsideTypeofTrampoline:
+    case kLoadGlobalIC_Slow:
+    case kLoadGlobalICTrampoline:
+    case kLoadIC:
+    case kLoadIC_FunctionPrototype:
+    case kLoadIC_Noninlined:
+    case kLoadIC_Slow:
+    case kLoadIC_StringLength:
+    case kLoadIC_StringWrapperLength:
+    case kLoadICTrampoline:
+    case kLoadIC_Uninitialized:
+    case kMapPrototypeEntries:
+    case kMapPrototypeForEach:
+    case kMapPrototypeGet:
+    case kMapPrototypeGetSize:
+    case kMapPrototypeHas:
+    case kMapPrototypeKeys:
+    case kMapPrototypeValues:
+    case kMathCeil:
+    case kMathFloor:
+    case kMathFround:
+    case kMathMax:
+    case kMathMin:
+    case kMathRound:
+    case kMathSign:
+    case kMathSqrt:
+    case kMathTrunc:
+    case kMultiply:
+    case kNegate:
+    case kNewArgumentsElements:
+    case kNonNumberToNumber:
+    case kNonNumberToNumeric:
+    case kNonPrimitiveToPrimitive_Default:
+    case kNonPrimitiveToPrimitive_Number:
+    case kNonPrimitiveToPrimitive_String:
+    case kNumberIsFinite:
+    case kNumberIsInteger:
+    case kNumberIsNaN:
+    case kNumberIsSafeInteger:
+    case kNumberParseFloat:
+    case kNumberPrototypeValueOf:
+    case kNumberToString:
+    case kObjectConstructor:
+    case kObjectCreate:
+    case kObjectIs:
+    case kObjectKeys:
+    case kObjectPrototypeHasOwnProperty:
+    case kObjectPrototypeIsPrototypeOf:
+    case kObjectPrototypeToLocaleString:
+    case kObjectPrototypeToString:
+    case kObjectPrototypeValueOf:
+    case kOrderedHashTableHealIndex:
+    case kOrdinaryHasInstance:
+    case kOrdinaryToPrimitive_Number:
+    case kOrdinaryToPrimitive_String:
+    case kPromiseCapabilityDefaultReject:
+    case kPromiseCapabilityDefaultResolve:
+    case kPromiseCatchFinally:
+    case kPromiseConstructor:
+    case kPromiseConstructorLazyDeoptContinuation:
+    case kPromiseFulfillReactionJob:
+    case kPromiseInternalConstructor:
+    case kPromiseInternalReject:
+    case kPromiseInternalResolve:
+    case kPromisePrototypeCatch:
+    case kPromisePrototypeFinally:
+    case kPromiseRace:
+    case kPromiseReject:
+    case kPromiseRejectReactionJob:
+    case kPromiseResolve:
+    case kPromiseResolveThenableJob:
+    case kPromiseResolveTrampoline:
+    case kPromiseThenFinally:
+    case kPromiseThrowerFinally:
+    case kPromiseValueThunkFinally:
+    case kProxyGetProperty:
+    case kProxyHasProperty:
+    case kProxySetProperty:
+    case kReflectHas:
+    case kRegExpConstructor:
+    case kRegExpPrototypeCompile:
+    case kRegExpPrototypeDotAllGetter:
+    case kRegExpPrototypeFlagsGetter:
+    case kRegExpPrototypeGlobalGetter:
+    case kRegExpPrototypeIgnoreCaseGetter:
+    case kRegExpPrototypeMultilineGetter:
+    case kRegExpPrototypeReplace:
+    case kRegExpPrototypeSearch:
+    case kRegExpPrototypeSourceGetter:
+    case kRegExpPrototypeSplit:
+    case kRegExpPrototypeStickyGetter:
+    case kRegExpPrototypeUnicodeGetter:
+    case kResolvePromise:
+    case kReturnReceiver:
+    case kRunMicrotasks:
+    case kSameValue:
+    case kSetPrototypeEntries:
+    case kSetPrototypeForEach:
+    case kSetPrototypeGetSize:
+    case kSetPrototypeHas:
+    case kSetPrototypeValues:
+    case kStoreGlobalIC_Slow:
+    case kStoreGlobalICTrampoline:
+    case kStoreICTrampoline:
+    case kStrictEqual:
+    case kStringCodePointAtUTF16:
+    case kStringCodePointAtUTF32:
+    case kStringEqual:
+    case kStringGreaterThan:
+    case kStringGreaterThanOrEqual:
+    case kStringIndexOf:
+    case kStringLessThan:
+    case kStringLessThanOrEqual:
+    case kStringPrototypeAnchor:
+    case kStringPrototypeBig:
+    case kStringPrototypeBlink:
+    case kStringPrototypeBold:
+    case kStringPrototypeCharCodeAt:
+    case kStringPrototypeCodePointAt:
+    case kStringPrototypeConcat:
+    case kStringPrototypeFixed:
+    case kStringPrototypeFontcolor:
+    case kStringPrototypeFontsize:
+    case kStringPrototypeIncludes:
+    case kStringPrototypeIndexOf:
+    case kStringPrototypeItalics:
+    case kStringPrototypeIterator:
+    case kStringPrototypeLink:
+    case kStringPrototypeMatch:
+    case kStringPrototypePadEnd:
+    case kStringPrototypePadStart:
+    case kStringPrototypeRepeat:
+    case kStringPrototypeReplace:
+    case kStringPrototypeSearch:
+    case kStringPrototypeSmall:
+    case kStringPrototypeStrike:
+    case kStringPrototypeSub:
+    case kStringPrototypeSup:
+#ifdef V8_INTL_SUPPORT
+    case kStringPrototypeToLowerCaseIntl:
+    case kStringToLowerCaseIntl:
+#endif
+    case kStringPrototypeToString:
+    case kStringPrototypeValueOf:
+    case kStringRepeat:
+    case kStringToNumber:
+    case kSubtract:
+    case kSymbolPrototypeToPrimitive:
+    case kSymbolPrototypeToString:
+    case kSymbolPrototypeValueOf:
+    case kThrowWasmTrapDivByZero:
+    case kThrowWasmTrapDivUnrepresentable:
+    case kThrowWasmTrapFloatUnrepresentable:
+    case kThrowWasmTrapFuncInvalid:
+    case kThrowWasmTrapFuncSigMismatch:
+    case kThrowWasmTrapMemOutOfBounds:
+    case kThrowWasmTrapRemByZero:
+    case kThrowWasmTrapUnreachable:
+    case kToBoolean:
+    case kToBooleanLazyDeoptContinuation:
+    case kToInteger:
+    case kToInteger_TruncateMinusZero:
+    case kToName:
+    case kToNumber:
+    case kToNumeric:
+    case kToString:
+    case kTypedArrayConstructor:
+    case kTypedArrayPrototypeByteLength:
+    case kTypedArrayPrototypeByteOffset:
+    case kTypedArrayPrototypeEntries:
+    case kTypedArrayPrototypeEvery:
+    case kTypedArrayPrototypeFind:
+    case kTypedArrayPrototypeFindIndex:
+    case kTypedArrayPrototypeForEach:
+    case kTypedArrayPrototypeKeys:
+    case kTypedArrayPrototypeLength:
+    case kTypedArrayPrototypeReduce:
+    case kTypedArrayPrototypeReduceRight:
+    case kTypedArrayPrototypeSet:
+    case kTypedArrayPrototypeSlice:
+    case kTypedArrayPrototypeSome:
+    case kTypedArrayPrototypeSubArray:
+    case kTypedArrayPrototypeToStringTag:
+    case kTypedArrayPrototypeValues:
+    case kTypeof:
+    case kWasmStackGuard:
+    case kWeakMapGet:
+    case kWeakMapHas:
+    case kWeakMapLookupHashIndex:
+    case kWeakMapPrototypeDelete:
+    case kWeakMapPrototypeSet:
+    case kWeakSetHas:
+    case kWeakSetPrototypeAdd:
+    case kWeakSetPrototypeDelete:
+#endif  // !DEBUG
+      return true;
+    default:
+      return false;
+  }
+  UNREACHABLE();
+}
+
+#ifdef V8_EMBEDDED_BUILTINS
+// static
+Handle<Code> Builtins::GenerateOffHeapTrampolineFor(Isolate* isolate,
+                                                    Address off_heap_entry) {
+  DCHECK(isolate->serializer_enabled());
+  DCHECK_NOT_NULL(isolate->embedded_blob());
+  DCHECK_NE(0, isolate->embedded_blob_size());
+
+  constexpr size_t buffer_size = 256;  // Enough to fit the single jmp.
+  byte buffer[buffer_size];            // NOLINT(runtime/arrays)
+
+  // Generate replacement code that simply tail-calls the off-heap code.
+  MacroAssembler masm(isolate, buffer, buffer_size, CodeObjectRequired::kYes);
+  DCHECK(!masm.has_frame());
+  {
+    FrameScope scope(&masm, StackFrame::NONE);
+    masm.JumpToInstructionStream(off_heap_entry);
+  }
+
+  CodeDesc desc;
+  masm.GetCode(isolate, &desc);
+
+  return isolate->factory()->NewCode(desc, Code::BUILTIN, masm.CodeObject());
+}
+#endif  // V8_EMBEDDED_BUILTINS
+
+// static
 Builtins::Kind Builtins::KindOf(int index) {
-  DCHECK(0 <= index && index < builtin_count);
+  DCHECK(IsBuiltinId(index));
   return builtin_metadata[index].kind;
 }
 

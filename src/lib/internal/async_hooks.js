@@ -1,6 +1,9 @@
 'use strict';
 
-const errors = require('internal/errors');
+const {
+  ERR_ASYNC_TYPE,
+  ERR_INVALID_ASYNC_ID
+} = require('internal/errors').codes;
 const async_wrap = process.binding('async_wrap');
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
  * Environment::AsyncHooks::fields_[]. Each index tracks the number of active
@@ -27,7 +30,7 @@ const async_wrap = process.binding('async_wrap');
  * It has a fixed size, so if that is exceeded, calls to the native
  * side are used instead in pushAsyncIds() and popAsyncIds().
  */
-const { async_id_symbol, async_hook_fields, async_id_fields } = async_wrap;
+const { async_hook_fields, async_id_fields } = async_wrap;
 // Store the pair executionAsyncId and triggerAsyncId in a std::stack on
 // Environment::AsyncHooks::async_ids_stack_ tracks the resource responsible for
 // the current execution stack. This is unwound as each resource exits. In the
@@ -62,15 +65,18 @@ const active_hooks = {
   tmp_fields: null
 };
 
+const { registerDestroyHook } = async_wrap;
 
 // Each constant tracks how many callbacks there are for any given step of
 // async execution. These are tracked so if the user didn't include callbacks
 // for a given step, that step can bail out early.
-const { kInit, kBefore, kAfter, kDestroy, kPromiseResolve,
+const { kInit, kBefore, kAfter, kDestroy, kTotals, kPromiseResolve,
         kCheck, kExecutionAsyncId, kAsyncIdCounter, kTriggerAsyncId,
         kDefaultTriggerAsyncId, kStackLength } = async_wrap.constants;
 
 // Used in AsyncHook and AsyncResource.
+const async_id_symbol = Symbol('asyncId');
+const trigger_async_id_symbol = Symbol('triggerAsyncId');
 const init_symbol = Symbol('init');
 const before_symbol = Symbol('before');
 const after_symbol = Symbol('after');
@@ -81,9 +87,6 @@ const emitAfterNative = emitHookFactory(after_symbol, 'emitAfterNative');
 const emitDestroyNative = emitHookFactory(destroy_symbol, 'emitDestroyNative');
 const emitPromiseResolveNative =
     emitHookFactory(promise_resolve_symbol, 'emitPromiseResolveNative');
-
-// TODO(refack): move to node-config.cc
-const abort_regex = /^--abort[_-]on[_-]uncaught[_-]exception$/;
 
 // Setup the callbacks that node::AsyncWrap will call when there are hooks to
 // process. They use the same functions as the JS embedder API. These callbacks
@@ -104,7 +107,7 @@ function fatalError(e) {
     Error.captureStackTrace(o, fatalError);
     process._rawDebug(o.stack);
   }
-  if (process.execArgv.some((e) => abort_regex.test(e))) {
+  if (process.binding('config').shouldAbortOnUncaughtException) {
     process.abort();
   }
   process.exit(1);
@@ -116,7 +119,7 @@ function validateAsyncId(asyncId, type) {
   if (async_hook_fields[kCheck] <= 0) return;
 
   if (!Number.isSafeInteger(asyncId) || asyncId < -1) {
-    fatalError(new errors.RangeError('ERR_INVALID_ASYNC_ID', type, asyncId));
+    fatalError(new ERR_INVALID_ASYNC_ID(type, asyncId));
   }
 }
 
@@ -127,7 +130,7 @@ function validateAsyncId(asyncId, type) {
 // emitInitScript.
 function emitInitNative(asyncId, type, triggerAsyncId, resource) {
   active_hooks.call_depth += 1;
-  // Use a single try/catch for all hook to avoid setting up one per iteration.
+  // Use a single try/catch for all hooks to avoid setting up one per iteration.
   try {
     for (var i = 0; i < active_hooks.array.length; i++) {
       if (typeof active_hooks.array[i][init_symbol] === 'function') {
@@ -210,11 +213,15 @@ function storeActiveHooks() {
   // Don't want to make the assumption that kInit to kDestroy are indexes 0 to
   // 4. So do this the long way.
   active_hooks.tmp_fields = [];
-  active_hooks.tmp_fields[kInit] = async_hook_fields[kInit];
-  active_hooks.tmp_fields[kBefore] = async_hook_fields[kBefore];
-  active_hooks.tmp_fields[kAfter] = async_hook_fields[kAfter];
-  active_hooks.tmp_fields[kDestroy] = async_hook_fields[kDestroy];
-  active_hooks.tmp_fields[kPromiseResolve] = async_hook_fields[kPromiseResolve];
+  copyHooks(active_hooks.tmp_fields, async_hook_fields);
+}
+
+function copyHooks(destination, source) {
+  destination[kInit] = source[kInit];
+  destination[kBefore] = source[kBefore];
+  destination[kAfter] = source[kAfter];
+  destination[kDestroy] = source[kDestroy];
+  destination[kPromiseResolve] = source[kPromiseResolve];
 }
 
 
@@ -222,11 +229,7 @@ function storeActiveHooks() {
 // during hook callback execution.
 function restoreActiveHooks() {
   active_hooks.array = active_hooks.tmp_array;
-  async_hook_fields[kInit] = active_hooks.tmp_fields[kInit];
-  async_hook_fields[kBefore] = active_hooks.tmp_fields[kBefore];
-  async_hook_fields[kAfter] = active_hooks.tmp_fields[kAfter];
-  async_hook_fields[kDestroy] = active_hooks.tmp_fields[kDestroy];
-  async_hook_fields[kPromiseResolve] = active_hooks.tmp_fields[kPromiseResolve];
+  copyHooks(async_hook_fields, active_hooks.tmp_fields);
 
   active_hooks.tmp_array = null;
   active_hooks.tmp_fields = null;
@@ -243,12 +246,12 @@ function disableHooks() {
   async_hook_fields[kCheck] -= 1;
 }
 
-// Sensitive Embedder API //
+// Internal Embedder API //
 
 // Increment the internal id counter and return the value. Important that the
 // counter increment first. Since it's done the same way in
 // Environment::new_async_uid()
-function newUid() {
+function newAsyncId() {
   return ++async_id_fields[kAsyncIdCounter];
 }
 
@@ -257,7 +260,7 @@ function getOrSetAsyncId(object) {
     return object[async_id_symbol];
   }
 
-  return object[async_id_symbol] = newUid();
+  return object[async_id_symbol] = newAsyncId();
 }
 
 
@@ -273,7 +276,14 @@ function getDefaultTriggerAsyncId() {
 }
 
 
+function clearDefaultTriggerAsyncId() {
+  async_id_fields[kDefaultTriggerAsyncId] = -1;
+}
+
+
 function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
+  if (triggerAsyncId === undefined)
+    return Reflect.apply(block, null, args);
   // CHECK(Number.isSafeInteger(triggerAsyncId))
   // CHECK(triggerAsyncId > 0)
   const oldDefaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
@@ -290,13 +300,26 @@ function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
 }
 
 
+function initHooksExist() {
+  return async_hook_fields[kInit] > 0;
+}
+
+function afterHooksExist() {
+  return async_hook_fields[kAfter] > 0;
+}
+
+function destroyHooksExist() {
+  return async_hook_fields[kDestroy] > 0;
+}
+
+
 function emitInitScript(asyncId, type, triggerAsyncId, resource) {
   validateAsyncId(asyncId, 'asyncId');
   if (triggerAsyncId !== null)
     validateAsyncId(triggerAsyncId, 'triggerAsyncId');
   if (async_hook_fields[kCheck] > 0 &&
       (typeof type !== 'string' || type.length <= 0)) {
-    throw new errors.TypeError('ERR_ASYNC_TYPE', type);
+    throw new ERR_ASYNC_TYPE(type);
   }
 
   // Short circuit all checks for the common case. Which is that no hooks have
@@ -348,6 +371,20 @@ function emitDestroyScript(asyncId) {
 }
 
 
+// Keep in sync with Environment::AsyncHooks::clear_async_id_stack
+// in src/env-inl.h.
+function clearAsyncIdStack() {
+  async_id_fields[kExecutionAsyncId] = 0;
+  async_id_fields[kTriggerAsyncId] = 0;
+  async_hook_fields[kStackLength] = 0;
+}
+
+
+function hasAsyncIdStack() {
+  return async_hook_fields[kStackLength] > 0;
+}
+
+
 // This is the equivalent of the native push_async_ids() call.
 function pushAsyncIds(asyncId, triggerAsyncId) {
   const offset = async_hook_fields[kStackLength];
@@ -380,22 +417,44 @@ function popAsyncIds(asyncId) {
 }
 
 
+function executionAsyncId() {
+  return async_id_fields[kExecutionAsyncId];
+}
+
+function triggerAsyncId() {
+  return async_id_fields[kTriggerAsyncId];
+}
+
+
 module.exports = {
+  executionAsyncId,
+  triggerAsyncId,
   // Private API
   getHookArrays,
   symbols: {
+    async_id_symbol, trigger_async_id_symbol,
     init_symbol, before_symbol, after_symbol, destroy_symbol,
     promise_resolve_symbol
   },
+  constants: {
+    kInit, kBefore, kAfter, kDestroy, kTotals, kPromiseResolve
+  },
   enableHooks,
   disableHooks,
-  // Sensitive Embedder API
-  newUid,
+  clearDefaultTriggerAsyncId,
+  clearAsyncIdStack,
+  hasAsyncIdStack,
+  // Internal Embedder API
+  newAsyncId,
   getOrSetAsyncId,
   getDefaultTriggerAsyncId,
   defaultTriggerAsyncIdScope,
+  initHooksExist,
+  afterHooksExist,
+  destroyHooksExist,
   emitInit: emitInitScript,
   emitBefore: emitBeforeScript,
   emitAfter: emitAfterScript,
   emitDestroy: emitDestroyScript,
+  registerDestroyHook,
 };

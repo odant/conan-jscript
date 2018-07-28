@@ -178,12 +178,16 @@ function run_test_3() {
 
 const run_test_4 = common.mustCall(function() {
   //  Error: start must be >= zero
-  assert.throws(
-    function() {
-      fs.createWriteStream(filepath, { start: -5, flags: 'r+' });
-    },
-    /"start" must be/
-  );
+  const block = () => {
+    fs.createWriteStream(filepath, { start: -5, flags: 'r+' });
+  };
+  const err = {
+    code: 'ERR_OUT_OF_RANGE',
+    message: 'The value of "start" is out of range. ' +
+             'It must be >= 0. Received {start: -5}',
+    type: RangeError
+  };
+  common.expectsError(block, err);
 });
 
 run_test_1();

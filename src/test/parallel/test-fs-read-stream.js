@@ -21,6 +21,7 @@
 
 'use strict';
 const common = require('../common');
+const tmpdir = require('../common/tmpdir');
 
 const child_process = require('child_process');
 const assert = require('assert');
@@ -34,7 +35,7 @@ const rangeFile = fixtures.path('x.txt');
   let paused = false;
   let bytesRead = 0;
 
-  const file = fs.ReadStream(fn);
+  const file = fs.createReadStream(fn);
   const fileSize = fs.statSync(fn).size;
 
   assert.strictEqual(file.bytesRead, 0);
@@ -141,9 +142,16 @@ const rangeFile = fixtures.path('x.txt');
   }));
 }
 
-assert.throws(function() {
-  fs.createReadStream(rangeFile, { start: 10, end: 2 });
-}, /"start" option must be <= "end" option/);
+common.expectsError(
+  () => {
+    fs.createReadStream(rangeFile, { start: 10, end: 2 });
+  },
+  {
+    code: 'ERR_OUT_OF_RANGE',
+    message: 'The value of "start" is out of range. It must be <= "end". ' +
+             'Received {start: 10, end: 2}',
+    type: RangeError
+  });
 
 {
   const stream = fs.createReadStream(rangeFile, { start: 0, end: 0 });
@@ -176,7 +184,6 @@ if (!common.isWindows) {
   // Verify that end works when start is not specified, and we do not try to
   // use positioned reads. This makes sure that this keeps working for
   // non-seekable file descriptors.
-  const tmpdir = require('../common/tmpdir');
   tmpdir.refresh();
   const filename = `${tmpdir.path}/foo.pipe`;
   const mkfifoResult = child_process.spawnSync('mkfifo', [filename]);

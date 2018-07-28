@@ -2,6 +2,9 @@
 
 const common = require('../common');
 
+if (!common.hasCrypto)
+  common.skip('missing crypto');
+
 if (!common.enoughTestMem)
   common.skip('Insufficient memory for TLS benchmark test');
 
@@ -17,6 +20,7 @@ runBenchmark('tls',
                'dur=0.1',
                'n=1',
                'size=2',
+               'securing=SecurePair',
                'type=asc'
              ],
              {

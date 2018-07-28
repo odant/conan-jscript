@@ -45,7 +45,9 @@ class PipeWrap : public ConnectionWrap<PipeWrap, uv_pipe_t> {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context);
 
-  size_t self_size() const override { return sizeof(*this); }
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+  }
 
  private:
   PipeWrap(Environment* env,
@@ -63,6 +65,7 @@ class PipeWrap : public ConnectionWrap<PipeWrap, uv_pipe_t> {
   static void SetPendingInstances(
       const v8::FunctionCallbackInfo<v8::Value>& args);
 #endif
+  static void Fchmod(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 

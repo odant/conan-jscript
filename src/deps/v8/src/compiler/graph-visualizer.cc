@@ -9,7 +9,6 @@
 #include <string>
 
 #include "src/code-stubs.h"
-#include "src/compilation-info.h"
 #include "src/compiler/all-nodes.h"
 #include "src/compiler/compiler-source-position-table.h"
 #include "src/compiler/graph.h"
@@ -22,14 +21,15 @@
 #include "src/compiler/schedule.h"
 #include "src/compiler/scheduler.h"
 #include "src/interpreter/bytecodes.h"
-#include "src/objects-inl.h"
+#include "src/objects/script-inl.h"
+#include "src/optimized-compilation-info.h"
 #include "src/ostreams.h"
 
 namespace v8 {
 namespace internal {
 namespace compiler {
 
-std::unique_ptr<char[]> GetVisualizerLogFileName(CompilationInfo* info,
+std::unique_ptr<char[]> GetVisualizerLogFileName(OptimizedCompilationInfo* info,
                                                  const char* phase,
                                                  const char* suffix) {
   EmbeddedVector<char, 256> filename(0);
@@ -46,8 +46,9 @@ std::unique_ptr<char[]> GetVisualizerLogFileName(CompilationInfo* info,
   }
   EmbeddedVector<char, 256> source_file(0);
   bool source_available = false;
-  if (FLAG_trace_file_names && !info->script().is_null()) {
-    Object* source_name = info->script()->name();
+  if (FLAG_trace_file_names && info->has_shared_info() &&
+      info->shared_info()->script()->IsScript()) {
+    Object* source_name = Script::cast(info->shared_info()->script())->name();
     if (source_name->IsString()) {
       String* str = String::cast(source_name);
       if (str->length() > 0) {
@@ -254,7 +255,7 @@ class GraphC1Visualizer {
  public:
   GraphC1Visualizer(std::ostream& os, Zone* zone);  // NOLINT
 
-  void PrintCompilation(const CompilationInfo* info);
+  void PrintCompilation(const OptimizedCompilationInfo* info);
   void PrintSchedule(const char* phase, const Schedule* schedule,
                      const SourcePositionTable* positions,
                      const InstructionSequence* instructions);
@@ -291,7 +292,7 @@ class GraphC1Visualizer {
       visualizer_->indent_--;
       visualizer_->PrintIndent();
       visualizer_->os_ << "end_" << name_ << "\n";
-      DCHECK(visualizer_->indent_ >= 0);
+      DCHECK_LE(0, visualizer_->indent_);
     }
 
    private:
@@ -342,8 +343,7 @@ void GraphC1Visualizer::PrintIntProperty(const char* name, int value) {
   os_ << name << " " << value << "\n";
 }
 
-
-void GraphC1Visualizer::PrintCompilation(const CompilationInfo* info) {
+void GraphC1Visualizer::PrintCompilation(const OptimizedCompilationInfo* info) {
   Tag tag(this, "compilation");
   std::unique_ptr<char[]> name = info->GetDebugName();
   if (info->IsOptimizing()) {
@@ -355,8 +355,9 @@ void GraphC1Visualizer::PrintCompilation(const CompilationInfo* info) {
     PrintStringProperty("name", name.get());
     PrintStringProperty("method", "stub");
   }
-  PrintLongProperty("date",
-                    static_cast<int64_t>(base::OS::TimeCurrentMillis()));
+  PrintLongProperty(
+      "date",
+      static_cast<int64_t>(V8::GetCurrentPlatform()->CurrentClockTimeMillis()));
 }
 
 
@@ -716,6 +717,90 @@ std::ostream& operator<<(std::ostream& os, const AsRPO& ar) {
   }
   return os;
 }
+
+namespace {
+
+void PrintIndent(std::ostream& os, int indent) {
+  os << "     ";
+  for (int i = 0; i < indent; i++) {
+    os << ". ";
+  }
+}
+
+void PrintScheduledNode(std::ostream& os, int indent, Node* n) {
+  PrintIndent(os, indent);
+  os << "#" << n->id() << ":" << *n->op() << "(";
+  // Print the inputs.
+  int j = 0;
+  for (Node* const i : n->inputs()) {
+    if (j++ > 0) os << ", ";
+    os << "#" << SafeId(i) << ":" << SafeMnemonic(i);
+  }
+  os << ")";
+  // Print the node type, if any.
+  if (NodeProperties::IsTyped(n)) {
+    os << "  [Type: ";
+    NodeProperties::GetType(n)->PrintTo(os);
+    os << "]";
+  }
+}
+
+void PrintScheduledGraph(std::ostream& os, const Schedule* schedule) {
+  const BasicBlockVector* rpo = schedule->rpo_order();
+  for (size_t i = 0; i < rpo->size(); i++) {
+    BasicBlock* current = (*rpo)[i];
+    int indent = current->loop_depth();
+
+    os << "  + Block B" << current->rpo_number() << " (pred:";
+    for (BasicBlock* predecessor : current->predecessors()) {
+      os << " B" << predecessor->rpo_number();
+    }
+    if (current->IsLoopHeader()) {
+      os << ", loop until B" << current->loop_end()->rpo_number();
+    } else if (current->loop_header()) {
+      os << ", in loop B" << current->loop_header()->rpo_number();
+    }
+    os << ")" << std::endl;
+
+    for (BasicBlock::const_iterator i = current->begin(); i != current->end();
+         ++i) {
+      Node* node = *i;
+      PrintScheduledNode(os, indent, node);
+      os << std::endl;
+    }
+
+    if (current->SuccessorCount() > 0) {
+      if (current->control_input() != nullptr) {
+        PrintScheduledNode(os, indent, current->control_input());
+      } else {
+        PrintIndent(os, indent);
+        os << "Goto";
+      }
+      os << " ->";
+
+      bool isFirst = true;
+      for (BasicBlock* successor : current->successors()) {
+        if (isFirst) {
+          isFirst = false;
+        } else {
+          os << ",";
+        }
+        os << " B" << successor->rpo_number();
+      }
+      os << std::endl;
+    } else {
+      DCHECK_NULL(current->control_input());
+    }
+  }
+}
+
+}  // namespace
+
+std::ostream& operator<<(std::ostream& os, const AsScheduledGraph& scheduled) {
+  PrintScheduledGraph(os, scheduled.schedule);
+  return os;
+}
+
 }  // namespace compiler
 }  // namespace internal
 }  // namespace v8

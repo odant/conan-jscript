@@ -5,8 +5,6 @@
 #include "src/snapshot/serializer-common.h"
 
 #include "src/external-reference-table.h"
-#include "src/ic/stub-cache.h"
-#include "src/list-inl.h"
 #include "src/objects-inl.h"
 
 namespace v8 {
@@ -24,7 +22,7 @@ ExternalReferenceEncoder::ExternalReferenceEncoder(Isolate* isolate) {
   map_ = new AddressToIndexHashMap();
   isolate->set_external_reference_map(map_);
   // Add V8's external references.
-  ExternalReferenceTable* table = ExternalReferenceTable::instance(isolate);
+  ExternalReferenceTable* table = isolate->heap()->external_reference_table();
   for (uint32_t i = 0; i < table->size(); ++i) {
     Address addr = table->address(i);
     // Ignore duplicate references.
@@ -57,6 +55,17 @@ ExternalReferenceEncoder::~ExternalReferenceEncoder() {
 #endif  // DEBUG
 }
 
+Maybe<ExternalReferenceEncoder::Value> ExternalReferenceEncoder::TryEncode(
+    Address address) {
+  Maybe<uint32_t> maybe_index = map_->Get(address);
+  if (maybe_index.IsNothing()) return Nothing<Value>();
+  Value result(maybe_index.FromJust());
+#ifdef DEBUG
+  if (result.is_from_api()) count_[result.index()]++;
+#endif  // DEBUG
+  return Just<Value>(result);
+}
+
 ExternalReferenceEncoder::Value ExternalReferenceEncoder::Encode(
     Address address) {
   Maybe<uint32_t> maybe_index = map_->Get(address);
@@ -77,7 +86,7 @@ const char* ExternalReferenceEncoder::NameOfAddress(Isolate* isolate,
                                                     Address address) const {
   Maybe<uint32_t> maybe_index = map_->Get(address);
   if (maybe_index.IsNothing()) return "<unknown>";
-  return ExternalReferenceTable::instance(isolate)->name(
+  return isolate->heap()->external_reference_table()->name(
       maybe_index.FromJust());
 }
 
@@ -87,6 +96,11 @@ void SerializedData::AllocateData(uint32_t size) {
   size_ = size;
   owns_data_ = true;
   DCHECK(IsAligned(reinterpret_cast<intptr_t>(data_), kPointerAlignment));
+}
+
+// static
+uint32_t SerializedData::ComputeMagicNumber(Isolate* isolate) {
+  return ComputeMagicNumber(isolate->heap()->external_reference_table());
 }
 
 // The partial snapshot cache is terminated by undefined. We visit the
@@ -102,13 +116,14 @@ void SerializerDeserializer::Iterate(Isolate* isolate, RootVisitor* visitor) {
     if (cache->size() <= i) cache->push_back(Smi::kZero);
     // During deserialization, the visitor populates the partial snapshot cache
     // and eventually terminates the cache with undefined.
-    visitor->VisitRootPointer(Root::kPartialSnapshotCache, &cache->at(i));
+    visitor->VisitRootPointer(Root::kPartialSnapshotCache, nullptr,
+                              &cache->at(i));
     if (cache->at(i)->IsUndefined(isolate)) break;
   }
 }
 
 bool SerializerDeserializer::CanBeDeferred(HeapObject* o) {
-  return !o->IsString() && !o->IsScript();
+  return !o->IsString() && !o->IsScript() && !o->IsJSTypedArray();
 }
 
 void SerializerDeserializer::RestoreExternalReferenceRedirectors(
@@ -117,6 +132,14 @@ void SerializerDeserializer::RestoreExternalReferenceRedirectors(
   for (AccessorInfo* info : accessor_infos) {
     Foreign::cast(info->js_getter())
         ->set_foreign_address(info->redirected_getter());
+  }
+}
+
+void SerializerDeserializer::RestoreExternalReferenceRedirectors(
+    const std::vector<CallHandlerInfo*>& call_handler_infos) {
+  for (CallHandlerInfo* info : call_handler_infos) {
+    Foreign::cast(info->js_callback())
+        ->set_foreign_address(info->redirected_callback());
   }
 }
 

@@ -3,7 +3,6 @@
 const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
-const assert = require('assert');
 const h2 = require('http2');
 
 const server = h2.createServer();
@@ -15,21 +14,22 @@ server.on('stream', common.mustCall((stream) => {
     ':method',
     ':scheme'
   ].forEach((i) => {
-    assert.throws(() => stream.respond({ [i]: '/' }),
-                  common.expectsError({
-                    code: 'ERR_HTTP2_INVALID_PSEUDOHEADER'
-                  }));
+    common.expectsError(() => stream.respond({ [i]: '/' }),
+                        {
+                          code: 'ERR_HTTP2_INVALID_PSEUDOHEADER'
+                        });
   });
 
-  stream.respond({}, {
-    getTrailers: common.mustCall((trailers) => {
-      trailers[':status'] = 'bar';
-    })
-  });
+  stream.respond({}, { waitForTrailers: true });
 
-  stream.on('error', common.expectsError({
-    code: 'ERR_HTTP2_INVALID_PSEUDOHEADER'
-  }));
+  stream.on('wantTrailers', () => {
+    common.expectsError(() => {
+      stream.sendTrailers({ ':status': 'bar' });
+    }, {
+      code: 'ERR_HTTP2_INVALID_PSEUDOHEADER'
+    });
+    stream.close();
+  });
 
   stream.end('hello world');
 }));
@@ -38,12 +38,6 @@ server.on('stream', common.mustCall((stream) => {
 server.listen(0, common.mustCall(() => {
   const client = h2.connect(`http://localhost:${server.address().port}`);
   const req = client.request();
-
-  req.on('error', common.expectsError({
-    code: 'ERR_HTTP2_STREAM_ERROR',
-    type: Error,
-    message: 'Stream closed with error code 2'
-  }));
 
   req.on('response', common.mustCall());
   req.resume();

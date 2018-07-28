@@ -3,6 +3,9 @@ const common = require('../common');
 const assert = require('assert');
 const cp = require('child_process');
 
+if (!common.isMainThread)
+  common.skip('process.chdir is not available in Workers');
+
 const CODE = `console.log(
   process.binding("trace_events").categoryGroupEnabled("custom")
 );`;
@@ -13,7 +16,7 @@ process.chdir(tmpdir.path);
 
 const procEnabled = cp.spawn(
   process.execPath,
-  [ '--trace-events-enabled', '--trace-event-categories', 'custom', '-e', CODE ]
+  [ '--trace-event-categories', 'custom', '-e', CODE ]
 );
 let procEnabledOutput = '';
 
@@ -25,7 +28,7 @@ procEnabled.once('exit', common.mustCall(() => {
 
 const procDisabled = cp.spawn(
   process.execPath,
-  [ '--trace-events-enabled', '--trace-event-categories', 'other', '-e', CODE ]
+  [ '--trace-event-categories', 'other', '-e', CODE ]
 );
 let procDisabledOutput = '';
 

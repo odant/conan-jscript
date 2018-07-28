@@ -18,6 +18,13 @@ Add tests when:
 - Fixing regressions and bugs.
 - Expanding test coverage.
 
+## Test directory structure
+
+See [directory structure overview][] for outline of existing test & locations.
+When deciding on whether to expand an existing test file or create a new one,
+consider going through the files related to the subsystem.
+For example, look for `test-streams` when writing a test for `lib/streams.js`.
+
 ## Test structure
 
 Let's analyze this basic test from the Node.js test suite:
@@ -127,7 +134,7 @@ explanation go [here](https://github.com/nodejs/testing/issues/27).
 
 In the event a test needs a timer, consider using the
 `common.platformTimeout()` method. It allows setting specific timeouts
-depending on the platform. For example:
+depending on the platform:
 
 ```javascript
 const timer = setTimeout(fail, common.platformTimeout(4000));
@@ -138,15 +145,15 @@ platforms.
 
 ### The *common* API
 
-Make use of the helpers from the `common` module as much as possible. Please refer
-to the [common file documentation](https://github.com/nodejs/node/tree/master/test/common)
+Make use of the helpers from the `common` module as much as possible. Please
+refer to the [common file documentation](https://github.com/nodejs/node/tree/master/test/common)
 for the full details of the helpers.
 
 #### common.mustCall
 
-One interesting case is `common.mustCall`. The use of `common.mustCall` may avoid
-the use of extra variables and the corresponding assertions. Let's explain this
-with a real test from the test suite.
+One interesting case is `common.mustCall`. The use of `common.mustCall` may
+avoid the use of extra variables and the corresponding assertions. Let's
+explain this with a real test from the test suite.
 
 ```javascript
 'use strict';
@@ -200,9 +207,10 @@ const server = http.createServer(common.mustCall(function(req, res) {
 ```
 #### Countdown Module
 
-The common [Countdown module](https://github.com/nodejs/node/tree/master/test/common#countdown-module) provides a simple countdown mechanism for tests that
-require a particular action to be taken after a given number of completed tasks
-(for instance, shutting down an HTTP server after a specific number of requests).
+The common [Countdown module](https://github.com/nodejs/node/tree/master/test/common#countdown-module)
+provides a simple countdown mechanism for tests that require a particular
+action to be taken after a given number of completed tasks (for instance,
+shutting down an HTTP server after a specific number of requests).
 
 ```javascript
 const Countdown = require('../common/countdown');
@@ -215,6 +223,37 @@ countdown.dec();
 countdown.dec(); // The countdown callback will be invoked now.
 ```
 
+#### Testing promises
+
+When writing tests involving promises, either make sure that the
+`onFulfilled` or the `onRejected` handler is wrapped in
+`common.mustCall()` or `common.mustNotCall()` accordingly, or
+call `common.crashOnUnhandledRejection()` in the top level of the
+test to make sure that unhandled rejections would result in a test
+failure. For example:
+
+```javascript
+const common = require('../common');
+const assert = require('assert');
+const fs = require('fs').promises;
+
+// Use `common.crashOnUnhandledRejection()` to make sure unhandled rejections
+// will fail the test.
+common.crashOnUnhandledRejection();
+
+// Or, wrap the `onRejected` handler in `common.mustNotCall()`.
+fs.writeFile('test-file', 'test').catch(common.mustNotCall());
+
+// Or, wrap the `onFulfilled` handler in `common.mustCall()`.
+// If there are assertions in the `onFulfilled` handler, wrap
+// the next `onRejected` handler in `common.mustNotCall()`
+// to handle potential failures.
+fs.readFile('test-file').then(
+  common.mustCall(
+    (content) => assert.strictEqual(content.toString(), 'test2')
+  ))
+  .catch(common.mustNotCall());
+```
 
 ### Flags
 
@@ -259,9 +298,7 @@ features in JavaScript code in the `lib` directory. However, when writing
 tests, for the ease of backporting, it is encouraged to use those ES.Next
 features that can be used directly without a flag in
 [all maintained branches][]. [node.green][] lists available features
-in each release.
-
-For example:
+in each release, such as:
 
 - `let` and `const` over `var`
 - Template literals over string concatenation
@@ -306,12 +343,14 @@ the upstream project, send another PR here to update Node.js accordingly.
 Be sure to update the hash in the URL following `WPT Refs:`.
 
 ## C++ Unit test
+
 C++ code can be tested using [Google Test][]. Most features in Node.js can be
 tested using the methods described previously in this document. But there are
 cases where these might not be enough, for example writing code for Node.js
 that will only be called when Node.js is embedded.
 
 ### Adding a new test
+
 The unit test should be placed in `test/cctest` and be named with the prefix
 `test` followed by the name of unit being tested. For example, the code below
 would be placed in `test/cctest/test_env.cc`:
@@ -345,29 +384,47 @@ static void at_exit_callback(void* arg) {
 ```
 
 Next add the test to the `sources` in the `cctest` target in node.gyp:
+
 ```console
 'sources': [
   'test/cctest/test_env.cc',
   ...
 ],
 ```
+
 Note that the only sources that should be included in the cctest target are
 actual test or helper source files. There might be a need to include specific
 object files that are compiled by the `node` target and this can be done by
 adding them to the `libraries` section in the cctest target.
 
 The test can be executed by running the `cctest` target:
+
 ```console
 $ make cctest
 ```
 
-### Node test fixture
+A filter can be applied to run single/multiple test cases:
+```console
+$ make cctest GTEST_FILTER=EnvironmentTest.AtExitWithArgument
+```
+
+`cctest` can also be run directly which can be useful when debugging:
+```console
+$ out/Release/cctest --gtest_filter=EnvironmentTest.AtExit*
+```
+
+### Node.js test fixture
 There is a [test fixture][] named `node_test_fixture.h` which can be included by
 unit tests. The fixture takes care of setting up the Node.js environment
 and tearing it down after the tests have finished.
 
 It also contains a helper to create arguments to be passed into Node.js. It
 will depend on what is being tested if this is required or not.
+
+### Test Coverage
+
+To generate a test coverage report, see the
+[Test Coverage section of the Pull Requests guide][].
 
 [ASCII]: http://man7.org/linux/man-pages/man7/ascii.7.html
 [Google Test]: https://github.com/google/googletest
@@ -376,3 +433,5 @@ will depend on what is being tested if this is required or not.
 [all maintained branches]: https://github.com/nodejs/lts
 [node.green]: http://node.green/
 [test fixture]: https://github.com/google/googletest/blob/master/googletest/docs/Primer.md#test-fixtures-using-the-same-data-configuration-for-multiple-tests
+[Test Coverage section of the Pull Requests guide]: https://github.com/nodejs/node/blob/master/doc/guides/contributing/pull-requests.md#test-coverage
+[directory structure overview]: https://github.com/nodejs/node/blob/master/test/README.md#test-directories

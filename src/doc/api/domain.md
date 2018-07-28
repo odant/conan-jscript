@@ -59,7 +59,7 @@ the failure, and react accordingly.
 For example, this is not a good idea:
 
 ```js
-// XXX WARNING!  BAD IDEA!
+// XXX WARNING! BAD IDEA!
 
 const d = require('domain').create();
 d.on('error', (er) => {
@@ -203,26 +203,26 @@ are added to it.
 
 <!--type=misc-->
 
-If domains are in use, then all **new** EventEmitter objects (including
+If domains are in use, then all **new** `EventEmitter` objects (including
 Stream objects, requests, responses, etc.) will be implicitly bound to
 the active domain at the time of their creation.
 
 Additionally, callbacks passed to lowlevel event loop requests (such as
-to fs.open, or other callback-taking methods) will automatically be
+to `fs.open()`, or other callback-taking methods) will automatically be
 bound to the active domain. If they throw, then the domain will catch
 the error.
 
-In order to prevent excessive memory usage, Domain objects themselves
+In order to prevent excessive memory usage, `Domain` objects themselves
 are not implicitly added as children of the active domain. If they
 were, then it would be too easy to prevent request and response objects
 from being properly garbage collected.
 
-To nest Domain objects as children of a parent Domain they must be explicitly
-added.
+To nest `Domain` objects as children of a parent `Domain` they must be
+explicitly added.
 
 Implicit binding routes thrown errors and `'error'` events to the
-Domain's `'error'` event, but does not register the EventEmitter on the
-Domain, so [`domain.dispose()`][] will not shut down the EventEmitter.
+`Domain`'s `'error'` event, but does not register the `EventEmitter` on the
+`Domain`.
 Implicit binding only takes care of thrown errors and `'error'` events.
 
 ## Explicit Binding
@@ -238,8 +238,6 @@ For example, there could be one domain in use for an HTTP server, but
 perhaps we would like to have a separate domain to use for each request.
 
 That is possible via explicit binding.
-
-For example:
 
 ```js
 // create a top-level domain for the server
@@ -273,14 +271,12 @@ serverDomain.run(() => {
 
 * Returns: {Domain}
 
-Returns a new Domain object.
-
 ## Class: Domain
 
-The Domain class encapsulates the functionality of routing errors and
-uncaught exceptions to the active Domain object.
+The `Domain` class encapsulates the functionality of routing errors and
+uncaught exceptions to the active `Domain` object.
 
-Domain is a child class of [`EventEmitter`][]. To handle the errors that it
+`Domain` is a child class of [`EventEmitter`][]. To handle the errors that it
 catches, listen to its `'error'` event.
 
 ### domain.members
@@ -301,9 +297,9 @@ binding.
 
 This also works with timers that are returned from [`setInterval()`][] and
 [`setTimeout()`][]. If their callback function throws, it will be caught by
-the domain 'error' handler.
+the domain `'error'` handler.
 
-If the Timer or EventEmitter was already bound to a domain, it is removed
+If the Timer or `EventEmitter` was already bound to a domain, it is removed
 from that one, and bound to this one instead.
 
 ### domain.bind(callback)
@@ -334,48 +330,33 @@ d.on('error', (er) => {
 });
 ```
 
-### domain.dispose()
-
-> Stability: 0 - Deprecated. Please recover from failed IO actions
-> explicitly via error event handlers set on the domain.
-
-Once `dispose` has been called, the domain will no longer be used by callbacks
-bound into the domain via `run`, `bind`, or `intercept`, and a `'dispose'` event
-is emitted.
-
 ### domain.enter()
 
-The `enter` method is plumbing used by the `run`, `bind`, and `intercept`
-methods to set the active domain. It sets `domain.active` and `process.domain`
-to the domain, and implicitly pushes the domain onto the domain stack managed
-by the domain module (see [`domain.exit()`][] for details on the domain stack). The
-call to `enter` delimits the beginning of a chain of asynchronous calls and I/O
-operations bound to a domain.
+The `enter()` method is plumbing used by the `run()`, `bind()`, and
+`intercept()` methods to set the active domain. It sets `domain.active` and
+`process.domain` to the domain, and implicitly pushes the domain onto the domain
+stack managed by the domain module (see [`domain.exit()`][] for details on the
+domain stack). The call to `enter()` delimits the beginning of a chain of
+asynchronous calls and I/O operations bound to a domain.
 
-Calling `enter` changes only the active domain, and does not alter the domain
-itself. `enter` and `exit` can be called an arbitrary number of times on a
+Calling `enter()` changes only the active domain, and does not alter the domain
+itself. `enter()` and `exit()` can be called an arbitrary number of times on a
 single domain.
-
-If the domain on which `enter` is called has been disposed, `enter` will return
-without setting the domain.
 
 ### domain.exit()
 
-The `exit` method exits the current domain, popping it off the domain stack.
+The `exit()` method exits the current domain, popping it off the domain stack.
 Any time execution is going to switch to the context of a different chain of
 asynchronous calls, it's important to ensure that the current domain is exited.
-The call to `exit` delimits either the end of or an interruption to the chain
+The call to `exit()` delimits either the end of or an interruption to the chain
 of asynchronous calls and I/O operations bound to a domain.
 
 If there are multiple, nested domains bound to the current execution context,
-`exit` will exit any domains nested within this domain.
+`exit()` will exit any domains nested within this domain.
 
-Calling `exit` changes only the active domain, and does not alter the domain
-itself. `enter` and `exit` can be called an arbitrary number of times on a
+Calling `exit()` changes only the active domain, and does not alter the domain
+itself. `enter()` and `exit()` can be called an arbitrary number of times on a
 single domain.
-
-If the domain on which `exit` is called has been disposed, `exit` will return
-without exiting the domain.
 
 ### domain.intercept(callback)
 
@@ -460,8 +441,8 @@ than crashing the program.
 
 ## Domains and Promises
 
-As of Node 8.0.0, the handlers of Promises are run inside the domain in
-which the call to `.then` or `.catch` itself was made:
+As of Node.js 8.0.0, the handlers of Promises are run inside the domain in
+which the call to `.then()` or `.catch()` itself was made:
 
 ```js
 const d1 = domain.create();
@@ -498,14 +479,13 @@ d2.run(() => {
 ```
 
 Note that domains will not interfere with the error handling mechanisms for
-Promises, i.e. no `error` event will be emitted for unhandled Promise
+Promises, i.e. no `'error'` event will be emitted for unhandled `Promise`
 rejections.
 
 [`Error`]: errors.html#errors_class_error
 [`EventEmitter`]: events.html#events_class_eventemitter
 [`domain.add(emitter)`]: #domain_domain_add_emitter
 [`domain.bind(callback)`]: #domain_domain_bind_callback
-[`domain.dispose()`]: #domain_domain_dispose
 [`domain.exit()`]: #domain_domain_exit
 [`setInterval()`]: timers.html#timers_setinterval_callback_delay_args
 [`setTimeout()`]: timers.html#timers_settimeout_callback_delay_args

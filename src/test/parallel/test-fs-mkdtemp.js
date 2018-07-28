@@ -21,7 +21,7 @@ assert(common.fileExists(utf8));
 function handler(err, folder) {
   assert.ifError(err);
   assert(common.fileExists(folder));
-  assert.strictEqual(this, null);
+  assert.strictEqual(this, undefined);
 }
 
 fs.mkdtemp(path.join(tmpdir.path, 'bar.'), common.mustCall(handler));
@@ -29,8 +29,3 @@ fs.mkdtemp(path.join(tmpdir.path, 'bar.'), common.mustCall(handler));
 // Same test as above, but making sure that passing an options object doesn't
 // affect the way the callback function is handled.
 fs.mkdtemp(path.join(tmpdir.path, 'bar.'), {}, common.mustCall(handler));
-
-// Making sure that not passing a callback doesn't crash, as a default function
-// is passed internally.
-assert.doesNotThrow(() => fs.mkdtemp(path.join(tmpdir.path, 'bar-')));
-assert.doesNotThrow(() => fs.mkdtemp(path.join(tmpdir.path, 'bar-'), {}));

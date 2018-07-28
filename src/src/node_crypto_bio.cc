@@ -68,8 +68,6 @@ void NodeBIO::AssignEnvironment(Environment* env) {
 int NodeBIO::New(BIO* bio) {
   BIO_set_data(bio, new NodeBIO());
 
-  // XXX Why am I doing it?!
-  BIO_set_shutdown(bio, 1);
   BIO_set_init(bio, 1);
 
   return 1;
@@ -520,7 +518,7 @@ NodeBIO::~NodeBIO() {
 
 
 NodeBIO* NodeBIO::FromBIO(BIO* bio) {
-  CHECK_NE(BIO_get_data(bio), nullptr);
+  CHECK_NOT_NULL(BIO_get_data(bio));
   return static_cast<NodeBIO*>(BIO_get_data(bio));
 }
 

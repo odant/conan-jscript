@@ -18,12 +18,13 @@ server.listen(0, common.mustCall(() => {
   const req = client.request();
   const closeCode = 1;
 
-  common.expectsError(
+  assert.throws(
     () => req.close(2 ** 32),
     {
-      type: RangeError,
+      name: 'RangeError [ERR_OUT_OF_RANGE]',
       code: 'ERR_OUT_OF_RANGE',
-      message: 'The "code" argument is out of range'
+      message: 'The value of "code" is out of range. It must be ' +
+               '>= 0 && <= 4294967295. Received 4294967296'
     }
   );
   assert.strictEqual(req.closed, false);
@@ -34,7 +35,7 @@ server.listen(0, common.mustCall(() => {
       {
         type: TypeError,
         code: 'ERR_INVALID_CALLBACK',
-        message: 'callback must be a function'
+        message: 'Callback must be a function'
       }
     );
     assert.strictEqual(req.closed, false);
@@ -43,15 +44,15 @@ server.listen(0, common.mustCall(() => {
   req.close(closeCode, common.mustCall());
   assert.strictEqual(req.closed, true);
 
-  // make sure that destroy is called
+  // Make sure that destroy is called.
   req._destroy = common.mustCall(req._destroy.bind(req));
 
   // Second call doesn't do anything.
   req.close(closeCode + 1);
 
-  req.on('close', common.mustCall((code) => {
+  req.on('close', common.mustCall(() => {
     assert.strictEqual(req.destroyed, true);
-    assert.strictEqual(code, closeCode);
+    assert.strictEqual(req.rstCode, closeCode);
     server.close();
     client.close();
   }));
@@ -59,11 +60,17 @@ server.listen(0, common.mustCall(() => {
   req.on('error', common.expectsError({
     code: 'ERR_HTTP2_STREAM_ERROR',
     type: Error,
-    message: `Stream closed with error code ${closeCode}`
+    message: 'Stream closed with error code NGHTTP2_PROTOCOL_ERROR'
   }));
 
-  req.on('response', common.mustCall());
-  req.resume();
+  // The `response` event should not fire as the server should receive the
+  // RST_STREAM frame before it ever has a chance to reply.
+  req.on('response', common.mustNotCall());
+
+  // The `end` event should still fire as we close the readable stream by
+  // pushing a `null` chunk.
   req.on('end', common.mustCall());
+
+  req.resume();
   req.end();
 }));
