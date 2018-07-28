@@ -3,7 +3,6 @@
 const { mustCall, hasCrypto, skip, expectsError } = require('../common');
 if (!hasCrypto)
   skip('missing crypto');
-const { doesNotThrow, throws } = require('assert');
 const { createServer, connect } = require('http2');
 const { connect: netConnect } = require('net');
 
@@ -16,10 +15,11 @@ const { connect: netConnect } = require('net');
     const listener = () => mustCall();
 
     const clients = new Set();
-    doesNotThrow(() => clients.add(connect(authority)));
-    doesNotThrow(() => clients.add(connect(authority, options)));
-    doesNotThrow(() => clients.add(connect(authority, options, listener())));
-    doesNotThrow(() => clients.add(connect(authority, listener())));
+    // Should not throw.
+    clients.add(connect(authority));
+    clients.add(connect(authority, options));
+    clients.add(connect(authority, options, listener()));
+    clients.add(connect(authority, listener()));
 
     for (const client of clients) {
       client.once('connect', mustCall((headers) => {
@@ -58,20 +58,18 @@ const { connect: netConnect } = require('net');
 // check for https as protocol
 {
   const authority = 'https://localhost';
-  doesNotThrow(() => {
-    // A socket error may or may not be reported, keep this as a non-op
-    // instead of a mustCall or mustNotCall
-    connect(authority).on('error', () => {});
-  });
+  // A socket error may or may not be reported, keep this as a non-op
+  // instead of a mustCall or mustNotCall
+  connect(authority).on('error', () => {});
 }
 
 // check for error for an invalid protocol (not http or https)
 {
   const authority = 'ssh://localhost';
-  throws(() => {
+  expectsError(() => {
     connect(authority);
-  }, expectsError({
+  }, {
     code: 'ERR_HTTP2_UNSUPPORTED_PROTOCOL',
     type: Error
-  }));
+  });
 }

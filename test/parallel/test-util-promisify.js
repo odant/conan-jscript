@@ -37,11 +37,10 @@ const stat = promisify(fs.stat);
 {
   function fn() {}
   fn[promisify.custom] = 42;
-  assert.throws(
+  common.expectsError(
     () => promisify(fn),
-    (err) => err instanceof TypeError &&
-                err.message === 'The [util.promisify.custom] property must ' +
-                                'be a function');
+    { code: 'ERR_INVALID_ARG_TYPE', type: TypeError }
+  );
 }
 
 {
@@ -192,6 +191,7 @@ const stat = promisify(fs.stat);
     {
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
-      message: 'The "original" argument must be of type function'
+      message: 'The "original" argument must be of type Function. ' +
+               `Received type ${typeof input}`
     });
 });

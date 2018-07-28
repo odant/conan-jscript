@@ -4,6 +4,9 @@ const assert = require('assert');
 const cp = require('child_process');
 const fs = require('fs');
 
+if (!common.isMainThread)
+  common.skip('process.chdir is not available in Workers');
+
 const CODE =
   'setTimeout(() => { for (var i = 0; i < 100000; i++) { "test" + i } }, 1)';
 const FILE_NAME = 'node_trace.1.log';
@@ -35,7 +38,7 @@ proc.once('exit', common.mustCall(() => {
     assert(traces.some((trace) => {
       if (trace.pid !== proc.pid)
         return false;
-      if (trace.cat !== 'node.async_hooks')
+      if (trace.cat !== 'node,node.async_hooks')
         return false;
       if (trace.name !== 'TIMERWRAP')
         return false;
@@ -47,7 +50,7 @@ proc.once('exit', common.mustCall(() => {
     assert(traces.some((trace) => {
       if (trace.pid !== proc.pid)
         return false;
-      if (trace.cat !== 'node.async_hooks')
+      if (trace.cat !== 'node,node.async_hooks')
         return false;
       if (trace.name !== 'Timeout')
         return false;

@@ -1,3 +1,5 @@
+// Flags: --expose_internals
+
 'use strict';
 
 const common = require('../common');
@@ -7,7 +9,9 @@ const assert = require('assert');
 const h2 = require('http2');
 const net = require('net');
 
-// Tests behaviour of the proxied socket on Http2Session
+const { kTimeout } = require('internal/timers');
+
+// Tests behavior of the proxied socket on Http2Session
 
 const errMsg = {
   code: 'ERR_HTTP2_NO_SOCKET_MANIPULATION',
@@ -29,7 +33,7 @@ server.on('stream', common.mustCall(function(stream, headers) {
   assert.strictEqual(typeof socket.address(), 'object');
 
   socket.setTimeout(987);
-  assert.strictEqual(session._idleTimeout, 987);
+  assert.strictEqual(session[kTimeout]._idleTimeout, 987);
 
   common.expectsError(() => socket.destroy, errMsg);
   common.expectsError(() => socket.emit, errMsg);
@@ -47,8 +51,9 @@ server.on('stream', common.mustCall(function(stream, headers) {
   common.expectsError(() => (socket.resume = undefined), errMsg);
   common.expectsError(() => (socket.write = undefined), errMsg);
 
-  assert.doesNotThrow(() => (socket.on = socket.on));
-  assert.doesNotThrow(() => (socket.once = socket.once));
+  // Resetting the socket listeners to their own value should not throw.
+  socket.on = socket.on;  // eslint-disable-line no-self-assign
+  socket.once = socket.once;  // eslint-disable-line no-self-assign
 
   stream.respond();
 
@@ -58,9 +63,6 @@ server.on('stream', common.mustCall(function(stream, headers) {
   assert.strictEqual(socket.readable, 0);
 
   stream.end();
-
-  socket.setTimeout = undefined;
-  assert.strictEqual(session.setTimeout, undefined);
 
   stream.session.on('close', common.mustCall(() => {
     assert.strictEqual(session.socket, undefined);

@@ -28,6 +28,9 @@ const path = require('path');
 
 const tmpdir = require('../common/tmpdir');
 
+if (!common.isMainThread)
+  common.skip('process.chdir is not available in Workers');
+
 const expectFilePath = common.isWindows ||
                        common.isLinux ||
                        common.isOSX ||
@@ -42,19 +45,15 @@ tmpdir.refresh();
 
   fs.writeFileSync(filepath, 'hello');
 
-  assert.doesNotThrow(
-    function() {
-      const watcher = fs.watch(filepath);
-      watcher.on('change', common.mustCall(function(event, filename) {
-        assert.strictEqual(event, 'change');
+  const watcher = fs.watch(filepath);
+  watcher.on('change', common.mustCall(function(event, filename) {
+    assert.strictEqual(event, 'change');
 
-        if (expectFilePath) {
-          assert.strictEqual(filename, 'watch.txt');
-        }
-        watcher.close();
-      }));
+    if (expectFilePath) {
+      assert.strictEqual(filename, 'watch.txt');
     }
-  );
+    watcher.close();
+  }));
 
   setImmediate(function() {
     fs.writeFileSync(filepath, 'world');
@@ -68,19 +67,15 @@ tmpdir.refresh();
 
   fs.writeFileSync(filepathAbs, 'howdy');
 
-  assert.doesNotThrow(
-    function() {
-      const watcher =
-        fs.watch('hasOwnProperty', common.mustCall(function(event, filename) {
-          assert.strictEqual(event, 'change');
+  const watcher =
+    fs.watch('hasOwnProperty', common.mustCall(function(event, filename) {
+      assert.strictEqual(event, 'change');
 
-          if (expectFilePath) {
-            assert.strictEqual(filename, 'hasOwnProperty');
-          }
-          watcher.close();
-        }));
-    }
-  );
+      if (expectFilePath) {
+        assert.strictEqual(filename, 'hasOwnProperty');
+      }
+      watcher.close();
+    }));
 
   setImmediate(function() {
     fs.writeFileSync(filepathAbs, 'pardner');
@@ -91,21 +86,17 @@ tmpdir.refresh();
   const testsubdir = fs.mkdtempSync(testDir + path.sep);
   const filepath = path.join(testsubdir, 'newfile.txt');
 
-  assert.doesNotThrow(
-    function() {
-      const watcher =
-        fs.watch(testsubdir, common.mustCall(function(event, filename) {
-          const renameEv = common.isSunOS || common.isAIX ? 'change' : 'rename';
-          assert.strictEqual(event, renameEv);
-          if (expectFilePath) {
-            assert.strictEqual(filename, 'newfile.txt');
-          } else {
-            assert.strictEqual(filename, null);
-          }
-          watcher.close();
-        }));
-    }
-  );
+  const watcher =
+    fs.watch(testsubdir, common.mustCall(function(event, filename) {
+      const renameEv = common.isSunOS || common.isAIX ? 'change' : 'rename';
+      assert.strictEqual(event, renameEv);
+      if (expectFilePath) {
+        assert.strictEqual(filename, 'newfile.txt');
+      } else {
+        assert.strictEqual(filename, null);
+      }
+      watcher.close();
+    }));
 
   setImmediate(function() {
     const fd = fs.openSync(filepath, 'w');
@@ -124,20 +115,14 @@ tmpdir.refresh();
 // https://github.com/joyent/node/issues/6690
 {
   let oldhandle;
-  assert.throws(function() {
+  assert.throws(() => {
     const w = fs.watch(__filename, common.mustNotCall());
     oldhandle = w._handle;
     w._handle = { close: w._handle.close };
     w.close();
-  }, /^TypeError: Illegal invocation$/);
+  }, {
+    message: 'handle must be a FSEvent',
+    code: 'ERR_ASSERTION'
+  });
   oldhandle.close(); // clean up
-
-  assert.throws(function() {
-    const w = fs.watchFile(__filename, { persistent: false },
-                           common.mustNotCall());
-    oldhandle = w._handle;
-    w._handle = { stop: w._handle.stop };
-    w.stop();
-  }, /^TypeError: Illegal invocation$/);
-  oldhandle.stop(); // clean up
 }

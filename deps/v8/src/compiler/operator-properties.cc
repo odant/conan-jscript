@@ -44,6 +44,7 @@ bool OperatorProperties::HasFrameStateInput(const Operator* op) {
     case IrOpcode::kJSMultiply:
     case IrOpcode::kJSDivide:
     case IrOpcode::kJSModulus:
+    case IrOpcode::kJSExponentiate:
 
     // Bitwise operations
     case IrOpcode::kJSBitwiseOr:
@@ -70,6 +71,7 @@ bool OperatorProperties::HasFrameStateInput(const Operator* op) {
     case IrOpcode::kJSCreate:
     case IrOpcode::kJSCreateArguments:
     case IrOpcode::kJSCreateArray:
+    case IrOpcode::kJSCreateTypedArray:
     case IrOpcode::kJSCreateLiteralArray:
     case IrOpcode::kJSCreateLiteralObject:
     case IrOpcode::kJSCreateLiteralRegExp:
@@ -85,14 +87,12 @@ bool OperatorProperties::HasFrameStateInput(const Operator* op) {
     case IrOpcode::kJSStoreDataPropertyInLiteral:
     case IrOpcode::kJSDeleteProperty:
 
-    // Context operations
-    case IrOpcode::kJSCreateScriptContext:
-
     // Conversions
     case IrOpcode::kJSToInteger:
     case IrOpcode::kJSToLength:
     case IrOpcode::kJSToName:
     case IrOpcode::kJSToNumber:
+    case IrOpcode::kJSToNumeric:
     case IrOpcode::kJSToObject:
     case IrOpcode::kJSToString:
 
@@ -107,11 +107,19 @@ bool OperatorProperties::HasFrameStateInput(const Operator* op) {
     case IrOpcode::kJSCallWithSpread:
 
     // Misc operations
+    case IrOpcode::kJSForInEnumerate:
     case IrOpcode::kJSForInNext:
-    case IrOpcode::kJSForInPrepare:
     case IrOpcode::kJSStackCheck:
     case IrOpcode::kJSDebugger:
     case IrOpcode::kJSGetSuperConstructor:
+    case IrOpcode::kJSBitwiseNot:
+    case IrOpcode::kJSDecrement:
+    case IrOpcode::kJSIncrement:
+    case IrOpcode::kJSNegate:
+    case IrOpcode::kJSPromiseResolve:
+    case IrOpcode::kJSRejectPromise:
+    case IrOpcode::kJSResolvePromise:
+    case IrOpcode::kJSPerformPromiseThen:
       return true;
 
     default:

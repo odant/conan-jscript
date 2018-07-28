@@ -14,16 +14,14 @@ const bench = common.createBenchmark(main, {
     'Float32Array',
     'Float64Array'
   ],
-  n: [25]
+  n: [25e6]
 });
 
-function main(conf) {
-  const type = conf.type;
+function main({ type, n }) {
   const clazz = global[type];
-  const n = +conf.n;
 
   bench.start();
-  const arr = new clazz(n * 1e6);
+  const arr = new clazz(n);
   for (var i = 0; i < 10; ++i) {
     run();
   }

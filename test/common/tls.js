@@ -1,4 +1,4 @@
-/* eslint-disable required-modules, crypto-check */
+/* eslint-disable node-core/required-modules, node-core/crypto-check */
 
 'use strict';
 const crypto = require('crypto');

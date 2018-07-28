@@ -21,9 +21,11 @@
 
 'use strict';
 const common = require('../common');
+const tmpdir = require('../common/tmpdir');
+
 const assert = require('assert');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const backslash = /\\/g;
 
@@ -100,14 +102,6 @@ const d2 = require('../fixtures/b/d');
   assert.notStrictEqual(threeFolder, three);
 }
 
-console.error('test package.json require() loading');
-assert.throws(
-  function() {
-    require('../fixtures/packages/invalid');
-  },
-  /^SyntaxError: Error parsing .+: Unexpected token , in JSON at position 1$/
-);
-
 assert.strictEqual(require('../fixtures/packages/index').ok, 'ok',
                    'Failed loading package');
 assert.strictEqual(require('../fixtures/packages/main').ok, 'ok',
@@ -176,9 +170,10 @@ assert.strictEqual(require('../fixtures/foo').foo, 'ok',
 
 // Should not attempt to load a directory
 try {
-  require('../fixtures/empty');
+  tmpdir.refresh();
+  require(tmpdir.path);
 } catch (err) {
-  assert.strictEqual(err.message, 'Cannot find module \'../fixtures/empty\'');
+  assert.strictEqual(err.message, `Cannot find module '${tmpdir.path}'`);
 }
 
 {
@@ -292,7 +287,6 @@ try {
     'fixtures/registerExt.test': {},
     'fixtures/registerExt.hello.world': {},
     'fixtures/registerExt2.test': {},
-    'fixtures/empty.js': {},
     'fixtures/module-load-order/file1': {},
     'fixtures/module-load-order/file2.js': {},
     'fixtures/module-load-order/file3.node': {},
@@ -311,17 +305,6 @@ try {
   });
 }
 
-
-// require() must take string, and must be truthy
-assert.throws(function() {
-  console.error('require non-string');
-  require({ foo: 'bar' });
-}, /path must be a string/);
-
-assert.throws(function() {
-  console.error('require empty string');
-  require('');
-}, /missing path/);
 
 process.on('exit', function() {
   assert.ok(a.A instanceof Function);

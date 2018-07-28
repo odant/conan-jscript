@@ -31,6 +31,11 @@ if (!common.hasCrypto)
 if (!common.opensslCli)
   common.skip('missing openssl-cli');
 
+const OPENSSL_VERSION_NUMBER =
+  require('crypto').constants.OPENSSL_VERSION_NUMBER;
+if (OPENSSL_VERSION_NUMBER >= 0x10100000)
+  common.skip('false ecdhCurve not supported in OpenSSL 1.1.0');
+
 const assert = require('assert');
 const tls = require('tls');
 const exec = require('child_process').exec;
@@ -42,15 +47,15 @@ const options = {
   ecdhCurve: false
 };
 
+common.expectWarning('DeprecationWarning',
+                     '{ ecdhCurve: false } is deprecated.',
+                     'DEP0083');
+
 const server = tls.createServer(options, common.mustNotCall());
 
 server.listen(0, '127.0.0.1', common.mustCall(function() {
-  let cmd = `"${common.opensslCli}" s_client -cipher ${
+  const cmd = `"${common.opensslCli}" s_client -cipher ${
     options.ciphers} -connect 127.0.0.1:${this.address().port}`;
-
-  // for the performance and stability issue in s_client on Windows
-  if (common.isWindows)
-    cmd += ' -no_rand_screen';
 
   exec(cmd, common.mustCall(function(err, stdout, stderr) {
     // Old versions of openssl will still exit with 0 so we

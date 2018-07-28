@@ -49,3 +49,16 @@ fs.open(fileTemp, 'a', 0o777, common.mustCall(function(err, fd) {
     }));
   }));
 }));
+
+['', false, null, undefined, {}, []].forEach((input) => {
+  const errObj = {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError [ERR_INVALID_ARG_TYPE]',
+    message: 'The "fd" argument must be of type number. Received type ' +
+             typeof input
+  };
+  assert.throws(() => fs.fdatasync(input), errObj);
+  assert.throws(() => fs.fdatasyncSync(input), errObj);
+  assert.throws(() => fs.fsync(input), errObj);
+  assert.throws(() => fs.fsyncSync(input), errObj);
+});
