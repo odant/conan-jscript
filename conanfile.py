@@ -64,8 +64,7 @@ class JScriptConan(ConanFile):
 
     def source(self):
         tools.patch(patch_file="build.patch")
-        #tools.patch(patch_file="source.patch")
-        pass
+        tools.patch(patch_file="source.patch")
 
     def build(self):
         output_name = "jscript"
