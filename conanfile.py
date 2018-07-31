@@ -57,7 +57,8 @@ class JScriptConan(ConanFile):
         
     def build_requirements(self):
         self.build_requires("ninja_installer/1.8.2@bincrafters/stable")
-        self.build_requires("nasm/2.13.01@conan/stable")
+        if self.settings.os == "Windows":
+            self.build_requires("nasm/2.13.01@conan/stable")
         if get_safe(self.options, "dll_sign"):
             self.build_requires("windows_signtool/[~=1.0]@%s/stable" % self.user)
 
