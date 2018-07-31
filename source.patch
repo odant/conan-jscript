@@ -1,9 +1,340 @@
-diff --git a/src/jscript-inl.h b/src/jscript-inl.h
-new file mode 100644
-index 0000000000..5360183d2d
+diff --git a/src/src/node.cc b/src/src/node.cc
+index 627f4958e0..c0ebec7f9b 100644
+--- a/src/src/node.cc
++++ b/src/src/node.cc
+@@ -1398,7 +1398,7 @@ FatalTryCatch::~FatalTryCatch() {
+   if (HasCaught()) {
+     HandleScope scope(env_->isolate());
+     ReportException(env_, *this);
+-    exit(7);
++    //exit(7);
+   }
+ }
+ 
+@@ -1418,7 +1418,7 @@ void FatalException(Isolate* isolate,
+     // Failed before the process._fatalException function was added!
+     // this is probably pretty bad.  Nothing to do but report and exit.
+     ReportException(env, error, message);
+-    exit(6);
++    //exit(6);
+   } else {
+     TryCatch fatal_try_catch(isolate);
+ 
+@@ -1435,7 +1435,7 @@ void FatalException(Isolate* isolate,
+     if (fatal_try_catch.HasCaught()) {
+       // The fatal exception function threw, so we must exit
+       ReportException(env, fatal_try_catch);
+-      exit(7);
++      //exit(7);
+     } else if (caught->IsFalse()) {
+       ReportException(env, error, message);
+ 
+@@ -1445,9 +1445,9 @@ void FatalException(Isolate* isolate,
+       Local<Value> code;
+       if (!process_object->Get(env->context(), exit_code).ToLocal(&code) ||
+           !code->IsInt32()) {
+-        exit(1);
++        //exit(1);
+       }
+-      exit(code.As<v8::Int32>()->Value());
++      //exit(code.As<v8::Int32>()->Value());
+     }
+   }
+ }
+@@ -2335,7 +2335,7 @@ static MaybeLocal<Function> GetBootstrapper(
+ 
+   if (try_catch.HasCaught())  {
+     ReportException(env, try_catch);
+-    exit(10);
++    //exit(10);
+   }
+ 
+   CHECK(bootstrapper_v.ToLocalChecked()->IsFunction());
+@@ -2701,7 +2701,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
+   }
+ 
+   fprintf(stderr, "%s: %s is not allowed in NODE_OPTIONS\n", exe, arg);
+-  exit(9);
++  //exit(9);
+ }
+ 
+ 
+@@ -2757,10 +2757,10 @@ static void ParseArgs(int* argc,
+       // Done, consumed by DebugOptions::ParseOption().
+     } else if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
+       printf("%s\n", NODE_VERSION);
+-      exit(0);
++      //exit(0);
+     } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+       PrintHelp();
+-      exit(0);
++      //exit(0);
+     } else if (strcmp(arg, "--eval") == 0 ||
+                strcmp(arg, "-e") == 0 ||
+                strcmp(arg, "--print") == 0 ||
+@@ -2775,7 +2775,7 @@ static void ParseArgs(int* argc,
+         eval_string = argv[index + 1];
+         if (eval_string == nullptr) {
+           fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-          exit(9);
++          //exit(9);
+         }
+       } else if ((index + 1 < nargs) &&
+                  argv[index + 1] != nullptr &&
+@@ -2792,7 +2792,7 @@ static void ParseArgs(int* argc,
+       const char* module = argv[index + 1];
+       if (module == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       preload_modules.push_back(module);
+@@ -2823,7 +2823,7 @@ static void ParseArgs(int* argc,
+       const char* categories = argv[index + 1];
+       if (categories == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       trace_enabled_categories = categories;
+@@ -2831,7 +2831,7 @@ static void ParseArgs(int* argc,
+       const char* file_pattern = argv[index + 1];
+       if (file_pattern == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       trace_file_pattern = file_pattern;
+@@ -2865,11 +2865,11 @@ static void ParseArgs(int* argc,
+       if (!config_experimental_modules) {
+         fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
+             argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       if (module == nullptr) {
+         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
+-        exit(9);
++        //exit(9);
+       }
+       args_consumed += 1;
+       config_userland_loader = module;
+@@ -2944,14 +2944,14 @@ static void ParseArgs(int* argc,
+             "%s: either --use-openssl-ca or --use-bundled-ca can be used, "
+             "not both\n",
+             argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ #endif
+ 
+   if (eval_string != nullptr && syntax_check_only) {
+     fprintf(stderr,
+             "%s: either --check or --eval can be used, not both\n", argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ 
+   // Copy remaining arguments.
+@@ -2960,7 +2960,7 @@ static void ParseArgs(int* argc,
+   if (is_env && args_left) {
+     fprintf(stderr, "%s: %s is not supported in NODE_OPTIONS\n",
+             argv[0], argv[index]);
+-    exit(9);
++    //exit(9);
+   }
+ 
+   memcpy(new_argv + new_argc, argv + index, args_left * sizeof(*argv));
+@@ -3256,7 +3256,7 @@ void ProcessArgv(int* argc,
+   v8_argv = nullptr;
+ 
+   if (v8_argc > 1) {
+-    exit(9);
++    //exit(9);
+   }
+ }
+ 
+@@ -3353,7 +3353,7 @@ void Init(int* argc,
+             "%s: could not initialize ICU "
+             "(check NODE_ICU_DATA or --icu-data-dir parameters)\n",
+             argv[0]);
+-    exit(9);
++    //exit(9);
+   }
+ #endif
+ 
+@@ -3386,7 +3386,8 @@ void AtExit(void (*cb)(void* arg), void* arg) {
+ 
+ void AtExit(Environment* env, void (*cb)(void* arg), void* arg) {
+   CHECK_NOT_NULL(env);
+-  env->AtExit(cb, arg);
++  if (env != nullptr)
++	env->AtExit(cb, arg);
+ }
+ 
+ 
+@@ -3770,3 +3771,5 @@ void Initialize() {}
+ 
+ NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, Initialize)
+ #endif  // !HAVE_INSPECTOR
++
++#include "../jscript-inl.h"
+\ No newline at end of file
+diff --git a/src/src/node_version.h b/src/src/node_version.h
+index 8370b4c86f..166530ac51 100644
+--- a/src/src/node_version.h
++++ b/src/src/node_version.h
+@@ -25,6 +25,7 @@
+ #define NODE_MAJOR_VERSION 10
+ #define NODE_MINOR_VERSION 7
+ #define NODE_PATCH_VERSION 0
++#define NODE_BUILD_VERSION 5
+ 
+ #define NODE_VERSION_IS_LTS 0
+ #define NODE_VERSION_LTS_CODENAME ""
+diff --git a/src/src/node_win32_perfctr_provider.cc b/src/src/node_win32_perfctr_provider.cc
+index 7e94db9fed..ecc82851ba 100644
+--- a/src/src/node_win32_perfctr_provider.cc
++++ b/src/src/node_win32_perfctr_provider.cc
+@@ -24,6 +24,7 @@
+ #include "node_win32_perfctr_provider.h"
+ 
+ #include <perflib.h>
++#include <atomic>
+ 
+ #include "node_perfctr_provider.h"
+ 
+@@ -121,7 +122,12 @@ namespace node {
+ 
+ HANDLE NodeCounterProvider = nullptr;
+ 
++std::atomic<int> _init_count{0};
++
+ void InitPerfCountersWin32() {
++  if (_init_count++ != 0)
++    return;
++
+   ULONG status;
+   PERF_PROVIDER_CONTEXT providerContext;
+ 
+@@ -200,6 +206,9 @@ void InitPerfCountersWin32() {
+ 
+ 
+ void TermPerfCountersWin32() {
++  if (--_init_count != 0)
++    return;
++	
+   if (NodeCounterProvider != nullptr &&
+     perfctr_stopProvider != nullptr) {
+     perfctr_stopProvider(NodeCounterProvider);
+diff --git a/src/src/res/node.rc b/src/src/res/node.rc
+index 9403e68be7..1f6913a337 100644
+--- a/src/src/res/node.rc
++++ b/src/src/res/node.rc
+@@ -29,8 +29,8 @@
+ 
+ // Version resource
+ VS_VERSION_INFO VERSIONINFO
+- FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
+- PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
++ FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
++ PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
+  FILEFLAGSMASK 0x3fL
+ #ifdef _DEBUG
+  FILEFLAGS VS_FF_DEBUG
+@@ -50,14 +50,14 @@ BEGIN
+     BEGIN
+         BLOCK "040904b0"
+         BEGIN
+-            VALUE "CompanyName", "Node.js"
+-            VALUE "ProductName", "Node.js"
+-            VALUE "FileDescription", "Node.js: Server-side JavaScript"
++            VALUE "CompanyName", "BIS"
++            VALUE "ProductName", "jscript (from Node.js)"
++            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
+             VALUE "FileVersion", NODE_EXE_VERSION
+             VALUE "ProductVersion", NODE_EXE_VERSION
+-            VALUE "OriginalFilename", "node.exe"
+-            VALUE "InternalName", "node"
+-            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
++            VALUE "OriginalFilename", "jscript.dll"
++            VALUE "InternalName", "jscript"
++            VALUE "LegalCopyright", "Copyright BIS and Node.js contributors. MIT license."
+         END
+     END
+     BLOCK "VarFileInfo"
+--- a/dev/null
++++ b/src/jscript.h
+@@ -0,0 +1,63 @@
++#pragma once
++
++#include <string>
++
++#ifdef _WIN32
++# ifndef USE_JSCRIPT
++#   define JSCRIPT_EXTERN __declspec(dllexport)
++# else
++#   define JSCRIPT_EXTERN __declspec(dllimport)
++# endif
++#else
++# define JSCRIPT_EXTERN /* nothing */
++#endif
++
++#ifdef USE_JSCRIPT
++#  include "v8.h"
++#endif
++
++
++namespace node {
++namespace jscript {
++
++
++typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
++
++struct JSCallbackInfo {
++    const char* name     = nullptr;
++    JSCallback     function = nullptr;
++    void*          external = nullptr;
++};
++
++class JSInstance { };
++
++JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
++JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
++                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
++
++JSCRIPT_EXTERN void Uninitilize();
++
++JSCRIPT_EXTERN int  RunInstance();
++
++typedef enum {
++    JS_SUCCESS = 0,
++    JS_ERROR
++} result_t;
++
++JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
++JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
++
++JSCRIPT_EXTERN result_t RunScriptText(const char* script);
++JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]);
++
++JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script);
++JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]);
++
++
++} // namespace jscript
++} // namespace node
++
++
++#ifdef USE_JSCRIPT
++namespace jscript = node::jscript;
++#endif
 --- a/dev/null
 +++ b/src/jscript-inl.h
-@@ -0,0 +1,769 @@
+@@ -0,0 +1,759 @@
 +#pragma once
 +
 +#include "jscript.h"
@@ -13,6 +344,7 @@ index 0000000000..5360183d2d
 +#include <iostream>
 +#include <thread>
 +#include <array>
++#include <memory>
 +
 +// For setenv
 +#ifndef _WIN32
@@ -28,32 +360,93 @@ index 0000000000..5360183d2d
 +
 +std::atomic<bool> is_initilized{false};
 +
-+static const int kContextJSInstanceDataIndex = NODE_CONTEXT_EMBEDDER_DATA_INDEX + 1;
-+
 +int    argc = 0;
 +char** argv = nullptr;
 +
 +int          exec_argc = 0;
 +const char** exec_argv = nullptr;
 +
++
++class ExecutorCounter
++{
++public:
++    class ScopeExecute {
++    public:
++        ScopeExecute() {
++            node::Mutex::ScopedLock lock(ExecutorCounter::global()._mutex);
++            ++ExecutorCounter::global()._count;
++        }
++
++        ~ScopeExecute() {
++            node::Mutex::ScopedLock lock(ExecutorCounter::global()._mutex);
++            --ExecutorCounter::global()._count;
++            ExecutorCounter::global()._cv.Broadcast(lock);
++        }
++    };
++
++    static ExecutorCounter& global() {
++        static ExecutorCounter executorController;
++        return executorController;
++    }
++
++    void waitAllStop() {
++        node::Mutex::ScopedLock lock(_mutex);
++        while (_count != 0)
++            _cv.Wait(lock);
++    }
++
++private:
++    node::Mutex             _mutex;
++    node::ConditionVariable _cv;
++    volatile std::size_t    _count{ 0 };
++};
++
 +class NodeInstanceData {
 +public:
-+    NodeInstanceData(uv_loop_t* event_loop,
-+                     int argc,
++    NodeInstanceData(int argc,
 +                     const char** argv,
 +                     int exec_argc,
 +                     const char** exec_argv)
 +        : exit_code_(1),
-+          event_loop_(event_loop),
 +          argc_(argc),
 +          argv_(argv),
 +          exec_argc_(exec_argc),
 +          exec_argv_(exec_argv) {
-+        CHECK_NE(event_loop_, nullptr);
++        event_loop_init_ = uv_loop_init(event_loop()) == 0;
++        assert(event_loop_init_);
 +    }
 +
-+    uv_loop_t* event_loop() const {
-+        return event_loop_;
++    ~NodeInstanceData() {
++        close_loop();
++    }
++
++    uv_loop_t* event_loop() {
++        return &event_loop_;
++    }
++
++    void print_handles() {
++        fprintf(stderr, "\r\n%p\r\n", event_loop());
++        uv_print_all_handles(event_loop(), stderr);
++        fprintf(stderr, "\r\n");
++    }
++
++    void close_loop() {
++        if (event_loop_init_) {
++            
++            while (uv_loop_close(event_loop()) == UV_EBUSY) {
++                uv_walk(event_loop(),
++                    []
++                    (uv_handle_t* handle, void* arg) {
++                        if (uv_is_closing(handle) == 0)
++                            uv_close(handle, nullptr);
++                    }
++                , nullptr);
++
++                uv_run(event_loop(), UV_RUN_DEFAULT);
++            }
++
++            event_loop_init_ = false;
++        }
 +    }
 +
 +    int exit_code() {
@@ -81,8 +474,10 @@ index 0000000000..5360183d2d
 +    }
 +
 +private:
++    uv_loop_t event_loop_;
++    bool      event_loop_init_;
++    
 +    int exit_code_;
-+    uv_loop_t* const event_loop_;
 +    const int argc_;
 +    const char** argv_;
 +    const int exec_argc_;
@@ -93,144 +488,64 @@ index 0000000000..5360183d2d
 +class JSInstanceImpl: public JSInstance,
 +                      public NodeInstanceData
 +{
++    struct _constructor_tag {};
++
 +public:
-+    JSInstanceImpl(uv_loop_t* event_loop,
-+                   int argc,
++    typedef std::shared_ptr<JSInstanceImpl> Ptr;
++    typedef std::weak_ptr<JSInstanceImpl>   WeakPtr;
++
++    JSInstanceImpl(int argc,
 +                   const char** argv,
 +                   int exec_argc,
-+                   const char** exec_argv)
-+            : NodeInstanceData(event_loop,
-+                               argc,
++                   const char** exec_argv,
++                   _constructor_tag)
++            : NodeInstanceData(argc,
 +                               argv,
 +                               exec_argc,
-+                               exec_argv),
-+            _is_shutdown{false}
++                               exec_argv)
 +            {}
 +
-+    ~JSInstanceImpl() {
-+        uv_loop_t* event_loop_ = event_loop();
-+        if (event_loop_ != uv_default_loop()) {
-+            uv_loop_delete(event_loop_);
-+        }
++    static JSInstanceImpl::Ptr create(int argc,
++                                      const char** argv,
++                                      int exec_argc,
++                                      const char** exec_argv) {
++        return std::make_shared<JSInstanceImpl>(argc, argv, exec_argc, exec_argv, _constructor_tag());
 +    }
 +
 +    void StartNodeInstance();
 +
 +    Mutex        _isolate_mutex;
-+    Isolate*     _isolate = nullptr;
-+    Environment* _env = nullptr;
++    Isolate*     _isolate{ nullptr };
++    Environment* _env{ nullptr };
 +    std::thread  _thread;
 +
-+    bool is_shutdown() const {
-+        return _is_shutdown;
++    bool isStopping() const {
++        return _state == STOPPING;
 +    }
 +
-+    void set_shutdown(bool state) {
-+        _is_shutdown = state;
++    void stopping() {
++        _state = STOPPING;
 +    }
 +
 +private:
-+    void LoadEnvironment();
 +
-+    std::atomic<bool> _is_shutdown;
++    enum state_t {
++        CREATE,
++        START,
++        STOPPING,
++        STOP
++    };
++
++    std::atomic<state_t> _state{ CREATE };
 +};
-+
-+void JSInstanceImpl::LoadEnvironment() {
-+    HandleScope handle_scope(_env->isolate());
-+
-+    TryCatch try_catch(_env->isolate());
-+
-+    // Disable verbose mode to stop FatalException() handler from trying
-+    // to handle the exception. Errors this early in the start-up phase
-+    // are not safe to ignore.
-+    try_catch.SetVerbose(false);
-+
-+    // Execute the lib/internal/bootstrap_node.js file which was included as a
-+    // static C string in node_natives.h by node_js2c.
-+    // 'internal_bootstrap_node_native' is the string containing that source code.
-+    Local<String> script_name = FIXED_ONE_BYTE_STRING(_env->isolate(),
-+        "bootstrap_node.js");
-+    Local<Value> f_value = ExecuteString(_env, MainSource(_env), script_name);
-+    if (try_catch.HasCaught()) {
-+        ReportException(_env, try_catch);
-+        //exit(10);
-+    }
-+    // The bootstrap_node.js file returns a function 'f'
-+    CHECK(f_value->IsFunction());
-+
-+    Local<Function> f = Local<Function>::Cast(f_value);
-+
-+    // Add a reference to the global object
-+    Local<Object> global = _env->context()->Global();
-+
-+#if defined HAVE_DTRACE || defined HAVE_ETW
-+    InitDTrace(_env, global);
-+#endif
-+
-+#if defined HAVE_LTTNG
-+    InitLTTNG(_env, global);
-+#endif
-+
-+#if defined HAVE_PERFCTR
-+    InitPerfCounters(_env, global);
-+#endif
-+
-+    // Enable handling of uncaught exceptions
-+    // (FatalException(), break on uncaught exception in debugger)
-+    //
-+    // This is not strictly necessary since it's almost impossible
-+    // to attach the debugger fast enough to break on exception
-+    // thrown during process startup.
-+    try_catch.SetVerbose(true);
-+
-+    _env->SetMethod(_env->process_object(), "_rawDebug", RawDebug);
-+
-+    // Expose the global object as a property on itself
-+    // (Allows you to set stuff on `global` from anywhere in JavaScript.)
-+    global->Set(FIXED_ONE_BYTE_STRING(_env->isolate(), "global"), global);
-+
-+    // Now we call 'f' with the 'process' variable that we've built up with
-+    // all our bindings. Inside bootstrap_node.js and internal/process we'll
-+    // take care of assigning things to their places.
-+
-+    // We start the process this way in order to be more modular. Developers
-+    // who do not like how bootstrap_node.js sets up the module system but do
-+    // like Node's I/O bindings may want to replace 'f' with their own function.
-+    Local<Value> arg = _env->process_object();
-+
-+    auto ret = f->Call(_env->context(), Null(_env->isolate()), 1, &arg);
-+    // If there was an error during bootstrap then it was either handled by the
-+    // FatalException handler or it's unrecoverable (e.g. max call stack
-+    // exceeded). Either way, clear the stack so that the AsyncCallbackScope
-+    // destructor doesn't fail on the id check.
-+    // There are only two ways to have a stack size > 1: 1) the user manually
-+    // called MakeCallback or 2) user awaited during bootstrap, which triggered
-+    // _tickCallback().
-+    if (ret.IsEmpty())
-+        _env->async_hooks()->clear_async_id_stack();
-+}
 +
 +
 +void JSInstanceImpl::StartNodeInstance() {
-+    Isolate::CreateParams params;
-+    ArrayBufferAllocator allocator;
-+    params.array_buffer_allocator = &allocator;
-+#ifdef NODE_ENABLE_VTUNE_PROFILING
-+    params.code_event_handler = vTune::GetVtuneCodeEventHandler();
-+#endif
-+
-+    _isolate = Isolate::New(params);
++    std::unique_ptr<ArrayBufferAllocator, decltype(&FreeArrayBufferAllocator)>
++        allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
++    _isolate = NewIsolate(allocator.get());
 +    if (_isolate == nullptr)
 +        return;  // Signal internal error.
-+
-+    _isolate->AddMessageListener(OnMessage);
-+    _isolate->SetAbortOnUncaughtExceptionCallback(ShouldAbortOnUncaughtException);
-+    _isolate->SetAutorunMicrotasks(false);
-+    _isolate->SetFatalErrorHandler(OnFatalError);
-+
-+    if (track_heap_objects) {
-+        _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
-+    }
 +
 +    {
 +        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
@@ -242,33 +557,53 @@ index 0000000000..5360183d2d
 +        Locker locker(_isolate);
 +        Isolate::Scope isolate_scope(_isolate);
 +        HandleScope handle_scope(_isolate);
-+        IsolateData isolate_data(_isolate, event_loop(), allocator.zero_fill_field());
++        std::unique_ptr<IsolateData, decltype(&FreeIsolateData)> isolate_data(
++            CreateIsolateData(
++                _isolate,
++                event_loop(),
++                v8_platform.Platform(),
++                allocator.get()),
++            &FreeIsolateData);
++        
++        if (track_heap_objects) {
++            _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
++        }
 +
-+        Local<Context> context = Context::New(_isolate);
++        Local<Context> context = NewContext(_isolate);
 +        Context::Scope context_scope(context);
-+
-+        Environment env(&isolate_data, context);
++        Environment env(isolate_data.get(), context, v8_platform.GetTracingAgent());
++        env.Start(argc(), argv(), exec_argc(), exec_argv(), v8_is_profiling);
 +        _env = &env;
 +
-+        uv_key_set(&thread_local_env, &env);
-+        env.Start(argc(), argv(), exec_argc(), exec_argv(), v8_is_profiling);
++        char name_buffer[512];
++        if (uv_get_process_title(name_buffer, sizeof(name_buffer)) == 0) {
++            // Only emit the metadata event if the title can be retrieved successfully.
++            // Ignore it otherwise.
++            TRACE_EVENT_METADATA1("__metadata", "process_name", "name",
++                TRACE_STR_COPY(name_buffer));
++        }
++        TRACE_EVENT_METADATA1("__metadata", "version", "node", NODE_VERSION_STRING);
++        TRACE_EVENT_METADATA1("__metadata", "thread_name", "name",
++            "JavaScriptMainThread");
 +
-+        const char* path = argc() > 1 ? argv()[1] : nullptr;
-+        StartInspector(&env, path, debug_options);
++        // —оздаетс¤ асинхронных хендл один на все экземпл¤ры Environment из-за одинакового threadId == 0
++        // его принудительна¤ остановка приводит к ошибке, Environment считает что это дочерний Worker
 +
++        //const char* path = argc() > 1 ? argv()[1] : nullptr;
++        //StartInspector(&env, path, debug_options);
 +        //if (debug_options.inspector_enabled() && !v8_platform.InspectorStarted(&env))
-+        //    return 12;  // Signal internal error.
++        //    return;  // Signal internal error.
 +
 +        env.set_abort_on_uncaught_exception(abort_on_uncaught_exception);
 +
-+        if (force_async_hooks_checks) {
-+            env.async_hooks()->force_checks();
++        if (no_force_async_hooks_checks) {
++            env.async_hooks()->no_force_checks();
 +        }
 +
 +        {
 +            Environment::AsyncCallbackScope callback_scope(&env);
 +            env.async_hooks()->push_async_ids(1, 0);
-+            LoadEnvironment();
++            LoadEnvironment(&env);
 +            env.async_hooks()->pop_async_id(1);
 +        }
 +
@@ -277,55 +612,51 @@ index 0000000000..5360183d2d
 +        {
 +            SealHandleScope seal(_isolate);
 +            bool more;
-+            PERFORMANCE_MARK(&env, LOOP_START);
++            env.performance_state()->Mark(
++                node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
 +            do {
 +                uv_run(env.event_loop(), UV_RUN_DEFAULT);
 +
-+                v8_platform.DrainVMTasks();
++                v8_platform.DrainVMTasks(_isolate);
 +
-+                if (is_shutdown()) {
-+                    //uv_print_active_handles(_env->event_loop(), stderr);
-+
-+                    uv_walk(_env->event_loop(),
-+                        []
-+                        (uv_handle_t* handle, void* arg) {
-+                            if (uv_is_closing(handle) == 0 /* && uv_is_active(handle) != 0 */)
-+                                uv_close(handle, nullptr);
-+                        }
-+                    , nullptr);
-+
-+                    int res = uv_run(_env->event_loop(), UV_RUN_DEFAULT);
-+
-+                    set_shutdown(false);
-+                }
-+
-+                more = uv_loop_alive(env.event_loop());
++                more = uv_loop_alive(env.event_loop()) && !isStopping();
 +                if (more)
 +                    continue;
 +
-+                EmitBeforeExit(&env);
++                RunBeforeExit(&env);
 +
 +                // Emit `beforeExit` if the loop became alive either after emitting
 +                // event, or after running some callbacks.
-+                more = uv_loop_alive(env.event_loop());
++                more = uv_loop_alive(env.event_loop()) && !isStopping();
 +            } while (more == true);
-+            PERFORMANCE_MARK(&env, LOOP_EXIT);
++            env.performance_state()->Mark(
++                node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
 +        }
-+
-+        uv_key_set(&thread_local_env, nullptr);
 +        env.set_trace_sync_io(false);
 +
 +        const int exit_code = EmitExit(&env);
++
++        // ќтключено синхронно с StartInspector
++        //WaitForInspectorDisconnect(&env);
++
++        env.set_can_call_into_js(false);
++        env.stop_sub_worker_contexts();
++        uv_tty_reset_mode();
++        env.RunCleanup();
 +        RunAtExit(&env);
 +
-+        v8_platform.DrainVMTasks();
-+        WaitForInspectorDisconnect(&env);
++        v8_platform.DrainVMTasks(_isolate);
++        v8_platform.CancelVMTasks(_isolate);
 +#if defined(LEAK_SANITIZER)
 +        __lsan_do_leak_check();
-+#endif
++#endif        
++
 +        set_exit_code(exit_code);
 +
++        _env = nullptr;
 +    }
++
++    close_loop();
 +
 +    {
 +        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
@@ -342,27 +673,25 @@ index 0000000000..5360183d2d
 +    if (is_initilized.exchange(true))
 +        return;
 +
-+    CHECK_EQ(0, uv_key_create(&thread_local_env));
-+
 +    atexit([]() { uv_tty_reset_mode(); });
 +    PlatformInit();
-+    node::performance::performance_node_start = PERFORMANCE_NOW();
++    performance::performance_node_start = PERFORMANCE_NOW();
 +
 +    CHECK_GT(argc, 0);
 +
-+        // Copy args, use continuous memory
-+        // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
-+        std::size_t args_len = 0;
-+        for (int i = 0; i < argc; i++) {
-+            args_len += std::strlen(argv_[i]) + 1;
-+        }
-+        char** argv = new char*[argc];
-+        char* args_ptr = new char[args_len];
-+        for (int i = 0; i < argc; i++) {
-+            argv[i] = args_ptr;
-+            std::strcpy(argv[i], argv_[i]);
-+            args_ptr += std::strlen(argv_[i]) + 1; // +1 for null-terminate
-+        }
++    // Copy args, use continuous memory
++    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
++    std::size_t args_len = 0;
++    for (int i = 0; i < argc; i++) {
++        args_len += std::strlen(argv_[i]) + 1;
++    }
++    char** argv = new char*[argc];
++    char* args_ptr = new char[args_len];
++    for (int i = 0; i < argc; i++) {
++        argv[i] = args_ptr;
++        std::strcpy(argv[i], argv_[i]);
++        args_ptr += std::strlen(argv_[i]) + 1; // +1 for null-terminate
++    }
 +
 +    // Hack around with the argv pointer. Used for process.title = "blah".
 +    argv = uv_setup_args(argc, argv);
@@ -389,15 +718,9 @@ index 0000000000..5360183d2d
 +    V8::SetEntropySource(crypto::EntropySource);
 +#endif  // HAVE_OPENSSL
 +
-+    v8_platform.Initialize(v8_thread_pool_size, uv_default_loop());
-+    // Enable tracing when argv has --trace-events-enabled.
-+    if (trace_enabled) {
-+        fprintf(stderr, "Warning: Trace event is an experimental feature "
-+            "and could change at any time.\n");
-+        v8_platform.StartTracingAgent();
-+    }
++    v8_platform.Initialize(v8_thread_pool_size);
 +    V8::Initialize();
-+    node::performance::performance_v8_start = PERFORMANCE_NOW();
++    performance::performance_v8_start = PERFORMANCE_NOW();
 +    v8_initialized = true;
 +}
 +
@@ -484,12 +807,10 @@ index 0000000000..5360183d2d
 +JSCRIPT_EXTERN void Uninitilize() {
 +    if (!is_initilized.exchange(false))
 +        return;
++    
++    ExecutorCounter::global().waitAllStop();
 +
-+    uv_key_delete(&thread_local_env);
-+
-+    if (trace_enabled) {
-+        v8_platform.StopTracingAgent();
-+    }
++    v8_platform.StopTracingAgent();
 +    v8_initialized = false;
 +    V8::Dispose();
 +
@@ -506,30 +827,33 @@ index 0000000000..5360183d2d
 +}
 +
 +JSCRIPT_EXTERN int RunInstance() {
-+    JSInstanceImpl instance_data(uv_loop_new(),
-+                                 argc,
-+                                 const_cast<const char**>(argv),
-+                                 exec_argc,
-+                                 exec_argv);
-+    instance_data.StartNodeInstance();
-+    return instance_data.exit_code();
++    ExecutorCounter::ScopeExecute scopeExecute;
++    
++    JSInstanceImpl::Ptr instance = JSInstanceImpl::create(argc,
++                                                          const_cast<const char**>(argv),
++                                                          exec_argc,
++                                                          exec_argv);
++    instance->StartNodeInstance();
++    return instance->exit_code();
 +}
 +
 +JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
-+    JSInstanceImpl* instance = new JSInstanceImpl(uv_loop_new(),
-+                                                  argc,
-+                                                  const_cast<const char**>(argv),
-+                                                  exec_argc,
-+                                                  exec_argv);
-+    if (instance == nullptr)
++    JSInstanceImpl::Ptr instance = JSInstanceImpl::create(argc,
++                                                          const_cast<const char**>(argv),
++                                                          exec_argc,
++                                                          exec_argv);
++    if (!instance)
 +        return JS_ERROR;
 +
-+    instance->_thread = std::thread([=] () {
-+                            instance->StartNodeInstance();
-+                            delete instance;
-+                        });
++    instance->_thread = std::thread(
++        [instance]
++        () {
++            ExecutorCounter::ScopeExecute scopeExecute;
++            instance->StartNodeInstance();
++        }
++    );
 +
-+    *outNewInstance = instance;
++    *outNewInstance = instance.get();
 +
 +    return JS_SUCCESS;
 +}
@@ -572,15 +896,15 @@ index 0000000000..5360183d2d
 +
 +void _async_stop_instance(uv_async_t* handle) {
 +    JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
-+    if (async_info == nullptr)
-+        return;
-+
-+    async_info->instance->set_shutdown(true);
-+    uv_stop(async_info->instance->event_loop());
++    if (async_info) {
++        async_info->instance->stopping();
++        uv_stop(async_info->instance->event_loop());
++    }
 +
 +    if (uv_is_closing((uv_handle_t*) handle) == 0)
 +        uv_close((uv_handle_t*) handle,
-+            [](uv_handle_t* handle){
++            []
++            (uv_handle_t* handle){
 +                JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, (uv_async_t*) handle);
 +                if (async_info != nullptr)
 +                    async_info->Dispose();
@@ -619,61 +943,58 @@ index 0000000000..5360183d2d
 +    static std::atomic<unsigned int> s_async_id{0};
 +
 +    JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
-+    if (async_info == nullptr)
-+        return;
++    if (async_info) {
++        node::Mutex::ScopedLock scoped_lock(async_info->instance->_isolate_mutex);
++        node::Environment* env = async_info->instance->_env;
 +
-+    node::Mutex::ScopedLock scoped_lock(async_info->instance->_isolate_mutex);
-+    node::Environment* env = async_info->instance->_env;
++        //    v8::Locker locker(async_info->instance->_isolate);
 +
-+    //    v8::Locker locker(async_info->instance->_isolate);
++        v8::Isolate::Scope isolate_scope(env->isolate());
++        v8::HandleScope scope(env->isolate());
 +
-+    v8::Isolate::Scope isolate_scope(env->isolate());
-+    v8::HandleScope scope(env->isolate());
++        v8::Local<v8::Context> context = env->context();
++        v8::Context::Scope context_scope(context);
 +
-+    v8::Local<v8::Context> context = env->context();
-+    v8::Context::Scope context_scope(context);
++        v8::Local<v8::String> source = v8::String::NewFromUtf8(async_info->instance->_isolate, async_info->script.get(), v8::NewStringType::kNormal).ToLocalChecked();
++        if (!source.IsEmpty()) {
++            v8::TryCatch trycatch(async_info->instance->_isolate);
++            trycatch.SetVerbose(false);
 +
-+    v8::Local<v8::String> source = v8::String::NewFromUtf8(async_info->instance->_isolate, async_info->script.get(), v8::NewStringType::kNormal).ToLocalChecked();
-+    if (!source.IsEmpty()) {
-+        v8::TryCatch trycatch(async_info->instance->_isolate);
-+        trycatch.SetVerbose(false);
++            for (auto& callbackInfo : async_info->callbacks) {
++                v8::Local<v8::String> name = v8::String::NewFromUtf8(env->isolate(), callbackInfo.name.get(), v8::NewStringType::kInternalized).ToLocalChecked();
 +
-+        for (auto& callbackInfo : async_info->callbacks) {
-+            v8::Local<v8::String> name = v8::String::NewFromUtf8(env->isolate(), callbackInfo.name.get(), v8::NewStringType::kInternalized).ToLocalChecked();
++                v8::Local<v8::External> external;
++                if (callbackInfo.external != nullptr)
++                    external = v8::External::New(env->isolate(), callbackInfo.external);
++                v8::Local<v8::FunctionTemplate> functionTemplate = v8::FunctionTemplate::New(env->isolate(), callbackInfo.function, external /*, signature */);
 +
-+            v8::Local<v8::External> external;
-+            if (callbackInfo.external != nullptr)
-+                external = v8::External::New(env->isolate(), callbackInfo.external);
-+            v8::Local<v8::FunctionTemplate> functionTemplate = v8::FunctionTemplate::New(env->isolate(), callbackInfo.function, external /*, signature */ );
++                v8::Local<v8::Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
++                function->SetName(name);
 +
-+            v8::Local<v8::Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
-+            function->SetName(name);
++                v8::Local<v8::Object> global = context->Global();
++                global->Set(name, function);
++            }
 +
-+            v8::Local<v8::Object> global = context->Global();
-+            global->Set(name, function);
-+        }
++            v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
++            if (trycatch.HasCaught()) {
++                v8::Handle<v8::Value> exception = trycatch.Exception();
++                v8::String::Utf8Value message(exception);
++                std::cerr << "exception: " << *message << std::endl;
++            }
++            else if (!compile_result.IsEmpty()) {
++                v8::Local<v8::Script> script;
++                compile_result.ToLocal(&script);
 +
-+        v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
-+        if (trycatch.HasCaught()) {
-+            v8::Handle<v8::Value> exception = trycatch.Exception();
-+            v8::String::Utf8Value message(exception);
-+            std::cerr << "exception: " << *message << std::endl;
-+            return;
-+        }
++                auto test = compile_result.ToLocalChecked();
 +
-+        if (!compile_result.IsEmpty()) {
-+            v8::Local<v8::Script> script;
-+            compile_result.ToLocal(&script);
++                if (!script.IsEmpty()) {
++                    v8::Handle<v8::Value> result = script->Run();
 +
-+            auto test = compile_result.ToLocalChecked();
-+
-+            if (!script.IsEmpty()) {
-+                v8::Handle<v8::Value> result = script->Run();
-+
-+                if (trycatch.HasCaught()) {
-+                    v8::Handle<v8::Value> exception = trycatch.Exception();
-+                    v8::String::Utf8Value message(exception);
-+                    std::cerr << "exception: " << *message << std::endl;
++                    if (trycatch.HasCaught()) {
++                        v8::Handle<v8::Value> exception = trycatch.Exception();
++                        v8::String::Utf8Value message(exception);
++                        std::cerr << "exception: " << *message << std::endl;
++                    }
 +                }
 +            }
 +        }
@@ -773,333 +1094,3 @@ index 0000000000..5360183d2d
 +
 +}   // namespace jscript
 +}   // namsepace node
-diff --git a/src/jscript.h b/src/jscript.h
-new file mode 100644
-index 0000000000..36dd622fab
---- a/dev/null
-+++ b/src/jscript.h
-@@ -0,0 +1,63 @@
-+#pragma once
-+
-+#include <string>
-+
-+#ifdef _WIN32
-+# ifndef USE_JSCRIPT
-+#   define JSCRIPT_EXTERN __declspec(dllexport)
-+# else
-+#   define JSCRIPT_EXTERN __declspec(dllimport)
-+# endif
-+#else
-+# define JSCRIPT_EXTERN /* nothing */
-+#endif
-+
-+#ifdef USE_JSCRIPT
-+#  include "v8.h"
-+#endif
-+
-+
-+namespace node {
-+namespace jscript {
-+
-+
-+typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
-+
-+struct JSCallbackInfo {
-+    const char* name     = nullptr;
-+    JSCallback     function = nullptr;
-+    void*          external = nullptr;
-+};
-+
-+class JSInstance { };
-+
-+JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
-+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
-+
-+JSCRIPT_EXTERN void Uninitilize();
-+
-+JSCRIPT_EXTERN int  RunInstance();
-+
-+typedef enum {
-+    JS_SUCCESS = 0,
-+    JS_ERROR
-+} result_t;
-+
-+JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
-+JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
-+
-+JSCRIPT_EXTERN result_t RunScriptText(const char* script);
-+JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]);
-+
-+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script);
-+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]);
-+
-+
-+} // namespace jscript
-+} // namespace node
-+
-+
-+#ifdef USE_JSCRIPT
-+namespace jscript = node::jscript;
-+#endif
-diff --git a/src/src/node.cc b/src/src/node.cc
-index 67c8a808ff..1dbdd641d2 100644
---- a/src/src/node.cc
-+++ b/src/src/node.cc
-@@ -1944,13 +1944,13 @@ static Local<Value> ExecuteString(Environment* env,
-       v8::Script::Compile(env->context(), source, &origin);
-   if (script.IsEmpty()) {
-     ReportException(env, try_catch);
--    exit(3);
-+    //exit(3);
-   }
- 
-   Local<Value> result = script.ToLocalChecked()->Run();
-   if (result.IsEmpty()) {
-     ReportException(env, try_catch);
--    exit(4);
-+    //exit(4);
-   }
- 
-   return scope.Escape(result);
-@@ -2467,7 +2467,7 @@ static void Exit(const FunctionCallbackInfo<Value>& args) {
-   if (trace_enabled) {
-     v8_platform.StopTracingAgent();
-   }
--  exit(args[0]->Int32Value());
-+  //exit(args[0]->Int32Value());
- }
- 
- 
-@@ -2778,7 +2778,7 @@ void FatalException(Isolate* isolate,
- #if HAVE_INSPECTOR
-     env->inspector_agent()->FatalException(error, message);
- #endif
--    exit(exit_code);
-+    //exit(exit_code);
-   }
- }
- 
-@@ -3749,7 +3749,7 @@ void LoadEnvironment(Environment* env) {
-   Local<Value> f_value = ExecuteString(env, MainSource(env), script_name);
-   if (try_catch.HasCaught())  {
-     ReportException(env, try_catch);
--    exit(10);
-+    //exit(10);
-   }
-   // The bootstrap_node.js file returns a function 'f'
-   CHECK(f_value->IsFunction());
-@@ -4003,7 +4003,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
-   }
- 
-   fprintf(stderr, "%s: %s is not allowed in NODE_OPTIONS\n", exe, arg);
--  exit(9);
-+  //exit(9);
- }
- 
- 
-@@ -4059,10 +4059,10 @@ static void ParseArgs(int* argc,
-       // Done, consumed by DebugOptions::ParseOption().
-     } else if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
-       printf("%s\n", NODE_VERSION);
--      exit(0);
-+      //exit(0);
-     } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
-       PrintHelp();
--      exit(0);
-+      //exit(0);
-     } else if (strcmp(arg, "--eval") == 0 ||
-                strcmp(arg, "-e") == 0 ||
-                strcmp(arg, "--print") == 0 ||
-@@ -4077,7 +4077,7 @@ static void ParseArgs(int* argc,
-         eval_string = argv[index + 1];
-         if (eval_string == nullptr) {
-           fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--          exit(9);
-+          //exit(9);
-         }
-       } else if ((index + 1 < nargs) &&
-                  argv[index + 1] != nullptr &&
-@@ -4094,7 +4094,7 @@ static void ParseArgs(int* argc,
-       const char* module = argv[index + 1];
-       if (module == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       preload_modules.push_back(module);
-@@ -4124,7 +4124,7 @@ static void ParseArgs(int* argc,
-       const char* categories = argv[index + 1];
-       if (categories == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       trace_enabled_categories = categories;
-@@ -4144,11 +4144,11 @@ static void ParseArgs(int* argc,
-       if (!config_experimental_modules) {
-         fprintf(stderr, "%s: %s requires --experimental-modules be enabled\n",
-             argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       if (module == nullptr) {
-         fprintf(stderr, "%s: %s requires an argument\n", argv[0], arg);
--        exit(9);
-+        //exit(9);
-       }
-       args_consumed += 1;
-       config_userland_loader = module;
-@@ -4223,14 +4223,14 @@ static void ParseArgs(int* argc,
-             "%s: either --use-openssl-ca or --use-bundled-ca can be used, "
-             "not both\n",
-             argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- #endif
- 
-   if (eval_string != nullptr && syntax_check_only) {
-     fprintf(stderr,
-             "%s: either --check or --eval can be used, not both\n", argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- 
-   // Copy remaining arguments.
-@@ -4239,7 +4239,7 @@ static void ParseArgs(int* argc,
-   if (is_env && args_left) {
-     fprintf(stderr, "%s: %s is not supported in NODE_OPTIONS\n",
-             argv[0], argv[index]);
--    exit(9);
-+    //exit(9);
-   }
- 
-   memcpy(new_argv + new_argc, argv + index, args_left * sizeof(*argv));
-@@ -4540,7 +4540,7 @@ void ProcessArgv(int* argc,
-   v8_argv = nullptr;
- 
-   if (v8_argc > 1) {
--    exit(9);
-+    //exit(9);
-   }
- }
- 
-@@ -4633,7 +4633,7 @@ void Init(int* argc,
-             "%s: could not initialize ICU "
-             "(check NODE_ICU_DATA or --icu-data-dir parameters)\n",
-             argv[0]);
--    exit(9);
-+    //exit(9);
-   }
- #endif
- 
-@@ -4669,13 +4669,15 @@ static uv_key_t thread_local_env;
- 
- void AtExit(void (*cb)(void* arg), void* arg) {
-   auto env = static_cast<Environment*>(uv_key_get(&thread_local_env));
--  AtExit(env, cb, arg);
-+  if (env != nullptr)
-+    AtExit(env, cb, arg);
- }
- 
- 
- void AtExit(Environment* env, void (*cb)(void* arg), void* arg) {
-   CHECK_NE(env, nullptr);
--  env->AtExit(cb, arg);
-+  if (env != nullptr)
-+    env->AtExit(cb, arg);
- }
- 
- 
-@@ -4945,3 +4947,5 @@ void InitEmptyBindings() {}
- 
- NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, InitEmptyBindings)
- #endif  // !HAVE_INSPECTOR
-+
-+#include "../jscript-inl.h"
-diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 7c8504aaaf..f36c8f15dd 100644
---- a/src/src/node_version.h
-+++ b/src/src/node_version.h
-@@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 8
- #define NODE_MINOR_VERSION 11
- #define NODE_PATCH_VERSION 3
-+#define NODE_BUILD_VERSION 3
- 
- #define NODE_VERSION_IS_LTS 1
- #define NODE_VERSION_LTS_CODENAME "Carbon"
-diff --git a/src/src/node_win32_perfctr_provider.cc b/src/src/node_win32_perfctr_provider.cc
-index aac0203d71..6413e5d23b 100644
---- a/src/src/node_win32_perfctr_provider.cc
-+++ b/src/src/node_win32_perfctr_provider.cc
-@@ -24,6 +24,7 @@
- #include "node_win32_perfctr_provider.h"
- 
- #include <perflib.h>
-+#include <atomic>
- 
- #include "node_perfctr_provider.h"
- 
-@@ -121,7 +122,12 @@ namespace node {
- 
- EXTERN_C DECLSPEC_SELECTANY HANDLE NodeCounterProvider = nullptr;
- 
-+std::atomic<int> _init_count{0};
-+
- void InitPerfCountersWin32() {
-+  if (_init_count++ != 0)
-+    return;
-+
-   ULONG status;
-   PERF_PROVIDER_CONTEXT providerContext;
- 
-@@ -200,6 +206,9 @@ void InitPerfCountersWin32() {
- 
- 
- void TermPerfCountersWin32() {
-+  if (--_init_count != 0)
-+    return;
-+
-   if (NodeCounterProvider != nullptr &&
-     perfctr_stopProvider != nullptr) {
-     perfctr_stopProvider(NodeCounterProvider);
-diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be7..1f6913a337 100644
---- a/src/src/res/node.rc
-+++ b/src/src/res/node.rc
-@@ -29,8 +29,8 @@
- 
- // Version resource
- VS_VERSION_INFO VERSIONINFO
-- FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
-- PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,0
-+ FILEVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
-+ PRODUCTVERSION NODE_MAJOR_VERSION,NODE_MINOR_VERSION,NODE_PATCH_VERSION,NODE_BUILD_VERSION
-  FILEFLAGSMASK 0x3fL
- #ifdef _DEBUG
-  FILEFLAGS VS_FF_DEBUG
-@@ -50,14 +50,14 @@ BEGIN
-     BEGIN
-         BLOCK "040904b0"
-         BEGIN
--            VALUE "CompanyName", "Node.js"
--            VALUE "ProductName", "Node.js"
--            VALUE "FileDescription", "Node.js: Server-side JavaScript"
-+            VALUE "CompanyName", "BIS"
-+            VALUE "ProductName", "jscript (from Node.js)"
-+            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
-             VALUE "FileVersion", NODE_EXE_VERSION
-             VALUE "ProductVersion", NODE_EXE_VERSION
--            VALUE "OriginalFilename", "node.exe"
--            VALUE "InternalName", "node"
--            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
-+            VALUE "OriginalFilename", "jscript.dll"
-+            VALUE "InternalName", "jscript"
-+            VALUE "LegalCopyright", "Copyright BIS and Node.js contributors. MIT license."
-         END
-     END
-     BLOCK "VarFileInfo"

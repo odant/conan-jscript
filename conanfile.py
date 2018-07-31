@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "8.11.3.3"
+    version = "10.7.0.5"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -34,8 +34,17 @@ class JScriptConan(ConanFile):
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
+    #
+    _openssl_version = "1.1.0g"
 
     def configure(self):
+        if self.settings.os == "Windows":
+            # Only MSVC 15
+            if self.settings.compiler.get_safe("version") < "15":
+                raise ConanException("This package is only compatible with Visual Studio 15 2017")
+            # Disable Windows XP support
+            if not self.settings.compiler.get_safe("toolset") in [None, "'v141'"]:
+                raise ConanException("This package is compatible with compiler toolset None or v141")
         # Only C++11
         if self.settings.compiler.get_safe("libcxx") == "libstdc++":
             raise ConanException("This package is only compatible with libstdc++11")
@@ -43,14 +52,19 @@ class JScriptConan(ConanFile):
         if self.settings.os != "Windows":
             del self.options.dll_sign
 
+    def requirements(self):
+        self.requires("openssl/%s@%s/stable" % (self._openssl_version, self.user))
+        
     def build_requirements(self):
-#        self.build_requires("ninja_installer/[~=1.8.2]@bincrafters/stable")
+        self.build_requires("ninja_installer/1.8.2@bincrafters/stable")
+        self.build_requires("nasm/2.13.01@conan/stable")
         if get_safe(self.options, "dll_sign"):
             self.build_requires("windows_signtool/[~=1.0]@%s/stable" % self.user)
 
     def source(self):
         tools.patch(patch_file="build.patch")
-        tools.patch(patch_file="source.patch")
+        #tools.patch(patch_file="source.patch")
+        pass
 
     def build(self):
         output_name = "jscript"
@@ -63,7 +77,7 @@ class JScriptConan(ConanFile):
                 output_name += "d"
         #
         flags = [
-            #"--ninja",
+            "--ninja",
             "--shared",
             "--dest-os=%s" % {
                                 "Windows": "win",
@@ -76,6 +90,20 @@ class JScriptConan(ConanFile):
                             }.get(str(self.settings.arch)),
             "--node_core_target_name=%s" % output_name
         ]
+        openssl_includes = self.deps_cpp_info["openssl"].include_paths[0].replace("\\", "/")
+        openssl_lib_path = self.deps_cpp_info["openssl"].lib_paths[0].replace("\\", "/")
+        openssl_libs = []
+        for l in ["libcrypto", "libssl"]:
+            if self.settings.os == "Windows":
+                l = os.path.join(openssl_lib_path, l).replace("\\", "/") + ".lib"
+            else:
+                l = os.path.join(openssl_lib_path, l) + ".so"
+            openssl_libs.append(l)
+        flags.extend([
+            "--shared-openssl",
+            "--shared-openssl-includes=%s" % openssl_includes,
+            "--shared-openssl-libname=%s" % ",".join(openssl_libs)
+        ])
         #
         if self.settings.build_type == "Debug":
             flags.append("--debug")
@@ -83,26 +111,12 @@ class JScriptConan(ConanFile):
         env = {}
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
-            env["GYP_MSVS_VERSION"] = {
-                                        "14": "2015",
-                                        "15": "2017"
-                                    }.get(str(self.settings.compiler.version))
-            env["PLATFORM_TOOLSET"] = {
-                                        "14": "v140",
-                                        "15": "v141"
-                                    }.get(str(self.settings.compiler.version))
+            env["GYP_MSVS_VERSION"] = "2017"
+            env["PLATFORM_TOOLSET"] = "v141"
         self.run("python --version")
         with tools.chdir("src"), tools.environment_append(env):
             self.run("python configure %s" % " ".join(flags))
-            if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
-                build_type = str(self.settings.build_type)
-                arch = {
-                        "x86": "Win32",
-                        "x86_64": "x64"
-                    }.get(str(self.settings.arch))
-                self.run("msbuild node.sln /m /t:Build /p:Configuration=%s /p:Platform=%s" % (build_type, arch))
-            else:
-                self.run("make -j %s" % tools.cpu_count())
+            self.run("ninja -C out/%s" % str(self.settings.build_type))
 
     def package(self):
         # Headers
@@ -113,13 +127,13 @@ class JScriptConan(ConanFile):
         src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
         self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
         # Libraries
-        self.copy("*jscript.lib", dst="lib", keep_path=False)
+        self.copy("*jscript.dll.lib", dst="lib", keep_path=False)
         self.copy("*jscript.dll", dst="bin", keep_path=False)
-        self.copy("*jscriptd.lib", dst="lib", keep_path=False)
+        self.copy("*jscriptd.dll.lib", dst="lib", keep_path=False)
         self.copy("*jscriptd.dll", dst="bin", keep_path=False)
-        self.copy("*jscript64.lib", dst="lib", keep_path=False)
+        self.copy("*jscript64.dll.lib", dst="lib", keep_path=False)
         self.copy("*jscript64.dll", dst="bin", keep_path=False)
-        self.copy("*jscript64d.lib", dst="lib", keep_path=False)
+        self.copy("*jscript64d.dll.lib", dst="lib", keep_path=False)
         self.copy("*jscript64d.dll", dst="bin", keep_path=False)
         if self.settings.os == "Linux":
             src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib.target")
@@ -134,10 +148,10 @@ class JScriptConan(ConanFile):
                     symlink = fname[0:fname.rfind(extension) + len(extension)]
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
         # PDB
-        self.copy("*jscript.pdb", dst="bin", keep_path=False)
-        self.copy("*jscriptd.pdb", dst="bin", keep_path=False)
-        self.copy("*jscript64.pdb", dst="bin", keep_path=False)
-        self.copy("*jscript64d.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript.dll.pdb", dst="bin", keep_path=False)
+        self.copy("*jscriptd.dll.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript64.dll.pdb", dst="bin", keep_path=False)
+        self.copy("*jscript64d.dll.pdb", dst="bin", keep_path=False)
         # Sign DLL
         if get_safe(self.options, "dll_sign"):
             import windows_signtool
