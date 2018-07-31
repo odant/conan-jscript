@@ -97,13 +97,16 @@ class JScriptConan(ConanFile):
             if self.settings.os == "Windows":
                 l = os.path.join(openssl_lib_path, l).replace("\\", "/") + ".lib"
             else:
-                l = os.path.join(openssl_lib_path, l) + ".so"
+                l = os.path.join(openssl_lib_path, l) + ".so.1.1"
             openssl_libs.append(l)
         flags.extend([
             "--shared-openssl",
             "--shared-openssl-includes=%s" % openssl_includes,
-            "--shared-openssl-libname=%s" % ",".join(openssl_libs)
         ])
+        if self.settings.os == "Windows":
+            flags.append("--shared-openssl-libname=%s" % ",".join(openssl_libs))
+        else:
+            flags.append("--shared-openssl-libpath=%s" % openssl_lib_path)
         #
         if self.settings.build_type == "Debug":
             flags.append("--debug")
@@ -136,8 +139,8 @@ class JScriptConan(ConanFile):
         self.copy("*jscript64d.dll.lib", dst="lib", keep_path=False)
         self.copy("*jscript64d.dll", dst="bin", keep_path=False)
         if self.settings.os == "Linux":
-            src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib.target")
-            self.copy("*jscript.so.*", src=src_lib_folder, dst="lib", keep_path=False)
+            src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib")
+            self.copy("libjscript.so.*", src=src_lib_folder, dst="lib", keep_path=False, excludes="*.TOC")
             # Symlink
             lib_folder = os.path.join(self.package_folder, "lib")
             if not os.path.isdir(lib_folder):
