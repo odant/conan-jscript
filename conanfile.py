@@ -30,7 +30,7 @@ class JScriptConan(ConanFile):
         "dll_sign": [False, True]
     }
     default_options = "dll_sign=True"
-    exports_sources = "src/*", "build.patch", "source.patch"
+    exports_sources = "src/*", "build.patch", "source.patch", "FindJScript.cmake"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -122,6 +122,8 @@ class JScriptConan(ConanFile):
             self.run("ninja -C out/%s" % str(self.settings.build_type))
 
     def package(self):
+        # CMake script
+        self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
         # Headers
         self.copy("*jscript.h", dst="include", keep_path=False)
         self.copy("*node.h", dst="include", keep_path=False)

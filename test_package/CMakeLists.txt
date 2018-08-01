@@ -31,3 +31,20 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND test_jscript_CONAN_PKG
 )
+
+
+# Normal imported targets
+find_package(JScript REQUIRED)
+
+add_executable(test_jscript test_jscript.cpp)
+target_link_libraries(test_jscript JScript::JScript)
+set_target_properties(test_jscript
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_jscript
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_jscript
+)
