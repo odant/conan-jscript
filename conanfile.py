@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "10.7.0.5"
+    version = "10.7.0.7"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -35,7 +35,7 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.0g"
+    _openssl_version = "1.1.0h"
 
     def configure(self):
         if self.settings.os == "Windows":

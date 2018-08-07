@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 
 #ifdef _WIN32
 # ifndef USE_JSCRIPT
@@ -22,9 +23,17 @@ namespace jscript {
 
 
 typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
+enum JSLogType {
+    LOG_TYPE,
+    WARN_TYPE, 
+    ERROR_TYPE,
+    
+    DEFAULT_TYPE = LOG_TYPE
+};
+typedef std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>  JSLogCallback;
 
 struct JSCallbackInfo {
-    const char* name     = nullptr;
+    const char*    name     = nullptr;
     JSCallback     function = nullptr;
     void*          external = nullptr;
 };
@@ -34,6 +43,8 @@ class JSInstance { };
 JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
+
+JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb);
 
 JSCRIPT_EXTERN void Uninitilize();
 
@@ -61,4 +72,3 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
 #ifdef USE_JSCRIPT
 namespace jscript = node::jscript;
 #endif
-

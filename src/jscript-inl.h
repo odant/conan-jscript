@@ -95,7 +95,7 @@ public:
 
     void close_loop() {
         if (event_loop_init_) {
-
+            
             while (uv_loop_close(event_loop()) == UV_EBUSY) {
                 uv_walk(event_loop(),
                     []
@@ -139,7 +139,7 @@ public:
 private:
     uv_loop_t event_loop_;
     bool      event_loop_init_;
-
+    
     int exit_code_;
     const int argc_;
     const char** argv_;
@@ -176,6 +176,7 @@ public:
     }
 
     void StartNodeInstance();
+    void SetLogCallback(JSLogCallback& cb);
 
     Mutex        _isolate_mutex;
     Isolate*     _isolate{ nullptr };
@@ -190,6 +191,10 @@ public:
         _state = STOPPING;
     }
 
+    JSLogCallback& logCallback() {
+        return _logCallback;
+    }
+
 private:
 
     enum state_t {
@@ -199,8 +204,162 @@ private:
         STOP
     };
 
+
+    void overrideConsole(Environment* env);
+    void overrideConsole(Environment* env, const char* name, const JSLogType type);
+
     std::atomic<state_t> _state{ CREATE };
+
+    JSLogCallback _logCallback;
 };
+
+void JSInstanceImpl::SetLogCallback(JSLogCallback& cb) {
+    _logCallback = std::move(cb);
+}
+
+void JSInstanceImpl::overrideConsole(Environment* env) {
+    overrideConsole(env, u8"log", JSLogType::LOG_TYPE);
+    overrideConsole(env, u8"warn", JSLogType::WARN_TYPE);
+    overrideConsole(env, u8"error", JSLogType::ERROR_TYPE);
+}
+
+void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const JSLogType type) {
+    HandleScope handle_scope(env->isolate());
+    TryCatch try_catch(env->isolate());
+    try_catch.SetVerbose(true);
+    Local<Object> global = env->context()->Global();
+    if (global.IsEmpty())
+        return;
+    v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(env->isolate(), u8"odantFramework");
+    v8::Local<v8::Value> odantFramework = global->Get(env->context(), odantFrameworkName).ToLocalChecked();
+    if (odantFramework.IsEmpty() || !odantFramework->IsObject())
+        return;
+    v8::Local<v8::Object> odantFrameworkObj = odantFramework.As<v8::Object>();
+    if (odantFrameworkObj.IsEmpty())
+        return;
+    v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(env->isolate(), u8"console");
+    if (consoleName.IsEmpty())
+        return;
+    v8::Local<v8::Value> console = odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
+    if (console.IsEmpty() || !console->IsObject()) {
+        v8::Local<v8::Object> consoleObj = v8::Object::New(env->isolate());
+        if (consoleObj.IsEmpty())
+            return;
+        if (!odantFrameworkObj->Set(consoleName, consoleObj))
+            return;
+
+    }
+    console = odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
+    if (console.IsEmpty() || !console->IsObject())
+        return;
+    
+    v8::Local<v8::Object> consoleObj = console.As<v8::Object>();
+    if (consoleObj.IsEmpty())
+        return;
+
+    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(env->isolate(), name);
+    if (functionName.IsEmpty())
+        return;
+    
+    v8::Local<v8::Value> function = consoleObj->Get(env->context(), functionName).ToLocalChecked();
+    if (function.IsEmpty() || !function->IsFunction()) {
+        Local<Object> global = env->context()->Global();
+        if (global.IsEmpty())
+            return;
+
+        v8::Local<v8::Value> globalConsole = global->Get(env->context(), consoleName).ToLocalChecked();
+        if (globalConsole.IsEmpty() || !globalConsole->IsObject())
+            return;
+
+        v8::Local<v8::Object> globalConsoleObj = globalConsole.As<v8::Object>();
+        if (globalConsoleObj.IsEmpty())
+            return;
+
+        v8::Local<v8::Value> globalFunctionValue = globalConsoleObj->Get(env->context(), functionName).ToLocalChecked();
+        if (globalFunctionValue.IsEmpty() || !globalFunctionValue->IsFunction())
+            return;
+
+        v8::Local<v8::Function> globalFunction = globalFunctionValue.As<v8::Function>();
+        if (globalFunction.IsEmpty())
+            return;
+
+        v8::Local<v8::External> instanceExt = v8::External::New(env->isolate(), this);
+        if (instanceExt.IsEmpty())
+            return;
+
+        v8::Local<v8::External> typeExt = v8::External::New(env->isolate(), reinterpret_cast<void*>(static_cast<std::size_t>(type)));
+        if (instanceExt.IsEmpty())
+            return;
+
+        v8::Local<v8::Array> array = v8::Array::New(env->isolate(), 3);
+        if (array.IsEmpty())
+            return;
+
+        array->Set(0, globalFunction);
+        array->Set(1, instanceExt);
+        array->Set(2, typeExt);
+
+        v8::Local<v8::Function> overrideFunction = v8::Function::New(env->isolate(), 
+            []
+            (const v8::FunctionCallbackInfo<v8::Value>& args) {
+                v8::Isolate* isolate = args.GetIsolate();
+                HandleScope handle_scope(isolate);
+
+                v8::Local<v8::Value> data = args.Data();
+                if (data.IsEmpty() || !data->IsArray())
+                    return;
+
+                v8::Local<v8::Array> array = data.As<v8::Array>();
+                if (array.IsEmpty())
+                    return;
+
+                if (array->Length() < 3)
+                    return;
+
+                v8::Local<v8::Function> globalLogFunc = array->Get(0).As<v8::Function>();
+                if (globalLogFunc.IsEmpty())
+                    return;
+
+                v8::TryCatch trycatch(isolate);
+                trycatch.SetVerbose(true);
+
+                std::unique_ptr<v8::Local<v8::Value>[]> info(
+                    new v8::Local<v8::Value>[args.Length()]);
+
+                for (size_t i = 0; i < args.Length(); ++i) {
+                    info[i] = args[i];
+                }
+
+                globalLogFunc->Call(v8::Null(isolate), args.Length(), info.get());
+
+                v8::Local<v8::External> instanceExt = array->Get(1).As<v8::External>();
+                if (instanceExt.IsEmpty())
+                    return;
+
+                JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+                if (instance == nullptr)
+                    return;
+
+                v8::Local<v8::External> typeExt = array->Get(2).As<v8::External>();
+                if (typeExt.IsEmpty())
+                    return;
+
+                JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+
+                auto& logCallback = instance->logCallback();
+                if (logCallback)
+                    logCallback(args, type);
+
+            },
+            array
+        );
+
+        if (!consoleObj->Set(functionName, overrideFunction))
+            return;
+        if (!globalConsoleObj->Set(functionName, overrideFunction))
+            return;
+    }
+}
 
 
 void JSInstanceImpl::StartNodeInstance() {
@@ -249,8 +408,8 @@ void JSInstanceImpl::StartNodeInstance() {
         TRACE_EVENT_METADATA1("__metadata", "thread_name", "name",
             "JavaScriptMainThread");
 
-        // СЃРѕР·РґР°РµС‚СЃСЏ Р°СЃРёРЅС…СЂРѕРЅРЅС‹С… С…РµРЅРґР» РѕРґРёРЅ РЅР° РІСЃРµ СЌРєР·РµРјРїР»В¤СЂС‹ Environment РёР·-Р·Р° РѕРґРёРЅР°РєРѕРІРѕРіРѕ threadId == 0
-        // РµРіРѕ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅР°В¤ РѕСЃС‚Р°РЅРѕРІРєР° РїСЂРёРІРѕРґРёС‚ Рє РѕС€РёР±РєРµ, Environment СЃС‡РёС‚Р°РµС‚ С‡С‚Рѕ СЌС‚Рѕ РґРѕС‡РµСЂРЅРёР№ Worker
+        // Создается асинхронных хендл один на все экземпляры Environment из-за одинакового threadId == 0
+        // его принудительная остановка приводит к ошибке, Environment считает что это дочерний Worker
 
         //const char* path = argc() > 1 ? argv()[1] : nullptr;
         //StartInspector(&env, path, debug_options);
@@ -267,6 +426,7 @@ void JSInstanceImpl::StartNodeInstance() {
             Environment::AsyncCallbackScope callback_scope(&env);
             env.async_hooks()->push_async_ids(1, 0);
             LoadEnvironment(&env);
+            this->overrideConsole(&env);
             env.async_hooks()->pop_async_id(1);
         }
 
@@ -299,7 +459,7 @@ void JSInstanceImpl::StartNodeInstance() {
 
         const int exit_code = EmitExit(&env);
 
-        // РћС‚РєР»СЋС‡РµРЅРѕ СЃРёРЅС…СЂРѕРЅРЅРѕ СЃ StartInspector
+        // Отключено синхронно с StartInspector
         //WaitForInspectorDisconnect(&env);
 
         env.set_can_call_into_js(false);
@@ -467,10 +627,19 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     Initialize(argc, argv.data());
 }
 
+JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
+    if (!is_initilized)
+        return;
+    if (instance == nullptr)
+        return;
+    JSInstanceImpl* instanceImpl = static_cast<JSInstanceImpl*>(instance);
+    instanceImpl->SetLogCallback(cb);
+}
+
 JSCRIPT_EXTERN void Uninitilize() {
     if (!is_initilized.exchange(false))
         return;
-
+    
     ExecutorCounter::global().waitAllStop();
 
     v8_platform.StopTracingAgent();
@@ -491,7 +660,7 @@ JSCRIPT_EXTERN void Uninitilize() {
 
 JSCRIPT_EXTERN int RunInstance() {
     ExecutorCounter::ScopeExecute scopeExecute;
-
+    
     JSInstanceImpl::Ptr instance = JSInstanceImpl::create(argc,
                                                           const_cast<const char**>(argv),
                                                           exec_argc,
@@ -746,7 +915,7 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
 
     uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
     int sendResult = uv_async_send(&info->async_handle);
-
+    
     if (sendResult == 0) {
         info.release();
         return JS_SUCCESS;
@@ -757,4 +926,3 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
 
 }   // namespace jscript
 }   // namsepace node
-
