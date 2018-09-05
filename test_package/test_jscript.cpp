@@ -2,7 +2,7 @@
 // Dmitriy Vetutnev, Odant, 2018
 
 
-#include <jscript.h>
+#include <oda/jscript.h>
 
 
 #include <iostream>

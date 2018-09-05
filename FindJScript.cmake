@@ -4,7 +4,7 @@
 
 # Find include path
 find_path(JScript_INCLUDE_DIR
-    NAMES jscript.h
+    NAMES oda/jscript.h
     PATHS ${CONAN_INCLUDE_DIRS_JSCRIPT}
     NO_DEFAULT_PATH
 )

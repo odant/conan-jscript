@@ -181,7 +181,7 @@ index 627f4958e0..c0ebec7f9b 100644
  NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
-+#include "../jscript-inl.h"
++#include "../oda/jscript-inl.h"
 \ No newline at end of file
 diff --git a/src/src/node_version.h b/src/src/node_version.h
 index 8370b4c86f..166530ac51 100644

@@ -125,7 +125,7 @@ class JScriptConan(ConanFile):
         # CMake script
         self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
         # Headers
-        self.copy("*jscript.h", dst="include", keep_path=False)
+        self.copy("*oda/jscript.h", dst="include/oda", keep_path=False)
         self.copy("*node.h", dst="include", keep_path=False)
         self.copy("*node_version.h", dst="include", keep_path=False)
         #self.copy("*node_internals.h", dst="include", keep_path=False)
