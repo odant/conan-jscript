@@ -682,6 +682,7 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
         () {
             ExecutorCounter::ScopeExecute scopeExecute;
             instance->StartNodeInstance();
+			instance->_thread.detach();
         }
     );
 
