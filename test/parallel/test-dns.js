@@ -26,8 +26,6 @@ const assert = require('assert');
 const dns = require('dns');
 const dnsPromises = dns.promises;
 
-common.crashOnUnhandledRejection();
-
 const existing = dns.getServers();
 assert(existing.length > 0);
 
@@ -137,21 +135,38 @@ assert.deepStrictEqual(dns.getServers(), portsExpected);
 dns.setServers([]);
 assert.deepStrictEqual(dns.getServers(), []);
 
-common.expectsError(() => {
-  dns.resolve('example.com', [], common.mustNotCall());
-}, {
-  code: 'ERR_INVALID_ARG_TYPE',
-  type: TypeError,
-  message: 'The "rrtype" argument must be of type string. ' +
-           'Received type object'
-});
+{
+  const errObj = {
+    code: 'ERR_INVALID_ARG_TYPE',
+    type: TypeError,
+    message: 'The "rrtype" argument must be of type string. ' +
+             'Received type object'
+  };
+  common.expectsError(() => {
+    dns.resolve('example.com', [], common.mustNotCall());
+  }, errObj);
+  common.expectsError(() => {
+    dnsPromises.resolve('example.com', []);
+  }, errObj);
+}
+{
+  const errObj = {
+    code: 'ERR_INVALID_ARG_TYPE',
+    type: TypeError,
+    message: 'The "name" argument must be of type string. ' +
+             'Received type undefined'
+  };
+  common.expectsError(() => {
+    dnsPromises.resolve();
+  }, errObj);
+}
 
 // dns.lookup should accept only falsey and string values
 {
   const errorReg = common.expectsError({
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: /^The "hostname" argument must be one of type string or falsy/
+    message: /^The "hostname" argument must be of type string\. Received type .*/
   }, 10);
 
   assert.throws(() => dns.lookup({}, common.mustNotCall()), errorReg);
@@ -246,11 +261,12 @@ dns.lookup('', {
   const err = {
     code: 'ERR_MISSING_ARGS',
     type: TypeError,
-    message: 'The "host", "port", and "callback" arguments must be specified'
+    message: 'The "hostname", "port", and "callback" arguments must be ' +
+    'specified'
   };
 
   common.expectsError(() => dns.lookupService('0.0.0.0'), err);
-  err.message = 'The "host" and "port" arguments must be specified';
+  err.message = 'The "hostname" and "port" arguments must be specified';
   common.expectsError(() => dnsPromises.lookupService('0.0.0.0'), err);
 }
 
@@ -259,7 +275,7 @@ dns.lookup('', {
   const err = {
     code: 'ERR_INVALID_OPT_VALUE',
     type: TypeError,
-    message: `The value "${invalidHost}" is invalid for option "host"`
+    message: `The value "${invalidHost}" is invalid for option "hostname"`
   };
 
   common.expectsError(() => {
@@ -275,7 +291,7 @@ const portErr = (port) => {
   const err = {
     code: 'ERR_SOCKET_BAD_PORT',
     message:
-      `Port should be > 0 and < 65536. Received ${port}.`,
+      `Port should be >= 0 and < 65536. Received ${port}.`,
     type: RangeError
   };
 
@@ -298,3 +314,13 @@ common.expectsError(() => {
   code: 'ERR_INVALID_CALLBACK',
   type: TypeError
 });
+
+{
+  dns.resolveMx('foo.onion', function(err) {
+    assert.deepStrictEqual(err.errno, 'ENOTFOUND');
+    assert.deepStrictEqual(err.code, 'ENOTFOUND');
+    assert.deepStrictEqual(err.syscall, 'queryMx');
+    assert.deepStrictEqual(err.hostname, 'foo.onion');
+    assert.deepStrictEqual(err.message, 'queryMx ENOTFOUND foo.onion');
+  });
+}

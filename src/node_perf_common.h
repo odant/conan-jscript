@@ -1,7 +1,10 @@
 #ifndef SRC_NODE_PERF_COMMON_H_
 #define SRC_NODE_PERF_COMMON_H_
 
+#if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
+
 #include "node.h"
+#include "uv.h"
 #include "v8.h"
 
 #include <algorithm>
@@ -15,7 +18,6 @@ namespace performance {
 
 // These occur before the environment is created. Cache them
 // here and add them to the milestones when the env is init'd.
-extern uint64_t performance_node_start;
 extern uint64_t performance_v8_start;
 
 #define NODE_PERFORMANCE_MILESTONES(V)                                        \
@@ -73,6 +75,8 @@ class performance_state {
   AliasedBuffer<double, v8::Float64Array> milestones;
   AliasedBuffer<uint32_t, v8::Uint32Array> observers;
 
+  uint64_t performance_last_gc_start_mark = 0;
+
   void Mark(enum PerformanceMilestone milestone,
             uint64_t ts = PERFORMANCE_NOW());
 
@@ -86,5 +90,7 @@ class performance_state {
 
 }  // namespace performance
 }  // namespace node
+
+#endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #endif  // SRC_NODE_PERF_COMMON_H_

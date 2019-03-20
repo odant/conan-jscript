@@ -40,7 +40,7 @@ class TestReader extends R {
     n = Math.max(n, 0);
     const toRead = Math.min(n, max);
     if (toRead === 0) {
-      // simulate the read buffer filling up with some more bytes some time
+      // Simulate the read buffer filling up with some more bytes some time
       // in the future.
       setTimeout(() => {
         this._pos = 0;
@@ -151,7 +151,7 @@ class TestWriter extends EE {
   // Verify unpipe
   const r = new TestReader(5);
 
-  // unpipe after 3 writes, then write to another stream instead.
+  // Unpipe after 3 writes, then write to another stream instead.
   let expect = [ 'xxxxx',
                  'xxxxx',
                  'xxxxx',
@@ -227,7 +227,7 @@ class TestWriter extends EE {
   // Verify multi-unpipe
   const r = new TestReader(5);
 
-  // unpipe after 3 writes, then write to another stream instead.
+  // Unpipe after 3 writes, then write to another stream instead.
   let expect = [ 'xxxxx',
                  'xxxxx',
                  'xxxxx',

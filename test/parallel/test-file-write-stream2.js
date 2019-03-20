@@ -56,13 +56,13 @@ process.on('exit', function() {
 function removeTestFile() {
   try {
     fs.unlinkSync(filepath);
-  } catch (e) {}
+  } catch {}
 }
 
 
 tmpdir.refresh();
 
-// drain at 0, return false at 10.
+// Drain at 0, return false at 10.
 const file = fs.createWriteStream(filepath, {
   highWaterMark: 11
 });

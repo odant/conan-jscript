@@ -1,7 +1,9 @@
 'use strict';
 const common = require('../common');
 
-const expectedValueWarning = ['Symbol()', common.noWarnCode];
+common.disableCrashOnUnhandledRejection();
+
+const expectedValueWarning = ['Symbol()'];
 const expectedDeprecationWarning = ['Unhandled promise rejections are ' +
                                    'deprecated. In the future, promise ' +
                                    'rejections that are not handled will ' +
@@ -11,13 +13,13 @@ const expectedPromiseWarning = ['Unhandled promise rejection. ' +
   'This error originated either by throwing ' +
   'inside of an async function without a catch ' +
   'block, or by rejecting a promise which was ' +
-  'not handled with .catch(). (rejection id: 1)', common.noWarnCode];
+  'not handled with .catch(). (rejection id: 1)'];
 
 common.expectWarning({
   DeprecationWarning: expectedDeprecationWarning,
   UnhandledPromiseRejectionWarning: [
-    expectedPromiseWarning,
-    expectedValueWarning
+    expectedValueWarning,
+    expectedPromiseWarning
   ],
 });
 

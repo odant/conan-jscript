@@ -1,4 +1,5 @@
-#include "node_internals.h"
+#include "env-inl.h"
+#include "node.h"
 
 using v8::Context;
 using v8::FunctionCallbackInfo;
@@ -51,9 +52,19 @@ static void IsAnyArrayBuffer(const FunctionCallbackInfo<Value>& args) {
     args[0]->IsArrayBuffer() || args[0]->IsSharedArrayBuffer());
 }
 
+static void IsBoxedPrimitive(const FunctionCallbackInfo<Value>& args) {
+  args.GetReturnValue().Set(
+    args[0]->IsNumberObject() ||
+    args[0]->IsStringObject() ||
+    args[0]->IsBooleanObject() ||
+    args[0]->IsBigIntObject() ||
+    args[0]->IsSymbolObject());
+}
+
 void InitializeTypes(Local<Object> target,
                      Local<Value> unused,
-                     Local<Context> context) {
+                     Local<Context> context,
+                     void* priv) {
   Environment* env = Environment::GetCurrent(context);
 
 #define V(type) env->SetMethodNoSideEffect(target,     \
@@ -63,6 +74,7 @@ void InitializeTypes(Local<Object> target,
 #undef V
 
   env->SetMethodNoSideEffect(target, "isAnyArrayBuffer", IsAnyArrayBuffer);
+  env->SetMethodNoSideEffect(target, "isBoxedPrimitive", IsBoxedPrimitive);
 }
 
 }  // anonymous namespace

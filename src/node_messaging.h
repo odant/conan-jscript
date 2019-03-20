@@ -43,10 +43,13 @@ class Message : public MemoryRetainer {
 
   // Internal method of Message that is called when a new SharedArrayBuffer
   // object is encountered in the incoming value's structure.
-  void AddSharedArrayBuffer(SharedArrayBufferMetadataReference ref);
+  void AddSharedArrayBuffer(const SharedArrayBufferMetadataReference& ref);
   // Internal method of Message that is called once serialization finishes
   // and that transfers ownership of `data` to this message.
   void AddMessagePort(std::unique_ptr<MessagePortData>&& data);
+  // Internal method of Message that is called when a new WebAssembly.Module
+  // object is encountered in the incoming value's structure.
+  uint32_t AddWASMModule(v8::WasmCompiledModule::TransferrableModule&& mod);
 
   // The MessagePorts that will be transferred, as recorded by Serialize().
   // Used for warning user about posting the target MessagePort to itself,
@@ -57,11 +60,15 @@ class Message : public MemoryRetainer {
 
   void MemoryInfo(MemoryTracker* tracker) const override;
 
+  SET_MEMORY_INFO_NAME(Message)
+  SET_SELF_SIZE(Message)
+
  private:
   MallocedBuffer<char> main_message_buf_;
   std::vector<MallocedBuffer<char>> array_buffer_contents_;
   std::vector<SharedArrayBufferMetadataReference> shared_array_buffers_;
   std::vector<std::unique_ptr<MessagePortData>> message_ports_;
+  std::vector<v8::WasmCompiledModule::TransferrableModule> wasm_modules_;
 
   friend class MessagePort;
 };
@@ -71,7 +78,7 @@ class Message : public MemoryRetainer {
 class MessagePortData : public MemoryRetainer {
  public:
   explicit MessagePortData(MessagePort* owner);
-  ~MessagePortData();
+  ~MessagePortData() override;
 
   MessagePortData(MessagePortData&& other) = delete;
   MessagePortData& operator=(MessagePortData&& other) = delete;
@@ -97,6 +104,9 @@ class MessagePortData : public MemoryRetainer {
   void Disentangle();
 
   void MemoryInfo(MemoryTracker* tracker) const override;
+
+  SET_MEMORY_INFO_NAME(MessagePortData)
+  SET_SELF_SIZE(MessagePortData)
 
  private:
   // After disentangling this message port, the owner handle (if any)
@@ -128,7 +138,7 @@ class MessagePort : public HandleWrap {
   MessagePort(Environment* env,
               v8::Local<v8::Context> context,
               v8::Local<v8::Object> wrap);
-  ~MessagePort();
+  ~MessagePort() override;
 
   // Create a new message port instance, optionally over an existing
   // `MessagePortData` object.
@@ -142,16 +152,11 @@ class MessagePort : public HandleWrap {
   v8::Maybe<bool> PostMessage(Environment* env,
                               v8::Local<v8::Value> message,
                               v8::Local<v8::Value> transfer);
-  // Deliver a single message into this port's incoming queue.
-  void AddToIncomingQueue(Message&& message);
 
   // Start processing messages on this port as a receiving end.
   void Start();
   // Stop processing messages on this port as a receiving end.
   void Stop();
-  // Stop processing messages on this port as a receiving end,
-  // and stop the event loop that this port is associated with.
-  void StopEventLoop();
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PostMessage(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -183,18 +188,19 @@ class MessagePort : public HandleWrap {
   inline bool IsDetached() const;
 
   void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
     tracker->TrackField("data", data_);
   }
+
+  SET_MEMORY_INFO_NAME(MessagePort)
+  SET_SELF_SIZE(MessagePort)
 
  private:
   void OnClose() override;
   void OnMessage();
   void TriggerAsync();
-  inline uv_async_t* async();
 
   std::unique_ptr<MessagePortData> data_ = nullptr;
-  bool stop_event_loop_ = false;
+  uv_async_t async_;
 
   friend class MessagePortData;
 };

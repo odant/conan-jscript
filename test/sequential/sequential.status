@@ -5,15 +5,12 @@ prefix sequential
 # sample-test                       : PASS,FLAKY
 
 [true] # This section applies to all platforms
-# This test will be flaky until https://github.com/libuv/libuv/pull/1742 lands
-# on Node.js.
-test-fs-readfile-tostring-fail: PASS, FLAKY
+# https://github.com/nodejs/node/issues/22336
+test-gc-http-client: PASS,FLAKY
 
 [$system==win32]
-test-inspector-async-call-stack          : PASS, FLAKY
-test-inspector-async-hook-setup-at-signal:  PASS, FLAKY
-test-inspector-bindings                  : PASS, FLAKY
-test-inspector-debug-end                 : PASS, FLAKY
+# https://github.com/nodejs/node/issues/22327
+test-http2-large-file: PASS, FLAKY
 
 [$system==linux]
 
@@ -24,3 +21,5 @@ test-inspector-debug-end                 : PASS, FLAKY
 [$system==freebsd]
 
 [$system==aix]
+
+[$arch==arm]

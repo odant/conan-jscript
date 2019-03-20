@@ -25,6 +25,7 @@ require('../common');
 const assert = require('assert');
 const fromList = require('_stream_readable')._fromList;
 const BufferList = require('internal/streams/buffer_list');
+const util = require('util');
 
 function bufferListFromArray(arr) {
   const bl = new BufferList();
@@ -41,15 +42,25 @@ function bufferListFromArray(arr) {
                Buffer.from('kuel') ];
   list = bufferListFromArray(list);
 
-  // read more than the first element.
+  assert.strictEqual(
+    util.inspect([ list ], { compact: false }),
+    `[
+  BufferList {
+    head: [Object],
+    tail: [Object],
+    length: 4
+  }
+]`);
+
+  // Read more than the first element.
   let ret = fromList(6, { buffer: list, length: 16 });
   assert.strictEqual(ret.toString(), 'foogba');
 
-  // read exactly the first element.
+  // Read exactly the first element.
   ret = fromList(2, { buffer: list, length: 10 });
   assert.strictEqual(ret.toString(), 'rk');
 
-  // read less than the first element.
+  // Read less than the first element.
   ret = fromList(2, { buffer: list, length: 8 });
   assert.strictEqual(ret.toString(), 'ba');
 
@@ -69,15 +80,15 @@ function bufferListFromArray(arr) {
                'kuel' ];
   list = bufferListFromArray(list);
 
-  // read more than the first element.
+  // Read more than the first element.
   let ret = fromList(6, { buffer: list, length: 16, decoder: true });
   assert.strictEqual(ret, 'foogba');
 
-  // read exactly the first element.
+  // Read exactly the first element.
   ret = fromList(2, { buffer: list, length: 10, decoder: true });
   assert.strictEqual(ret, 'rk');
 
-  // read less than the first element.
+  // Read less than the first element.
   ret = fromList(2, { buffer: list, length: 8, decoder: true });
   assert.strictEqual(ret, 'ba');
 

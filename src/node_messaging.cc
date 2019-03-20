@@ -1,12 +1,11 @@
-#include "debug_utils.h"
 #include "node_messaging.h"
-#include "node_internals.h"
+
+#include "async_wrap-inl.h"
+#include "debug_utils.h"
 #include "node_buffer.h"
 #include "node_errors.h"
+#include "node_process.h"
 #include "util.h"
-#include "util-inl.h"
-#include "async_wrap.h"
-#include "async_wrap-inl.h"
 
 using v8::Array;
 using v8::ArrayBuffer;
@@ -25,11 +24,13 @@ using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Nothing;
 using v8::Object;
+using v8::ObjectTemplate;
 using v8::SharedArrayBuffer;
 using v8::String;
 using v8::Value;
 using v8::ValueDeserializer;
 using v8::ValueSerializer;
+using v8::WasmCompiledModule;
 
 namespace node {
 namespace worker {
@@ -43,13 +44,15 @@ namespace {
 // `MessagePort`s and `SharedArrayBuffer`s, and make new JS objects out of them.
 class DeserializerDelegate : public ValueDeserializer::Delegate {
  public:
-  DeserializerDelegate(Message* m,
-                       Environment* env,
-                       const std::vector<MessagePort*>& message_ports,
-                       const std::vector<Local<SharedArrayBuffer>>&
-                           shared_array_buffers)
-    : message_ports_(message_ports),
-      shared_array_buffers_(shared_array_buffers) {}
+  DeserializerDelegate(
+      Message* m,
+      Environment* env,
+      const std::vector<MessagePort*>& message_ports,
+      const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers,
+      const std::vector<WasmCompiledModule::TransferrableModule>& wasm_modules)
+      : message_ports_(message_ports),
+        shared_array_buffers_(shared_array_buffers),
+        wasm_modules_(wasm_modules) {}
 
   MaybeLocal<Object> ReadHostObject(Isolate* isolate) override {
     // Currently, only MessagePort hosts objects are supported, so identifying
@@ -59,7 +62,7 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
       return MaybeLocal<Object>();
     CHECK_LE(id, message_ports_.size());
     return message_ports_[id]->object(isolate);
-  };
+  }
 
   MaybeLocal<SharedArrayBuffer> GetSharedArrayBufferFromId(
       Isolate* isolate, uint32_t clone_id) override {
@@ -67,11 +70,19 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
     return shared_array_buffers_[clone_id];
   }
 
+  MaybeLocal<WasmCompiledModule> GetWasmModuleFromId(
+      Isolate* isolate, uint32_t transfer_id) override {
+    CHECK_LE(transfer_id, wasm_modules_.size());
+    return WasmCompiledModule::FromTransferrableModule(
+        isolate, wasm_modules_[transfer_id]);
+  }
+
   ValueDeserializer* deserializer = nullptr;
 
  private:
   const std::vector<MessagePort*>& message_ports_;
   const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers_;
+  const std::vector<WasmCompiledModule::TransferrableModule>& wasm_modules_;
 };
 
 }  // anonymous namespace
@@ -90,7 +101,8 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
     if (ports[i] == nullptr) {
       for (MessagePort* port : ports) {
         // This will eventually release the MessagePort object itself.
-        port->Close();
+        if (port != nullptr)
+          port->Close();
       }
       return MaybeLocal<Value>();
     }
@@ -98,7 +110,7 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
   message_ports_.clear();
 
   std::vector<Local<SharedArrayBuffer>> shared_array_buffers;
-  // Attach all transfered SharedArrayBuffers to their new Isolate.
+  // Attach all transferred SharedArrayBuffers to their new Isolate.
   for (uint32_t i = 0; i < shared_array_buffers_.size(); ++i) {
     Local<SharedArrayBuffer> sab;
     if (!shared_array_buffers_[i]->GetSharedArrayBuffer(env, context)
@@ -108,7 +120,8 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
   }
   shared_array_buffers_.clear();
 
-  DeserializerDelegate delegate(this, env, ports, shared_array_buffers);
+  DeserializerDelegate delegate(
+      this, env, ports, shared_array_buffers, wasm_modules_);
   ValueDeserializer deserializer(
       env->isolate(),
       reinterpret_cast<const uint8_t*>(main_message_buf_.data),
@@ -116,8 +129,23 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
       &delegate);
   delegate.deserializer = &deserializer;
 
-  // Attach all transfered ArrayBuffers to their new Isolate.
+  // Attach all transferred ArrayBuffers to their new Isolate.
   for (uint32_t i = 0; i < array_buffer_contents_.size(); ++i) {
+    if (!env->isolate_data()->uses_node_allocator()) {
+      // We don't use Node's allocator on the receiving side, so we have
+      // to create the ArrayBuffer from a copy of the memory.
+      AllocatedBuffer buf =
+          env->AllocateManaged(array_buffer_contents_[i].size);
+      memcpy(buf.data(),
+             array_buffer_contents_[i].data,
+             array_buffer_contents_[i].size);
+      deserializer.TransferArrayBuffer(i, buf.ToArrayBuffer());
+      continue;
+    }
+
+    env->isolate_data()->node_allocator()->RegisterPointer(
+        array_buffer_contents_[i].data, array_buffer_contents_[i].size);
+
     Local<ArrayBuffer> ab =
         ArrayBuffer::New(env->isolate(),
                          array_buffer_contents_[i].release(),
@@ -134,12 +162,17 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
 }
 
 void Message::AddSharedArrayBuffer(
-    SharedArrayBufferMetadataReference reference) {
+    const SharedArrayBufferMetadataReference& reference) {
   shared_array_buffers_.push_back(reference);
 }
 
 void Message::AddMessagePort(std::unique_ptr<MessagePortData>&& data) {
   message_ports_.emplace_back(std::move(data));
+}
+
+uint32_t Message::AddWASMModule(WasmCompiledModule::TransferrableModule&& mod) {
+  wasm_modules_.emplace_back(std::move(mod));
+  return wasm_modules_.size() - 1;
 }
 
 namespace {
@@ -201,6 +234,11 @@ class SerializerDelegate : public ValueSerializer::Delegate {
     return Just(i);
   }
 
+  Maybe<uint32_t> GetWasmModuleTransferId(
+      Isolate* isolate, Local<WasmCompiledModule> module) override {
+    return Just(msg_->AddWASMModule(module->GetTransferrableModule()));
+  }
+
   void Finish() {
     // Only close the MessagePort handles and actually transfer them
     // once we know that serialization succeeded.
@@ -234,7 +272,7 @@ class SerializerDelegate : public ValueSerializer::Delegate {
   friend class worker::Message;
 };
 
-}  // anynomous namespace
+}  // anonymous namespace
 
 Maybe<bool> Message::Serialize(Environment* env,
                                Local<Context> context,
@@ -264,8 +302,19 @@ Maybe<bool> Message::Serialize(Environment* env,
         Local<ArrayBuffer> ab = entry.As<ArrayBuffer>();
         // If we cannot render the ArrayBuffer unusable in this Isolate and
         // take ownership of its memory, copying the buffer will have to do.
-        if (!ab->IsNeuterable() || ab->IsExternal())
+        if (!ab->IsNeuterable() || ab->IsExternal() ||
+            !env->isolate_data()->uses_node_allocator()) {
           continue;
+        }
+        if (std::find(array_buffers.begin(), array_buffers.end(), ab) !=
+            array_buffers.end()) {
+          ThrowDataCloneException(
+              env,
+              FIXED_ONE_BYTE_STRING(
+                  env->isolate(),
+                  "Transfer list contains duplicate ArrayBuffer"));
+          return Nothing<bool>();
+        }
         // We simply use the array index in the `array_buffers` list as the
         // ID that we write into the serialized buffer.
         uint32_t id = array_buffers.size();
@@ -291,6 +340,15 @@ Maybe<bool> Message::Serialize(Environment* env,
                   "MessagePort in transfer list is already detached"));
           return Nothing<bool>();
         }
+        if (std::find(delegate.ports_.begin(), delegate.ports_.end(), port) !=
+            delegate.ports_.end()) {
+          ThrowDataCloneException(
+              env,
+              FIXED_ONE_BYTE_STRING(
+                  env->isolate(),
+                  "Transfer list contains duplicate MessagePort"));
+          return Nothing<bool>();
+        }
         delegate.ports_.push_back(port);
         continue;
       }
@@ -311,6 +369,11 @@ Maybe<bool> Message::Serialize(Environment* env,
     // it inaccessible in this Isolate.
     ArrayBuffer::Contents contents = ab->Externalize();
     ab->Neuter();
+
+    CHECK(env->isolate_data()->uses_node_allocator());
+    env->isolate_data()->node_allocator()->UnregisterPointer(
+        contents.Data(), contents.ByteLength());
+
     array_buffer_contents_.push_back(
         MallocedBuffer<char> { static_cast<char*>(contents.Data()),
                                contents.ByteLength() });
@@ -326,7 +389,6 @@ Maybe<bool> Message::Serialize(Environment* env,
 }
 
 void Message::MemoryInfo(MemoryTracker* tracker) const {
-  tracker->TrackThis(this);
   tracker->TrackField("array_buffer_contents", array_buffer_contents_);
   tracker->TrackFieldWithSize("shared_array_buffers",
       shared_array_buffers_.size() * sizeof(shared_array_buffers_[0]));
@@ -336,13 +398,12 @@ void Message::MemoryInfo(MemoryTracker* tracker) const {
 MessagePortData::MessagePortData(MessagePort* owner) : owner_(owner) { }
 
 MessagePortData::~MessagePortData() {
-  CHECK_EQ(owner_, nullptr);
+  CHECK_NULL(owner_);
   Disentangle();
 }
 
 void MessagePortData::MemoryInfo(MemoryTracker* tracker) const {
   Mutex::ScopedLock lock(mutex_);
-  tracker->TrackThis(this);
   tracker->TrackField("incoming_messages", incoming_messages_);
 }
 
@@ -363,8 +424,8 @@ bool MessagePortData::IsSiblingClosed() const {
 }
 
 void MessagePortData::Entangle(MessagePortData* a, MessagePortData* b) {
-  CHECK_EQ(a->sibling_, nullptr);
-  CHECK_EQ(b->sibling_, nullptr);
+  CHECK_NULL(a->sibling_);
+  CHECK_NULL(b->sibling_);
   a->sibling_ = b;
   b->sibling_ = a;
   a->sibling_mutex_ = b->sibling_mutex_;
@@ -407,21 +468,21 @@ MessagePort::MessagePort(Environment* env,
                          Local<Object> wrap)
   : HandleWrap(env,
                wrap,
-               reinterpret_cast<uv_handle_t*>(new uv_async_t()),
+               reinterpret_cast<uv_handle_t*>(&async_),
                AsyncWrap::PROVIDER_MESSAGEPORT),
     data_(new MessagePortData(this)) {
   auto onmessage = [](uv_async_t* handle) {
     // Called when data has been put into the queue.
-    MessagePort* channel = static_cast<MessagePort*>(handle->data);
+    MessagePort* channel = ContainerOf(&MessagePort::async_, handle);
     channel->OnMessage();
   };
   CHECK_EQ(uv_async_init(env->event_loop(),
-                         async(),
+                         &async_,
                          onmessage), 0);
-  async()->data = static_cast<void*>(this);
+  async_.data = static_cast<void*>(this);
 
   Local<Value> fn;
-  if (!wrap->Get(context, env->oninit_string()).ToLocal(&fn))
+  if (!wrap->Get(context, env->oninit_symbol()).ToLocal(&fn))
     return;
 
   if (fn->IsFunction()) {
@@ -432,21 +493,13 @@ MessagePort::MessagePort(Environment* env,
   Debug(this, "Created message port");
 }
 
-void MessagePort::AddToIncomingQueue(Message&& message) {
-  data_->AddToIncomingQueue(std::move(message));
-}
-
-uv_async_t* MessagePort::async() {
-  return reinterpret_cast<uv_async_t*>(GetHandle());
-}
-
 bool MessagePort::IsDetached() const {
   return data_ == nullptr || IsHandleClosing();
 }
 
 void MessagePort::TriggerAsync() {
   if (IsHandleClosing()) return;
-  CHECK_EQ(uv_async_send(async()), 0);
+  CHECK_EQ(uv_async_send(&async_), 0);
 }
 
 void MessagePort::Close(v8::Local<v8::Value> close_callback) {
@@ -483,17 +536,22 @@ MessagePort* MessagePort::New(
   Local<Function> ctor;
   if (!GetMessagePortConstructor(env, context).ToLocal(&ctor))
     return nullptr;
-  MessagePort* port = nullptr;
 
   // Construct a new instance, then assign the listener instance and possibly
   // the MessagePortData to it.
   Local<Object> instance;
   if (!ctor->NewInstance(context).ToLocal(&instance))
     return nullptr;
-  ASSIGN_OR_RETURN_UNWRAP(&port, instance, nullptr);
+  MessagePort* port = Unwrap<MessagePort>(instance);
+  CHECK_NOT_NULL(port);
   if (data) {
     port->Detach();
     port->data_ = std::move(data);
+
+    // This lock is here to avoid race conditions with the `owner_` read
+    // in AddToIncomingQueue(). (This would likely be unproblematic without it,
+    // but it's better to be safe than sorry.)
+    Mutex::ScopedLock lock(port->data_->mutex_);
     port->data_->owner_ = port;
     // If the existing MessagePortData object had pending messages, this is
     // the easiest way to run that queue.
@@ -517,13 +575,6 @@ void MessagePort::OnMessage() {
       // Get the head of the message queue.
       Mutex::ScopedLock lock(data_->mutex_);
 
-      if (stop_event_loop_) {
-        Debug(this, "MessagePort stops loop as requested");
-        CHECK(!data_->receiving_messages_);
-        uv_stop(env()->event_loop());
-        break;
-      }
-
       Debug(this, "MessagePort has message, receiving = %d",
             static_cast<int>(data_->receiving_messages_));
 
@@ -545,12 +596,19 @@ void MessagePort::OnMessage() {
       // Call the JS .onmessage() callback.
       HandleScope handle_scope(env()->isolate());
       Context::Scope context_scope(context);
-      Local<Value> args[] = {
-        received.Deserialize(env(), context).FromMaybe(Local<Value>())
-      };
 
-      if (args[0].IsEmpty() ||
-          MakeCallback(env()->onmessage_string(), 1, args).IsEmpty()) {
+      Local<Object> event;
+      Local<Value> payload;
+      Local<Value> cb_args[1];
+      if (!received.Deserialize(env(), context).ToLocal(&payload) ||
+          !env()->message_event_object_template()->NewInstance(context)
+              .ToLocal(&event) ||
+          event->Set(context, env()->data_string(), payload).IsNothing() ||
+          event->Set(context, env()->target_string(), object()).IsNothing() ||
+          (cb_args[0] = event, false) ||
+          MakeCallback(env()->onmessage_string(),
+                       arraysize(cb_args),
+                       cb_args).IsEmpty()) {
         // Re-schedule OnMessage() execution in case of failure.
         if (data_)
           TriggerAsync();
@@ -576,10 +634,10 @@ void MessagePort::OnClose() {
     data_->Disentangle();
   }
   data_.reset();
-  delete async();
 }
 
 std::unique_ptr<MessagePortData> MessagePort::Detach() {
+  CHECK(data_);
   Mutex::ScopedLock lock(data_->mutex_);
   data_->owner_ = nullptr;
   return std::move(data_);
@@ -665,32 +723,20 @@ void MessagePort::Stop() {
   data_->receiving_messages_ = false;
 }
 
-void MessagePort::StopEventLoop() {
-  Mutex::ScopedLock lock(data_->mutex_);
-  data_->receiving_messages_ = false;
-  stop_event_loop_ = true;
-
-  Debug(this, "Received StopEventLoop request");
-  TriggerAsync();
-}
-
 void MessagePort::Start(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
   MessagePort* port;
   ASSIGN_OR_RETURN_UNWRAP(&port, args.This());
   if (!port->data_) {
-    THROW_ERR_CLOSED_MESSAGE_PORT(env);
     return;
   }
   port->Start();
 }
 
 void MessagePort::Stop(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
   MessagePort* port;
-  ASSIGN_OR_RETURN_UNWRAP(&port, args.This());
+  CHECK(args[0]->IsObject());
+  ASSIGN_OR_RETURN_UNWRAP(&port, args[0].As<Object>());
   if (!port->data_) {
-    THROW_ERR_CLOSED_MESSAGE_PORT(env);
     return;
   }
   port->Stop();
@@ -698,7 +744,8 @@ void MessagePort::Stop(const FunctionCallbackInfo<Value>& args) {
 
 void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
   MessagePort* port;
-  ASSIGN_OR_RETURN_UNWRAP(&port, args.This());
+  CHECK(args[0]->IsObject());
+  ASSIGN_OR_RETURN_UNWRAP(&port, args[0].As<Object>());
   port->OnMessage();
 }
 
@@ -718,20 +765,25 @@ MaybeLocal<Function> GetMessagePortConstructor(
   if (!templ.IsEmpty())
     return templ->GetFunction(context);
 
+  Isolate* isolate = env->isolate();
+
   {
     Local<FunctionTemplate> m = env->NewFunctionTemplate(MessagePort::New);
     m->SetClassName(env->message_port_constructor_string());
     m->InstanceTemplate()->SetInternalFieldCount(1);
-
-    AsyncWrap::AddWrapMethods(env, m);
-    HandleWrap::AddWrapMethods(env, m);
+    m->Inherit(HandleWrap::GetConstructorTemplate(env));
 
     env->SetProtoMethod(m, "postMessage", MessagePort::PostMessage);
     env->SetProtoMethod(m, "start", MessagePort::Start);
-    env->SetProtoMethod(m, "stop", MessagePort::Stop);
-    env->SetProtoMethod(m, "drain", MessagePort::Drain);
 
     env->set_message_port_constructor_template(m);
+
+    Local<FunctionTemplate> event_ctor = FunctionTemplate::New(isolate);
+    event_ctor->SetClassName(FIXED_ONE_BYTE_STRING(isolate, "MessageEvent"));
+    Local<ObjectTemplate> e = event_ctor->InstanceTemplate();
+    e->Set(env->data_string(), Null(isolate));
+    e->Set(env->target_string(), Null(isolate));
+    env->set_message_event_object_template(e);
   }
 
   return GetMessagePortConstructor(env, context);
@@ -788,6 +840,11 @@ static void InitMessaging(Local<Object> target,
                   .FromJust();
 
   env->SetMethod(target, "registerDOMException", RegisterDOMException);
+
+  // These are not methods on the MessagePort prototype, because
+  // the browser equivalents do not provide them.
+  env->SetMethod(target, "stopMessagePort", MessagePort::Stop);
+  env->SetMethod(target, "drainMessagePort", MessagePort::Drain);
 }
 
 }  // anonymous namespace

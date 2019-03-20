@@ -1,17 +1,18 @@
-#ifndef SRC_INSPECTOR_IO_H_
-#define SRC_INSPECTOR_IO_H_
+#pragma once
 
-#include "inspector_socket_server.h"
-#include "node_debug_options.h"
-#include "node_mutex.h"
-#include "uv.h"
-
-#include <memory>
-#include <stddef.h>
+#if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #if !HAVE_INSPECTOR
 #error("This header can only be used when inspector is enabled")
 #endif
+
+#include "inspector_socket_server.h"
+#include "node_mutex.h"
+
+#include "uv.h"
+
+#include <cstddef>
+#include <memory>
 
 
 namespace v8_inspector {
@@ -45,20 +46,22 @@ class InspectorIo {
   // bool Start();
   // Returns empty pointer if thread was not started
   static std::unique_ptr<InspectorIo> Start(
-      std::shared_ptr<MainThreadHandle> main_thread, const std::string& path,
-      const DebugOptions& options);
+      std::shared_ptr<MainThreadHandle> main_thread,
+      const std::string& path,
+      std::shared_ptr<HostPort> host_port);
 
   // Will block till the transport thread shuts down
   ~InspectorIo();
 
   void StopAcceptingNewConnections();
-  std::string host() const { return options_.host_name(); }
-  int port() const { return port_; }
+  const std::string& host() const { return host_port_->host(); }
+  int port() const { return host_port_->port(); }
   std::vector<std::string> GetTargetIds() const;
 
  private:
   InspectorIo(std::shared_ptr<MainThreadHandle> handle,
-              const std::string& path, const DebugOptions& options);
+              const std::string& path,
+              std::shared_ptr<HostPort> host_port);
 
   // Wrapper for agent->ThreadMain()
   static void ThreadMain(void* agent);
@@ -72,7 +75,7 @@ class InspectorIo {
   // Used to post on a frontend interface thread, lives while the server is
   // running
   std::shared_ptr<RequestQueue> request_queue_;
-  const DebugOptions options_;
+  std::shared_ptr<HostPort> host_port_;
 
   // The IO thread runs its own uv_loop to implement the TCP server off
   // the main thread.
@@ -82,7 +85,6 @@ class InspectorIo {
   Mutex thread_start_lock_;
   ConditionVariable thread_start_condition_;
   std::string script_name_;
-  int port_ = -1;
   // May be accessed from any thread
   const std::string id_;
 };
@@ -90,4 +92,4 @@ class InspectorIo {
 }  // namespace inspector
 }  // namespace node
 
-#endif  // SRC_INSPECTOR_IO_H_
+#endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS

@@ -9,6 +9,8 @@
     'library%': 'static_library',     # allow override to 'shared_library' for DLL/.so builds
     'component%': 'static_library',   # NB. these names match with what V8 expects
     'msvs_multi_core_compile': '0',   # we do enable multicore compiles, but not using the V8 way
+    'enable_pgo_generate%': '0',
+    'enable_pgo_use%': '0',
     'python%': 'python',
 
     'node_shared%': 'false',
@@ -17,18 +19,21 @@
     'node_use_bundled_v8%': 'true',
     'node_module_version%': '',
     'node_with_ltcg%': '',
+    'node_use_pch%': 'false',
 
     'node_tag%': '',
     'uv_library%': 'static_library',
 
-    'openssl_fips%': '',
+    'clang%': 0,
 
-    # Default to -O0 for debug builds.
-    'v8_optimized_debug%': 0,
+    'openssl_fips%': '',
 
     # Reset this number to 0 on major V8 upgrades.
     # Increment by one for each non-official patch applied to deps/v8.
-    'v8_embedder_string': '-node.15',
+    'v8_embedder_string': '-node.18',
+
+    # Turn on SipHash for hash seed generation, addresses HashWick
+    'v8_use_siphash': 'true',
 
     # Enable disassembler for `--print-code` v8 options
     'v8_enable_disassembler': 1,
@@ -48,6 +53,12 @@
     'icu_use_data_file_flag%': 0,
 
     'conditions': [
+      ['target_arch=="arm64"', {
+        # Disabled pending https://github.com/nodejs/node/issues/23913.
+        'openssl_no_asm%': 1,
+      }, {
+        'openssl_no_asm%': 0,
+      }],
       ['GENERATOR=="ninja"', {
         'obj_dir': '<(PRODUCT_DIR)/obj',
         'conditions': [
@@ -90,8 +101,6 @@
       }],
       ['OS=="mac"', {
         'clang%': 1,
-      }, {
-        'clang%': 0,
       }],
     ],
   },
@@ -110,17 +119,8 @@
             'msvs_configuration_platform': 'x64',
           }],
           ['OS=="aix"', {
-            'variables': {'real_os_name': '<!(uname -s)',},
             'cflags': [ '-gxcoff' ],
             'ldflags': [ '-Wl,-bbigtoc' ],
-            'conditions': [
-              ['"<(real_os_name)"=="OS400"', {
-                'ldflags': [
-                  '-Wl,-blibpath:/QOpenSys/pkgs/lib:/QOpenSys/usr/lib',
-                  '-Wl,-brtl',
-                ],
-              }],
-            ],
           }],
           ['OS == "android"', {
             'cflags': [ '-fPIE' ],
@@ -147,9 +147,9 @@
             'MinimalRebuild': 'false',
             'OmitFramePointers': 'false',
             'BasicRuntimeChecks': 3, # /RTC1
+            'MultiProcessorCompilation': 'true',
             'AdditionalOptions': [
               '/bigobj', # prevent error C1128 in VS2015
-              '/MP', # compile across multiple CPUs
             ],
           },
           'VCLinkerTool': {
@@ -178,9 +178,19 @@
           }],
           ['OS=="linux"', {
             'variables': {
+              'pgo_generate': ' -fprofile-generate ',
+              'pgo_use': ' -fprofile-use -fprofile-correction ',
               'lto': ' -flto=4 -fuse-linker-plugin -ffat-lto-objects ',
             },
             'conditions': [
+              ['enable_pgo_generate=="true"', {
+                'cflags': ['<(pgo_generate)'],
+                'ldflags': ['<(pgo_generate)'],
+              },],
+              ['enable_pgo_use=="true"', {
+                'cflags': ['<(pgo_use)'],
+                'ldflags': ['<(pgo_use)'],
+              },],
               ['enable_lto=="true"', {
                 'cflags': ['<(lto)'],
                 'ldflags': ['<(lto)'],
@@ -244,8 +254,8 @@
             'EnableFunctionLevelLinking': 'true',
             'EnableIntrinsicFunctions': 'true',
             'RuntimeTypeInfo': 'false',
+            'MultiProcessorCompilation': 'true',
             'AdditionalOptions': [
-              '/MP', # compile across multiple CPUs
             ],
           }
         }
@@ -258,23 +268,11 @@
     'msvs_settings': {
       'VCCLCompilerTool': {
         'StringPooling': 'true', # pool string literals
-        'DebugInformationFormat': 3, # Generate a PDB
+        'DebugInformationFormat': 1, # /Z7 embed info in .obj files
         'WarningLevel': 3,
         'BufferSecurityCheck': 'true',
         'ExceptionHandling': 0, # /EHsc
         'SuppressStartupBanner': 'true',
-        # Disable warnings:
-        # - "C4251: class needs to have dll-interface"
-        # - "C4275: non-DLL-interface used as base for DLL-interface"
-        #   Over 10k of these warnings are generated when compiling node,
-        #   originating from v8.h. Most of them are false positives.
-        #   See also: https://github.com/nodejs/node/pull/15570
-        #   TODO: re-enable when Visual Studio fixes these upstream.
-        #
-        # - "C4267: conversion from 'size_t' to 'int'"
-        #   Many any originate from our dependencies, and their sheer number
-        #   drowns out other, more legitimate warnings.
-        'DisableSpecificWarnings': ['4251', '4275', '4267'],
         'WarnAsError': 'false',
       },
       'VCLinkerTool': {
@@ -295,6 +293,14 @@
               }],
             ],
           }],
+          ['target_arch=="arm64"', {
+            'TargetMachine' : 0, # /MACHINE:ARM64 is inferred from the input files.
+            'target_conditions': [
+              ['_type=="executable"', {
+                'AdditionalOptions': [ '/SubSystem:Console' ],
+              }],
+            ],
+          }],
         ],
         'GenerateDebugInformation': 'true',
         'GenerateMapFile': 'true', # /MAP
@@ -305,8 +311,24 @@
         'SuppressStartupBanner': 'true',
       },
     },
-    'msvs_disabled_warnings': [4351, 4355, 4800],
+    # Disable warnings:
+    # - "C4251: class needs to have dll-interface"
+    # - "C4275: non-DLL-interface used as base for DLL-interface"
+    #   Over 10k of these warnings are generated when compiling node,
+    #   originating from v8.h. Most of them are false positives.
+    #   See also: https://github.com/nodejs/node/pull/15570
+    #   TODO: re-enable when Visual Studio fixes these upstream.
+    #
+    # - "C4267: conversion from 'size_t' to 'int'"
+    #   Many any originate from our dependencies, and their sheer number
+    #   drowns out other, more legitimate warnings.
+    # - "C4244: conversion from 'type1' to 'type2', possible loss of data"
+    #   Ususaly safe. Disable for `dep`, enable for `src`
+    'msvs_disabled_warnings': [4351, 4355, 4800, 4251, 4275, 4244, 4267],
     'conditions': [
+      [ 'target_arch=="arm64"', {
+        'msvs_configuration_platform': 'arm64',
+      }],
       ['asan == 1 and OS != "mac"', {
         'cflags+': [
           '-fno-omit-frame-pointer',
@@ -386,9 +408,9 @@
             'ldflags': [ '-m32' ],
           }],
           [ 'target_arch=="ppc64" and OS!="aix"', {
-	    'cflags': [ '-m64', '-mminimal-toc' ],
-	    'ldflags': [ '-m64' ],
-	   }],
+            'cflags': [ '-m64', '-mminimal-toc' ],
+            'ldflags': [ '-m64' ],
+          }],
           [ 'target_arch=="s390"', {
             'cflags': [ '-m31', '-march=z196' ],
             'ldflags': [ '-m31', '-march=z196' ],
@@ -403,28 +425,32 @@
             'cflags!': [ '-pthread' ],
             'ldflags!': [ '-pthread' ],
           }],
-          [ 'OS=="aix"', {
-            'variables': {'real_os_name': '<!(uname -s)',},
-            'conditions': [
-              [ 'target_arch=="ppc"', {
-                'ldflags': [ '-Wl,-bmaxdata:0x60000000/dsa' ],
-              }],
-              [ 'target_arch=="ppc64"', {
-                'cflags': [ '-maix64' ],
-                'ldflags': [ '-maix64' ],
-              }],
-              ['"<(real_os_name)"=="OS400"', {
-                'ldflags': [
-                  '-Wl,-blibpath:/QOpenSys/pkgs/lib:/QOpenSys/usr/lib',
-                  '-Wl,-brtl',
-                ],
-              }],
-            ],
-            'ldflags': [ '-Wl,-bbigtoc' ],
-            'ldflags!': [ '-rdynamic' ],
-          }],
           [ 'node_shared=="true"', {
             'cflags': [ '-fPIC' ],
+          }],
+        ],
+      }],
+      [ 'OS=="aix"', {
+        'variables': {
+          # Used to differentiate `AIX` and `OS400`(IBM i).
+          'aix_variant_name': '<!(uname -s)',
+        },
+        'cflags': [ '-maix64', ],
+        'ldflags!': [ '-rdynamic', ],
+        'ldflags': [
+          '-Wl,-bbigtoc',
+          '-maix64',
+        ],
+        'conditions': [
+          [ '"<(aix_variant_name)"=="OS400"', {            # a.k.a. `IBM i`
+            'ldflags': [
+              '-Wl,-blibpath:/QOpenSys/pkgs/lib:/QOpenSys/usr/lib',
+              '-Wl,-brtl',
+            ],
+          }, {                                             # else it's `AIX`
+            'ldflags': [
+              '-Wl,-blibpath:/usr/lib:/lib:/opt/freeware/lib/pthread/ppc64',
+            ],
           }],
         ],
       }],
@@ -446,7 +472,6 @@
           'GCC_ENABLE_CPP_EXCEPTIONS': 'NO',        # -fno-exceptions
           'GCC_ENABLE_CPP_RTTI': 'NO',              # -fno-rtti
           'GCC_ENABLE_PASCAL_STRINGS': 'NO',        # No -mpascal-strings
-          'GCC_THREADSAFE_STATICS': 'NO',           # -fno-threadsafe-statics
           'PREBINDING': 'NO',                       # No -Wl,-prebind
           'MACOSX_DEPLOYMENT_TARGET': '10.7',       # -mmacosx-version-min=10.7
           'USE_HEADERMAP': 'NO',
@@ -490,15 +515,6 @@
         'libraries': [ '-lelf' ],
       }],
       ['OS=="freebsd"', {
-        'conditions': [
-          ['"0" < llvm_version < "4.0"', {
-            # Use this flag because on FreeBSD std::pairs copy constructor is non-trivial.
-            # Doesn't apply to llvm 4.0 (FreeBSD 11.1) or later.
-            # Refs: https://lists.freebsd.org/pipermail/freebsd-toolchain/2016-March/002094.html
-            # Refs: https://svnweb.freebsd.org/ports/head/www/node/Makefile?revision=444555&view=markup
-            'cflags': [ '-D_LIBCPP_TRIVIAL_PAIR_COPY_CTOR=1' ],
-          }],
-        ],
         'ldflags': [
           '-Wl,--export-dynamic',
         ],

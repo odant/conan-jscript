@@ -44,18 +44,6 @@ assert.strictEqual(util.format(symbol), 'Symbol(foo)');
 assert.strictEqual(util.format('foo', symbol), 'foo Symbol(foo)');
 assert.strictEqual(util.format('%s', symbol), 'Symbol(foo)');
 assert.strictEqual(util.format('%j', symbol), 'undefined');
-assert.throws(
-  () => { util.format('%d', symbol); },
-  (e) => {
-    // The error should be a TypeError.
-    if (!(e instanceof TypeError))
-      return false;
-
-    // The error should be from the JS engine and not from Node.js.
-    // JS engine errors do not have the `code` property.
-    return e.code === undefined;
-  }
-);
 
 // Number format specifier
 assert.strictEqual(util.format('%d'), '%d');
@@ -66,8 +54,21 @@ assert.strictEqual(util.format('%d', '42.0'), '42');
 assert.strictEqual(util.format('%d', 1.5), '1.5');
 assert.strictEqual(util.format('%d', -0.5), '-0.5');
 assert.strictEqual(util.format('%d', ''), '0');
+assert.strictEqual(util.format('%d', Symbol()), 'NaN');
 assert.strictEqual(util.format('%d %d', 42, 43), '42 43');
 assert.strictEqual(util.format('%d %d', 42), '42 %d');
+assert.strictEqual(
+  util.format('%d', 1180591620717411303424),
+  '1.1805916207174113e+21'
+);
+assert.strictEqual(
+  util.format('%d', 1180591620717411303424n),
+  '1180591620717411303424n'
+);
+assert.strictEqual(
+  util.format('%d %d', 1180591620717411303424n, 12345678901234567890123n),
+  '1180591620717411303424n 12345678901234567890123n'
+);
 
 // Integer format specifier
 assert.strictEqual(util.format('%i'), '%i');
@@ -78,8 +79,31 @@ assert.strictEqual(util.format('%i', '42.0'), '42');
 assert.strictEqual(util.format('%i', 1.5), '1');
 assert.strictEqual(util.format('%i', -0.5), '0');
 assert.strictEqual(util.format('%i', ''), 'NaN');
+assert.strictEqual(util.format('%i', Symbol()), 'NaN');
 assert.strictEqual(util.format('%i %i', 42, 43), '42 43');
 assert.strictEqual(util.format('%i %i', 42), '42 %i');
+assert.strictEqual(
+  util.format('%i', 1180591620717411303424),
+  '1'
+);
+assert.strictEqual(
+  util.format('%i', 1180591620717411303424n),
+  '1180591620717411303424n'
+);
+assert.strictEqual(
+  util.format('%i %i', 1180591620717411303424n, 12345678901234567890123n),
+  '1180591620717411303424n 12345678901234567890123n'
+);
+
+assert.strictEqual(
+  util.format('%d %i', 1180591620717411303424n, 12345678901234567890123n),
+  '1180591620717411303424n 12345678901234567890123n'
+);
+
+assert.strictEqual(
+  util.format('%i %d', 1180591620717411303424n, 12345678901234567890123n),
+  '1180591620717411303424n 12345678901234567890123n'
+);
 
 // Float format specifier
 assert.strictEqual(util.format('%f'), '%f');
@@ -91,6 +115,8 @@ assert.strictEqual(util.format('%f', 1.5), '1.5');
 assert.strictEqual(util.format('%f', -0.5), '-0.5');
 assert.strictEqual(util.format('%f', Math.PI), '3.141592653589793');
 assert.strictEqual(util.format('%f', ''), 'NaN');
+assert.strictEqual(util.format('%f', Symbol('foo')), 'NaN');
+assert.strictEqual(util.format('%f', 5n), '5');
 assert.strictEqual(util.format('%f %f', 42, 43), '42 43');
 assert.strictEqual(util.format('%f %f', 42), '42 %f');
 
@@ -278,6 +304,12 @@ function BadCustomError(msg) {
   Object.defineProperty(this, 'name',
                         { value: 'BadCustomError', enumerable: false });
 }
-util.inherits(BadCustomError, Error);
+Object.setPrototypeOf(BadCustomError.prototype, Error.prototype);
+Object.setPrototypeOf(BadCustomError, Error);
 assert.strictEqual(util.format(new BadCustomError('foo')),
                    '[BadCustomError: foo]');
+
+assert.strictEqual(
+  util.format(new SharedArrayBuffer(4)),
+  'SharedArrayBuffer { [Uint8Contents]: <00 00 00 00>, byteLength: 4 }'
+);

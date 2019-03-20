@@ -1,11 +1,10 @@
-// Flags: --experimental-worker
 'use strict';
 const common = require('../common');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
-const { Worker } = require('worker_threads');
+const { spawnSync } = require('child_process');
 
 // This is a sibling test to test/addons/uv-handle-leak.
 
@@ -17,6 +16,18 @@ if (!fs.existsSync(bindingPath))
   common.skip('binding not built yet');
 
 if (process.argv[2] === 'child') {
+
+  const { Worker } = require('worker_threads');
+
+  // The worker thread loads and then unloads `bindingPath`. Because of this the
+  // symbols in `bindingPath` are lost when the worker thread quits, but the
+  // number of open handles in the worker thread's event loop is assessed in the
+  // main thread afterwards, and the names of the callbacks associated with the
+  // open handles is retrieved at that time as well. Thus, we require
+  // `bindingPath` here so that the symbols and their names survive the life
+  // cycle of the worker thread.
+  require(bindingPath);
+
   new Worker(`
   const binding = require(${JSON.stringify(bindingPath)});
 
@@ -25,8 +36,7 @@ if (process.argv[2] === 'child') {
   binding.leakHandle(0x42);
   `, { eval: true });
 } else {
-  const child = cp.spawnSync(process.execPath,
-                             ['--experimental-worker', __filename, 'child']);
+  const child = cp.spawnSync(process.execPath, [__filename, 'child']);
   const stderr = child.stderr.toString();
 
   assert.strictEqual(child.stdout.toString(), '');
@@ -35,7 +45,7 @@ if (process.argv[2] === 'child') {
 
   let state = 'initial';
 
-  // parse output that is formatted like this:
+  // Parse output that is formatted like this:
 
   // uv loop at [0x559b65ed5770] has active handles
   // [0x7f2de0018430] timer
@@ -49,9 +59,25 @@ if (process.argv[2] === 'child') {
   //         Close callback: 0x7f2df31de220 CloseCallback(uv_handle_s*) [...]
   //         Data: 0x42
 
+  function isGlibc() {
+    try {
+      const lddOut = spawnSync('ldd', [process.execPath]).stdout;
+      const libcInfo = lddOut.toString().split('\n').map(
+        (line) => line.match(/libc\.so.+=>\s*(\S+)\s/)).filter((info) => info);
+      if (libcInfo.length === 0)
+        return false;
+      const nmOut = spawnSync('nm', ['-D', libcInfo[0][1]]).stdout;
+      if (/gnu_get_libc_version/.test(nmOut))
+        return true;
+    } catch {
+      return false;
+    }
+  }
+
+
   if (!(common.isFreeBSD ||
         common.isAIX ||
-        (common.isLinux && !common.isGlibc()) ||
+        (common.isLinux && !isGlibc()) ||
         common.isWindows)) {
     assert(stderr.includes('ExampleOwnerClass'), stderr);
     assert(stderr.includes('CloseCallback'), stderr);
@@ -63,7 +89,7 @@ if (process.argv[2] === 'child') {
 
     switch (state) {
       case 'initial':
-        assert(/^uv loop at \[.+\] has active handles$/.test(line), line);
+        assert(/^uv loop at \[.+\] has \d+ active handles$/.test(line), line);
         state = 'handle-start';
         break;
       case 'handle-start':

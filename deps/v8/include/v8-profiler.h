@@ -47,20 +47,6 @@ template class V8_EXPORT std::vector<v8::CpuProfileDeoptInfo>;
 
 namespace v8 {
 
-/**
- * TracingCpuProfiler monitors tracing being enabled/disabled
- * and emits CpuProfile trace events once v8.cpu_profiler tracing category
- * is enabled. It has no overhead unless the category is enabled.
- */
-class V8_EXPORT TracingCpuProfiler {
- public:
-  static std::unique_ptr<TracingCpuProfiler> Create(Isolate*);
-  virtual ~TracingCpuProfiler() = default;
-
- protected:
-  TracingCpuProfiler() = default;
-};
-
 // TickSample captures the information collected for each sample.
 struct TickSample {
   // Internal profiling (with --prof + tools/$OS-tick-processor) wants to
@@ -273,6 +259,16 @@ class V8_EXPORT CpuProfile {
   void Delete();
 };
 
+enum CpuProfilingMode {
+  // In the resulting CpuProfile tree, intermediate nodes in a stack trace
+  // (from the root to a leaf) will have line numbers that point to the start
+  // line of the function, rather than the line of the callsite of the child.
+  kLeafNodeLineNumbers,
+  // In the resulting CpuProfile tree, nodes are separated based on the line
+  // number of their callsite in their parent.
+  kCallerLineNumbers,
+};
+
 /**
  * Interface for controlling CPU profiling. Instance of the
  * profiler can be created using v8::CpuProfiler::New method.
@@ -316,6 +312,13 @@ class V8_EXPORT CpuProfiler {
    * |record_samples| parameter controls whether individual samples should
    * be recorded in addition to the aggregated tree.
    */
+  void StartProfiling(Local<String> title, CpuProfilingMode mode,
+                      bool record_samples = false);
+  /**
+   * The same as StartProfiling above, but the CpuProfilingMode defaults to
+   * kLeafNodeLineNumbers mode, which was the previous default behavior of the
+   * profiler.
+   */
   void StartProfiling(Local<String> title, bool record_samples = false);
 
   /**
@@ -337,6 +340,12 @@ class V8_EXPORT CpuProfiler {
    */
   V8_DEPRECATED("Use Isolate::SetIdle(bool) instead.",
                 void SetIdle(bool is_idle));
+
+  /**
+   * Generate more detailed source positions to code objects. This results in
+   * better results when mapping profiling samples to script source.
+   */
+  static void UseDetailedSourcePositionsForProfiling(Isolate* isolate);
 
  private:
   CpuProfiler();
@@ -682,11 +691,14 @@ class V8_EXPORT EmbedderGraph {
   virtual Node* AddNode(std::unique_ptr<Node> node) = 0;
 
   /**
-   * Adds an edge that represents a strong reference from the given node
-   * |from| to the given node |to|. The nodes must be added to the graph
+   * Adds an edge that represents a strong reference from the given
+   * node |from| to the given node |to|. The nodes must be added to the graph
    * before calling this function.
+   *
+   * If name is nullptr, the edge will have auto-increment indexes, otherwise
+   * it will be named accordingly.
    */
-  virtual void AddEdge(Node* from, Node* to) = 0;
+  virtual void AddEdge(Node* from, Node* to, const char* name = nullptr) = 0;
 
   virtual ~EmbedderGraph() = default;
 };
@@ -891,7 +903,7 @@ class V8_EXPORT HeapProfiler {
       "Use AddBuildEmbedderGraphCallback to provide info about embedder nodes",
       void SetGetRetainerInfosCallback(GetRetainerInfosCallback callback));
 
-  V8_DEPRECATE_SOON(
+  V8_DEPRECATED(
       "Use AddBuildEmbedderGraphCallback to provide info about embedder nodes",
       void SetBuildEmbedderGraphCallback(
           LegacyBuildEmbedderGraphCallback callback));

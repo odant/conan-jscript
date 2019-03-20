@@ -1,7 +1,6 @@
 #include "base_object-inl.h"
 #include "inspector_agent.h"
 #include "inspector_io.h"
-#include "node_internals.h"
 #include "v8.h"
 #include "v8-inspector.h"
 
@@ -21,6 +20,7 @@ using v8::MaybeLocal;
 using v8::NewStringType;
 using v8::Object;
 using v8::String;
+using v8::Uint32;
 using v8::Value;
 
 using v8_inspector::StringBuffer;
@@ -104,10 +104,13 @@ class JSBindingsConnection : public AsyncWrap {
   }
 
   void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
     tracker->TrackField("callback", callback_);
-    tracker->TrackFieldWithSize("session", sizeof(*session_));
+    tracker->TrackFieldWithSize(
+        "session", sizeof(*session_), "InspectorSession");
   }
+
+  SET_MEMORY_INFO_NAME(JSBindingsConnection)
+  SET_SELF_SIZE(JSBindingsConnection)
 
  private:
   std::unique_ptr<InspectorSession> session_;
@@ -119,16 +122,13 @@ static bool InspectorEnabled(Environment* env) {
   return agent->IsActive();
 }
 
-void AddCommandLineAPI(const FunctionCallbackInfo<Value>& info) {
+void SetConsoleExtensionInstaller(const FunctionCallbackInfo<Value>& info) {
   auto env = Environment::GetCurrent(info);
-  Local<Context> context = env->context();
 
-  // inspector.addCommandLineAPI takes 2 arguments: a string and a value.
-  CHECK_EQ(info.Length(), 2);
-  CHECK(info[0]->IsString());
+  CHECK_EQ(info.Length(), 1);
+  CHECK(info[0]->IsFunction());
 
-  Local<Object> console_api = env->inspector_console_api_object();
-  console_api->Set(context, info[0], info[1]).FromJust();
+  env->set_inspector_console_extension_installer(info[0].As<Function>());
 }
 
 void CallAndPauseOnStart(const FunctionCallbackInfo<v8::Value>& args) {
@@ -139,44 +139,40 @@ void CallAndPauseOnStart(const FunctionCallbackInfo<v8::Value>& args) {
   env->inspector_agent()->PauseOnNextJavascriptStatement("Break on start");
   v8::MaybeLocal<v8::Value> retval =
       args[0].As<v8::Function>()->Call(env->context(), args[1],
-                                       call_args.size(), call_args.data());
+                                       call_args.length(), call_args.out());
   if (!retval.IsEmpty()) {
     args.GetReturnValue().Set(retval.ToLocalChecked());
   }
 }
 
 void InspectorConsoleCall(const FunctionCallbackInfo<Value>& info) {
-  Isolate* isolate = info.GetIsolate();
-  HandleScope handle_scope(isolate);
+  Environment* env = Environment::GetCurrent(info);
+  Isolate* isolate = env->isolate();
   Local<Context> context = isolate->GetCurrentContext();
-  CHECK_LT(2, info.Length());
-  SlicedArguments call_args(info, /* start */ 3);
-  Environment* env = Environment::GetCurrent(isolate);
+  CHECK_GE(info.Length(), 2);
+  SlicedArguments call_args(info, /* start */ 2);
   if (InspectorEnabled(env)) {
     Local<Value> inspector_method = info[0];
     CHECK(inspector_method->IsFunction());
-    Local<Value> config_value = info[2];
-    CHECK(config_value->IsObject());
-    Local<Object> config_object = config_value.As<Object>();
-    Local<String> in_call_key = FIXED_ONE_BYTE_STRING(isolate, "in_call");
-    if (!config_object->Has(context, in_call_key).FromMaybe(false)) {
-      CHECK(config_object->Set(context,
-                               in_call_key,
-                               v8::True(isolate)).FromJust());
-      CHECK(!inspector_method.As<Function>()->Call(context,
-                                                   info.Holder(),
-                                                   call_args.size(),
-                                                   call_args.data()).IsEmpty());
+    if (!env->is_in_inspector_console_call()) {
+      env->set_is_in_inspector_console_call(true);
+      MaybeLocal<Value> ret =
+          inspector_method.As<Function>()->Call(context,
+                                                info.Holder(),
+                                                call_args.length(),
+                                                call_args.out());
+      env->set_is_in_inspector_console_call(false);
+      if (ret.IsEmpty())
+        return;
     }
-    CHECK(config_object->Delete(context, in_call_key).FromJust());
   }
 
   Local<Value> node_method = info[1];
   CHECK(node_method->IsFunction());
   node_method.As<Function>()->Call(context,
                                    info.Holder(),
-                                   call_args.size(),
-                                   call_args.data()).FromMaybe(Local<Value>());
+                                   call_args.length(),
+                                   call_args.out()).FromMaybe(Local<Value>());
 }
 
 static void* GetAsyncTask(int64_t asyncId) {
@@ -221,9 +217,9 @@ static void RegisterAsyncHookWrapper(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
   CHECK(args[0]->IsFunction());
-  v8::Local<v8::Function> enable_function = args[0].As<Function>();
+  Local<Function> enable_function = args[0].As<Function>();
   CHECK(args[1]->IsFunction());
-  v8::Local<v8::Function> disable_function = args[1].As<Function>();
+  Local<Function> disable_function = args[1].As<Function>();
   env->inspector_agent()->RegisterAsyncHook(env->isolate(),
     enable_function, disable_function);
 }
@@ -239,13 +235,13 @@ void Open(const FunctionCallbackInfo<Value>& args) {
   bool wait_for_connect = false;
 
   if (args.Length() > 0 && args[0]->IsUint32()) {
-    uint32_t port = args[0]->Uint32Value();
-    agent->options().set_port(static_cast<int>(port));
+    uint32_t port = args[0].As<Uint32>()->Value();
+    agent->host_port()->set_port(static_cast<int>(port));
   }
 
   if (args.Length() > 1 && args[1]->IsString()) {
     Utf8Value host(env->isolate(), args[1].As<String>());
-    agent->options().set_host_name(*host);
+    agent->host_port()->set_host(*host);
   }
 
   if (args.Length() > 2 && args[2]->IsBoolean()) {
@@ -274,16 +270,21 @@ void Url(const FunctionCallbackInfo<Value>& args) {
 void Initialize(Local<Object> target, Local<Value> unused,
                 Local<Context> context, void* priv) {
   Environment* env = Environment::GetCurrent(context);
-  {
-    auto obj = Object::New(env->isolate());
-    auto null = Null(env->isolate());
-    CHECK(obj->SetPrototype(context, null).FromJust());
-    env->set_inspector_console_api_object(obj);
-  }
 
   Agent* agent = env->inspector_agent();
-  env->SetMethod(target, "consoleCall", InspectorConsoleCall);
-  env->SetMethod(target, "addCommandLineAPI", AddCommandLineAPI);
+
+  v8::Local<v8::Function> consoleCallFunc =
+      env->NewFunctionTemplate(InspectorConsoleCall, v8::Local<v8::Signature>(),
+                               v8::ConstructorBehavior::kThrow,
+                               v8::SideEffectType::kHasSideEffect)
+          ->GetFunction(context)
+          .ToLocalChecked();
+  auto name_string = FIXED_ONE_BYTE_STRING(env->isolate(), "consoleCall");
+  target->Set(context, name_string, consoleCallFunc).FromJust();
+  consoleCallFunc->SetName(name_string);
+
+  env->SetMethod(
+      target, "setConsoleExtensionInstaller", SetConsoleExtensionInstaller);
   if (agent->WillWaitForConnect())
     env->SetMethod(target, "callAndPauseOnStart", CallAndPauseOnStart);
   env->SetMethod(target, "open", Open);
@@ -305,15 +306,18 @@ void Initialize(Local<Object> target, Local<Value> unused,
       env->NewFunctionTemplate(JSBindingsConnection::New);
   tmpl->InstanceTemplate()->SetInternalFieldCount(1);
   tmpl->SetClassName(conn_str);
-  AsyncWrap::AddWrapMethods(env, tmpl);
+  tmpl->Inherit(AsyncWrap::GetConstructorTemplate(env));
   env->SetProtoMethod(tmpl, "dispatch", JSBindingsConnection::Dispatch);
   env->SetProtoMethod(tmpl, "disconnect", JSBindingsConnection::Disconnect);
-  target->Set(env->context(), conn_str, tmpl->GetFunction()).ToChecked();
+  target
+      ->Set(env->context(), conn_str,
+            tmpl->GetFunction(env->context()).ToLocalChecked())
+      .ToChecked();
 }
 
 }  // namespace
 }  // namespace inspector
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector,
-                                  node::inspector::Initialize);
+NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector,
+                                  node::inspector::Initialize)
