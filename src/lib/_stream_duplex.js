@@ -67,7 +67,7 @@ function Duplex(options) {
 }
 
 Object.defineProperty(Duplex.prototype, 'writableHighWaterMark', {
-  // making it explicit this property is not enumerable
+  // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
@@ -77,7 +77,7 @@ Object.defineProperty(Duplex.prototype, 'writableHighWaterMark', {
 });
 
 Object.defineProperty(Duplex.prototype, 'writableBuffer', {
-  // making it explicit this property is not enumerable
+  // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
@@ -87,7 +87,7 @@ Object.defineProperty(Duplex.prototype, 'writableBuffer', {
 });
 
 Object.defineProperty(Duplex.prototype, 'writableLength', {
-  // making it explicit this property is not enumerable
+  // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
@@ -112,7 +112,7 @@ function onEndNT(self) {
 }
 
 Object.defineProperty(Duplex.prototype, 'destroyed', {
-  // making it explicit this property is not enumerable
+  // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
@@ -124,14 +124,14 @@ Object.defineProperty(Duplex.prototype, 'destroyed', {
     return this._readableState.destroyed && this._writableState.destroyed;
   },
   set(value) {
-    // we ignore the value if the stream
+    // We ignore the value if the stream
     // has not been initialized yet
     if (this._readableState === undefined ||
         this._writableState === undefined) {
       return;
     }
 
-    // backward compatibility, the user is explicitly
+    // Backward compatibility, the user is explicitly
     // managing destroyed
     this._readableState.destroyed = value;
     this._writableState.destroyed = value;

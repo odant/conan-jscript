@@ -5,10 +5,11 @@
 #ifndef SRC_TRACING_TRACED_VALUE_H_
 #define SRC_TRACING_TRACED_VALUE_H_
 
-#include "node_internals.h"
+#include "node.h"
+#include "util.h"
 #include "v8.h"
 
-#include <stddef.h>
+#include <cstddef>
 #include <memory>
 #include <string>
 

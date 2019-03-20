@@ -1,11 +1,16 @@
 'use strict';
 
-const { internalBinding } = require('internal/bootstrap/loaders');
 const { ModuleWrap } = internalBinding('module_wrap');
-const { SafeSet, SafePromise } = require('internal/safe_globals');
+const {
+  SafeSet,
+  SafePromise
+} = primordials;
+
 const { decorateErrorStack } = require('internal/util');
-const assert = require('assert');
+const assert = require('internal/assert');
 const resolvedPromise = SafePromise.resolve();
+
+function noop() {}
 
 /* A ModuleJob tracks the loading of a single Module, and the ModuleJobs of
  * its dependencies, over time. */
@@ -42,6 +47,9 @@ class ModuleJob {
     };
     // Promise for the list of all dependencyJobs.
     this.linked = link();
+    // This promise is awaited later anyway, so silence
+    // 'unhandled rejection' warnings.
+    this.linked.catch(noop);
 
     // instantiated == deep dependency jobs wrappers instantiated,
     // module wrapper instantiated
@@ -74,7 +82,7 @@ class ModuleJob {
     try {
       if (this.isMain && process._breakFirstLine) {
         delete process._breakFirstLine;
-        const initWrapper = process.binding('inspector').callAndPauseOnStart;
+        const initWrapper = internalBinding('inspector').callAndPauseOnStart;
         initWrapper(this.module.instantiate, this.module);
       } else {
         this.module.instantiate();

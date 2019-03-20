@@ -50,11 +50,9 @@ const {
 const {
   isIdentifierStart,
   isIdentifierChar
-} = require('internal/deps/acorn/dist/acorn');
+} = require('internal/deps/acorn/acorn/dist/acorn');
 const internalUtil = require('internal/util');
-const { isTypedArray } = require('internal/util/types');
 const util = require('util');
-const utilBinding = process.binding('util');
 const { inherits } = util;
 const Stream = require('stream');
 const vm = require('vm');
@@ -72,7 +70,23 @@ const {
   ERR_SCRIPT_EXECUTION_INTERRUPTED
 } = require('internal/errors').codes;
 const { sendInspectorCommand } = require('internal/util/inspector');
-const { experimentalREPLAwait } = process.binding('config');
+const experimentalREPLAwait = require('internal/options').getOptionValue(
+  '--experimental-repl-await'
+);
+const {
+  isRecoverableError,
+  kStandaloneREPL
+} = require('internal/repl/utils');
+const {
+  getOwnNonIndexProperties,
+  propertyFilter: {
+    ALL_PROPERTIES,
+    SKIP_SYMBOLS
+  },
+  startSigintWatchdog,
+  stopSigintWatchdog
+} = internalBinding('util');
+const history = require('internal/repl/history');
 
 // Lazy-loaded.
 let processTopLevelAwait;
@@ -80,25 +94,13 @@ let processTopLevelAwait;
 const parentModule = module;
 const replMap = new WeakMap();
 
-const GLOBAL_OBJECT_PROPERTIES = [
-  'NaN', 'Infinity', 'undefined', 'eval', 'parseInt', 'parseFloat', 'isNaN',
-  'isFinite', 'decodeURI', 'decodeURIComponent', 'encodeURI',
-  'encodeURIComponent', 'Object', 'Function', 'Array', 'String', 'Boolean',
-  'Number', 'Date', 'RegExp', 'Error', 'EvalError', 'RangeError',
-  'ReferenceError', 'SyntaxError', 'TypeError', 'URIError', 'Math', 'JSON'
-];
-const GLOBAL_OBJECT_PROPERTY_MAP = {};
-for (var n = 0; n < GLOBAL_OBJECT_PROPERTIES.length; n++) {
-  GLOBAL_OBJECT_PROPERTY_MAP[GLOBAL_OBJECT_PROPERTIES[n]] =
-    GLOBAL_OBJECT_PROPERTIES[n];
-}
 const kBufferedCommandSymbol = Symbol('bufferedCommand');
 const kContextId = Symbol('contextId');
 
 try {
   // Hack for require.resolve("./relative") to work properly.
   module.filename = path.resolve('repl');
-} catch (e) {
+} catch {
   // path.resolve('repl') fails when the current working directory has been
   // deleted.  Fall back to the directory name of the (absolute) executable
   // path.  It's not really correct but what are the alternatives?
@@ -116,11 +118,11 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-// Can overridden with custom print functions, such as `probe` or `eyes.js`.
-// This is the default "writer" value if none is passed in the REPL options.
+// This is the default "writer" value, if none is passed in the REPL options,
+// and it can be overridden by custom print functions, such as `probe` or
+// `eyes.js`.
 const writer = exports.writer = (obj) => util.inspect(obj, writer.options);
-writer.options =
-    Object.assign({}, util.inspect.defaultOptions, { showProxy: true });
+writer.options = { ...util.inspect.defaultOptions, showProxy: true };
 
 exports._builtinLibs = builtinLibs;
 
@@ -218,16 +220,18 @@ function REPLServer(prompt,
   }
 
   function defaultEval(code, context, file, cb) {
-    var err, result, script, wrappedErr;
-    var wrappedCmd = false;
-    var awaitPromise = false;
-    var input = code;
+    let result, script, wrappedErr;
+    let err = null;
+    let wrappedCmd = false;
+    let awaitPromise = false;
+    const input = code;
 
-    if (/^\s*\{/.test(code) && /\}\s*$/.test(code)) {
+    if (/^\s*{/.test(code) && /}\s*$/.test(code)) {
       // It's confusing for `{ a : 1 }` to be interpreted as a block
       // statement rather than an object literal.  So, we first try
       // to wrap it in parentheses, so that it will be interpreted as
-      // an expression.
+      // an expression.  Note that if the above condition changes,
+      // lib/internal/repl/recoverable.js needs to be changed to match.
       code = `(${code.trim()})\n`;
       wrappedCmd = true;
     }
@@ -305,7 +309,7 @@ function REPLServer(prompt,
       if (self.breakEvalOnSigint) {
         // Start the SIGINT watchdog before entering raw mode so that a very
         // quick Ctrl+C doesn't lead to aborting the process completely.
-        if (!utilBinding.startSigintWatchdog())
+        if (!startSigintWatchdog())
           throw new ERR_CANNOT_WATCH_SIGINT();
         previouslyInRawMode = self._setRawMode(false);
       }
@@ -329,18 +333,13 @@ function REPLServer(prompt,
 
             // Returns true if there were pending SIGINTs *after* the script
             // has terminated without being interrupted itself.
-            if (utilBinding.stopSigintWatchdog()) {
+            if (stopSigintWatchdog()) {
               self.emit('SIGINT');
             }
           }
         }
       } catch (e) {
         err = e;
-
-        if (err && err.code === 'ERR_SCRIPT_EXECUTION_INTERRUPTED') {
-          // The stack trace for this case is not very useful anyway.
-          Object.defineProperty(err, 'stack', { value: '' });
-        }
 
         if (process.domain) {
           debug('not recoverable, send to domain');
@@ -357,7 +356,11 @@ function REPLServer(prompt,
         if (self.breakEvalOnSigint) {
           const interrupt = new Promise((resolve, reject) => {
             sigintListener = () => {
-              reject(new ERR_SCRIPT_EXECUTION_INTERRUPTED());
+              const tmp = Error.stackTraceLimit;
+              Error.stackTraceLimit = 0;
+              const err = new ERR_SCRIPT_EXECUTION_INTERRUPTED();
+              Error.stackTraceLimit = tmp;
+              reject(err);
             };
             prioritizedSigintQueue.add(sigintListener);
           });
@@ -365,23 +368,8 @@ function REPLServer(prompt,
         }
 
         promise.then((result) => {
-          // Remove prioritized SIGINT listener if it was not called.
-          // TODO(TimothyGu): Use Promise.prototype.finally when it becomes
-          // available.
-          prioritizedSigintQueue.delete(sigintListener);
-
-          finishExecution(undefined, result);
-          unpause();
+          finishExecution(null, result);
         }, (err) => {
-          // Remove prioritized SIGINT listener if it was not called.
-          prioritizedSigintQueue.delete(sigintListener);
-
-          if (err.code === 'ERR_SCRIPT_EXECUTION_INTERRUPTED') {
-            // The stack trace for this case is not very useful anyway.
-            Object.defineProperty(err, 'stack', { value: '' });
-          }
-
-          unpause();
           if (err && process.domain) {
             debug('not recoverable, send to domain');
             process.domain.emit('error', err);
@@ -389,6 +377,10 @@ function REPLServer(prompt,
             return;
           }
           finishExecution(err);
+        }).finally(() => {
+          // Remove prioritized SIGINT listener if it was not called.
+          prioritizedSigintQueue.delete(sigintListener);
+          unpause();
         });
       }
     }
@@ -402,29 +394,53 @@ function REPLServer(prompt,
 
   self._domain.on('error', function debugDomainError(e) {
     debug('domain error');
-    const top = replMap.get(self);
-    const pstrace = Error.prepareStackTrace;
-    Error.prepareStackTrace = prepareStackTrace(pstrace);
-    if (typeof e === 'object')
+    let errStack = '';
+
+    if (typeof e === 'object' && e !== null) {
+      const pstrace = Error.prepareStackTrace;
+      Error.prepareStackTrace = prepareStackTrace(pstrace);
       internalUtil.decorateErrorStack(e);
-    Error.prepareStackTrace = pstrace;
-    const isError = internalUtil.isError(e);
-    if (!self.underscoreErrAssigned)
-      self.lastError = e;
-    if (e instanceof SyntaxError && e.stack) {
-      // remove repl:line-number and stack trace
-      e.stack = e.stack
-        .replace(/^repl:\d+\r?\n/, '')
-        .replace(/^\s+at\s.*\n?/gm, '');
-    } else if (isError && self.replMode === exports.REPL_MODE_STRICT) {
-      e.stack = e.stack.replace(/(\s+at\s+repl:)(\d+)/,
-                                (_, pre, line) => pre + (line - 1));
+      Error.prepareStackTrace = pstrace;
+
+      if (e.domainThrown) {
+        delete e.domain;
+        delete e.domainThrown;
+      }
+
+      if (internalUtil.isError(e)) {
+        if (e.stack) {
+          if (e.name === 'SyntaxError') {
+            // Remove stack trace.
+            e.stack = e.stack
+              .replace(/^repl:\d+\r?\n/, '')
+              .replace(/^\s+at\s.*\n?/gm, '');
+          } else if (self.replMode === exports.REPL_MODE_STRICT) {
+            e.stack = e.stack.replace(/(\s+at\s+repl:)(\d+)/,
+                                      (_, pre, line) => pre + (line - 1));
+          }
+        }
+        errStack = self.writer(e);
+
+        // Remove one line error braces to keep the old style in place.
+        if (errStack[errStack.length - 1] === ']') {
+          errStack = errStack.slice(1, -1);
+        }
+      }
     }
-    if (isError && e.stack) {
-      top.outputStream.write(`${e.stack}\n`);
+
+    if (errStack === '') {
+      errStack = `Thrown: ${self.writer(e)}\n`;
     } else {
-      top.outputStream.write(`Thrown: ${String(e)}\n`);
+      const ln = errStack.endsWith('\n') ? '' : '\n';
+      errStack = `Thrown:\n${errStack}${ln}`;
     }
+
+    if (!self.underscoreErrAssigned) {
+      self.lastError = e;
+    }
+
+    const top = replMap.get(self);
+    top.outputStream.write(errStack);
     top.clearBufferedCommand();
     top.lines.level = [];
     top.displayPrompt();
@@ -486,13 +502,28 @@ function REPLServer(prompt,
   }
   self.useColors = !!options.useColors;
 
-  if (self.useColors && self.writer === writer) {
-    // Turn on ANSI coloring.
-    self.writer = (obj) => util.inspect(obj, self.writer.options);
-    self.writer.options = Object.assign({}, writer.options, { colors: true });
+  if (self.writer === writer) {
+    // Conditionally turn on ANSI coloring.
+    writer.options.colors = self.useColors;
+
+    if (options[kStandaloneREPL]) {
+      Object.defineProperty(util.inspect, 'replDefaults', {
+        get() {
+          return writer.options;
+        },
+        set(options) {
+          if (options === null || typeof options !== 'object') {
+            throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
+          }
+          return Object.assign(writer.options, options);
+        },
+        enumerable: true,
+        configurable: true
+      });
+    }
   }
 
-  function filterInternalStackFrames(error, structuredStack) {
+  function filterInternalStackFrames(structuredStack) {
     // Search from the bottom of the call stack to
     // find the first frame with a null function name
     if (typeof structuredStack !== 'object')
@@ -507,7 +538,7 @@ function REPLServer(prompt,
 
   function prepareStackTrace(fn) {
     return (error, stackFrames) => {
-      const frames = filterInternalStackFrames(error, stackFrames);
+      const frames = filterInternalStackFrames(stackFrames);
       if (fn) {
         return fn(error, frames);
       }
@@ -560,7 +591,7 @@ function REPLServer(prompt,
         sawSIGINT = false;
         return;
       }
-      self.output.write('(To exit, press ^C again or type .exit)\n');
+      self.output.write('(To exit, press ^C again or ^D or type .exit)\n');
       sawSIGINT = true;
     } else {
       sawSIGINT = false;
@@ -626,7 +657,6 @@ function REPLServer(prompt,
         self.outputStream.write('npm should be run outside of the ' +
                                 'node repl, in your normal shell.\n' +
                                 '(Press Control-D to exit.)\n');
-        self.clearBufferedCommand();
         self.displayPrompt();
         return;
       }
@@ -689,6 +719,11 @@ function REPLServer(prompt,
       return;
     }
     if (!self.editorMode || !self.terminal) {
+      // Before exiting, make sure to clear the line.
+      if (key.ctrl && key.name === 'd' &&
+          self.cursor === 0 && self.line.length === 0) {
+        self.clearLine();
+      }
       ttyWrite(d, key);
       return;
     }
@@ -731,7 +766,7 @@ exports.REPLServer = REPLServer;
 exports.REPL_MODE_SLOPPY = Symbol('repl-sloppy');
 exports.REPL_MODE_STRICT = Symbol('repl-strict');
 
-// prompt is a string to print on each line for the prompt,
+// Prompt is a string to print on each line for the prompt,
 // source is a stream to use for I/O, defaulting to stdin/stdout.
 exports.start = function(prompt,
                          source,
@@ -748,6 +783,10 @@ exports.start = function(prompt,
   if (!exports.repl) exports.repl = repl;
   replMap.set(repl, repl);
   return repl;
+};
+
+REPLServer.prototype.setupHistory = function setupHistory(historyFile, cb) {
+  history(this, historyFile, cb);
 };
 
 REPLServer.prototype.clearBufferedCommand = function clearBufferedCommand() {
@@ -783,6 +822,10 @@ REPLServer.prototype.createContext = function() {
     }, () => {
       context = vm.createContext();
     });
+    for (const name of Object.getOwnPropertyNames(global)) {
+      Object.defineProperty(context, name,
+                            Object.getOwnPropertyDescriptor(global, name));
+    }
     context.global = context;
     const _console = new Console(this.outputStream);
     Object.defineProperty(context, 'console', {
@@ -790,17 +833,6 @@ REPLServer.prototype.createContext = function() {
       writable: true,
       value: _console
     });
-
-    var names = Object.getOwnPropertyNames(global);
-    for (var n = 0; n < names.length; n++) {
-      var name = names[n];
-      if (name === 'console' || name === 'global')
-        continue;
-      if (GLOBAL_OBJECT_PROPERTY_MAP[name] === undefined) {
-        Object.defineProperty(context, name,
-                              Object.getOwnPropertyDescriptor(global, name));
-      }
-    }
   }
 
   var module = new CJSModule('<repl>');
@@ -925,34 +957,10 @@ function isIdentifier(str) {
   return true;
 }
 
-const ARRAY_LENGTH_THRESHOLD = 1e6;
-
-function mayBeLargeObject(obj) {
-  if (Array.isArray(obj)) {
-    return obj.length > ARRAY_LENGTH_THRESHOLD ? ['length'] : null;
-  } else if (isTypedArray(obj)) {
-    return obj.length > ARRAY_LENGTH_THRESHOLD ? [] : null;
-  }
-
-  return null;
-}
-
 function filteredOwnPropertyNames(obj) {
   if (!obj) return [];
-  const fakeProperties = mayBeLargeObject(obj);
-  if (fakeProperties !== null) {
-    this.outputStream.write('\r\n');
-    process.emitWarning(
-      'The current array, Buffer or TypedArray has too many entries. ' +
-      'Certain properties may be missing from completion output.',
-      'REPLWarning',
-      undefined,
-      undefined,
-      true);
-
-    return fakeProperties;
-  }
-  return Object.getOwnPropertyNames(obj).filter(isIdentifier);
+  const filter = ALL_PROPERTIES | SKIP_SYMBOLS;
+  return getOwnNonIndexProperties(obj, filter).filter(isIdentifier);
 }
 
 function getGlobalLexicalScopeNames(contextId) {
@@ -1001,6 +1009,7 @@ function complete(line, callback) {
     // all this is only profitable if the nested REPL
     // does not have a bufferedCommand
     if (!magic[kBufferedCommandSymbol]) {
+      magic._domain.on('error', (err) => { throw err; });
       return magic.complete(line, callback);
     }
   }
@@ -1050,7 +1059,7 @@ function complete(line, callback) {
       dir = path.resolve(paths[i], subdir);
       try {
         files = fs.readdirSync(dir);
-      } catch (e) {
+      } catch {
         continue;
       }
       for (f = 0; f < files.length; f++) {
@@ -1064,14 +1073,14 @@ function complete(line, callback) {
         abs = path.resolve(dir, name);
         try {
           isDirectory = fs.statSync(abs).isDirectory();
-        } catch (e) {
+        } catch {
           continue;
         }
         if (isDirectory) {
           group.push(subdir + name + '/');
           try {
             subfiles = fs.readdirSync(abs);
-          } catch (e) {
+          } catch {
             continue;
           }
           for (s = 0; s < subfiles.length; s++) {
@@ -1135,31 +1144,31 @@ function complete(line, callback) {
           }
           completionGroups.push(
             filteredOwnPropertyNames.call(this, this.context));
-          addStandardGlobals(completionGroups, filter);
+          if (filter !== '') addCommonWords(completionGroups);
           completionGroupsLoaded();
         } else {
           this.eval('.scope', this.context, 'repl', function ev(err, globals) {
             if (err || !Array.isArray(globals)) {
-              addStandardGlobals(completionGroups, filter);
+              if (filter !== '') addCommonWords(completionGroups);
             } else if (Array.isArray(globals[0])) {
               // Add grouped globals
               for (var n = 0; n < globals.length; n++)
                 completionGroups.push(globals[n]);
             } else {
               completionGroups.push(globals);
-              addStandardGlobals(completionGroups, filter);
+              if (filter !== '') addCommonWords(completionGroups);
             }
             completionGroupsLoaded();
           });
         }
       } else {
-        const evalExpr = `try { ${expr} } catch (e) {}`;
+        const evalExpr = `try { ${expr} } catch {}`;
         this.eval(evalExpr, this.context, 'repl', (e, obj) => {
           if (obj != null) {
             if (typeof obj === 'object' || typeof obj === 'function') {
               try {
                 memberGroups.push(filteredOwnPropertyNames.call(this, obj));
-              } catch (ex) {
+              } catch {
                 // Probably a Proxy object without `getOwnPropertyNames` trap.
                 // We simply ignore it here, as we don't want to break the
                 // autocompletion. Fixes the bug
@@ -1184,7 +1193,7 @@ function complete(line, callback) {
                   break;
                 }
               }
-            } catch (e) {}
+            } catch {}
           }
 
           if (memberGroups.length) {
@@ -1319,11 +1328,11 @@ function _memory(cmd) {
   if (cmd) {
     // Going down is { and (   e.g. function() {
     // going up is } and )
-    var dw = cmd.match(/{|\(/g);
-    var up = cmd.match(/}|\)/g);
+    let dw = cmd.match(/[{(]/g);
+    let up = cmd.match(/[})]/g);
     up = up ? up.length : 0;
     dw = dw ? dw.length : 0;
-    var depth = dw - up;
+    let depth = dw - up;
 
     if (depth) {
       (function workIt() {
@@ -1342,9 +1351,9 @@ function _memory(cmd) {
           });
         } else if (depth < 0) {
           // Going... up.
-          var curr = self.lines.level.pop();
+          const curr = self.lines.level.pop();
           if (curr) {
-            var tmp = curr.depth + depth;
+            const tmp = curr.depth + depth;
             if (tmp < 0) {
               // More to go, recurse
               depth += curr.depth;
@@ -1359,7 +1368,7 @@ function _memory(cmd) {
       }());
     }
 
-    // it is possible to determine a syntax error at this point.
+    // It is possible to determine a syntax error at this point.
     // if the REPL still has a bufferedCommand and
     // self.lines.level.length === 0
     // TODO? keep a log of level so that any syntax breaking lines can
@@ -1371,21 +1380,16 @@ function _memory(cmd) {
   }
 }
 
-function addStandardGlobals(completionGroups, filter) {
-  // Global object properties
-  // (http://www.ecma-international.org/publications/standards/Ecma-262.htm)
-  completionGroups.push(GLOBAL_OBJECT_PROPERTIES);
-  // Common keywords. Exclude for completion on the empty string, b/c
-  // they just get in the way.
-  if (filter) {
-    completionGroups.push([
-      'async', 'await', 'break', 'case', 'catch', 'const', 'continue',
-      'debugger', 'default', 'delete', 'do', 'else', 'export', 'false',
-      'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof', 'let',
-      'new', 'null', 'return', 'switch', 'this', 'throw', 'true', 'try',
-      'typeof', 'undefined', 'var', 'void', 'while', 'with', 'yield'
-    ]);
-  }
+function addCommonWords(completionGroups) {
+  // Only words which do not yet exist as global property should be added to
+  // this list.
+  completionGroups.push([
+    'async', 'await', 'break', 'case', 'catch', 'const', 'continue',
+    'debugger', 'default', 'delete', 'do', 'else', 'export', 'false',
+    'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof', 'let',
+    'new', 'null', 'return', 'switch', 'this', 'throw', 'true', 'try',
+    'typeof', 'var', 'void', 'while', 'with', 'yield'
+  ]);
 }
 
 function _turnOnEditorMode(repl) {
@@ -1447,6 +1451,8 @@ function defineDefaultCommands(repl) {
         var line = `.${name}${cmd.help ? spaces + cmd.help : ''}\n`;
         this.outputStream.write(line);
       }
+      this.outputStream.write('\nPress ^C to abort current expression, ' +
+        '^D to exit the repl\n');
       this.displayPrompt();
     }
   });
@@ -1457,7 +1463,7 @@ function defineDefaultCommands(repl) {
       try {
         fs.writeFileSync(file, this.lines.join('\n') + '\n');
         this.outputStream.write('Session saved to: ' + file + '\n');
-      } catch (e) {
+      } catch {
         this.outputStream.write('Failed to save: ' + file + '\n');
       }
       this.displayPrompt();
@@ -1483,96 +1489,26 @@ function defineDefaultCommands(repl) {
           this.outputStream.write('Failed to load: ' + file +
                                   ' is not a valid file\n');
         }
-      } catch (e) {
+      } catch {
         this.outputStream.write('Failed to load: ' + file + '\n');
       }
       this.displayPrompt();
     }
   });
-
-  repl.defineCommand('editor', {
-    help: 'Enter editor mode',
-    action() {
-      if (!this.terminal) return;
-      _turnOnEditorMode(this);
-      this.outputStream.write(
-        '// Entering editor mode (^D to finish, ^C to cancel)\n');
-    }
-  });
+  if (repl.terminal) {
+    repl.defineCommand('editor', {
+      help: 'Enter editor mode',
+      action() {
+        _turnOnEditorMode(this);
+        this.outputStream.write(
+          '// Entering editor mode (^D to finish, ^C to cancel)\n');
+      }
+    });
+  }
 }
 
 function regexpEscape(s) {
   return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-}
-
-// If the error is that we've unexpectedly ended the input,
-// then let the user try to recover by adding more input.
-function isRecoverableError(e, code) {
-  if (e && e.name === 'SyntaxError') {
-    var message = e.message;
-    if (message === 'Unterminated template literal' ||
-        message === 'Unexpected end of input') {
-      return true;
-    }
-
-    if (message === 'missing ) after argument list') {
-      const frames = e.stack.split(/\r?\n/);
-      const pos = frames.findIndex((f) => f.match(/^\s*\^+$/));
-      return pos > 0 && frames[pos - 1].length === frames[pos].length;
-    }
-
-    if (message === 'Invalid or unexpected token')
-      return isCodeRecoverable(code);
-  }
-  return false;
-}
-
-// Check whether a code snippet should be forced to fail in the REPL.
-function isCodeRecoverable(code) {
-  var current, previous, stringLiteral;
-  var isBlockComment = false;
-  var isSingleComment = false;
-  var isRegExpLiteral = false;
-  var lastChar = code.charAt(code.length - 2);
-  var prevTokenChar = null;
-
-  for (var i = 0; i < code.length; i++) {
-    previous = current;
-    current = code[i];
-
-    if (previous === '\\' && (stringLiteral || isRegExpLiteral)) {
-      current = null;
-    } else if (stringLiteral) {
-      if (stringLiteral === current) {
-        stringLiteral = null;
-      }
-    } else if (isRegExpLiteral && current === '/') {
-      isRegExpLiteral = false;
-    } else if (isBlockComment && previous === '*' && current === '/') {
-      isBlockComment = false;
-    } else if (isSingleComment && current === '\n') {
-      isSingleComment = false;
-    } else if (!isBlockComment && !isRegExpLiteral && !isSingleComment) {
-      if (current === '/' && previous === '/') {
-        isSingleComment = true;
-      } else if (previous === '/') {
-        if (current === '*') {
-          isBlockComment = true;
-          // Distinguish between a division operator and the start of a regex
-          // by examining the non-whitespace character that precedes the /
-        } else if ([null, '(', '[', '{', '}', ';'].includes(prevTokenChar)) {
-          isRegExpLiteral = true;
-        }
-      } else {
-        if (current.trim()) prevTokenChar = current;
-        if (current === '\'' || current === '"') {
-          stringLiteral = current;
-        }
-      }
-    }
-  }
-
-  return stringLiteral ? lastChar === '\\' : isBlockComment;
 }
 
 function Recoverable(err) {

@@ -1,7 +1,5 @@
 'use strict';
 
-const { internalBinding } = require('internal/bootstrap/loaders');
-const { registerDOMException } = internalBinding('messaging');
 const { ERR_INVALID_THIS } = require('internal/errors').codes;
 
 const internalsMap = new WeakMap();
@@ -43,6 +41,13 @@ class DOMException extends Error {
   }
 }
 
+Object.defineProperties(DOMException.prototype, {
+  [Symbol.toStringTag]: { configurable: true, value: 'DOMException' },
+  name: { enumerable: true, configurable: true },
+  message: { enumerable: true, configurable: true },
+  code: { enumerable: true, configurable: true }
+});
+
 for (const [name, codeName, value] of [
   ['IndexSizeError', 'INDEX_SIZE_ERR', 1],
   ['DOMStringSizeError', 'DOMSTRING_SIZE_ERR', 2],
@@ -79,5 +84,3 @@ for (const [name, codeName, value] of [
 }
 
 module.exports = DOMException;
-
-registerDOMException(DOMException);

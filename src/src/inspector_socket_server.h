@@ -1,6 +1,8 @@
 #ifndef SRC_INSPECTOR_SOCKET_SERVER_H_
 #define SRC_INSPECTOR_SOCKET_SERVER_H_
 
+#if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
+
 #include "inspector_agent.h"
 #include "inspector_socket.h"
 #include "uv.h"
@@ -71,10 +73,10 @@ class InspectorSocketServer {
     return server_sockets_.empty() && connected_sessions_.empty();
   }
 
- private:
   static void CloseServerSocket(ServerSocket*);
   using ServerSocketPtr = DeleteFnPtr<ServerSocket, CloseServerSocket>;
 
+ private:
   void SendListResponse(InspectorSocket* socket, const std::string& host,
                         SocketSession* session);
   std::string GetFrontendURL(bool is_compat,
@@ -97,5 +99,7 @@ class InspectorSocketServer {
 
 }  // namespace inspector
 }  // namespace node
+
+#endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #endif  // SRC_INSPECTOR_SOCKET_SERVER_H_

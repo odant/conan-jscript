@@ -1,25 +1,40 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 const assert = require('assert');
-const cares = process.binding('cares_wrap');
+const { internalBinding } = require('internal/test/binding');
+const cares = internalBinding('cares_wrap');
 const dns = require('dns');
 const dnsPromises = dns.promises;
 
-common.crashOnUnhandledRejection();
-
 // Stub `getaddrinfo` to *always* error.
-cares.getaddrinfo = () => process.binding('uv').UV_ENOENT;
+cares.getaddrinfo = () => internalBinding('uv').UV_ENOENT;
 
 {
   const err = {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: /^The "hostname" argument must be one of type string or falsy/
+    message: /^The "hostname" argument must be of type string\. Received type number/
   };
 
   common.expectsError(() => dns.lookup(1, {}), err);
   common.expectsError(() => dnsPromises.lookup(1, {}), err);
 }
+
+// This also verifies different expectWarning notations.
+common.expectWarning({
+  // For 'internal/test/binding' module.
+  'internal/test/binding': [
+    'These APIs are for internal testing only. Do not use them.'
+  ],
+  // For dns.promises.
+  'ExperimentalWarning': 'The dns.promises API is experimental',
+  // For calling `dns.lookup` with falsy `hostname`.
+  'DeprecationWarning': {
+    DEP0118: 'The provided hostname "false" is not a valid ' +
+      'hostname, and is supported in the dns module solely for compatibility.'
+  }
+});
 
 common.expectsError(() => {
   dns.lookup(false, 'cb');
@@ -136,8 +151,8 @@ dns.lookup('example.com', common.mustCall((error, result, addressType) => {
   assert.strictEqual(tickValue, 1);
   assert.strictEqual(error.code, 'ENOENT');
   const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
-  assert.strictEqual(descriptor.enumerable,
-                     false, 'The error message should be non-enumerable');
+  // The error message should be non-enumerable.
+  assert.strictEqual(descriptor.enumerable, false);
 }));
 
 // Make sure that the error callback is called

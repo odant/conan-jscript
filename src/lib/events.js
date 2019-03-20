@@ -48,6 +48,13 @@ function lazyErrors() {
   return errors;
 }
 
+function checkListener(listener) {
+  if (typeof listener !== 'function') {
+    const errors = lazyErrors();
+    throw new errors.ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
+  }
+}
+
 Object.defineProperty(EventEmitter, 'defaultMaxListeners', {
   enumerable: true,
   get: function() {
@@ -86,40 +93,39 @@ EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
   return this;
 };
 
-function $getMaxListeners(that) {
+function _getMaxListeners(that) {
   if (that._maxListeners === undefined)
     return EventEmitter.defaultMaxListeners;
   return that._maxListeners;
 }
 
 EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
-  return $getMaxListeners(this);
+  return _getMaxListeners(this);
 };
 
-// Returns the longest sequence of `a` that fully appears in `b`,
-// of length at least 3.
-// This is a lazy approach but should work well enough, given that stack
-// frames are usually unequal or otherwise appear in groups, and that
-// we only run this code in case of an unhandled exception.
-function longestSeqContainedIn(a, b) {
-  for (var len = a.length; len >= 3; --len) {
-    for (var i = 0; i < a.length - len; ++i) {
-      // Attempt to find a[i:i+len] in b
-      for (var j = 0; j < b.length - len; ++j) {
-        let matches = true;
-        for (var k = 0; k < len; ++k) {
-          if (a[i + k] !== b[j + k]) {
-            matches = false;
-            break;
-          }
+// Returns the length and line number of the first sequence of `a` that fully
+// appears in `b` with a length of at least 4.
+function identicalSequenceRange(a, b) {
+  for (var i = 0; i < a.length - 3; i++) {
+    // Find the first entry of b that matches the current entry of a.
+    const pos = b.indexOf(a[i]);
+    if (pos !== -1) {
+      const rest = b.length - pos;
+      if (rest > 3) {
+        let len = 1;
+        const maxLen = Math.min(a.length - i, rest);
+        // Count the number of consecutive entries.
+        while (maxLen > len && a[i + len] === b[pos + len]) {
+          len++;
         }
-        if (matches)
-          return [ len, i, j ];
+        if (len > 3) {
+          return [len, i];
+        }
       }
     }
   }
 
-  return [ 0, 0, 0 ];
+  return [0, 0];
 }
 
 function enhanceStackTrace(err, own) {
@@ -128,9 +134,9 @@ function enhanceStackTrace(err, own) {
   const errStack = err.stack.split('\n').slice(1);
   const ownStack = own.stack.split('\n').slice(1);
 
-  const [ len, off ] = longestSeqContainedIn(ownStack, errStack);
+  const [ len, off ] = identicalSequenceRange(ownStack, errStack);
   if (len > 0) {
-    ownStack.splice(off + 1, len - 1,
+    ownStack.splice(off + 1, len - 2,
                     '    [... lines matching original stack trace ...]');
   }
   // Do this last, because it is the only operation with side effects.
@@ -160,15 +166,24 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
           value: enhanceStackTrace.bind(null, er, capture),
           configurable: true
         });
-      } catch (e) {}
+      } catch {}
 
       // Note: The comments on the `throw` lines are intentional, they show
       // up in Node's output if this results in an unhandled exception.
       throw er; // Unhandled 'error' event
     }
+
+    let stringifiedEr;
+    const { inspect } = require('internal/util/inspect');
+    try {
+      stringifiedEr = inspect(er);
+    } catch {
+      stringifiedEr = er;
+    }
+
     // At least give some kind of context to the user
     const errors = lazyErrors();
-    const err = new errors.ERR_UNHANDLED_ERROR(er);
+    const err = new errors.ERR_UNHANDLED_ERROR(stringifiedEr);
     err.context = er;
     throw err; // Unhandled 'error' event
   }
@@ -195,10 +210,7 @@ function _addListener(target, type, listener, prepend) {
   var events;
   var existing;
 
-  if (typeof listener !== 'function') {
-    const errors = lazyErrors();
-    throw new errors.ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
-  }
+  checkListener(listener);
 
   events = target._events;
   if (events === undefined) {
@@ -220,7 +232,7 @@ function _addListener(target, type, listener, prepend) {
 
   if (existing === undefined) {
     // Optimize the case of one listener. Don't need the extra array object.
-    existing = events[type] = listener;
+    events[type] = listener;
     ++target._eventsCount;
   } else {
     if (typeof existing === 'function') {
@@ -235,7 +247,7 @@ function _addListener(target, type, listener, prepend) {
     }
 
     // Check for listener leak
-    m = $getMaxListeners(target);
+    m = _getMaxListeners(target);
     if (m > 0 && existing.length > m && !existing.warned) {
       existing.warned = true;
       // No error code for this since it is a Warning
@@ -270,7 +282,7 @@ function onceWrapper(...args) {
   if (!this.fired) {
     this.target.removeListener(this.type, this.wrapFn);
     this.fired = true;
-    Reflect.apply(this.listener, this.target, args);
+    return Reflect.apply(this.listener, this.target, args);
   }
 }
 
@@ -283,20 +295,16 @@ function _onceWrap(target, type, listener) {
 }
 
 EventEmitter.prototype.once = function once(type, listener) {
-  if (typeof listener !== 'function') {
-    const errors = lazyErrors();
-    throw new errors.ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
-  }
+  checkListener(listener);
+
   this.on(type, _onceWrap(this, type, listener));
   return this;
 };
 
 EventEmitter.prototype.prependOnceListener =
     function prependOnceListener(type, listener) {
-      if (typeof listener !== 'function') {
-        const errors = lazyErrors();
-        throw new errors.ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
-      }
+      checkListener(listener);
+
       this.prependListener(type, _onceWrap(this, type, listener));
       return this;
     };
@@ -306,10 +314,7 @@ EventEmitter.prototype.removeListener =
     function removeListener(type, listener) {
       var list, events, position, i, originalListener;
 
-      if (typeof listener !== 'function') {
-        const errors = lazyErrors();
-        throw new errors.ERR_INVALID_ARG_TYPE('listener', 'Function', listener);
-      }
+      checkListener(listener);
 
       events = this._events;
       if (events === undefined)
@@ -369,7 +374,7 @@ EventEmitter.prototype.removeAllListeners =
       if (events === undefined)
         return this;
 
-      // not listening for removeListener, no need to emit
+      // Not listening for removeListener, no need to emit
       if (events.removeListener === undefined) {
         if (arguments.length === 0) {
           this._events = Object.create(null);
@@ -383,12 +388,9 @@ EventEmitter.prototype.removeAllListeners =
         return this;
       }
 
-      // emit removeListener for all listeners on all events
+      // Emit removeListener for all listeners on all events
       if (arguments.length === 0) {
-        var keys = Object.keys(events);
-        var key;
-        for (i = 0; i < keys.length; ++i) {
-          key = keys[i];
+        for (const key of Object.keys(events)) {
           if (key === 'removeListener') continue;
           this.removeAllListeners(key);
         }

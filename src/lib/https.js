@@ -35,8 +35,7 @@ const {
 const { ClientRequest } = require('_http_client');
 const { inherits } = util;
 const debug = util.debuglog('https');
-const { urlToOptions, searchParamsSymbol } = require('internal/url');
-const { ERR_INVALID_DOMAIN_NAME } = require('internal/errors').codes;
+const { URL, urlToOptions, searchParamsSymbol } = require('internal/url');
 const { IncomingMessage, ServerResponse } = require('http');
 const { kIncomingMessage } = require('_http_common');
 
@@ -47,7 +46,7 @@ function Server(opts, requestListener) {
     requestListener = opts;
     opts = undefined;
   }
-  opts = util._extend({}, opts);
+  opts = { ...opts };
 
   if (!opts.ALPNProtocols) {
     // http/1.0 is not defined as Protocol IDs in IANA
@@ -75,6 +74,7 @@ function Server(opts, requestListener) {
   this.timeout = 2 * 60 * 1000;
   this.keepAliveTimeout = 5000;
   this.maxHeadersCount = null;
+  this.headersTimeout = 40 * 1000; // 40 seconds
 }
 inherits(Server, tls.Server);
 
@@ -110,24 +110,27 @@ function createConnection(port, host, options) {
     const session = this._getSession(options._agentKey);
     if (session) {
       debug('reuse session for %j', options._agentKey);
-      options = util._extend({
-        session: session
-      }, options);
+      options = {
+        session,
+        ...options
+      };
     }
   }
 
-  const socket = tls.connect(options, () => {
-    if (!options._agentKey)
-      return;
+  const socket = tls.connect(options);
 
-    this._cacheSession(options._agentKey, socket.getSession());
-  });
+  if (options._agentKey) {
+    // Cache new session for reuse
+    socket.on('session', (session) => {
+      this._cacheSession(options._agentKey, session);
+    });
 
-  // Evict session on error
-  socket.once('close', (err) => {
-    if (err)
-      this._evictSession(options._agentKey);
-  });
+    // Evict session on error
+    socket.once('close', (err) => {
+      if (err)
+        this._evictSession(options._agentKey);
+    });
+  }
 
   return socket;
 }
@@ -186,6 +189,14 @@ Agent.prototype.getName = function getName(options) {
   name += ':';
   if (options.servername && options.servername !== options.host)
     name += options.servername;
+
+  name += ':';
+  if (options.minVersion)
+    name += options.minVersion;
+
+  name += ':';
+  if (options.maxVersion)
+    name += options.maxVersion;
 
   name += ':';
   if (options.secureProtocol)
@@ -255,25 +266,45 @@ Agent.prototype._evictSession = function _evictSession(key) {
 
 const globalAgent = new Agent();
 
-function request(options, cb) {
-  if (typeof options === 'string') {
-    options = url.parse(options);
-    if (!options.hostname) {
-      throw new ERR_INVALID_DOMAIN_NAME();
+let urlWarningEmitted = false;
+function request(...args) {
+  let options = {};
+
+  if (typeof args[0] === 'string') {
+    const urlStr = args.shift();
+    try {
+      options = urlToOptions(new URL(urlStr));
+    } catch (err) {
+      options = url.parse(urlStr);
+      if (!options.hostname) {
+        throw err;
+      }
+      if (!urlWarningEmitted && !process.noDeprecation) {
+        urlWarningEmitted = true;
+        process.emitWarning(
+          `The provided URL ${urlStr} is not a valid URL, and is supported ` +
+          'in the https module solely for compatibility.',
+          'DeprecationWarning', 'DEP0109');
+      }
     }
-  } else if (options && options[searchParamsSymbol] &&
-             options[searchParamsSymbol][searchParamsSymbol]) {
+  } else if (args[0] && args[0][searchParamsSymbol] &&
+             args[0][searchParamsSymbol][searchParamsSymbol]) {
     // url.URL instance
-    options = urlToOptions(options);
-  } else {
-    options = util._extend({}, options);
+    options = urlToOptions(args.shift());
   }
-  options._defaultAgent = globalAgent;
-  return new ClientRequest(options, cb);
+
+  if (args[0] && typeof args[0] !== 'function') {
+    Object.assign(options, args.shift());
+  }
+
+  options._defaultAgent = module.exports.globalAgent;
+  args.unshift(options);
+
+  return new ClientRequest(...args);
 }
 
-function get(options, cb) {
-  const req = request(options, cb);
+function get(input, options, cb) {
+  const req = request(input, options, cb);
   req.end();
   return req;
 }

@@ -25,6 +25,13 @@ const common = require('../common');
 if (!common.hasCrypto)
   common.skip('missing crypto');
 
+common.expectWarning({
+  DeprecationWarning: [
+    ['crypto.createCipher is deprecated.', 'DEP0106'],
+    ['crypto._toBuf is deprecated.', 'DEP0114']
+  ]
+});
+
 const assert = require('assert');
 const crypto = require('crypto');
 const tls = require('tls');
@@ -228,7 +235,7 @@ assert.throws(function() {
   //   Then open private_key.pem and change its header and footer.
   const sha1_privateKey = fixtures.readSync('test_bad_rsa_privkey.pem',
                                             'ascii');
-  // this would inject errors onto OpenSSL's error stack
+  // This would inject errors onto OpenSSL's error stack
   crypto.createSign('sha1').sign(sha1_privateKey);
 }, (err) => {
   // Throws crypto error, so there is an opensslErrorStack property.
@@ -294,3 +301,8 @@ testEncoding({
 testEncoding({
   defaultEncoding: 'latin1'
 }, assertionHashLatin1);
+
+{
+  // Test that the exported _toBuf function is deprecated.
+  crypto._toBuf(Buffer.alloc(0));
+}

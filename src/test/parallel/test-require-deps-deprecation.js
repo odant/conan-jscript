@@ -4,7 +4,6 @@ const common = require('../common');
 const assert = require('assert');
 
 const deprecatedModules = [
-  'node-inspect/lib/_inspect',
   'node-inspect/lib/internal/inspect_client',
   'node-inspect/lib/internal/inspect_repl',
   'v8/tools/SourceMap',
@@ -34,7 +33,7 @@ common.expectWarning('DeprecationWarning', deprecatedModules.map((m) => {
 for (const m of deprecatedModules) {
   try {
     require(m);
-  } catch (err) {}
+  } catch {}
 }
 
 // Instead of checking require, check that resolve isn't pointing toward a

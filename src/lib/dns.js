@@ -21,7 +21,8 @@
 
 'use strict';
 
-const cares = process.binding('cares_wrap');
+const cares = internalBinding('cares_wrap');
+const { toASCII } = require('internal/idna');
 const { isIP, isIPv4, isLegalPort } = require('internal/net');
 const { customPromisifyArgs } = require('internal/util');
 const errors = require('internal/errors');
@@ -30,7 +31,8 @@ const {
   getDefaultResolver,
   setDefaultResolver,
   Resolver,
-  validateHints
+  validateHints,
+  emitInvalidHostnameWarning,
 } = require('internal/dns/utils');
 const {
   ERR_INVALID_ARG_TYPE,
@@ -39,6 +41,7 @@ const {
   ERR_MISSING_ARGS,
   ERR_SOCKET_BAD_PORT
 } = errors.codes;
+const { validateString } = require('internal/validators');
 
 const {
   GetAddrInfoReqWrap,
@@ -48,8 +51,7 @@ const {
 
 const dnsException = errors.dnsException;
 
-let promisesWarn = true;
-let promises; // Lazy loaded
+let promises = null; // Lazy loaded
 
 function onlookup(err, addresses) {
   if (err) {
@@ -91,7 +93,7 @@ function lookup(hostname, options, callback) {
 
   // Parse arguments
   if (hostname && typeof hostname !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('hostname', ['string', 'falsy'], hostname);
+    throw new ERR_INVALID_ARG_TYPE('hostname', 'string', hostname);
   } else if (typeof options === 'function') {
     callback = options;
     family = 0;
@@ -112,6 +114,7 @@ function lookup(hostname, options, callback) {
     throw new ERR_INVALID_OPT_VALUE('family', family);
 
   if (!hostname) {
+    emitInvalidHostnameWarning(hostname);
     if (all) {
       process.nextTick(callback, null, []);
     } else {
@@ -137,7 +140,7 @@ function lookup(hostname, options, callback) {
   req.hostname = hostname;
   req.oncomplete = all ? onlookupall : onlookup;
 
-  var err = cares.getaddrinfo(req, hostname, family, hints, verbatim);
+  var err = cares.getaddrinfo(req, toASCII(hostname), family, hints, verbatim);
   if (err) {
     process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
     return {};
@@ -149,21 +152,21 @@ Object.defineProperty(lookup, customPromisifyArgs,
                       { value: ['address', 'family'], enumerable: false });
 
 
-function onlookupservice(err, host, service) {
+function onlookupservice(err, hostname, service) {
   if (err)
-    return this.callback(dnsException(err, 'getnameinfo', this.host));
+    return this.callback(dnsException(err, 'getnameinfo', this.hostname));
 
-  this.callback(null, host, service);
+  this.callback(null, hostname, service);
 }
 
 
 // lookupService(address, port, callback)
-function lookupService(host, port, callback) {
+function lookupService(hostname, port, callback) {
   if (arguments.length !== 3)
-    throw new ERR_MISSING_ARGS('host', 'port', 'callback');
+    throw new ERR_MISSING_ARGS('hostname', 'port', 'callback');
 
-  if (isIP(host) === 0)
-    throw new ERR_INVALID_OPT_VALUE('host', host);
+  if (isIP(hostname) === 0)
+    throw new ERR_INVALID_OPT_VALUE('hostname', hostname);
 
   if (!isLegalPort(port))
     throw new ERR_SOCKET_BAD_PORT(port);
@@ -175,12 +178,12 @@ function lookupService(host, port, callback) {
 
   var req = new GetNameInfoReqWrap();
   req.callback = callback;
-  req.host = host;
+  req.hostname = hostname;
   req.port = port;
   req.oncomplete = onlookupservice;
 
-  var err = cares.getnameinfo(req, host, port);
-  if (err) throw dnsException(err, 'getnameinfo', host);
+  var err = cares.getnameinfo(req, hostname, port);
+  if (err) throw dnsException(err, 'getnameinfo', hostname);
   return req;
 }
 
@@ -206,9 +209,8 @@ function resolver(bindingName) {
       callback = arguments[2];
     }
 
-    if (typeof name !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('name', 'string', name);
-    } else if (typeof callback !== 'function') {
+    validateString(name, 'name');
+    if (typeof callback !== 'function') {
       throw new ERR_INVALID_CALLBACK();
     }
 
@@ -218,7 +220,7 @@ function resolver(bindingName) {
     req.hostname = name;
     req.oncomplete = onresolve;
     req.ttl = !!(options && options.ttl);
-    var err = this._handle[bindingName](req, name);
+    var err = this._handle[bindingName](req, toASCII(name));
     if (err) throw dnsException(err, bindingName, name);
     return req;
   }
@@ -267,7 +269,7 @@ function defaultResolverSetServers(servers) {
   setDefaultResolver(resolver);
   bindDefaultResolver(module.exports, Resolver.prototype);
 
-  if (promises !== undefined)
+  if (promises !== null)
     bindDefaultResolver(promises, promises.Resolver.prototype);
 }
 
@@ -316,10 +318,9 @@ Object.defineProperties(module.exports, {
     configurable: true,
     enumerable: false,
     get() {
-      if (promisesWarn) {
+      if (promises === null) {
         promises = require('internal/dns/promises');
         promises.setServers = defaultResolverSetServers;
-        promisesWarn = false;
         process.emitWarning('The dns.promises API is experimental',
                             'ExperimentalWarning');
       }

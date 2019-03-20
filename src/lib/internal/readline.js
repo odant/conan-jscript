@@ -30,15 +30,17 @@ CSI.kClearToEnd = CSI`0K`;
 CSI.kClearLine = CSI`2K`;
 CSI.kClearScreenDown = CSI`0J`;
 
-if (process.binding('config').hasIntl) {
-  const icu = process.binding('icu');
+if (internalBinding('config').hasIntl) {
+  const icu = internalBinding('icu');
   getStringWidth = function getStringWidth(str, options) {
     options = options || {};
     if (!Number.isInteger(str))
       str = stripVTControlCharacters(String(str));
-    return icu.getStringWidth(str,
-                              Boolean(options.ambiguousAsFullWidth),
-                              Boolean(options.expandEmojiSequence));
+    return icu.getStringWidth(
+      str,
+      Boolean(options.ambiguousAsFullWidth),
+      Boolean(options.expandEmojiSequence)
+    );
   };
   isFullWidthCodePoint =
     function isFullWidthCodePoint(code, options) {
@@ -242,7 +244,7 @@ function* emitKeys(stream) {
          */
         const cmdStart = s.length - 1;
 
-        // skip one or two leading digits
+        // Skip one or two leading digits
         if (ch >= '0' && ch <= '9') {
           s += (ch = yield);
 
@@ -256,7 +258,7 @@ function* emitKeys(stream) {
           s += (ch = yield);
 
           if (ch >= '0' && ch <= '9') {
-            s += (ch = yield);
+            s += yield;
           }
         }
 
@@ -384,7 +386,7 @@ function* emitKeys(stream) {
       // carriage return
       key.name = 'return';
     } else if (ch === '\n') {
-      // enter, should have been called linefeed
+      // Enter, should have been called linefeed
       key.name = 'enter';
     } else if (ch === '\t') {
       // tab

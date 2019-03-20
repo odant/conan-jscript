@@ -2,25 +2,28 @@
 
 const errors = require('internal/errors');
 const {
-  kFsStatsFieldsLength,
+  kFsStatsFieldsNumber,
   StatWatcher: _StatWatcher
-} = process.binding('fs');
-const { FSEvent } = process.binding('fs_event_wrap');
+} = internalBinding('fs');
+const { FSEvent } = internalBinding('fs_event_wrap');
+const { UV_ENOSPC } = internalBinding('uv');
 const { EventEmitter } = require('events');
 const {
   getStatsFromBinding,
   validatePath
 } = require('internal/fs/utils');
-const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
+const {
+  defaultTriggerAsyncIdScope,
+  symbols: { owner_symbol }
+} = require('internal/async_hooks');
 const { toNamespacedPath } = require('path');
 const { validateUint32 } = require('internal/validators');
-const { getPathFromURL } = require('internal/url');
+const { toPathIfFileURL } = require('internal/url');
 const util = require('util');
-const assert = require('assert');
+const assert = require('internal/assert');
 
 const kOldStatus = Symbol('kOldStatus');
 const kUseBigint = Symbol('kUseBigint');
-const kOwner = Symbol('kOwner');
 
 function emitStop(self) {
   self.emit('stop');
@@ -36,7 +39,7 @@ function StatWatcher(bigint) {
 util.inherits(StatWatcher, EventEmitter);
 
 function onchange(newStatus, stats) {
-  const self = this[kOwner];
+  const self = this[owner_symbol];
   if (self[kOldStatus] === -1 &&
       newStatus === -1 &&
       stats[2/* new nlink */] === stats[16/* old nlink */]) {
@@ -45,7 +48,7 @@ function onchange(newStatus, stats) {
 
   self[kOldStatus] = newStatus;
   self.emit('change', getStatsFromBinding(stats),
-            getStatsFromBinding(stats, kFsStatsFieldsLength));
+            getStatsFromBinding(stats, kFsStatsFieldsNumber));
 }
 
 // FIXME(joyeecheung): this method is not documented.
@@ -59,7 +62,7 @@ StatWatcher.prototype.start = function(filename, persistent, interval) {
     return;
 
   this._handle = new _StatWatcher(this[kUseBigint]);
-  this._handle[kOwner] = this;
+  this._handle[owner_symbol] = this;
   this._handle.onchange = onchange;
   if (!persistent)
     this._handle.unref();
@@ -68,7 +71,7 @@ StatWatcher.prototype.start = function(filename, persistent, interval) {
   // the sake of backwards compatibility
   this[kOldStatus] = -1;
 
-  filename = getPathFromURL(filename);
+  filename = toPathIfFileURL(filename);
   validatePath(filename, 'filename');
   validateUint32(interval, 'interval');
   const err = this._handle.start(toNamespacedPath(filename), interval);
@@ -104,7 +107,7 @@ function FSWatcher() {
   EventEmitter.call(this);
 
   this._handle = new FSEvent();
-  this._handle.owner = this;
+  this._handle[owner_symbol] = this;
 
   this._handle.onchange = (status, eventType, filename) => {
     // TODO(joyeecheung): we may check self._handle.initialized here
@@ -115,7 +118,7 @@ function FSWatcher() {
       if (this._handle !== null) {
         // We don't use this.close() here to avoid firing the close event.
         this._handle.close();
-        this._handle = null;  // make the handle garbage collectable
+        this._handle = null;  // Make the handle garbage collectable
       }
       const error = errors.uvException({
         errno: status,
@@ -130,6 +133,7 @@ function FSWatcher() {
   };
 }
 util.inherits(FSWatcher, EventEmitter);
+
 
 // FIXME(joyeecheung): this method is not documented.
 // At the moment if filename is undefined, we
@@ -150,7 +154,7 @@ FSWatcher.prototype.start = function(filename,
     return;
   }
 
-  filename = getPathFromURL(filename);
+  filename = toPathIfFileURL(filename);
   validatePath(filename, 'filename');
 
   const err = this._handle.start(toNamespacedPath(filename),
@@ -161,7 +165,9 @@ FSWatcher.prototype.start = function(filename,
     const error = errors.uvException({
       errno: err,
       syscall: 'watch',
-      path: filename
+      path: filename,
+      message: err === UV_ENOSPC ?
+        'System limit for number of file watchers reached' : ''
     });
     error.filename = filename;
     throw error;
@@ -179,13 +185,20 @@ FSWatcher.prototype.close = function() {
     return;
   }
   this._handle.close();
-  this._handle = null;  // make the handle garbage collectable
+  this._handle = null;  // Make the handle garbage collectable
   process.nextTick(emitCloseNT, this);
 };
 
 function emitCloseNT(self) {
   self.emit('close');
 }
+
+// Legacy alias on the C++ wrapper object. This is not public API, so we may
+// want to runtime-deprecate it at some point. There's no hurry, though.
+Object.defineProperty(FSEvent.prototype, 'owner', {
+  get() { return this[owner_symbol]; },
+  set(v) { return this[owner_symbol] = v; }
+});
 
 module.exports = {
   FSWatcher,

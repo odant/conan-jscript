@@ -31,22 +31,21 @@ const backslash = /\\/g;
 
 console.error('load test-module-loading.js');
 
-// assert that this is the main module.
-assert.strictEqual(require.main.id, '.', 'main module should have id of \'.\'');
-assert.strictEqual(require.main, module, 'require.main should === module');
-assert.strictEqual(process.mainModule, module,
-                   'process.mainModule should === module');
-// assert that it's *not* the main module in the required module.
+assert.strictEqual(require.main.id, '.');
+assert.strictEqual(require.main, module);
+assert.strictEqual(process.mainModule, module);
+
+// Assert that it's *not* the main module in the required module.
 require('../fixtures/not-main-module.js');
 
 {
-  // require a file with a request that includes the extension
+  // Require a file with a request that includes the extension
   const a_js = require('../fixtures/a.js');
   assert.strictEqual(a_js.number, 42);
 }
 
 {
-  // require a file without any extensions
+  // Require a file without any extensions
   const foo_no_ext = require('../fixtures/foo');
   assert.strictEqual(foo_no_ext.foo, 'ok');
 }
@@ -102,12 +101,15 @@ const d2 = require('../fixtures/b/d');
   assert.notStrictEqual(threeFolder, three);
 }
 
-assert.strictEqual(require('../fixtures/packages/index').ok, 'ok',
-                   'Failed loading package');
-assert.strictEqual(require('../fixtures/packages/main').ok, 'ok',
-                   'Failed loading package');
-assert.strictEqual(require('../fixtures/packages/main-index').ok, 'ok',
-                   'Failed loading package with index.js in main subdir');
+assert.strictEqual(require('../fixtures/packages/index').ok, 'ok');
+assert.strictEqual(require('../fixtures/packages/main').ok, 'ok');
+assert.strictEqual(require('../fixtures/packages/main-index').ok, 'ok');
+assert.strictEqual(require('../fixtures/packages/missing-main').ok, 'ok');
+
+assert.throws(
+  function() { require('../fixtures/packages/unparseable'); },
+  /^SyntaxError: Error parsing/
+);
 
 {
   console.error('test cycles containing a .. path');
@@ -118,16 +120,16 @@ assert.strictEqual(require('../fixtures/packages/main-index').ok, 'ok',
 }
 
 console.error('test node_modules folders');
-// asserts are in the fixtures files themselves,
+// Asserts are in the fixtures files themselves,
 // since they depend on the folder structure.
 require('../fixtures/node_modules/foo');
 
 {
   console.error('test name clashes');
-  // this one exists and should import the local module
+  // This one exists and should import the local module
   const my_path = require('../fixtures/path');
   assert.ok(my_path.path_func instanceof Function);
-  // this one does not exist and should throw
+  // This one does not exist and should throw
   assert.throws(function() { require('./utils'); },
                 /^Error: Cannot find module '\.\/utils'$/);
 }
@@ -152,7 +154,7 @@ require.extensions['.test'] = function(module, filename) {
 };
 
 assert.strictEqual(require('../fixtures/registerExt').test, 'passed');
-// unknown extension, load as .js
+// Unknown extension, load as .js
 assert.strictEqual(require('../fixtures/registerExt.hello.world').test,
                    'passed');
 
@@ -165,8 +167,7 @@ require.extensions['.test'] = function(module) {
 
 assert.strictEqual(require('../fixtures/registerExt2').custom, 'passed');
 
-assert.strictEqual(require('../fixtures/foo').foo, 'ok',
-                   'require module with no extension');
+assert.strictEqual(require('../fixtures/foo').foo, 'ok');
 
 // Should not attempt to load a directory
 try {
@@ -181,13 +182,12 @@ try {
   console.error('load order');
 
   const loadOrder = '../fixtures/module-load-order/';
-  const msg = 'Load order incorrect.';
 
   require.extensions['.reg'] = require.extensions['.js'];
   require.extensions['.reg2'] = require.extensions['.js'];
 
-  assert.strictEqual(require(`${loadOrder}file1`).file1, 'file1', msg);
-  assert.strictEqual(require(`${loadOrder}file2`).file2, 'file2.js', msg);
+  assert.strictEqual(require(`${loadOrder}file1`).file1, 'file1');
+  assert.strictEqual(require(`${loadOrder}file2`).file2, 'file2.js');
   try {
     require(`${loadOrder}file3`);
   } catch (e) {
@@ -197,9 +197,10 @@ try {
     else
       assert.ok(/file3\.node/.test(e.message.replace(backslash, '/')));
   }
-  assert.strictEqual(require(`${loadOrder}file4`).file4, 'file4.reg', msg);
-  assert.strictEqual(require(`${loadOrder}file5`).file5, 'file5.reg2', msg);
-  assert.strictEqual(require(`${loadOrder}file6`).file6, 'file6/index.js', msg);
+
+  assert.strictEqual(require(`${loadOrder}file4`).file4, 'file4.reg');
+  assert.strictEqual(require(`${loadOrder}file5`).file5, 'file5.reg2');
+  assert.strictEqual(require(`${loadOrder}file6`).file6, 'file6/index.js');
   try {
     require(`${loadOrder}file7`);
   } catch (e) {
@@ -208,14 +209,13 @@ try {
     else
       assert.ok(/file7\/index\.node/.test(e.message.replace(backslash, '/')));
   }
-  assert.strictEqual(require(`${loadOrder}file8`).file8, 'file8/index.reg',
-                     msg);
-  assert.strictEqual(require(`${loadOrder}file9`).file9, 'file9/index.reg2',
-                     msg);
+
+  assert.strictEqual(require(`${loadOrder}file8`).file8, 'file8/index.reg');
+  assert.strictEqual(require(`${loadOrder}file9`).file9, 'file9/index.reg2');
 }
 
 {
-  // make sure that module.require() is the same as
+  // Make sure that module.require() is the same as
   // doing require() inside of that module.
   const parent = require('../fixtures/module-require/parent/');
   const child = require('../fixtures/module-require/child/');
@@ -235,7 +235,7 @@ try {
 
 
 {
-  // now verify that module.children contains all the different
+  // Now verify that module.children contains all the different
   // modules that we've required, and that all of them contain
   // the appropriate children, and so on.
 
@@ -251,7 +251,6 @@ try {
 
   assert.deepStrictEqual(children, {
     'common/index.js': {
-      'common/fixtures.js': {},
       'common/tmpdir.js': {}
     },
     'fixtures/not-main-module.js': {},
@@ -273,6 +272,7 @@ try {
     'fixtures/packages/index/index.js': {},
     'fixtures/packages/main/package-main-module.js': {},
     'fixtures/packages/main-index/package-main-module/index.js': {},
+    'fixtures/packages/missing-main/index.js': {},
     'fixtures/cycles/root.js': {
       'fixtures/cycles/folder/foo.js': {}
     },

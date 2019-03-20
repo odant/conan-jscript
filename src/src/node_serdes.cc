@@ -33,7 +33,7 @@ class SerializerContext : public BaseObject,
   SerializerContext(Environment* env,
                     Local<Object> wrap);
 
-  ~SerializerContext() {}
+  ~SerializerContext() override {}
 
   void ThrowDataCloneError(Local<String> message) override;
   Maybe<bool> WriteHostObject(Isolate* isolate, Local<Object> object) override;
@@ -53,9 +53,9 @@ class SerializerContext : public BaseObject,
   static void WriteDouble(const FunctionCallbackInfo<Value>& args);
   static void WriteRawBytes(const FunctionCallbackInfo<Value>& args);
 
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
-  }
+  SET_NO_MEMORY_INFO()
+  SET_MEMORY_INFO_NAME(SerializerContext)
+  SET_SELF_SIZE(SerializerContext)
 
  private:
   ValueSerializer serializer_;
@@ -68,7 +68,7 @@ class DeserializerContext : public BaseObject,
                       Local<Object> wrap,
                       Local<Value> buffer);
 
-  ~DeserializerContext() {}
+  ~DeserializerContext() override {}
 
   MaybeLocal<Object> ReadHostObject(Isolate* isolate) override;
 
@@ -82,9 +82,9 @@ class DeserializerContext : public BaseObject,
   static void ReadDouble(const FunctionCallbackInfo<Value>& args);
   static void ReadRawBytes(const FunctionCallbackInfo<Value>& args);
 
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
-  }
+  SET_NO_MEMORY_INFO()
+  SET_MEMORY_INFO_NAME(DeserializerContext)
+  SET_SELF_SIZE(DeserializerContext)
 
  private:
   const uint8_t* data_;
@@ -201,10 +201,13 @@ void SerializerContext::ReleaseBuffer(const FunctionCallbackInfo<Value>& args) {
   SerializerContext* ctx;
   ASSIGN_OR_RETURN_UNWRAP(&ctx, args.Holder());
 
+  // Note: Both ValueSerializer and this Buffer::New() variant use malloc()
+  // as the underlying allocator.
   std::pair<uint8_t*, size_t> ret = ctx->serializer_.Release();
   auto buf = Buffer::New(ctx->env(),
                          reinterpret_cast<char*>(ret.first),
-                         ret.second);
+                         ret.second,
+                         true /* uses_malloc */);
 
   if (!buf.IsEmpty()) {
     args.GetReturnValue().Set(buf.ToLocalChecked());
@@ -266,9 +269,9 @@ void SerializerContext::WriteRawBytes(const FunctionCallbackInfo<Value>& args) {
   SerializerContext* ctx;
   ASSIGN_OR_RETURN_UNWRAP(&ctx, args.Holder());
 
-  if (!args[0]->IsUint8Array()) {
+  if (!args[0]->IsArrayBufferView()) {
     return node::THROW_ERR_INVALID_ARG_TYPE(
-        ctx->env(), "source must be a Uint8Array");
+        ctx->env(), "source must be a TypedArray or a DataView");
   }
 
   ctx->serializer_.WriteRawBytes(Buffer::Data(args[0]),
@@ -283,6 +286,7 @@ DeserializerContext::DeserializerContext(Environment* env,
     length_(Buffer::Length(buffer)),
     deserializer_(env->isolate(), data_, length_, this) {
   object()->Set(env->context(), env->buffer_string(), buffer).FromJust();
+  deserializer_.SetExpectInlineWasm(true);
 
   MakeWeak();
 }
@@ -317,9 +321,9 @@ MaybeLocal<Object> DeserializerContext::ReadHostObject(Isolate* isolate) {
 void DeserializerContext::New(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
-  if (!args[0]->IsUint8Array()) {
+  if (!args[0]->IsArrayBufferView()) {
     return node::THROW_ERR_INVALID_ARG_TYPE(
-        env, "buffer must be a Uint8Array");
+        env, "buffer must be a TypedArray or a DataView");
   }
 
   new DeserializerContext(env, args.This(), args[0]);
@@ -397,12 +401,12 @@ void DeserializerContext::ReadUint64(const FunctionCallbackInfo<Value>& args) {
   uint32_t lo = static_cast<uint32_t>(value);
 
   Isolate* isolate = ctx->env()->isolate();
-  Local<Context> context = ctx->env()->context();
 
-  Local<Array> ret = Array::New(isolate, 2);
-  ret->Set(context, 0, Integer::NewFromUnsigned(isolate, hi)).FromJust();
-  ret->Set(context, 1, Integer::NewFromUnsigned(isolate, lo)).FromJust();
-  return args.GetReturnValue().Set(ret);
+  Local<Value> ret[] = {
+    Integer::NewFromUnsigned(isolate, hi),
+    Integer::NewFromUnsigned(isolate, lo)
+  };
+  return args.GetReturnValue().Set(Array::New(isolate, ret, arraysize(ret)));
 }
 
 void DeserializerContext::ReadDouble(const FunctionCallbackInfo<Value>& args) {
@@ -440,7 +444,8 @@ void DeserializerContext::ReadRawBytes(
 
 void Initialize(Local<Object> target,
                 Local<Value> unused,
-                Local<Context> context) {
+                Local<Context> context,
+                void* priv) {
   Environment* env = Environment::GetCurrent(context);
   Local<FunctionTemplate> ser =
       env->NewFunctionTemplate(SerializerContext::New);
@@ -497,4 +502,4 @@ void Initialize(Local<Object> target,
 }  // anonymous namespace
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(serdes, node::Initialize)
+NODE_MODULE_CONTEXT_AWARE_INTERNAL(serdes, node::Initialize)

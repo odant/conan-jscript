@@ -1,4 +1,3 @@
-// Flags: --experimental-worker
 'use strict';
 const common = require('../common');
 const assert = require('assert');
@@ -10,6 +9,7 @@ const numWorkers = +process.env.JOBS || require('os').cpus().length;
 // Verify that a Worker's memory isn't kept in memory after the thread finishes.
 
 function run(n, done) {
+  console.log(`run() called with n=${n} (numWorkers=${numWorkers})`);
   if (n <= 0)
     return done();
   const worker = new Worker(
@@ -27,6 +27,7 @@ const startStats = process.memoryUsage();
 let finished = 0;
 for (let i = 0; i < numWorkers; ++i) {
   run(60 / numWorkers, () => {
+    console.log(`done() called (finished=${finished})`);
     if (++finished === numWorkers) {
       const finishStats = process.memoryUsage();
       // A typical value for this ratio would be ~1.15.

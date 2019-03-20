@@ -11,7 +11,7 @@ const backslashRE = /\\/g;
 
 const resolveTests = [
   [ path.win32.resolve,
-    // arguments                               result
+    // Arguments                               result
     [[['c:/blah\\blah', 'd:/games', 'c:../a'], 'c:\\blah\\a'],
      [['c:/ignore', 'd:\\a/b\\c/d', '\\e.exe'], 'd:\\e.exe'],
      [['c:/ignore', 'c:/some/file'], 'c:\\some\\file'],
@@ -28,7 +28,7 @@ const resolveTests = [
     ]
   ],
   [ path.posix.resolve,
-    // arguments                    result
+    // Arguments                    result
     [[['/var/lib', '../', 'file/'], '/var/file'],
      [['/var/lib', '/../', 'file/'], '/file'],
      [['a/b/c/', '../../..'], process.cwd()],

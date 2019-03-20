@@ -33,56 +33,61 @@ const {
   normalizedArgsSymbol,
   makeSyncWrite
 } = require('internal/net');
-const assert = require('assert');
+const assert = require('internal/assert');
 const {
   UV_EADDRINUSE,
-  UV_EINVAL,
-  UV_EOF
-} = process.binding('uv');
+  UV_EINVAL
+} = internalBinding('uv');
 
 const { Buffer } = require('buffer');
-const TTYWrap = process.binding('tty_wrap');
-const { ShutdownWrap } = process.binding('stream_wrap');
+const TTYWrap = internalBinding('tty_wrap');
+const { ShutdownWrap } = internalBinding('stream_wrap');
 const {
   TCP,
   TCPConnectWrap,
   constants: TCPConstants
-} = process.binding('tcp_wrap');
+} = internalBinding('tcp_wrap');
 const {
   Pipe,
   PipeConnectWrap,
   constants: PipeConstants
-} = process.binding('pipe_wrap');
+} = internalBinding('pipe_wrap');
 const {
   newAsyncId,
   defaultTriggerAsyncIdScope,
-  symbols: { async_id_symbol }
+  symbols: { async_id_symbol, owner_symbol }
 } = require('internal/async_hooks');
 const {
-  createWriteWrap,
   writevGeneric,
-  writeGeneric
+  writeGeneric,
+  onStreamRead,
+  kAfterAsyncWrite,
+  kHandle,
+  kUpdateTimer
 } = require('internal/stream_base_commons');
-const errors = require('internal/errors');
 const {
-  ERR_INVALID_ADDRESS_FAMILY,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_FD_TYPE,
-  ERR_INVALID_IP_ADDRESS,
-  ERR_INVALID_OPT_VALUE,
-  ERR_SERVER_ALREADY_LISTEN,
-  ERR_SERVER_NOT_RUNNING,
-  ERR_SOCKET_BAD_PORT,
-  ERR_SOCKET_CLOSED
-} = errors.codes;
-const { validateInt32 } = require('internal/validators');
+  codes: {
+    ERR_INVALID_ADDRESS_FAMILY,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_FD_TYPE,
+    ERR_INVALID_IP_ADDRESS,
+    ERR_INVALID_OPT_VALUE,
+    ERR_SERVER_ALREADY_LISTEN,
+    ERR_SERVER_NOT_RUNNING,
+    ERR_SOCKET_BAD_PORT,
+    ERR_SOCKET_CLOSED
+  },
+  errnoException,
+  exceptionWithHostPort,
+  uvExceptionWithHostPort
+} = require('internal/errors');
+const { validateInt32, validateString } = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
 
 // Lazy loaded to improve startup performance.
 let cluster;
 let dns;
-
-const { errnoException, exceptionWithHostPort } = errors;
 
 const {
   kTimeout,
@@ -91,6 +96,10 @@ const {
 } = require('internal/timers');
 
 function noop() {}
+
+function getFlags(ipv6Only) {
+  return ipv6Only === true ? TCPConstants.UV_TCP_IPV6ONLY : 0;
+}
 
 function createHandle(fd, is_server) {
   validateInt32(fd, 'fd', 0);
@@ -150,7 +159,7 @@ function connect(...args) {
     socket.setTimeout(options.timeout);
   }
 
-  return Socket.prototype.connect.call(socket, normalized);
+  return socket.connect(normalized);
 }
 
 
@@ -200,15 +209,15 @@ function normalizeArgs(args) {
 }
 
 
-// called when creating new Socket, or when re-using a closed Socket
+// Called when creating new Socket, or when re-using a closed Socket
 function initSocketHandle(self) {
   self._undestroy();
   self._sockname = null;
 
   // Handle creation may be deferred to bind() or connect() time.
   if (self._handle) {
-    self._handle.owner = self;
-    self._handle.onread = onread;
+    self._handle[owner_symbol] = self;
+    self._handle.onread = onStreamRead;
     self[async_id_symbol] = getNewAsyncId(self._handle);
   }
 }
@@ -227,7 +236,7 @@ function Socket(options) {
   // probably be supplied by async_hooks.
   this[async_id_symbol] = -1;
   this._hadError = false;
-  this._handle = null;
+  this[kHandle] = null;
   this._parent = null;
   this._host = null;
   this[kLastWriteQueueSize] = 0;
@@ -236,7 +245,7 @@ function Socket(options) {
   if (typeof options === 'number')
     options = { fd: options }; // Legacy interface.
   else
-    options = util._extend({}, options);
+    options = { ...options };
 
   options.readable = options.readable || false;
   options.writable = options.writable || false;
@@ -246,6 +255,8 @@ function Socket(options) {
   options.allowHalfOpen = true;
   // For backwards compat do not emit close on destroy.
   options.emitClose = false;
+  // Handle strings directly.
+  options.decodeStrings = false;
   stream.Duplex.call(this, options);
 
   // Default to *not* allowing half open sockets.
@@ -258,18 +269,22 @@ function Socket(options) {
     const { fd } = options;
     let err;
 
+    // createHandle will throw ERR_INVALID_FD_TYPE if `fd` is not
+    // a valid `PIPE` or `TCP` descriptor
     this._handle = createHandle(fd, false);
 
     err = this._handle.open(fd);
+
+    // While difficult to fabricate, in some architectures
+    // `open` may return an error code for valid file descriptors
+    // which cannot be opened. This is difficult to test as most
+    // un-openable fds will throw on `createHandle`
     if (err)
       throw errnoException(err, 'open');
 
     this[async_id_symbol] = this._handle.getAsyncId();
-    // options.fd can be string (since it is user-defined),
-    // so changing this to === would be semver-major
-    // See: https://github.com/nodejs/node/pull/11513
-    // eslint-disable-next-line eqeqeq
-    if ((fd == 1 || fd == 2) &&
+
+    if ((fd === 1 || fd === 2) &&
         (this._handle instanceof Pipe) &&
         process.platform === 'win32') {
       // Make stdout and stderr blocking on Windows
@@ -287,7 +302,7 @@ function Socket(options) {
     }
   }
 
-  // shut down the socket when we're finished with it.
+  // Shut down the socket when we're finished with it.
   this.on('end', onReadableStreamEnd);
 
   initSocketHandle(this);
@@ -295,14 +310,11 @@ function Socket(options) {
   this._pendingData = null;
   this._pendingEncoding = '';
 
-  // handle strings directly
-  this._writableState.decodeStrings = false;
-
-  // if we have a handle, then start the flow of data into the
+  // If we have a handle, then start the flow of data into the
   // buffer.  if not, then this will happen when we connect
   if (this._handle && options.readable !== false) {
     if (options.pauseOnCreate) {
-      // stop the handle from reading and pause the stream
+      // Stop the handle from reading and pause the stream
       this._handle.reading = false;
       this._handle.readStop();
       this.readableFlowing = false;
@@ -330,59 +342,46 @@ Socket.prototype._unrefTimer = function _unrefTimer() {
 };
 
 
-function shutdownSocket(self, callback) {
-  var req = new ShutdownWrap();
-  req.oncomplete = afterShutdown;
-  req.handle = self._handle;
-  req.callback = callback;
-  return self._handle.shutdown(req);
-}
-
-// the user has called .end(), and all the bytes have been
+// The user has called .end(), and all the bytes have been
 // sent out to the other side.
 Socket.prototype._final = function(cb) {
   // If still connecting - defer handling `_final` until 'connect' will happen
-  if (this.connecting) {
+  if (this.pending) {
     debug('_final: not yet connected');
     return this.once('connect', () => this._final(cb));
   }
 
-  if (!this.readable || this._readableState.ended) {
-    debug('_final: ended, destroy', this._readableState);
-    cb();
-    return this.destroy();
-  }
+  if (!this._handle)
+    return cb();
 
   debug('_final: not ended, call shutdown()');
 
-  // otherwise, just shutdown, or destroy() if not possible
-  if (!this._handle || !this._handle.shutdown) {
-    cb();
-    return this.destroy();
-  }
+  var req = new ShutdownWrap();
+  req.oncomplete = afterShutdown;
+  req.handle = this._handle;
+  req.callback = cb;
+  var err = this._handle.shutdown(req);
 
-  var err = defaultTriggerAsyncIdScope(
-    this[async_id_symbol], shutdownSocket, this, cb
-  );
-
-  if (err)
+  if (err === 1)  // synchronous finish
+    return afterShutdown.call(req, 0);
+  else if (err !== 0)
     return this.destroy(errnoException(err, 'shutdown'));
 };
 
 
-function afterShutdown(status, handle) {
-  var self = handle.owner;
+function afterShutdown(status) {
+  var self = this.handle[owner_symbol];
 
   debug('afterShutdown destroyed=%j', self.destroyed,
         self._readableState);
 
   this.callback();
 
-  // callback may come after call to destroy.
+  // Callback may come after call to destroy.
   if (self.destroyed)
     return;
 
-  if (self._readableState.ended) {
+  if (!self.readable || self._readableState.ended) {
     debug('readableState ended, destroying');
     self.destroy();
   }
@@ -456,7 +455,7 @@ Socket.prototype.setNoDelay = function(enable) {
     return this;
   }
 
-  // backwards compatibility: assume true when `enable` is omitted
+  // Backwards compatibility: assume true when `enable` is omitted
   if (this._handle.setNoDelay)
     this._handle.setNoDelay(enable === undefined ? true : !!enable);
 
@@ -488,6 +487,13 @@ Object.defineProperty(Socket.prototype, '_connecting', {
   }
 });
 
+Object.defineProperty(Socket.prototype, 'pending', {
+  get() {
+    return !this._handle || this.connecting;
+  },
+  configurable: true
+});
+
 
 Object.defineProperty(Socket.prototype, 'readyState', {
   get: function() {
@@ -514,6 +520,12 @@ Object.defineProperty(Socket.prototype, 'bufferSize', {
   }
 });
 
+Object.defineProperty(Socket.prototype, kUpdateTimer, {
+  get: function() {
+    return this._unrefTimer;
+  }
+});
+
 
 // Just call handle.readStart until we have enough in the buffer
 Socket.prototype._read = function(n) {
@@ -523,7 +535,7 @@ Socket.prototype._read = function(n) {
     debug('_read wait for connection');
     this.once('connect', () => this._read(n));
   } else if (!this._handle.reading) {
-    // not already reading, start the flow
+    // Not already reading, start the flow
     debug('Socket._read readStart');
     this._handle.reading = true;
     var err = this._handle.readStart();
@@ -606,7 +618,6 @@ Socket.prototype._destroy = function(exception, cb) {
   cb(exception);
 
   if (this._server) {
-    COUNTER_NET_SERVER_CONNECTION_CLOSE(this);
     debug('has server');
     this._server._connections--;
     if (this._server._emitCloseIfDrained) {
@@ -614,61 +625,6 @@ Socket.prototype._destroy = function(exception, cb) {
     }
   }
 };
-
-
-// This function is called whenever the handle gets a
-// buffer, or when there's an error reading.
-function onread(nread, buffer) {
-  var handle = this;
-  var self = handle.owner;
-  assert(handle === self._handle, 'handle != self._handle');
-
-  self._unrefTimer();
-
-  debug('onread', nread);
-
-  if (nread > 0) {
-    debug('got data');
-
-    // read success.
-    // In theory (and in practice) calling readStop right now
-    // will prevent this from being called again until _read() gets
-    // called again.
-
-    // Optimization: emit the original buffer with end points
-    var ret = self.push(buffer);
-
-    if (handle.reading && !ret) {
-      handle.reading = false;
-      debug('readStop');
-      var err = handle.readStop();
-      if (err)
-        self.destroy(errnoException(err, 'read'));
-    }
-    return;
-  }
-
-  // if we didn't get any bytes, that doesn't necessarily mean EOF.
-  // wait for the next one.
-  if (nread === 0) {
-    debug('not any data, keep waiting');
-    return;
-  }
-
-  // Error, possibly EOF.
-  if (nread !== UV_EOF) {
-    return self.destroy(errnoException(nread, 'read'));
-  }
-
-  debug('EOF');
-
-  // push a null to signal the end of data.
-  // Do it before `maybeDestroy` for correct order of events:
-  // `end` -> `close`
-  self.push(null);
-  self.read(0);
-}
-
 
 Socket.prototype._getpeername = function() {
   if (!this._peername) {
@@ -732,6 +688,10 @@ protoGetter('localPort', function localPort() {
 });
 
 
+Socket.prototype[kAfterAsyncWrite] = function() {
+  this[kLastWriteQueueSize] = 0;
+};
+
 Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
   // If we are still connecting, then buffer this for later.
   // The Writable logic will buffer up any more writes while
@@ -754,11 +714,11 @@ Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
 
   this._unrefTimer();
 
-  var req = createWriteWrap(this._handle, afterWrite);
+  let req;
   if (writev)
-    writevGeneric(this, req, data, cb);
+    req = writevGeneric(this, data, cb);
   else
-    writeGeneric(this, req, data, encoding, cb);
+    req = writeGeneric(this, data, encoding, cb);
   if (req.async)
     this[kLastWriteQueueSize] = req.bytes;
 };
@@ -797,7 +757,7 @@ protoGetter('bytesWritten', function bytesWritten() {
   });
 
   if (Array.isArray(data)) {
-    // was a writev, iterate over chunks to get total length
+    // Was a writev, iterate over chunks to get total length
     for (var i = 0; i < data.length; i++) {
       const chunk = data[i];
 
@@ -816,37 +776,6 @@ protoGetter('bytesWritten', function bytesWritten() {
 
   return bytes;
 });
-
-
-function afterWrite(status, handle, err) {
-  var self = handle.owner;
-  if (self !== process.stderr && self !== process.stdout)
-    debug('afterWrite', status);
-
-  if (this.async)
-    self[kLastWriteQueueSize] = 0;
-
-  // callback may come after call to destroy.
-  if (self.destroyed) {
-    debug('afterWrite destroyed');
-    return;
-  }
-
-  if (status < 0) {
-    var ex = errnoException(status, 'write', this.error);
-    debug('write failure', ex);
-    self.destroy(ex, this.callback);
-    return;
-  }
-
-  self._unrefTimer();
-
-  if (self !== process.stderr && self !== process.stdout)
-    debug('afterWrite call cb');
-
-  if (this.callback)
-    this.callback.call(undefined);
-}
 
 
 function checkBindError(err, port, handle) {
@@ -871,7 +800,7 @@ function checkBindError(err, port, handle) {
 
 
 function internalConnect(
-  self, address, port, addressType, localAddress, localPort) {
+  self, address, port, addressType, localAddress, localPort, flags) {
   // TODO return promise from Socket.prototype.connect which
   // wraps _connectReq.
 
@@ -883,12 +812,9 @@ function internalConnect(
     if (addressType === 4) {
       localAddress = localAddress || '0.0.0.0';
       err = self._handle.bind(localAddress, localPort);
-    } else if (addressType === 6) {
+    } else { // addressType === 6
       localAddress = localAddress || '::';
-      err = self._handle.bind6(localAddress, localPort);
-    } else {
-      self.destroy(new ERR_INVALID_ADDRESS_FAMILY(addressType));
-      return;
+      err = self._handle.bind6(localAddress, localPort, flags);
     }
     debug('binding to localAddress: %s and localPort: %d (addressType: %d)',
           localAddress, localPort, addressType);
@@ -980,9 +906,7 @@ Socket.prototype.connect = function(...args) {
   this.writable = true;
 
   if (pipe) {
-    if (typeof path !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('options.path', 'string', path);
-    }
+    validateString(path, 'options.path');
     defaultTriggerAsyncIdScope(
       this[async_id_symbol], internalConnect, this, path
     );
@@ -1123,16 +1047,12 @@ Socket.prototype.unref = function() {
 
 
 function afterConnect(status, handle, req, readable, writable) {
-  var self = handle.owner;
+  var self = handle[owner_symbol];
 
-  // callback may come after call to destroy
+  // Callback may come after call to destroy
   if (self.destroyed) {
     return;
   }
-
-  // Update handle if it was wrapped
-  // TODO(indutny): assert that the handle is actually an ancestor of old one
-  handle = self._handle;
 
   debug('afterConnect');
 
@@ -1149,7 +1069,7 @@ function afterConnect(status, handle, req, readable, writable) {
     self.emit('connect');
     self.emit('ready');
 
-    // start the first read, or get an immediate EOF.
+    // Start the first read, or get an immediate EOF.
     // this doesn't actually consume any bytes, because len=0.
     if (readable && !self.isPaused())
       self.read(0);
@@ -1226,9 +1146,9 @@ util.inherits(Server, EventEmitter);
 function toNumber(x) { return (x = Number(x)) >= 0 ? x : false; }
 
 // Returns handle if it can be created, or error code if it can't
-function createServerHandle(address, port, addressType, fd) {
+function createServerHandle(address, port, addressType, fd, flags) {
   var err = 0;
-  // assign handle in listen, and clean up if bind or listen fails
+  // Assign handle in listen, and clean up if bind or listen fails
   var handle;
 
   var isTCP = false;
@@ -1265,14 +1185,14 @@ function createServerHandle(address, port, addressType, fd) {
     debug('bind to', address || 'any');
     if (!address) {
       // Try binding to ipv6 first
-      err = handle.bind6('::', port);
+      err = handle.bind6('::', port, flags);
       if (err) {
         handle.close();
         // Fallback to ipv4
         return createServerHandle('0.0.0.0', port);
       }
     } else if (addressType === 6) {
-      err = handle.bind6(address, port);
+      err = handle.bind6(address, port, flags);
     } else {
       err = handle.bind(address, port);
     }
@@ -1286,7 +1206,7 @@ function createServerHandle(address, port, addressType, fd) {
   return handle;
 }
 
-function setupListenHandle(address, port, addressType, backlog, fd) {
+function setupListenHandle(address, port, addressType, backlog, fd, flags) {
   debug('setupListenHandle', address, port, addressType, backlog, fd);
 
   // If there is not yet a handle, we need to create one and bind.
@@ -1300,7 +1220,7 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
 
     // Try to bind to the unspecified IPv6 address, see if IPv6 is available
     if (!address && typeof fd !== 'number') {
-      rval = createServerHandle('::', port, 6, fd);
+      rval = createServerHandle('::', port, 6, fd, flags);
 
       if (typeof rval === 'number') {
         rval = null;
@@ -1313,10 +1233,10 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
     }
 
     if (rval === null)
-      rval = createServerHandle(address, port, addressType, fd);
+      rval = createServerHandle(address, port, addressType, fd, flags);
 
     if (typeof rval === 'number') {
-      var error = exceptionWithHostPort(rval, 'listen', address, port);
+      var error = uvExceptionWithHostPort(rval, 'listen', address, port);
       process.nextTick(emitErrorNT, this, error);
       return;
     }
@@ -1325,7 +1245,7 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
 
   this[async_id_symbol] = getNewAsyncId(this._handle);
   this._handle.onconnection = onconnection;
-  this._handle.owner = this;
+  this._handle[owner_symbol] = this;
 
   // Use a backlog of 512 entries. We pass 511 to the listen() call because
   // the kernel does: backlogsize = roundup_pow_of_two(backlogsize + 1);
@@ -1333,7 +1253,7 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
   var err = this._handle.listen(backlog || 511);
 
   if (err) {
-    var ex = exceptionWithHostPort(err, 'listen', address, port);
+    var ex = uvExceptionWithHostPort(err, 'listen', address, port);
     this._handle.close();
     this._handle = null;
     defaultTriggerAsyncIdScope(this[async_id_symbol],
@@ -1344,10 +1264,10 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
     return;
   }
 
-  // generate connection key, this should be unique to the connection
+  // Generate connection key, this should be unique to the connection
   this._connectionKey = addressType + ':' + address + ':' + port;
 
-  // unref the handle if the server was unref'ed prior to listening
+  // Unref the handle if the server was unref'ed prior to listening
   if (this._unref)
     this.unref();
 
@@ -1372,7 +1292,7 @@ function emitListeningNT(self) {
 
 
 function listenInCluster(server, address, port, addressType,
-                         backlog, fd, exclusive) {
+                         backlog, fd, exclusive, flags) {
   exclusive = !!exclusive;
 
   if (cluster === undefined) cluster = require('cluster');
@@ -1381,7 +1301,7 @@ function listenInCluster(server, address, port, addressType,
     // Will create a new handle
     // _listen2 sets up the listened handle, it is still named like this
     // to avoid breaking code that wraps this method
-    server._listen2(address, port, addressType, backlog, fd);
+    server._listen2(address, port, addressType, backlog, fd, flags);
     return;
   }
 
@@ -1390,7 +1310,7 @@ function listenInCluster(server, address, port, addressType,
     port: port,
     addressType: addressType,
     fd: fd,
-    flags: 0
+    flags,
   };
 
   // Get the master's server handle, and listen on it
@@ -1408,7 +1328,7 @@ function listenInCluster(server, address, port, addressType,
     server._handle = handle;
     // _listen2 sets up the listened handle, it is still named like this
     // to avoid breaking code that wraps this method
-    server._listen2(address, port, addressType, backlog, fd);
+    server._listen2(address, port, addressType, backlog, fd, flags);
   }
 }
 
@@ -1431,6 +1351,7 @@ Server.prototype.listen = function(...args) {
     toNumber(args.length > 2 && args[2]);  // (port, host, backlog)
 
   options = options._handle || options.handle || options;
+  const flags = getFlags(options.ipv6Only);
   // (handle[, backlog][, cb]) where handle is an object with a handle
   if (options instanceof TCP) {
     this._handle = options;
@@ -1465,7 +1386,7 @@ Server.prototype.listen = function(...args) {
     // start TCP server listening on host:port
     if (options.host) {
       lookupAndListen(this, options.port | 0, options.host, backlog,
-                      options.exclusive);
+                      options.exclusive, flags);
     } else { // Undefined host, listens on unspecified address
       // Default addressType 4 will be used to search for master server
       listenInCluster(this, null, options.port | 0, 4,
@@ -1481,6 +1402,13 @@ Server.prototype.listen = function(...args) {
     backlog = options.backlog || backlogFromArgs;
     listenInCluster(this, pipeName, -1, -1,
                     backlog, undefined, options.exclusive);
+
+    if (!this._handle) {
+      // Failed and an error shall be emitted in the next tick.
+      // Therefore, we directly return.
+      return this;
+    }
+
     let mode = 0;
     if (options.readableAll === true)
       mode |= PipeConstants.UV_READABLE;
@@ -1497,10 +1425,15 @@ Server.prototype.listen = function(...args) {
     return this;
   }
 
+  if (!(('port' in options) || ('path' in options))) {
+    throw new ERR_INVALID_ARG_VALUE('options', options,
+                                    'must have the property "port" or "path"');
+  }
+
   throw new ERR_INVALID_OPT_VALUE('options', util.inspect(options));
 };
 
-function lookupAndListen(self, port, address, backlog, exclusive) {
+function lookupAndListen(self, port, address, backlog, exclusive, flags) {
   if (dns === undefined) dns = require('dns');
   dns.lookup(address, function doListen(err, ip, addressType) {
     if (err) {
@@ -1508,7 +1441,7 @@ function lookupAndListen(self, port, address, backlog, exclusive) {
     } else {
       addressType = ip ? addressType : 4;
       listenInCluster(self, ip, port, addressType,
-                      backlog, undefined, exclusive);
+                      backlog, undefined, exclusive, flags);
     }
   });
 }
@@ -1538,7 +1471,7 @@ Server.prototype.address = function() {
 
 function onconnection(err, clientHandle) {
   var handle = this;
-  var self = handle.owner;
+  var self = handle[owner_symbol];
 
   debug('onconnection');
 
@@ -1565,7 +1498,6 @@ function onconnection(err, clientHandle) {
   socket._server = self;
 
   DTRACE_NET_SERVER_CONNECTION(socket);
-  COUNTER_NET_SERVER_CONNECTION(socket);
   self.emit('connection', socket);
 }
 
@@ -1669,6 +1601,19 @@ function emitCloseNT(self) {
 }
 
 
+// Legacy alias on the C++ wrapper object. This is not public API, so we may
+// want to runtime-deprecate it at some point. There's no hurry, though.
+Object.defineProperty(TCP.prototype, 'owner', {
+  get() { return this[owner_symbol]; },
+  set(v) { return this[owner_symbol] = v; }
+});
+
+Object.defineProperty(Socket.prototype, '_handle', {
+  get() { return this[kHandle]; },
+  set(v) { return this[kHandle] = v; }
+});
+
+
 Server.prototype.listenFD = internalUtil.deprecate(function(fd, type) {
   return this.listen({ fd: fd });
 }, 'Server.listenFD is deprecated. Use Server.listen({fd: <number>}) instead.',
@@ -1717,7 +1662,7 @@ if (process.platform === 'win32') {
     }
 
     if (handle._simultaneousAccepts !== simultaneousAccepts) {
-      handle.setSimultaneousAccepts(simultaneousAccepts);
+      handle.setSimultaneousAccepts(!!simultaneousAccepts);
       handle._simultaneousAccepts = simultaneousAccepts;
     }
   };

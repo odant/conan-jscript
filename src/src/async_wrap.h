@@ -27,11 +27,9 @@
 #include "base_object.h"
 #include "v8.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace node {
-
-#define NODE_ASYNC_ID_OFFSET 0xA1C
 
 #define NODE_ASYNC_NON_CRYPTO_PROVIDER_TYPES(V)                               \
   V(NONE)                                                                     \
@@ -39,7 +37,7 @@ namespace node {
   V(FILEHANDLE)                                                               \
   V(FILEHANDLECLOSEREQ)                                                       \
   V(FSEVENTWRAP)                                                              \
-  V(FSREQWRAP)                                                                \
+  V(FSREQCALLBACK)                                                            \
   V(FSREQPROMISE)                                                             \
   V(GETADDRINFOREQWRAP)                                                       \
   V(GETNAMEINFOREQWRAP)                                                       \
@@ -63,7 +61,6 @@ namespace node {
   V(TCPCONNECTWRAP)                                                           \
   V(TCPSERVERWRAP)                                                            \
   V(TCPWRAP)                                                                  \
-  V(TIMERWRAP)                                                                \
   V(TTYWRAP)                                                                  \
   V(UDPSENDWRAP)                                                              \
   V(UDPWRAP)                                                                  \
@@ -74,6 +71,7 @@ namespace node {
 #if HAVE_OPENSSL
 #define NODE_ASYNC_CRYPTO_PROVIDER_TYPES(V)                                   \
   V(PBKDF2REQUEST)                                                            \
+  V(KEYPAIRGENREQUEST)                                                        \
   V(RANDOMBYTESREQUEST)                                                       \
   V(SCRYPTREQUEST)                                                            \
   V(TLSWRAP)
@@ -106,25 +104,20 @@ class AsyncWrap : public BaseObject {
     PROVIDERS_LENGTH,
   };
 
-  enum Flags {
-    kFlagNone = 0x0,
-    kFlagHasReset = 0x1
-  };
-
   AsyncWrap(Environment* env,
             v8::Local<v8::Object> object,
             ProviderType provider,
             double execution_async_id = -1);
 
-  virtual ~AsyncWrap();
+  ~AsyncWrap() override;
 
-  static void AddWrapMethods(Environment* env,
-                             v8::Local<v8::FunctionTemplate> constructor,
-                             int flags = kFlagNone);
+  static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
+      Environment* env);
 
   static void Initialize(v8::Local<v8::Object> target,
                          v8::Local<v8::Value> unused,
-                         v8::Local<v8::Context> context);
+                         v8::Local<v8::Context> context,
+                         void* priv);
 
   static void GetAsyncId(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PushAsyncIds(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -148,6 +141,7 @@ class AsyncWrap : public BaseObject {
   static void EmitTraceEventAfter(ProviderType type, double async_id);
   void EmitTraceEventDestroy();
 
+  static void DestroyAsyncIdsCallback(Environment* env, void* data);
 
   inline ProviderType provider_type() const;
 
@@ -179,6 +173,12 @@ class AsyncWrap : public BaseObject {
 
   static void WeakCallback(const v8::WeakCallbackInfo<DestroyParam> &info);
 
+  // Returns the object that 'owns' an async wrap. For example, for a
+  // TCP connection handle, this is the corresponding net.Socket.
+  v8::Local<v8::Object> GetOwner();
+  static v8::Local<v8::Object> GetOwner(Environment* env,
+                                        v8::Local<v8::Object> obj);
+
   // This is a simplified version of InternalCallbackScope that only runs
   // the `before` and `after` hooks. Only use it when not actually calling
   // back into JS; otherwise, use InternalCallbackScope.
@@ -202,7 +202,7 @@ class AsyncWrap : public BaseObject {
   inline AsyncWrap();
   const ProviderType provider_type_;
   // Because the values may be Reset(), cannot be made const.
-  double async_id_;
+  double async_id_ = -1;
   double trigger_async_id_;
 };
 

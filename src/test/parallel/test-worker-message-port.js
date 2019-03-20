@@ -1,4 +1,3 @@
-// Flags: --experimental-worker
 'use strict';
 const common = require('../common');
 const assert = require('assert');
@@ -22,14 +21,15 @@ const { MessageChannel, MessagePort } = require('worker_threads');
   const { port1, port2 } = new MessageChannel();
 
   port1.onmessage = common.mustCall((message) => {
-    assert.strictEqual(message, 4);
+    assert.strictEqual(message.data, 4);
+    assert.strictEqual(message.target, port1);
     port2.close(common.mustCall());
   });
 
   port1.postMessage(2);
 
   port2.onmessage = common.mustCall((message) => {
-    port2.postMessage(message * 2);
+    port2.postMessage(message.data * 2);
   });
 }
 
@@ -68,4 +68,13 @@ const { MessageChannel, MessagePort } = require('worker_threads');
       }));
     });
   });
+}
+
+{
+  assert.deepStrictEqual(
+    Object.getOwnPropertyNames(MessagePort.prototype).sort(),
+    [
+      'close', 'constructor', 'onmessage', 'postMessage', 'ref', 'start',
+      'unref'
+    ]);
 }

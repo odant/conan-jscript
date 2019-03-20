@@ -4,23 +4,20 @@
 
 > Stability: 1 - Experimental
 
-The `worker` module provides a way to create multiple environments running
-on independent threads, and to create message channels between them. It
-can be accessed using the `--experimental-worker` flag and:
+The `worker_threads` module enables the use of threads that execute JS code
+in parallel. To access it:
 
 ```js
 const worker = require('worker_threads');
 ```
 
-Workers are useful for performing CPU-intensive JavaScript operations; do not
-use them for I/O, since Node.js’s built-in mechanisms for performing operations
-asynchronously already treat it more efficiently than Worker threads can.
+Workers (threads) are useful for performing CPU-intensive JavaScript operations.
+They will not help much with I/O-intensive work. Node.js’s built-in asynchronous
+I/O operations are more efficient than Workers can be.
 
-Workers, unlike child processes or when using the `cluster` module, can also
-share memory efficiently by transferring `ArrayBuffer` instances or sharing
-`SharedArrayBuffer` instances between them.
-
-## Example
+Unlike `child_process` or `cluster`, `worker_threads` can share memory. They do
+so by transferring `ArrayBuffer` instances or sharing `SharedArrayBuffer`
+instances.
 
 ```js
 const {
@@ -28,7 +25,7 @@ const {
 } = require('worker_threads');
 
 if (isMainThread) {
-  module.exports = async function parseJSAsync(script) {
+  module.exports = function parseJSAsync(script) {
     return new Promise((resolve, reject) => {
       const worker = new Worker(__filename, {
         workerData: script
@@ -48,10 +45,9 @@ if (isMainThread) {
 }
 ```
 
-Note that this example spawns a Worker thread for each `parse` call.
-In practice, it is strongly recommended to use a pool of Workers for these
-kinds of tasks, since the overhead of creating Workers would likely exceed the
-benefit of handing the work off to it.
+The above example spawns a Worker thread for each `parse()` call. In actual
+practice, use a pool of Workers instead for these kinds of tasks. Otherwise, the
+overhead of creating Workers would likely exceed their benefit.
 
 ## worker.isMainThread
 <!-- YAML
@@ -61,6 +57,18 @@ added: v10.5.0
 * {boolean}
 
 Is `true` if this code is not running inside of a [`Worker`][] thread.
+
+```js
+const { Worker, isMainThread } = require('worker_threads');
+
+if (isMainThread) {
+  // This re-loads the current file inside a Worker instance.
+  new Worker(__filename);
+} else {
+  console.log('Inside Worker!');
+  console.log(isMainThread);  // Prints 'false'.
+}
+```
 
 ## worker.parentPort
 <!-- YAML
@@ -76,6 +84,23 @@ using `worker.on('message')`, and messages sent from the parent thread
 using `worker.postMessage()` will be available in this thread using
 `parentPort.on('message')`.
 
+```js
+const { Worker, isMainThread, parentPort } = require('worker_threads');
+
+if (isMainThread) {
+  const worker = new Worker(__filename);
+  worker.once('message', (message) => {
+    console.log(message);  // Prints 'Hello, world!'.
+  });
+  worker.postMessage('Hello, world!');
+} else {
+  // When a message from the parent thread is received, send it back:
+  parentPort.once('message', (message) => {
+    parentPort.postMessage(message);
+  });
+}
+```
+
 ## worker.threadId
 <!-- YAML
 added: v10.5.0
@@ -85,6 +110,7 @@ added: v10.5.0
 
 An integer identifier for the current thread. On the corresponding worker object
 (if there is any), it is available as [`worker.threadId`][].
+This value is unique for each [`Worker`][] instance inside a single process.
 
 ## worker.workerData
 <!-- YAML
@@ -93,6 +119,19 @@ added: v10.5.0
 
 An arbitrary JavaScript value that contains a clone of the data passed
 to this thread’s `Worker` constructor.
+
+The data is cloned as if using [`postMessage()`][`port.postMessage()`],
+according to the [HTML structured clone algorithm][].
+
+```js
+const { Worker, isMainThread, workerData } = require('worker_threads');
+
+if (isMainThread) {
+  const worker = new Worker(__filename, { workerData: 'Hello, world!' });
+} else {
+  console.log(workerData);  // Prints 'Hello, world!'.
+}
+```
 
 ## Class: MessageChannel
 <!-- YAML
@@ -111,7 +150,7 @@ const { MessageChannel } = require('worker_threads');
 const { port1, port2 } = new MessageChannel();
 port1.on('message', (message) => console.log('received', message));
 port2.postMessage({ foo: 'bar' });
-// prints: received { foo: 'bar' } from the `port1.on('message')` listener
+// Prints: received { foo: 'bar' } from the `port1.on('message')` listener
 ```
 
 ## Class: MessagePort
@@ -127,7 +166,7 @@ structured data, memory regions and other `MessagePort`s between different
 [`Worker`][]s.
 
 With the exception of `MessagePort`s being [`EventEmitter`][]s rather
-than `EventTarget`s, this implementation matches [browser `MessagePort`][]s.
+than [`EventTarget`][]s, this implementation matches [browser `MessagePort`][]s.
 
 ### Event: 'close'
 <!-- YAML
@@ -136,6 +175,20 @@ added: v10.5.0
 
 The `'close'` event is emitted once either side of the channel has been
 disconnected.
+
+```js
+const { MessageChannel } = require('worker_threads');
+const { port1, port2 } = new MessageChannel();
+
+// Prints:
+//   foobar
+//   closed!
+port2.on('message', (message) => console.log(message));
+port2.on('close', () => console.log('closed!'));
+
+port1.postMessage('foobar');
+port1.close();
+```
 
 ### Event: 'message'
 <!-- YAML
@@ -156,8 +209,11 @@ added: v10.5.0
 -->
 
 Disables further sending of messages on either side of the connection.
-This method can be called once you know that no further communication
-will happen over this `MessagePort`.
+This method can be called when no further communication will happen over this
+`MessagePort`.
+
+The [`'close'` event][] will be emitted on both `MessagePort` instances that
+are part of the channel.
 
 ### port.postMessage(value[, transferList])
 <!-- YAML
@@ -169,9 +225,28 @@ added: v10.5.0
 
 Sends a JavaScript value to the receiving side of this channel.
 `value` will be transferred in a way which is compatible with
-the [HTML structured clone algorithm][]. In particular, it may contain circular
-references and objects like typed arrays that the `JSON` API is not able
-to stringify.
+the [HTML structured clone algorithm][].
+
+In particular, the significant differences to `JSON` are:
+- `value` may contain circular references.
+- `value` may contain instances of builtin JS types such as `RegExp`s,
+  `BigInt`s, `Map`s, `Set`s, etc.
+- `value` may contained typed arrays, both using `ArrayBuffer`s
+   and `SharedArrayBuffer`s.
+- `value` may contain [`WebAssembly.Module`][] instances.
+- `value` may not contain native (C++-backed) objects other than `MessagePort`s.
+
+```js
+const { MessageChannel } = require('worker_threads');
+const { port1, port2 } = new MessageChannel();
+
+port1.on('message', (message) => console.log(message));
+
+const circularData = {};
+circularData.foo = circularData;
+// Prints: { foo: [Circular] }
+port2.postMessage(circularData);
+```
 
 `transferList` may be a list of `ArrayBuffer` and `MessagePort` objects.
 After transferring, they will not be usable on the sending side of the channel
@@ -184,6 +259,30 @@ from either thread. They cannot be listed in `transferList`.
 
 `value` may still contain `ArrayBuffer` instances that are not in
 `transferList`; in that case, the underlying memory is copied rather than moved.
+
+```js
+const { MessageChannel } = require('worker_threads');
+const { port1, port2 } = new MessageChannel();
+
+port1.on('message', (message) => console.log(message));
+
+const uint8Array = new Uint8Array([ 1, 2, 3, 4 ]);
+// This posts a copy of `uint8Array`:
+port2.postMessage(uint8Array);
+// This does not copy data, but renders `uint8Array` unusable:
+port2.postMessage(uint8Array, [ uint8Array.buffer ]);
+
+// The memory for the `sharedUint8Array` will be accessible from both the
+// original and the copy received by `.on('message')`:
+const sharedUint8Array = new Uint8Array(new SharedArrayBuffer(4));
+port2.postMessage(sharedUint8Array);
+
+// This transfers a freshly created message port to the receiver.
+// This can be used, for example, to create communication channels between
+// multiple `Worker` threads that are children of the same parent thread.
+const otherChannel = new MessageChannel();
+port2.postMessage({ port: otherChannel.port1 }, [ otherChannel.port1 ]);
+```
 
 Because the object cloning uses the structured clone algorithm,
 non-enumerable properties, property accessors, and object prototypes are
@@ -218,6 +317,12 @@ Starts receiving messages on this `MessagePort`. When using this port
 as an event emitter, this will be called automatically once `'message'`
 listeners are attached.
 
+This method exists for parity with the Web `MessagePort` API. In Node.js,
+it is only useful for ignoring messages when no event listener is present.
+Node.js also diverges in its handling of `.onmessage`. Setting it will
+automatically call `.start()`, but unsetting it will let messages queue up
+until a new handler is set or the port is discarded.
+
 ### port.unref()
 <!-- YAML
 added: v10.5.0
@@ -235,6 +340,8 @@ listeners for the event exist.
 <!-- YAML
 added: v10.5.0
 -->
+
+* Extends: {EventEmitter}
 
 The `Worker` class represents an independent JavaScript execution thread.
 Most Node.js APIs are available inside of it.
@@ -255,11 +362,9 @@ Notable differences inside a Worker environment are:
 - Execution may stop at any point as a result of [`worker.terminate()`][]
   being invoked.
 - IPC channels from parent processes are not accessible.
-
-Currently, the following differences also exist until they are addressed:
-
-- The [`inspector`][] module is not available yet.
-- Native addons are not supported yet.
+- The [`trace_events`][] module is not supported.
+- Native add-ons can only be loaded from multiple threads if they fulfill
+  [certain conditions][Addons worker support].
 
 Creating `Worker` instances inside of other `Worker`s is possible.
 
@@ -280,8 +385,6 @@ pre-existing channel, such as the global one.
 See [`port.postMessage()`][] for more information on how messages are passed,
 and what kind of JavaScript values can be successfully transported through
 the thread barrier.
-
-For example:
 
 ```js
 const assert = require('assert');
@@ -309,23 +412,28 @@ if (isMainThread) {
 * `filename` {string} The path to the Worker’s main script. Must be
   either an absolute path or a relative path (i.e. relative to the
   current working directory) starting with `./` or `../`.
-  If `options.eval` is true, this is a string containing JavaScript code rather
-  than a path.
+  If `options.eval` is `true`, this is a string containing JavaScript code
+  rather than a path.
 * `options` {Object}
-  * `eval` {boolean} If true, interpret the first argument to the constructor
+  * `eval` {boolean} If `true`, interpret the first argument to the constructor
     as a script that is executed once the worker is online.
   * `workerData` {any} Any JavaScript value that will be cloned and made
     available as [`require('worker_threads').workerData`][]. The cloning will
     occur as described in the [HTML structured clone algorithm][], and an error
     will be thrown if the object cannot be cloned (e.g. because it contains
     `function`s).
-  * stdin {boolean} If this is set to `true`, then `worker.stdin` will
+  * `stdin` {boolean} If this is set to `true`, then `worker.stdin` will
     provide a writable stream whose contents will appear as `process.stdin`
     inside the Worker. By default, no data is provided.
-  * stdout {boolean} If this is set to `true`, then `worker.stdout` will
+  * `stdout` {boolean} If this is set to `true`, then `worker.stdout` will
     not automatically be piped through to `process.stdout` in the parent.
-  * stderr {boolean} If this is set to `true`, then `worker.stderr` will
+  * `stderr` {boolean} If this is set to `true`, then `worker.stderr` will
     not automatically be piped through to `process.stderr` in the parent.
+  * `execArgv` {string[]} List of node CLI options passed to the worker.
+    V8 options (such as `--max-old-space-size`) and options that affect the
+    process (such as `--title`) are not supported. If set, this will be provided
+    as [`process.execArgv`][] inside the worker. By default, options will be
+    inherited from the parent thread.
 
 ### Event: 'error'
 <!-- YAML
@@ -357,8 +465,8 @@ added: v10.5.0
 * `value` {any} The transmitted value
 
 The `'message'` event is emitted when the worker thread has invoked
-[`require('worker_threads').postMessage()`][]. See the [`port.on('message')`][]
-event for more details.
+[`require('worker_threads').parentPort.postMessage()`][].
+See the [`port.on('message')`][] event for more details.
 
 ### Event: 'online'
 <!-- YAML
@@ -377,7 +485,7 @@ added: v10.5.0
 * `transferList` {Object[]}
 
 Send a message to the worker that will be received via
-[`require('worker_threads').on('message')`][].
+[`require('worker_threads').parentPort.on('message')`][].
 See [`port.postMessage()`][] for more details.
 
 ### worker.ref()
@@ -431,6 +539,8 @@ added: v10.5.0
 -->
 
 * `callback` {Function}
+  * `err` {Error}
+  * `exitCode` {integer}
 
 Stop all JavaScript execution in the worker thread as soon as possible.
 `callback` is an optional function that is invoked once this operation is known
@@ -438,9 +548,9 @@ to have completed.
 
 **Warning**: Currently, not all code in the internals of Node.js is prepared to
 expect termination at arbitrary points in time and may crash if it encounters
-that condition. Consequently, you should currently only call `.terminate()` if
-it is known that the Worker thread is not accessing Node.js core modules other
-than what is exposed in the `worker` module.
+that condition. Consequently, only call `.terminate()` if it is known that the
+Worker thread is not accessing Node.js core modules other than what is exposed
+in the `worker` module.
 
 ### worker.threadId
 <!-- YAML
@@ -451,6 +561,7 @@ added: v10.5.0
 
 An integer identifier for the referenced thread. Inside the worker thread,
 it is available as [`require('worker_threads').threadId`][].
+This value is unique for each `Worker` instance inside a single process.
 
 ### worker.unref()
 <!-- YAML
@@ -461,37 +572,42 @@ Calling `unref()` on a worker will allow the thread to exit if this is the only
 active handle in the event system. If the worker is already `unref()`ed calling
 `unref()` again will have no effect.
 
+[`'close'` event]: #worker_threads_event_close
 [`Buffer`]: buffer.html
 [`EventEmitter`]: events.html
+[`EventTarget`]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
 [`MessagePort`]: #worker_threads_class_messageport
-[`port.postMessage()`]: #worker_threads_port_postmessage_value_transferlist
+[`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
+[`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
+[`WebAssembly.Module`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module
 [`Worker`]: #worker_threads_class_worker
-[`worker.terminate()`]: #worker_threads_worker_terminate_callback
-[`worker.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
-[`worker.on('message')`]: #worker_threads_event_message_1
-[`worker.threadId`]: #worker_threads_worker_threadid_1
+[`cluster` module]: cluster.html
 [`port.on('message')`]: #worker_threads_event_message
-[`process.exit()`]: process.html#process_process_exit_code
+[`port.postMessage()`]: #worker_threads_port_postmessage_value_transferlist
 [`process.abort()`]: process.html#process_process_abort
 [`process.chdir()`]: process.html#process_process_chdir_directory
 [`process.env`]: process.html#process_process_env
-[`process.stdin`]: process.html#process_process_stdin
+[`process.execArgv`]: process.html#process_process_execargv
+[`process.exit()`]: process.html#process_process_exit_code
 [`process.stderr`]: process.html#process_process_stderr
+[`process.stdin`]: process.html#process_process_stdin
 [`process.stdout`]: process.html#process_process_stdout
 [`process.title`]: process.html#process_process_title
-[`require('worker_threads').workerData`]: #worker_threads_worker_workerdata
-[`require('worker_threads').on('message')`]: #worker_threads_event_message_1
-[`require('worker_threads').postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
 [`require('worker_threads').isMainThread`]: #worker_threads_worker_ismainthread
+[`require('worker_threads').parentPort.on('message')`]: #worker_threads_event_message
 [`require('worker_threads').parentPort`]: #worker_threads_worker_parentport
+[`require('worker_threads').parentPort.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
 [`require('worker_threads').threadId`]: #worker_threads_worker_threadid
-[`cluster` module]: cluster.html
-[`inspector`]: inspector.html
-[v8.serdes]: v8.html#v8_serialization_api
-[`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
+[`require('worker_threads').workerData`]: #worker_threads_worker_workerdata
+[`trace_events`]: tracing.html
+[`worker.on('message')`]: #worker_threads_event_message_1
+[`worker.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
+[`worker.terminate()`]: #worker_threads_worker_terminate_callback
+[`worker.threadId`]: #worker_threads_worker_threadid_1
+[Addons worker support]: addons.html#addons_worker_support
+[HTML structured clone algorithm]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
 [Signals events]: process.html#process_signal_events
-[`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
+[Web Workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
 [browser `MessagePort`]: https://developer.mozilla.org/en-US/docs/Web/API/MessagePort
 [child processes]: child_process.html
-[HTML structured clone algorithm]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
-[Web Workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API
+[v8.serdes]: v8.html#v8_serialization_api

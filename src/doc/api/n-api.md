@@ -11,8 +11,8 @@ the underlying JavaScript runtime (ex V8) and is maintained as part of
 Node.js itself. This API will be Application Binary Interface (ABI) stable
 across versions of Node.js. It is intended to insulate Addons from
 changes in the underlying JavaScript engine and allow modules
-compiled for one version to run on later versions of Node.js without
-recompilation.
+compiled for one major version to run on later major versions of Node.js without
+recompilation. The [ABI Stability][] guide provides a more in-depth explanation.
 
 Addons are built/packaged with the same approach/tools
 outlined in the section titled [C++ Addons](addons.html).
@@ -34,13 +34,81 @@ properties:
   handling section [Error Handling][].
 
 The N-API is a C API that ensures ABI stability across Node.js versions
-and different compiler levels. However, we also understand that a C++
-API can be easier to use in many cases. To support these cases we expect
-there to be one or more C++ wrapper modules that provide an inlineable C++
-API. Binaries built with these wrapper modules will depend on the symbols
-for the N-API C based functions exported by Node.js. These wrappers are not
-part of N-API, nor will they be maintained as part of Node.js. One such
-example is: [node-addon-api](https://github.com/nodejs/node-addon-api).
+and different compiler levels. A C++ API can be easier to use.
+To support using C++, the project maintains a
+C++ wrapper module called
+[node-addon-api](https://github.com/nodejs/node-addon-api).
+This wrapper provides an inlineable C++ API. Binaries built
+with `node-addon-api` will depend on the symbols for the N-API C-based
+functions exported by Node.js. `node-addon-api` is a more
+efficient way to write code that calls N-API. Take, for example, the
+following `node-addon-api` code. The first section shows the
+`node-addon-api` code and the second section shows what actually gets
+used in the addon.
+
+```C++
+Object obj = Object::New(env);
+obj["foo"] = String::New(env, "bar");
+```
+
+```C++
+napi_status status;
+napi_value object, string;
+status = napi_create_object(env, &object);
+if (status != napi_ok) {
+  napi_throw_error(env, ...);
+  return;
+}
+
+status = napi_create_string_utf8(env, "bar", NAPI_AUTO_LENGTH, &string);
+if (status != napi_ok) {
+  napi_throw_error(env, ...);
+  return;
+}
+
+status = napi_set_named_property(env, object, "foo", string);
+if (status != napi_ok) {
+  napi_throw_error(env, ...);
+  return;
+}
+```
+
+The end result is that the addon only uses the exported C APIs. As a result,
+it still gets the benefits of the ABI stability provided by the C API.
+
+When using `node-addon-api` instead of the C APIs, start with the API
+[docs](https://github.com/nodejs/node-addon-api#api-documentation)
+for `node-addon-api`.
+
+## Implications of ABI Stability
+
+Although N-API provides an ABI stability guarantee, other parts of Node.js do
+not, and any external libraries used from the addon may not. In particular,
+none of the following APIs provide an ABI stability guarantee across major
+versions:
+* the Node.js C++ APIs available via any of
+    ```C++
+    #include <node.h>
+    #include <node_buffer.h>
+    #include <node_version.h>
+    #include <node_object_wrap.h>
+    ```
+* the libuv APIs which are also included with Node.js and available via
+    ```C++
+    #include <uv.h>
+    ```
+* the V8 API available via
+    ```C++
+    #include <v8.h>
+    ```
+
+Thus, for an addon to remain ABI-compatible across Node.js major versions, it
+must make use exclusively of N-API by restricting itself to using
+```C
+#include <node_api.h>
+```
+and by checking, for all external libraries that it uses, that the external
+library makes ABI stability guarantees similar to N-API.
 
 ## Usage
 
@@ -77,15 +145,74 @@ available to the module code.
 
 ## N-API Version Matrix
 
-|       | 1       | 2        | 3        |
-|:-----:|:-------:|:--------:|:--------:|
-| v4.x  |         |          |          |
-| v6.x  |         |          | v6.14.2* |
-| v8.x  | v8.0.0* | v8.10.0* |          |
-| v9.x  | v9.0.0* | v9.3.0*  | v9.11.0* |
-| v10.x |         |          | v10.0.0  |
+|       | 1       | 2        | 3        | 4        |
+|:-----:|:-------:|:--------:|:--------:|:--------:|
+| v6.x  |         |          | v6.14.2* |          |
+| v8.x  | v8.0.0* | v8.10.0* | v8.11.2  |          |
+| v9.x  | v9.0.0* | v9.3.0*  | v9.11.0* |          |
+| v10.x |         |          | v10.0.0  |          |
+| v11.x |         |          | v11.0.0  | v11.8.0  |
 
 \* Indicates that the N-API version was released as experimental
+
+The N-APIs associated strictly with accessing ECMAScript features from native
+code can be found separately in `js_native_api.h` and `js_native_api_types.h`.
+The APIs defined in these headers are included in `node_api.h` and
+`node_api_types.h`. The headers are structured in this way in order to allow
+implementations of N-API outside of Node.js. For those implementations the
+Node.js specific APIs may not be applicable.
+
+The Node.js-specific parts of an addon can be separated from the code that
+exposes the actual functionality to the JavaScript environment so that the
+latter may be used with multiple implementations of N-API. In the example below,
+`addon.c` and `addon.h` refer only to `js_native_api.h`. This ensures that
+`addon.c` can be reused to compile against either the Node.js implementation of
+N-API or any implementation of N-API outside of Node.js.
+
+`addon_node.c` is a separate file that contains the Node.js specific entry point
+to the addon and which instantiates the addon by calling into `addon.c` when the
+addon is loaded into a Node.js environment.
+
+```C
+// addon.h
+#ifndef _ADDON_H_
+#define _ADDON_H_
+#include <js_native_api.h>
+napi_value create_addon(napi_env env);
+#endif  // _ADDON_H_
+```
+
+```C
+// addon.c
+#include "addon.h"
+napi_value create_addon(napi_env env) {
+  napi_value result;
+  assert(napi_create_object(env, &result) == napi_ok);
+  napi_value exported_function;
+  assert(napi_create_function(env,
+                              "doSomethingUseful",
+                              NAPI_AUTO_LENGTH,
+                              DoSomethingUseful,
+                              NULL,
+                              &exported_function) == napi_ok);
+  assert(napi_set_named_property(env,
+                                 result,
+                                 "doSomethingUseful",
+                                 exported_function) == napi_ok);
+  return result;
+}
+```
+
+```C
+// addon_node.c
+#include <node_api.h>
+
+static napi_value Init(napi_env env, napi_value exports) {
+  return create_addon(env);
+}
+
+NAPI_MODULE(NODE_GYP_MODULE_NAME, Init)
+```
 
 ## Basic N-API Data Types
 
@@ -116,6 +243,7 @@ typedef enum {
   napi_queue_full,
   napi_closing,
   napi_bigint_expected,
+  napi_date_expected,
 } napi_status;
 ```
 If additional information is required upon an API returning a failed status,
@@ -155,7 +283,7 @@ This is an opaque pointer that is used to represent a JavaScript value.
 
 ### napi_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 This is an opaque pointer that represents a JavaScript function which can be
 called asynchronously from multiple threads via
@@ -163,7 +291,7 @@ called asynchronously from multiple threads via
 
 ### napi_threadsafe_function_release_mode
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 A value to be given to `napi_release_threadsafe_function()` to indicate whether
 the thread-safe function is to be closed immediately (`napi_tsfn_abort`) or
@@ -178,7 +306,7 @@ typedef enum {
 
 ### napi_threadsafe_function_call_mode
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 A value to be given to `napi_call_threadsafe_function()` to indicate whether
 the call should block whenever the queue associated with the thread-safe
@@ -250,7 +378,7 @@ typedef void (*napi_finalize)(napi_env env,
 
 #### napi_async_execute_callback
 Function pointer used with functions that support asynchronous
-operations. Callback functions must statisfy the following signature:
+operations. Callback functions must satisfy the following signature:
 
 ```C
 typedef void (*napi_async_execute_callback)(napi_env env, void* data);
@@ -263,7 +391,7 @@ calls should be made in `napi_async_complete_callback` instead.
 
 #### napi_async_complete_callback
 Function pointer used with functions that support asynchronous
-operations. Callback functions must statisfy the following signature:
+operations. Callback functions must satisfy the following signature:
 
 ```C
 typedef void (*napi_async_complete_callback)(napi_env env,
@@ -273,7 +401,7 @@ typedef void (*napi_async_complete_callback)(napi_env env,
 
 #### napi_threadsafe_function_call_js
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 Function pointer used with asynchronous thread-safe function calls. The callback
 will be called on the main thread. Its purpose is to use a data item arriving
@@ -400,6 +528,15 @@ exception is pending and no additional action is required. If the
 instead of simply returning immediately, [`napi_is_exception_pending`][]
 must be called in order to determine if an exception is pending or not.
 
+In many cases when an N-API function is called and an exception is
+already pending, the function will return immediately with a
+`napi_status` of `napi_pending_exception`. However, this is not the case
+for all functions. N-API allows a subset of the functions to be
+called to allow for some minimal cleanup before returning to JavaScript.
+In that case, `napi_status` will reflect the status for the function. It
+will not reflect previous pending exceptions. To avoid confusion, check
+the error status after every function call.
+
 When an exception is pending one of two approaches can be employed.
 
 The first approach is to do any appropriate cleanup and then return so that
@@ -451,7 +588,7 @@ originalName [code]
 ```
 
 where `originalName` is the original name associated with the error
-and `code` is the code that was provided. For example if the code
+and `code` is the code that was provided. For example, if the code
 is `'ERR_ERROR_1'` and a `TypeError` is being created the name will be:
 
 ```text
@@ -541,7 +678,7 @@ NAPI_EXTERN napi_status napi_is_error(napi_env env,
                                       bool* result);
 ```
 - `[in] env`: The environment that the API is invoked under.
-- `[in] msg`: The `napi_value` to be checked.
+- `[in] value`: The `napi_value` to be checked.
 - `[out] result`: Boolean value that is set to true if `napi_value` represents
 an error, false otherwise.
 
@@ -1183,6 +1320,10 @@ This macro includes `NAPI_MODULE`, and declares an `Init` function with a
 special name and with visibility beyond the addon. This will allow Node.js to
 initialize the module even if it is loaded multiple times.
 
+There are a few design considerations when declaring a module that may be loaded
+multiple times. The documentation of [context-aware addons][] provides more
+details.
+
 The variables `env` and `exports` will be available inside the function body
 following the macro invocation.
 
@@ -1386,6 +1527,31 @@ Returns `napi_ok` if the API succeeded.
 This API allocates a `node::Buffer` object and initializes it with data copied
 from the passed-in buffer. While this is still a fully-supported data
 structure, in most cases using a `TypedArray` will suffice.
+
+#### napi_create_date
+<!-- YAML
+added: v11.11.0
+napiVersion: 4
+-->
+
+> Stability: 1 - Experimental
+
+```C
+napi_status napi_create_date(napi_env env,
+                             double time,
+                             napi_value* result);
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] time`: ECMAScript time value in milliseconds since 01 January, 1970 UTC.
+- `[out] result`: A `napi_value` representing a JavaScript `Date`.
+
+Returns `napi_ok` if the API succeeded.
+
+This API allocates a JavaScript `Date` object.
+
+JavaScript `Date` objects are described in
+[Section 20.3][] of the ECMAScript Language Specification.
 
 #### napi_create_external
 <!-- YAML
@@ -1723,7 +1889,7 @@ added: v10.7.0
 
 ```C
 napi_status napi_create_bigint_uint64(napi_env env,
-                                      uint64_t vaue,
+                                      uint64_t value,
                                       napi_value* result);
 ```
 
@@ -2007,6 +2173,31 @@ Returns `napi_ok` if the API succeeded.
 
 This API returns various properties of a `DataView`.
 
+#### napi_get_date_value
+<!-- YAML
+added: v11.11.0
+napiVersion: 4
+-->
+
+> Stability: 1 - Experimental
+
+```C
+napi_status napi_get_date_value(napi_env env,
+                                napi_value value,
+                                double* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: `napi_value` representing a JavaScript `Date`.
+- `[out] result`: Time value as a `double` represented as milliseconds
+since midnight at the beginning of 01 January, 1970 UTC.
+
+Returns `napi_ok` if the API succeeded. If a non-date `napi_value` is passed
+in it returns `napi_date_expected`.
+
+This API returns the C double primitive of time value for the given JavaScript
+`Date`.
+
 #### napi_get_value_bool
 <!-- YAML
 added: v8.0.0
@@ -2115,8 +2306,8 @@ added: v10.7.0
 ```C
 napi_status napi_get_value_bigint_words(napi_env env,
                                         napi_value value,
-                                        size_t* word_count,
                                         int* sign_bit,
+                                        size_t* word_count,
                                         uint64_t* words);
 ```
 
@@ -2590,6 +2781,27 @@ object.
 Returns `napi_ok` if the API succeeded.
 
 This API checks if the `Object` passed in is a buffer.
+
+### napi_is_date
+<!-- YAML
+added: v11.11.0
+napiVersion: 4
+-->
+
+> Stability: 1 - Experimental
+
+```C
+napi_status napi_is_date(napi_env env, napi_value value, bool* result)
+```
+
+- `[in] env`: The environment that the API is invoked under.
+- `[in] value`: The JavaScript value to check.
+- `[out] result`: Whether the given `napi_value` represents a JavaScript `Date`
+object.
+
+Returns `napi_ok` if the API succeeded.
+
+This API checks if the `Object` passed in is a date.
 
 ### napi_is_error
 <!-- YAML
@@ -3204,6 +3416,11 @@ JavaScript functions from native code. One can either call a function
 like a regular JavaScript function call, or as a constructor
 function.
 
+Any non-`NULL` data which is passed to this API via the `data` field of the
+`napi_property_descriptor` items can be associated with `object` and freed
+whenever `object` is garbage-collected by passing both `object` and the data to
+[`napi_add_finalizer`][].
+
 ### napi_call_function
 <!-- YAML
 added: v8.0.0
@@ -3341,6 +3558,11 @@ myaddon.sayHello();
 The string passed to `require()` is the name of the target in `binding.gyp`
 responsible for creating the `.node` file.
 
+Any non-`NULL` data which is passed to this API via the `data` parameter can
+be associated with the resulting JavaScript function (which is returned in the
+`result` parameter) and freed whenever the function is garbage-collected by
+passing both the JavaScript function and the data to [`napi_add_finalizer`][].
+
 JavaScript `Function`s are described in
 [Section 19.2](https://tc39.github.io/ecma262/#sec-function-objects)
 of the ECMAScript Language Specification.
@@ -3474,8 +3696,6 @@ called on a class prototype and a function called on an instance of a class.
 A common pattern used to address this problem is to save a persistent
 reference to the class constructor for later `instanceof` checks.
 
-As an example:
-
 ```C
 napi_value MyClass_constructor = NULL;
 status = napi_get_reference_value(env, MyClass::es_constructor, &MyClass_constructor);
@@ -3549,6 +3769,12 @@ case, to prevent the function value from being garbage-collected, create a
 persistent reference to it using [`napi_create_reference`][] and ensure the
 reference count is kept >= 1.
 
+Any non-`NULL` data which is passed to this API via the `data` parameter or via
+the `data` field of the `napi_property_descriptor` array items can be associated
+with the resulting JavaScript constructor (which is returned in the `result`
+parameter) and freed whenever the class is garbage-collected by passing both
+the JavaScript function and the data to [`napi_add_finalizer`][].
+
 ### napi_wrap
 <!-- YAML
 added: v8.0.0
@@ -3565,8 +3791,7 @@ napi_status napi_wrap(napi_env env,
 
  - `[in] env`: The environment that the API is invoked under.
  - `[in] js_object`: The JavaScript object that will be the wrapper for the
-   native object. This object _must_ have been created from the `prototype` of
-   a constructor that was created using `napi_define_class()`.
+   native object.
  - `[in] native_object`: The native instance that will be wrapped in the
    JavaScript object.
  - `[in] finalize_cb`: Optional native callback that can be used to free the
@@ -3598,13 +3823,9 @@ temporarily during async operations that require the instance to remain valid.
 
 *Caution*: The optional returned reference (if obtained) should be deleted via
 [`napi_delete_reference`][] ONLY in response to the finalize callback
-invocation. (If it is deleted before then, then the finalize callback may never
-be invoked.) Therefore, when obtaining a reference a finalize callback is also
-required in order to enable correct proper of the reference.
-
-This API may modify the prototype chain of the wrapper object. Afterward,
-additional manipulation of the wrapper's prototype chain may cause
-`napi_unwrap()` to fail.
+invocation. If it is deleted before then, then the finalize callback may never
+be invoked. Therefore, when obtaining a reference a finalize callback is also
+required in order to enable correct disposal of the reference.
 
 Calling `napi_wrap()` a second time on an object will return an error. To
 associate another native instance with the object, use `napi_remove_wrap()`
@@ -3654,10 +3875,53 @@ napi_status napi_remove_wrap(napi_env env,
 Returns `napi_ok` if the API succeeded.
 
 Retrieves a native instance that was previously wrapped in the JavaScript
-object `js_object` using `napi_wrap()` and removes the wrapping, thereby
-restoring the JavaScript object's prototype chain. If a finalize callback was
-associated with the wrapping, it will no longer be called when the JavaScript
-object becomes garbage-collected.
+object `js_object` using `napi_wrap()` and removes the wrapping. If a finalize
+callback was associated with the wrapping, it will no longer be called when the
+JavaScript object becomes garbage-collected.
+
+### napi_add_finalizer
+
+> Stability: 1 - Experimental
+
+<!-- YAML
+added: v8.0.0
+napiVersion: 1
+-->
+```C
+napi_status napi_add_finalizer(napi_env env,
+                               napi_value js_object,
+                               void* native_object,
+                               napi_finalize finalize_cb,
+                               void* finalize_hint,
+                               napi_ref* result);
+```
+
+ - `[in] env`: The environment that the API is invoked under.
+ - `[in] js_object`: The JavaScript object to which the native data will be
+   attached.
+ - `[in] native_object`: The native data that will be attached to the JavaScript
+   object.
+ - `[in] finalize_cb`: Native callback that will be used to free the
+   native data when the JavaScript object is ready for garbage-collection.
+ - `[in] finalize_hint`: Optional contextual hint that is passed to the
+   finalize callback.
+ - `[out] result`: Optional reference to the JavaScript object.
+
+Returns `napi_ok` if the API succeeded.
+
+Adds a `napi_finalize` callback which will be called when the JavaScript object
+in `js_object` is ready for garbage collection. This API is similar to
+`napi_wrap()` except that
+* the native data cannot be retrieved later using `napi_unwrap()`,
+* nor can it be removed later using `napi_remove_wrap()`, and
+* the API can be called multiple times with different data items in order to
+  attach each of them to the JavaScript object.
+
+*Caution*: The optional returned reference (if obtained) should be deleted via
+[`napi_delete_reference`][] ONLY in response to the finalize callback
+invocation. If it is deleted before then, then the finalize callback may never
+be invoked. Therefore, when obtaining a reference a finalize callback is also
+required in order to enable correct disposal of the reference.
 
 ## Simple Asynchronous Operations
 
@@ -3926,14 +4190,14 @@ NAPI_EXTERN napi_status napi_open_callback_scope(napi_env env,
                                                  napi_callback_scope* result)
 ```
 - `[in] env`: The environment that the API is invoked under.
-- `[in] resource_object`: An optional object associated with the async work
+- `[in] resource_object`: An object associated with the async work
   that will be passed to possible `async_hooks` [`init` hooks][].
 - `[in] context`: Context for the async operation that is
 invoking the callback. This should be a value previously obtained
 from [`napi_async_init`][].
 - `[out] result`: The newly created scope.
 
-There are cases (for example resolving promises) where it is
+There are cases (for example, resolving promises) where it is
 necessary to have the equivalent of the scope associated with a callback
 in place when making certain N-API calls. If there is no other script on
 the stack the [`napi_open_callback_scope`][] and
@@ -4334,7 +4598,7 @@ prevent the event loop from exiting. The APIs `napi_ref_threadsafe_function` and
 
 ### napi_create_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4364,8 +4628,8 @@ by the `async_hooks` API.
 - `[in] max_queue_size`: Maximum size of the queue. `0` for no limit.
 - `[in] initial_thread_count`: The initial number of threads, including the main
 thread, which will be making use of this function.
-- `[in] thread_finalize_data`: Data to be passed to `thread_finalize_cb`.
-- `[in] thread_finalize_cb`: Function to call when the
+- `[in] thread_finalize_data`: Optional data to be passed to `thread_finalize_cb`.
+- `[in] thread_finalize_cb`: Optional function to call when the
 `napi_threadsafe_function` is being destroyed.
 - `[in] context`: Optional data to attach to the resulting
 `napi_threadsafe_function`.
@@ -4377,7 +4641,7 @@ parameters and with `undefined` as its `this` value.
 
 ### napi_get_threadsafe_function_context
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4395,7 +4659,7 @@ This API may be called from any thread which makes use of `func`.
 
 ### napi_call_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4423,7 +4687,7 @@ This API may be called from any thread which makes use of `func`.
 
 ### napi_acquire_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4445,7 +4709,7 @@ This API may be called from any thread which will start making use of `func`.
 
 ### napi_release_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4473,7 +4737,7 @@ This API may be called from any thread which will stop making use of `func`.
 
 ### napi_ref_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4494,7 +4758,7 @@ This API may only be called from the main thread.
 
 ### napi_unref_threadsafe_function
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- YAML
 added: v10.6.0
@@ -4513,30 +4777,33 @@ idempotent.
 
 This API may only be called from the main thread.
 
+[ABI Stability]: https://nodejs.org/en/docs/guides/abi-stability/
 [ECMAScript Language Specification]: https://tc39.github.io/ecma262/
 [Error Handling]: #n_api_error_handling
 [Native Abstractions for Node.js]: https://github.com/nodejs/nan
 [Object Lifetime Management]: #n_api_object_lifetime_management
 [Object Wrap]: #n_api_object_wrap
-[Section 6.1.4]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type
-[Section 6.1.6]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type
-[Section 6.1.7.1]: https://tc39.github.io/ecma262/#table-2
-[Section 9.1.6]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
 [Section 12.5.5]: https://tc39.github.io/ecma262/#sec-typeof-operator
+[Section 20.3]: https://tc39.github.io/ecma262/#sec-date-objects
 [Section 22.1]: https://tc39.github.io/ecma262/#sec-array-objects
 [Section 22.2]: https://tc39.github.io/ecma262/#sec-typedarray-objects
 [Section 24.1]: https://tc39.github.io/ecma262/#sec-arraybuffer-objects
 [Section 24.3]: https://tc39.github.io/ecma262/#sec-dataview-objects
 [Section 25.4]: https://tc39.github.io/ecma262/#sec-promise-objects
+[Section 6.1.4]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-string-type
+[Section 6.1.6]: https://tc39.github.io/ecma262/#sec-ecmascript-language-types-number-type
+[Section 6.1.7.1]: https://tc39.github.io/ecma262/#table-2
+[Section 9.1.6]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
 [Working with JavaScript Functions]: #n_api_working_with_javascript_functions
 [Working with JavaScript Properties]: #n_api_working_with_javascript_properties
-[Working with JavaScript Values]: #n_api_working_with_javascript_values
 [Working with JavaScript Values - Abstract Operations]: #n_api_working_with_javascript_values_abstract_operations
-
+[Working with JavaScript Values]: #n_api_working_with_javascript_values
+[`init` hooks]: async_hooks.html#async_hooks_init_asyncid_type_triggerasyncid_resource
+[`napi_add_finalizer`]: #n_api_napi_add_finalizer
 [`napi_async_init`]: #n_api_napi_async_init
 [`napi_cancel_async_work`]: #n_api_napi_cancel_async_work
-[`napi_close_escapable_handle_scope`]: #n_api_napi_close_escapable_handle_scope
 [`napi_close_callback_scope`]: #n_api_napi_close_callback_scope
+[`napi_close_escapable_handle_scope`]: #n_api_napi_close_escapable_handle_scope
 [`napi_close_handle_scope`]: #n_api_napi_close_handle_scope
 [`napi_create_async_work`]: #n_api_napi_create_async_work
 [`napi_create_error`]: #n_api_napi_create_error
@@ -4544,23 +4811,22 @@ This API may only be called from the main thread.
 [`napi_create_range_error`]: #n_api_napi_create_range_error
 [`napi_create_reference`]: #n_api_napi_create_reference
 [`napi_create_type_error`]: #n_api_napi_create_type_error
-[`napi_delete_async_work`]: #n_api_napi_delete_async_work
 [`napi_define_class`]: #n_api_napi_define_class
+[`napi_delete_async_work`]: #n_api_napi_delete_async_work
 [`napi_delete_element`]: #n_api_napi_delete_element
 [`napi_delete_property`]: #n_api_napi_delete_property
 [`napi_delete_reference`]: #n_api_napi_delete_reference
 [`napi_escape_handle`]: #n_api_napi_escape_handle
+[`napi_get_and_clear_last_exception`]: #n_api_napi_get_and_clear_last_exception
 [`napi_get_array_length`]: #n_api_napi_get_array_length
 [`napi_get_element`]: #n_api_napi_get_element
+[`napi_get_last_error_info`]: #n_api_napi_get_last_error_info
 [`napi_get_property`]: #n_api_napi_get_property
-[`napi_has_property`]: #n_api_napi_has_property
-[`napi_has_own_property`]: #n_api_napi_has_own_property
-[`napi_set_property`]: #n_api_napi_set_property
 [`napi_get_reference_value`]: #n_api_napi_get_reference_value
+[`napi_has_own_property`]: #n_api_napi_has_own_property
+[`napi_has_property`]: #n_api_napi_has_property
 [`napi_is_error`]: #n_api_napi_is_error
 [`napi_is_exception_pending`]: #n_api_napi_is_exception_pending
-[`napi_get_last_error_info`]: #n_api_napi_get_last_error_info
-[`napi_get_and_clear_last_exception`]: #n_api_napi_get_and_clear_last_exception
 [`napi_make_callback`]: #n_api_napi_make_callback
 [`napi_open_callback_scope`]: #n_api_napi_open_callback_scope
 [`napi_open_escapable_handle_scope`]: #n_api_napi_open_escapable_handle_scope
@@ -4569,15 +4835,15 @@ This API may only be called from the main thread.
 [`napi_queue_async_work`]: #n_api_napi_queue_async_work
 [`napi_reference_ref`]: #n_api_napi_reference_ref
 [`napi_reference_unref`]: #n_api_napi_reference_unref
-[`napi_throw`]: #n_api_napi_throw
+[`napi_set_property`]: #n_api_napi_set_property
 [`napi_throw_error`]: #n_api_napi_throw_error
 [`napi_throw_range_error`]: #n_api_napi_throw_range_error
 [`napi_throw_type_error`]: #n_api_napi_throw_type_error
+[`napi_throw`]: #n_api_napi_throw
 [`napi_unwrap`]: #n_api_napi_unwrap
 [`napi_wrap`]: #n_api_napi_wrap
+[`process.release`]: process.html#process_process_release
 [`uv_ref`]: http://docs.libuv.org/en/v1.x/handle.html#c.uv_ref
 [`uv_unref`]: http://docs.libuv.org/en/v1.x/handle.html#c.uv_unref
-
-[`process.release`]: process.html#process_process_release
-[`init` hooks]: async_hooks.html#async_hooks_init_asyncid_type_triggerasyncid_resource
 [async_hooks `type`]: async_hooks.html#async_hooks_type
+[context-aware addons]: addons.html#addons_context_aware_addons

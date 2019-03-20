@@ -49,7 +49,7 @@ const Countdown = require('../common/countdown');
   }));
 }
 
-// test destroy before client operations
+// Test destroy before client operations
 {
   const server = h2.createServer();
   server.listen(0, common.mustCall(() => {
@@ -81,7 +81,7 @@ const Countdown = require('../common/countdown');
     common.expectsError(() => client.settings({}), sessionError);
     common.expectsError(() => client.goaway(), sessionError);
     common.expectsError(() => client.request(), sessionError);
-    client.close();  // should be a non-op at this point
+    client.close();  // Should be a non-op at this point
 
     // Wait for setImmediate call from destroy() to complete
     // so that state.destroyed is set to true
@@ -91,7 +91,7 @@ const Countdown = require('../common/countdown');
       common.expectsError(() => client.settings({}), sessionError);
       common.expectsError(() => client.goaway(), sessionError);
       common.expectsError(() => client.request(), sessionError);
-      client.close();  // should be a non-op at this point
+      client.close();  // Should be a non-op at this point
     });
 
     req.resume();
@@ -112,7 +112,7 @@ const Countdown = require('../common/countdown');
 
     client.on('close', () => {
       server.close();
-      // calling destroy in here should not matter
+      // Calling destroy in here should not matter
       client.destroy();
     });
 
@@ -135,5 +135,32 @@ const Countdown = require('../common/countdown');
 
     const req = client.request();
     req.destroy();
+  }));
+}
+
+// test close before connect
+{
+  const server = h2.createServer();
+
+  server.on('stream', common.mustNotCall());
+  server.listen(0, common.mustCall(() => {
+    const client = h2.connect(`http://localhost:${server.address().port}`);
+    const socket = client[kSocket];
+    socket.on('close', common.mustCall(() => {
+      assert(socket.destroyed);
+    }));
+
+    const req = client.request();
+    // should throw goaway error
+    req.on('error', common.expectsError({
+      code: 'ERR_HTTP2_GOAWAY_SESSION',
+      type: Error,
+      message: 'New streams cannot be created after receiving a GOAWAY'
+    }));
+
+    client.close();
+    req.resume();
+    req.on('end', common.mustCall());
+    req.on('close', common.mustCall(() => server.close()));
   }));
 }

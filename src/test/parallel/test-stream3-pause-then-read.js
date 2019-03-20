@@ -77,7 +77,7 @@ function readn(n, then) {
   })();
 }
 
-// then we listen to some data events
+// Then we listen to some data events
 function onData() {
   expectEndingData -= 100;
   console.error('onData');
@@ -137,7 +137,7 @@ function read1234() {
 
 function resumePause() {
   console.error('resumePause');
-  // don't read anything, just resume and re-pause a whole bunch
+  // Don't read anything, just resume and re-pause a whole bunch
   r.resume();
   r.pause();
   r.resume();

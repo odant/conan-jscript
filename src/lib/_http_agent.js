@@ -48,9 +48,9 @@ function Agent(options) {
   this.defaultPort = 80;
   this.protocol = 'http:';
 
-  this.options = util._extend({}, options);
+  this.options = { ...options };
 
-  // don't confuse net and make it think that we're connecting to a pipe
+  // Don't confuse net and make it think that we're connecting to a pipe
   this.options.path = null;
   this.requests = {};
   this.sockets = {};
@@ -146,8 +146,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     };
   }
 
-  options = util._extend({}, options);
-  util._extend(options, this.options);
+  options = { ...options, ...this.options };
   if (options.socketPath)
     options.path = options.socketPath;
 
@@ -163,11 +162,11 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
   var sockLen = freeLen + this.sockets[name].length;
 
   if (freeLen) {
-    // we have a free socket, so use that.
+    // We have a free socket, so use that.
     var socket = this.freeSockets[name].shift();
     // Guard against an uninitialized or user supplied Socket.
     if (socket._handle && typeof socket._handle.asyncReset === 'function') {
-      // Assign the handle a new asyncId and run any init() hooks.
+      // Assign the handle a new asyncId and run any destroy()/init() hooks.
       socket._handle.asyncReset();
       socket[async_id_symbol] = socket._handle.getAsyncId();
     }
@@ -194,8 +193,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
 };
 
 Agent.prototype.createSocket = function createSocket(req, options, cb) {
-  options = util._extend({}, options);
-  util._extend(options, this.options);
+  options = { ...options, ...this.options };
   if (options.socketPath)
     options.path = options.socketPath;
 
@@ -359,7 +357,7 @@ function setRequestSocket(agent, req, socket) {
     return;
   }
   socket.setTimeout(req.timeout);
-  // reset timeout after response end
+  // Reset timeout after response end
   req.once('response', (res) => {
     res.once('end', () => {
       if (socket.timeout !== agentTimeout) {

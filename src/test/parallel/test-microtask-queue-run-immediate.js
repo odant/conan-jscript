@@ -20,10 +20,8 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 'use strict';
-const common = require('../common');
+require('../common');
 const assert = require('assert');
-
-common.crashOnUnhandledRejection();
 
 function enqueueMicrotask(fn) {
   Promise.resolve().then(fn);
@@ -43,7 +41,7 @@ setImmediate(function() {
 });
 
 
-// no nextTick, microtask with nextTick
+// No nextTick, microtask with nextTick
 setImmediate(function() {
   let called = false;
 

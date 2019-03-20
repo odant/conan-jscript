@@ -19,9 +19,9 @@ void CallWithString(const FunctionCallbackInfo<Value>& args) {
   assert(args.Length() == 1 && args[0]->IsString());
   if (args.Length() == 1 && args[0]->IsString()) {
     Local<String> str = args[0].As<String>();
-    const int32_t length = str->Utf8Length() + 1;
+    const int32_t length = str->Utf8Length(args.GetIsolate()) + 1;
     char* buf = new char[length];
-    str->WriteUtf8(buf, length);
+    str->WriteUtf8(args.GetIsolate(), buf, length);
     delete [] buf;
   }
 }
@@ -33,7 +33,8 @@ void CallWithArray(const FunctionCallbackInfo<Value>& args) {
     uint32_t length = array->Length();
     for (uint32_t i = 0; i < length; ++ i) {
       Local<Value> v;
-      v = array->Get(i);
+      v = array->Get(args.GetIsolate()->GetCurrentContext(),
+                     i).ToLocalChecked();
     }
   }
 }

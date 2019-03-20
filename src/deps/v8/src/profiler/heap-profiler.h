@@ -85,13 +85,15 @@ class HeapProfiler : public HeapObjectAllocationTracker {
   Handle<HeapObject> FindHeapObjectById(SnapshotObjectId id);
   void ClearHeapObjectMap();
 
-  Isolate* isolate() const { return heap()->isolate(); }
+  Isolate* isolate() const;
 
   void QueryObjects(Handle<Context> context,
                     debug::QueryObjectPredicate* predicate,
                     v8::PersistentValueVector<v8::Object>* objects);
 
  private:
+  void MaybeClearStringsStorage();
+
   Heap* heap() const;
 
   // Mapping from HeapObject addresses to objects' uids.

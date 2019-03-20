@@ -63,13 +63,15 @@ namespace demo {
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
 
 void Method(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "world"));
+  args.GetReturnValue().Set(String::NewFromUtf8(
+      isolate, "world", NewStringType::kNormal).ToLocalChecked());
 }
 
 void Initialize(Local<Object> exports) {
@@ -232,6 +234,28 @@ NODE_MODULE_INIT(/* exports, module, context */) {
 }
 ```
 
+#### Worker support
+
+In order to support [`Worker`][] threads, addons need to clean up any resources
+they may have allocated when such a thread exists. This can be achieved through
+the usage of the `AddEnvironmentCleanupHook()` function:
+
+```c++
+void AddEnvironmentCleanupHook(v8::Isolate* isolate,
+                               void (*fun)(void* arg),
+                               void* arg);
+```
+
+This function adds a hook that will run before a given Node.js instance shuts
+down. If necessary, such hooks can be removed using
+`RemoveEnvironmentCleanupHook()` before they are run, which has the same
+signature.
+
+In order to be loaded from multiple Node.js environments,
+such as a main thread and a Worker thread, an add-on needs to either:
+- Be an N-API addon, or
+- Be declared as context-aware using `NODE_MODULE_INIT()` as described above
+
 ### Building
 
 Once the source code has been written, it must be compiled into the binary
@@ -367,6 +391,10 @@ set of APIs that are used by the native code. Instead of using the V8
 or [Native Abstractions for Node.js][] APIs, the functions available
 in the N-API are used.
 
+Creating and maintaining an addon that benefits from the ABI stability
+provided by N-API carries with it certain
+[implementation considerations](n-api.html#n_api_implications_of_abi_stability).
+
 To use N-API in the above "Hello world" example, replace the content of
 `hello.cc` with the following. All other instructions remain the same.
 
@@ -380,7 +408,7 @@ napi_value Method(napi_env env, napi_callback_info args) {
   napi_value greeting;
   napi_status status;
 
-  status = napi_create_string_utf8(env, "hello", NAPI_AUTO_LENGTH, &greeting);
+  status = napi_create_string_utf8(env, "world", NAPI_AUTO_LENGTH, &greeting);
   if (status != napi_ok) return nullptr;
   return greeting;
 }
@@ -460,6 +488,7 @@ using v8::Exception;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::String;
@@ -475,19 +504,24 @@ void Add(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() < 2) {
     // Throw an Error that is passed back to JavaScript
     isolate->ThrowException(Exception::TypeError(
-        String::NewFromUtf8(isolate, "Wrong number of arguments")));
+        String::NewFromUtf8(isolate,
+                            "Wrong number of arguments",
+                            NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
   // Check the argument types
   if (!args[0]->IsNumber() || !args[1]->IsNumber()) {
     isolate->ThrowException(Exception::TypeError(
-        String::NewFromUtf8(isolate, "Wrong arguments")));
+        String::NewFromUtf8(isolate,
+                            "Wrong arguments",
+                            NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
   // Perform the operation
-  double value = args[0]->NumberValue() + args[1]->NumberValue();
+  double value =
+      args[0].As<Number>()->Value() + args[1].As<Number>()->Value();
   Local<Number> num = Number::New(isolate, value);
 
   // Set the return value (using the passed in
@@ -525,10 +559,12 @@ to invoke such callbacks:
 
 namespace demo {
 
+using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -536,10 +572,14 @@ using v8::Value;
 
 void RunCallback(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
   Local<Function> cb = Local<Function>::Cast(args[0]);
   const unsigned argc = 1;
-  Local<Value> argv[argc] = { String::NewFromUtf8(isolate, "hello world") };
-  cb->Call(Null(isolate), argc, argv);
+  Local<Value> argv[argc] = {
+      String::NewFromUtf8(isolate,
+                          "hello world",
+                          NewStringType::kNormal).ToLocalChecked() };
+  cb->Call(context, Null(isolate), argc, argv).ToLocalChecked();
 }
 
 void Init(Local<Object> exports, Local<Object> module) {
@@ -582,18 +622,26 @@ property `msg` that echoes the string passed to `createObject()`:
 
 namespace demo {
 
+using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
 
 void CreateObject(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   Local<Object> obj = Object::New(isolate);
-  obj->Set(String::NewFromUtf8(isolate, "msg"), args[0]->ToString());
+  obj->Set(context,
+           String::NewFromUtf8(isolate,
+                               "msg",
+                               NewStringType::kNormal).ToLocalChecked(),
+                               args[0]->ToString(context).ToLocalChecked())
+           .FromJust();
 
   args.GetReturnValue().Set(obj);
 }
@@ -630,28 +678,33 @@ functions and returning those back to JavaScript:
 
 namespace demo {
 
+using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
 
 void MyFunction(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, "hello world"));
+  args.GetReturnValue().Set(String::NewFromUtf8(
+      isolate, "hello world", NewStringType::kNormal).ToLocalChecked());
 }
 
 void CreateFunction(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
 
+  Local<Context> context = isolate->GetCurrentContext();
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, MyFunction);
-  Local<Function> fn = tpl->GetFunction();
+  Local<Function> fn = tpl->GetFunction(context).ToLocalChecked();
 
   // omit this to make it anonymous
-  fn->SetName(String::NewFromUtf8(isolate, "theFunction"));
+  fn->SetName(String::NewFromUtf8(
+      isolate, "theFunction", NewStringType::kNormal).ToLocalChecked());
 
   args.GetReturnValue().Set(fn);
 }
@@ -747,6 +800,7 @@ using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::Persistent;
@@ -766,23 +820,28 @@ void MyObject::Init(Local<Object> exports) {
 
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject"));
+  tpl->SetClassName(String::NewFromUtf8(
+      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "plusOne", PlusOne);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "MyObject"),
-               tpl->GetFunction());
+  Local<Context> context = isolate->GetCurrentContext();
+  constructor.Reset(isolate, tpl->GetFunction(context).ToLocalChecked());
+  exports->Set(context, String::NewFromUtf8(
+      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked(),
+               tpl->GetFunction(context).ToLocalChecked()).FromJust();
 }
 
 void MyObject::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   if (args.IsConstructCall()) {
     // Invoked as constructor: `new MyObject(...)`
-    double value = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+    double value = args[0]->IsUndefined() ?
+        0 : args[0]->NumberValue(context).FromMaybe(0);
     MyObject* obj = new MyObject(value);
     obj->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
@@ -790,7 +849,6 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
     // Invoked as plain function `MyObject(...)`, turn into construct call.
     const int argc = 1;
     Local<Value> argv[argc] = { args[0] };
-    Local<Context> context = isolate->GetCurrentContext();
     Local<Function> cons = Local<Function>::New(isolate, constructor);
     Local<Object> result =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
@@ -841,6 +899,13 @@ console.log(obj.plusOne());
 console.log(obj.plusOne());
 // Prints: 13
 ```
+
+The destructor for a wrapper object will run when the object is
+garbage-collected. For destructor testing, there are command-line flags that
+can be used to make it possible to force garbage collection. These flags are
+provided by the underlying V8 JavaScript engine. They are subject to change
+or removal at any time. They are not documented by Node.js or V8, and they
+should never be used outside of testing.
 
 ### Factory of wrapped objects
 
@@ -933,6 +998,7 @@ using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::Persistent;
@@ -950,21 +1016,25 @@ MyObject::~MyObject() {
 void MyObject::Init(Isolate* isolate) {
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject"));
+  tpl->SetClassName(String::NewFromUtf8(
+      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "plusOne", PlusOne);
 
-  constructor.Reset(isolate, tpl->GetFunction());
+  Local<Context> context = isolate->GetCurrentContext();
+  constructor.Reset(isolate, tpl->GetFunction(context).ToLocalChecked());
 }
 
 void MyObject::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   if (args.IsConstructCall()) {
     // Invoked as constructor: `new MyObject(...)`
-    double value = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+    double value = args[0]->IsUndefined() ?
+        0 : args[0]->NumberValue(context).FromMaybe(0);
     MyObject* obj = new MyObject(value);
     obj->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
@@ -973,7 +1043,6 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
     const int argc = 1;
     Local<Value> argv[argc] = { args[0] };
     Local<Function> cons = Local<Function>::New(isolate, constructor);
-    Local<Context> context = isolate->GetCurrentContext();
     Local<Object> instance =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
     args.GetReturnValue().Set(instance);
@@ -1060,6 +1129,7 @@ that can take two `MyObject` objects as input arguments:
 
 namespace demo {
 
+using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
@@ -1074,11 +1144,12 @@ void CreateObject(const FunctionCallbackInfo<Value>& args) {
 
 void Add(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   MyObject* obj1 = node::ObjectWrap::Unwrap<MyObject>(
-      args[0]->ToObject());
+      args[0]->ToObject(context).ToLocalChecked());
   MyObject* obj2 = node::ObjectWrap::Unwrap<MyObject>(
-      args[1]->ToObject());
+      args[1]->ToObject(context).ToLocalChecked());
 
   double sum = obj1->value() + obj2->value();
   args.GetReturnValue().Set(Number::New(isolate, sum));
@@ -1144,6 +1215,7 @@ using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::Persistent;
 using v8::String;
@@ -1160,18 +1232,22 @@ MyObject::~MyObject() {
 void MyObject::Init(Isolate* isolate) {
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject"));
+  tpl->SetClassName(String::NewFromUtf8(
+      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  constructor.Reset(isolate, tpl->GetFunction());
+  Local<Context> context = isolate->GetCurrentContext();
+  constructor.Reset(isolate, tpl->GetFunction(context).ToLocalChecked());
 }
 
 void MyObject::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
 
   if (args.IsConstructCall()) {
     // Invoked as constructor: `new MyObject(...)`
-    double value = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+    double value = args[0]->IsUndefined() ?
+        0 : args[0]->NumberValue(context).FromMaybe(0);
     MyObject* obj = new MyObject(value);
     obj->Wrap(args.This());
     args.GetReturnValue().Set(args.This());
@@ -1179,7 +1255,6 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
     // Invoked as plain function `MyObject(...)`, turn into construct call.
     const int argc = 1;
     Local<Value> argv[argc] = { args[0] };
-    Local<Context> context = isolate->GetCurrentContext();
     Local<Function> cons = Local<Function>::New(isolate, constructor);
     Local<Object> instance =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
@@ -1296,6 +1371,7 @@ Test in JavaScript by running:
 require('./build/Release/addon');
 ```
 
+[`Worker`]: worker_threads.html#worker_threads_class_worker
 [Electron]: https://electronjs.org/
 [Embedder's Guide]: https://github.com/v8/v8/wiki/Embedder's%20Guide
 [Linking to Node.js' own dependencies]: #addons_linking_to_node_js_own_dependencies
@@ -1306,5 +1382,5 @@ require('./build/Release/addon');
 [installation instructions]: https://github.com/nodejs/node-gyp#installation
 [libuv]: https://github.com/libuv/libuv
 [node-gyp]: https://github.com/nodejs/node-gyp
-[require]: modules.html#modules_require
+[require]: modules.html#modules_require_id
 [v8-docs]: https://v8docs.nodesource.com/

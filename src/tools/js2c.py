@@ -35,17 +35,18 @@ import os
 import re
 import sys
 import string
+import hashlib
+
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
 
 
 def ToCArray(elements, step=10):
   slices = (elements[i:i+step] for i in xrange(0, len(elements), step))
   slices = map(lambda s: ','.join(str(x) for x in s), slices)
   return ',\n'.join(slices)
-
-
-def ToCString(contents):
-  return ToCArray(map(ord, contents), step=20)
-
 
 def ReadFile(filename):
   file = open(filename, "rt")
@@ -175,69 +176,42 @@ def ReadMacros(lines):
 
 
 TEMPLATE = """
-#include "node.h"
-#include "node_javascript.h"
-#include "v8.h"
-#include "env.h"
-#include "env-inl.h"
+#include "node_native_module.h"
+#include "node_internals.h"
 
 namespace node {{
 
-namespace {{
+namespace native_module {{
 
 {definitions}
 
-}}  // anonymous namespace
-
-v8::Local<v8::String> NodePerContextSource(v8::Isolate* isolate) {{
-  return internal_per_context_value.ToStringChecked(isolate);
-}}
-
-v8::Local<v8::String> LoadersBootstrapperSource(Environment* env) {{
-  return internal_bootstrap_loaders_value.ToStringChecked(env->isolate());
-}}
-
-v8::Local<v8::String> NodeBootstrapperSource(Environment* env) {{
-  return internal_bootstrap_node_value.ToStringChecked(env->isolate());
-}}
-
-void DefineJavaScript(Environment* env, v8::Local<v8::Object> target) {{
+void NativeModuleLoader::LoadJavaScriptSource() {{
   {initializers}
 }}
+
+UnionBytes NativeModuleLoader::GetConfig() {{
+  return UnionBytes(config_raw, arraysize(config_raw));  // config.gypi
+}}
+
+}}  // namespace native_module
 
 }}  // namespace node
 """
 
 ONE_BYTE_STRING = """
-static const uint8_t raw_{var}[] = {{ {data} }};
-static struct : public v8::String::ExternalOneByteStringResource {{
-  const char* data() const override {{
-    return reinterpret_cast<const char*>(raw_{var});
-  }}
-  size_t length() const override {{ return arraysize(raw_{var}); }}
-  void Dispose() override {{ /* Default calls `delete this`. */ }}
-  v8::Local<v8::String> ToStringChecked(v8::Isolate* isolate) {{
-    return v8::String::NewExternalOneByte(isolate, this).ToLocalChecked();
-  }}
-}} {var};
+static const uint8_t {var}[] = {{ {data} }};
 """
 
 TWO_BYTE_STRING = """
-static const uint16_t raw_{var}[] = {{ {data} }};
-static struct : public v8::String::ExternalStringResource {{
-  const uint16_t* data() const override {{ return raw_{var}; }}
-  size_t length() const override {{ return arraysize(raw_{var}); }}
-  void Dispose() override {{ /* Default calls `delete this`. */ }}
-  v8::Local<v8::String> ToStringChecked(v8::Isolate* isolate) {{
-    return v8::String::NewExternalTwoByte(isolate, this).ToLocalChecked();
-  }}
-}} {var};
+static const uint16_t {var}[] = {{ {data} }};
 """
 
-INITIALIZER = """\
-CHECK(target->Set(env->context(),
-                  {key}.ToStringChecked(env->isolate()),
-                  {value}.ToStringChecked(env->isolate())).FromJust());
+
+INITIALIZER = """
+source_.emplace(
+    "{module}",
+    UnionBytes({var}, arraysize({var}))
+);
 """
 
 DEPRECATED_DEPS = """\
@@ -247,20 +221,6 @@ process.emitWarning(
   'install the necessary module locally.', 'DeprecationWarning', 'DEP0084');
 module.exports = require('internal/deps/{module}');
 """
-
-
-def Render(var, data):
-  # Treat non-ASCII as UTF-8 and convert it to UTF-16.
-  if any(ord(c) > 127 for c in data):
-    template = TWO_BYTE_STRING
-    data = map(ord, data.decode('utf-8').encode('utf-16be'))
-    data = [data[i] * 256 + data[i+1] for i in xrange(0, len(data), 2)]
-    data = ToCArray(data)
-  else:
-    template = ONE_BYTE_STRING
-    data = ToCString(data)
-  return template.format(var=var, data=data)
-
 
 def JS2C(source, target):
   modules = []
@@ -280,6 +240,25 @@ def JS2C(source, target):
   # Build source code lines
   definitions = []
   initializers = []
+
+  def GetDefinition(var, source):
+    # Treat non-ASCII as UTF-8 and convert it to UTF-16.
+    if any(ord(c) > 127 for c in source):
+      source = map(ord, source.decode('utf-8').encode('utf-16be'))
+      source = [source[i] * 256 + source[i+1] for i in xrange(0, len(source), 2)]
+      source = ToCArray(source)
+      return TWO_BYTE_STRING.format(var=var, data=source)
+    else:
+      source = ToCArray(map(ord, source), step=20)
+      return ONE_BYTE_STRING.format(var=var, data=source)
+
+  def AddModule(module, source):
+    var = '%s_raw' % (module.replace('-', '_').replace('/', '_'))
+    definition = GetDefinition(var, source)
+    initializer = INITIALIZER.format(module=module,
+                                     var=var)
+    definitions.append(definition)
+    initializers.append(initializer)
 
   for name in modules:
     lines = ReadFile(str(name))
@@ -302,33 +281,29 @@ def JS2C(source, target):
 
     # if its a gypi file we're going to want it as json
     # later on anyway, so get it out of the way now
-    if name.endswith(".gypi"):
+    if name.endswith('.gypi'):
+      # Currently only config.gypi is allowed
+      assert name == 'config.gypi'
+      lines = re.sub(r'\'true\'', 'true', lines)
+      lines = re.sub(r'\'false\'', 'false', lines)
       lines = re.sub(r'#.*?\n', '', lines)
       lines = re.sub(r'\'', '"', lines)
-    name = name.split('.', 1)[0]
-    var = name.replace('-', '_').replace('/', '_')
-    key = '%s_key' % var
-    value = '%s_value' % var
+      definition = GetDefinition('config_raw', lines)
+      definitions.append(definition)
+    else:
+      AddModule(name.split('.', 1)[0], lines)
 
-    definitions.append(Render(key, name))
-    definitions.append(Render(value, lines))
-    initializers.append(INITIALIZER.format(key=key, value=value))
-
+    # Add deprecated aliases for deps without 'deps/'
     if deprecated_deps is not None:
-      name = '/'.join(deprecated_deps)
-      name = name.split('.', 1)[0]
-      var = name.replace('-', '_').replace('/', '_')
-      key = '%s_key' % var
-      value = '%s_value' % var
-
-      definitions.append(Render(key, name))
-      definitions.append(Render(value, DEPRECATED_DEPS.format(module=name)))
-      initializers.append(INITIALIZER.format(key=key, value=value))
+      module = '/'.join(deprecated_deps).split('.', 1)[0]
+      source = DEPRECATED_DEPS.format(module=module)
+      AddModule(module, source)
 
   # Emit result
   output = open(str(target[0]), "w")
-  output.write(TEMPLATE.format(definitions=''.join(definitions),
-                               initializers=''.join(initializers)))
+  output.write(
+    TEMPLATE.format(definitions=''.join(definitions),
+                    initializers=''.join(initializers)))
   output.close()
 
 def main():

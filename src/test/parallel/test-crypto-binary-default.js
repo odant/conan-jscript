@@ -465,7 +465,7 @@ function testCipher1(key) {
   const plaintext = 'Keep this a secret? No! Tell everyone about node.js!';
   const cipher = crypto.createCipher('aes192', key);
 
-  // encrypt plaintext which is in utf8 format
+  // Encrypt plaintext which is in utf8 format
   // to a ciphertext which will be in hex
   let ciph = cipher.update(plaintext, 'utf8', 'hex');
   // Only use binary or hex, not base64.
@@ -480,15 +480,15 @@ function testCipher1(key) {
 
 
 function testCipher2(key) {
-  // encryption and decryption with Base64
-  // reported in https://github.com/joyent/node/issues/738
+  // Encryption and decryption with Base64.
+  // Reported in https://github.com/joyent/node/issues/738
   const plaintext =
       '32|RmVZZkFUVmpRRkp0TmJaUm56ZU9qcnJkaXNNWVNpTTU*|iXmckfRWZBGWWELw' +
       'eCBsThSsfUHLeRe0KCsK8ooHgxie0zOINpXxfZi/oNG7uq9JWFVCk70gfzQH8ZUJ' +
       'jAfaFg**';
   const cipher = crypto.createCipher('aes256', key);
 
-  // encrypt plaintext which is in utf8 format
+  // Encrypt plaintext which is in utf8 format
   // to a ciphertext which will be in Base64
   let ciph = cipher.update(plaintext, 'utf8', 'base64');
   ciph += cipher.final('base64');

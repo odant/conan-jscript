@@ -24,7 +24,6 @@
 #include "env-inl.h"
 #include "handle_wrap.h"
 #include "node_buffer.h"
-#include "node_wrap.h"
 #include "stream_base-inl.h"
 #include "stream_wrap.h"
 #include "util-inl.h"
@@ -44,18 +43,17 @@ using v8::Value;
 
 void TTYWrap::Initialize(Local<Object> target,
                          Local<Value> unused,
-                         Local<Context> context) {
+                         Local<Context> context,
+                         void* priv) {
   Environment* env = Environment::GetCurrent(context);
 
   Local<String> ttyString = FIXED_ONE_BYTE_STRING(env->isolate(), "TTY");
 
   Local<FunctionTemplate> t = env->NewFunctionTemplate(New);
   t->SetClassName(ttyString);
-  t->InstanceTemplate()->SetInternalFieldCount(1);
-
-  AsyncWrap::AddWrapMethods(env, t);
-  HandleWrap::AddWrapMethods(env, t);
-  LibuvStreamWrap::AddMethods(env, t);
+  t->InstanceTemplate()
+    ->SetInternalFieldCount(StreamBase::kStreamBaseField + 1);
+  t->Inherit(LibuvStreamWrap::GetConstructorTemplate(env));
 
   env->SetProtoMethodNoSideEffect(t, "getWindowSize", TTYWrap::GetWindowSize);
   env->SetProtoMethod(t, "setRawMode", SetRawMode);
@@ -63,19 +61,17 @@ void TTYWrap::Initialize(Local<Object> target,
   env->SetMethodNoSideEffect(target, "isTTY", IsTTY);
   env->SetMethodNoSideEffect(target, "guessHandleType", GuessHandleType);
 
-  target->Set(ttyString, t->GetFunction());
+  target->Set(env->context(),
+              ttyString,
+              t->GetFunction(env->context()).ToLocalChecked()).FromJust();
   env->set_tty_constructor_template(t);
-}
-
-
-uv_tty_t* TTYWrap::UVHandle() {
-  return &handle_;
 }
 
 
 void TTYWrap::GuessHandleType(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  int fd = args[0]->Int32Value();
+  int fd;
+  if (!args[0]->Int32Value(env->context()).To(&fd)) return;
   CHECK_GE(fd, 0);
 
   uv_handle_type t = uv_guess_handle(fd);
@@ -97,7 +93,9 @@ void TTYWrap::GuessHandleType(const FunctionCallbackInfo<Value>& args) {
 
 
 void TTYWrap::IsTTY(const FunctionCallbackInfo<Value>& args) {
-  int fd = args[0]->Int32Value();
+  Environment* env = Environment::GetCurrent(args);
+  int fd;
+  if (!args[0]->Int32Value(env->context()).To(&fd)) return;
   CHECK_GE(fd, 0);
   bool rc = uv_guess_handle(fd) == UV_TTY;
   args.GetReturnValue().Set(rc);
@@ -117,9 +115,9 @@ void TTYWrap::GetWindowSize(const FunctionCallbackInfo<Value>& args) {
   int err = uv_tty_get_winsize(&wrap->handle_, &width, &height);
 
   if (err == 0) {
-    Local<v8::Array> a = args[0].As<Array>();
-    a->Set(0, Integer::New(env->isolate(), width));
-    a->Set(1, Integer::New(env->isolate(), height));
+    Local<Array> a = args[0].As<Array>();
+    a->Set(env->context(), 0, Integer::New(env->isolate(), width)).FromJust();
+    a->Set(env->context(), 1, Integer::New(env->isolate(), height)).FromJust();
   }
 
   args.GetReturnValue().Set(err);
@@ -144,7 +142,8 @@ void TTYWrap::New(const FunctionCallbackInfo<Value>& args) {
   // normal function.
   CHECK(args.IsConstructCall());
 
-  int fd = args[0]->Int32Value();
+  int fd;
+  if (!args[0]->Int32Value(env->context()).To(&fd)) return;
   CHECK_GE(fd, 0);
 
   int err = 0;
@@ -173,4 +172,4 @@ TTYWrap::TTYWrap(Environment* env,
 
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(tty_wrap, node::TTYWrap::Initialize)
+NODE_MODULE_CONTEXT_AWARE_INTERNAL(tty_wrap, node::TTYWrap::Initialize)

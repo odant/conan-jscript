@@ -24,30 +24,30 @@
 const util = require('util');
 const net = require('net');
 const url = require('url');
-const { HTTPParser } = process.binding('http_parser');
-const assert = require('assert').ok;
+const assert = require('internal/assert');
 const {
   _checkIsHttpToken: checkIsHttpToken,
   debug,
   freeParser,
   httpSocketSetup,
-  parsers
+  parsers,
+  HTTPParser,
 } = require('_http_common');
 const { OutgoingMessage } = require('_http_outgoing');
 const Agent = require('_http_agent');
 const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
-const { urlToOptions, searchParamsSymbol } = require('internal/url');
+const { URL, urlToOptions, searchParamsSymbol } = require('internal/url');
 const { outHeadersKey, ondrain } = require('internal/http');
 const {
   ERR_HTTP_HEADERS_SENT,
   ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_DOMAIN_NAME,
   ERR_INVALID_HTTP_TOKEN,
   ERR_INVALID_PROTOCOL,
   ERR_UNESCAPED_CHARACTERS
 } = require('internal/errors').codes;
 const { validateTimerDuration } = require('internal/timers');
+const is_reused_symbol = require('internal/freelist').symbols.is_reused_symbol;
 
 const INVALID_PATH_REGEX = /[^\u0021-\u00ff]/;
 
@@ -60,20 +60,42 @@ function validateHost(host, name) {
   return host;
 }
 
-function ClientRequest(options, cb) {
+let urlWarningEmitted = false;
+function ClientRequest(input, options, cb) {
   OutgoingMessage.call(this);
 
-  if (typeof options === 'string') {
-    options = url.parse(options);
-    if (!options.hostname) {
-      throw new ERR_INVALID_DOMAIN_NAME();
+  if (typeof input === 'string') {
+    const urlStr = input;
+    try {
+      input = urlToOptions(new URL(urlStr));
+    } catch (err) {
+      input = url.parse(urlStr);
+      if (!input.hostname) {
+        throw err;
+      }
+      if (!urlWarningEmitted && !process.noDeprecation) {
+        urlWarningEmitted = true;
+        process.emitWarning(
+          `The provided URL ${urlStr} is not a valid URL, and is supported ` +
+          'in the http module solely for compatibility.',
+          'DeprecationWarning', 'DEP0109');
+      }
     }
-  } else if (options && options[searchParamsSymbol] &&
-             options[searchParamsSymbol][searchParamsSymbol]) {
+  } else if (input && input[searchParamsSymbol] &&
+             input[searchParamsSymbol][searchParamsSymbol]) {
     // url.URL instance
-    options = urlToOptions(options);
+    input = urlToOptions(input);
   } else {
-    options = util._extend({}, options);
+    cb = options;
+    options = input;
+    input = null;
+  }
+
+  if (typeof options === 'function') {
+    cb = options;
+    options = input || {};
+  } else {
+    options = Object.assign(input || {}, options);
   }
 
   var agent = options.agent;
@@ -153,7 +175,7 @@ function ClientRequest(options, cb) {
 
   this._ended = false;
   this.res = null;
-  this.aborted = undefined;
+  this.aborted = false;
   this.timeoutCb = null;
   this.upgradeOrConnect = false;
   this.parser = null;
@@ -263,7 +285,6 @@ util.inherits(ClientRequest, OutgoingMessage);
 
 ClientRequest.prototype._finish = function _finish() {
   DTRACE_HTTP_CLIENT_REQUEST(this, this.connection);
-  COUNTER_HTTP_CLIENT_REQUEST();
   OutgoingMessage.prototype._finish.call(this);
 };
 
@@ -279,17 +300,13 @@ ClientRequest.prototype.abort = function abort() {
   if (!this.aborted) {
     process.nextTick(emitAbortNT.bind(this));
   }
-
-  // Mark as aborting so we can avoid sending queued request data
-  // This is used as a truthy flag elsewhere. The use of Date.now is for
-  // debugging purposes only.
-  this.aborted = Date.now();
+  this.aborted = true;
 
   // If we're aborting, we don't care about any more response data.
   if (this.res) {
     this.res._dump();
   } else {
-    this.once('response', function(res) {
+    this.once('response', (res) => {
       res._dump();
     });
   }
@@ -359,10 +376,8 @@ function socketCloseListener() {
   // Too bad.  That output wasn't getting written.
   // This is pretty terrible that it doesn't raise an error.
   // Fixed better in v0.10
-  if (req.output)
-    req.output.length = 0;
-  if (req.outputEncodings)
-    req.outputEncodings.length = 0;
+  if (req.outputData)
+    req.outputData.length = 0;
 
   if (parser) {
     parser.finish();
@@ -536,11 +551,10 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
   }
 
   DTRACE_HTTP_CLIENT_RESPONSE(socket, req);
-  COUNTER_HTTP_CLIENT_RESPONSE();
   req.res = res;
   res.req = req;
 
-  // add our listener first, so that we guarantee socket cleanup
+  // Add our listener first, so that we guarantee socket cleanup
   res.on('end', responseOnEnd);
   req.on('prefinish', requestOnPrefinish);
   var handled = req.emit('response', res);
@@ -616,7 +630,7 @@ function tickOnSocket(req, socket) {
   var parser = parsers.alloc();
   req.socket = socket;
   req.connection = socket;
-  parser.reinitialize(HTTPParser.RESPONSE);
+  parser.reinitialize(HTTPParser.RESPONSE, parser[is_reused_symbol]);
   parser.socket = socket;
   parser.outgoing = req;
   req.parser = parser;
@@ -639,7 +653,10 @@ function tickOnSocket(req, socket) {
   socket.on('end', socketOnEnd);
   socket.on('close', socketCloseListener);
 
-  if (req.timeout !== undefined) {
+  if (
+    req.timeout !== undefined ||
+    (req.agent && req.agent.options && req.agent.options.timeout)
+  ) {
     listenSocketTimeout(req);
   }
   req.emit('socket', socket);
@@ -717,6 +734,10 @@ function _deferToConnect(method, arguments_, cb) {
 }
 
 ClientRequest.prototype.setTimeout = function setTimeout(msecs, callback) {
+  if (this._ended) {
+    return this;
+  }
+
   listenSocketTimeout(this);
   msecs = validateTimerDuration(msecs);
   if (callback) this.once('timeout', callback);

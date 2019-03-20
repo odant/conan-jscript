@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ERR_INVALID_ARG_TYPE,
   ERR_INVALID_RETURN_PROPERTY,
   ERR_INVALID_RETURN_PROPERTY_VALUE,
   ERR_INVALID_RETURN_VALUE,
@@ -9,6 +8,7 @@ const {
   ERR_UNKNOWN_MODULE_FORMAT
 } = require('internal/errors').codes;
 const { URL } = require('url');
+const { validateString } = require('internal/validators');
 const ModuleMap = require('internal/modules/esm/module_map');
 const ModuleJob = require('internal/modules/esm/module_job');
 const defaultResolve = require('internal/modules/esm/default_resolve');
@@ -25,11 +25,11 @@ const debug = require('util').debuglog('esm');
  * the main module and everything in its dependency graph. */
 class Loader {
   constructor() {
-    // methods which translate input code or other information
+    // Methods which translate input code or other information
     // into es modules
     this.translators = translators;
 
-    // registry of loaded modules, akin to `require.cache`
+    // Registry of loaded modules, akin to `require.cache`
     this.moduleMap = new ModuleMap();
 
     // The resolver has the signature
@@ -52,8 +52,8 @@ class Loader {
 
   async resolve(specifier, parentURL) {
     const isMain = parentURL === undefined;
-    if (!isMain && typeof parentURL !== 'string')
-      throw new ERR_INVALID_ARG_TYPE('parentURL', 'string', parentURL);
+    if (!isMain)
+      validateString(parentURL, 'parentURL');
 
     const resolved = await this._resolve(specifier, parentURL, defaultResolve);
 
@@ -80,7 +80,7 @@ class Loader {
     if (this._resolve !== defaultResolve) {
       try {
         new URL(url);
-      } catch (e) {
+      } catch {
         throw new ERR_INVALID_RETURN_PROPERTY(
           'url', 'loader resolve', 'url', url
         );
