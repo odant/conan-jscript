@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "10.7.0.8"
+    version = "11.12.0.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -41,13 +41,13 @@ class JScriptConan(ConanFile):
         if self.settings.os == "Windows":
             # Only MSVC 15
             if self.settings.compiler.get_safe("version") < "15":
-                raise ConanException("This package is only compatible with Visual Studio 15 2017")
+                raise Exception("This package is only compatible with Visual Studio 15 2017")
             # Disable Windows XP support
             if not self.settings.compiler.get_safe("toolset") in [None, "'v141'"]:
-                raise ConanException("This package is compatible with compiler toolset None or v141")
+                raise Exception("This package is compatible with compiler toolset None or v141")
         # Only C++11
         if self.settings.compiler.get_safe("libcxx") == "libstdc++":
-            raise ConanException("This package is only compatible with libstdc++11")
+            raise Exception("This package is only compatible with libstdc++11")
         # DLL sign, only Windows
         if self.settings.os != "Windows":
             del self.options.dll_sign
@@ -56,7 +56,7 @@ class JScriptConan(ConanFile):
         self.requires("openssl/%s@%s/stable" % (self._openssl_version, self.user))
         
     def build_requirements(self):
-        self.build_requires("ninja_installer/1.8.2@bincrafters/stable")
+        self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
         if self.settings.os == "Windows":
             self.build_requires("nasm/2.13.01@conan/stable")
         if get_safe(self.options, "dll_sign"):
@@ -64,6 +64,7 @@ class JScriptConan(ConanFile):
 
     def source(self):
         tools.patch(patch_file="build.patch")
+        return
         tools.patch(patch_file="source.patch")
 
     def build(self):
@@ -78,6 +79,7 @@ class JScriptConan(ConanFile):
         #
         flags = [
             "--ninja",
+            "--verbose",
             "--shared",
             "--dest-os=%s" % {
                                 "Windows": "win",
@@ -110,16 +112,23 @@ class JScriptConan(ConanFile):
         #
         if self.settings.build_type == "Debug":
             flags.append("--debug")
+            if self.settings.os == "Linux":
+                flags.append("--gdb")
         # Run build
         env = {}
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
             env["GYP_MSVS_VERSION"] = "2017"
             env["PLATFORM_TOOLSET"] = "v141"
-        self.run("python --version")
+            # Use external ninja
+            ninjaDir = self.deps_cpp_info["ninja_installer"].bin_paths[0].replace("\\", "/")
+            env["PATH"].insert(0, ninjaDir)
         with tools.chdir("src"), tools.environment_append(env):
+            self.run("python --version")
+            self.run("ninja --version")
+            #
             self.run("python configure %s" % " ".join(flags))
-            self.run("ninja -C out/%s" % str(self.settings.build_type))
+            self.run("ninja -w dupbuild=warn -d keeprsp --verbose -C out/%s" % str(self.settings.build_type))
 
     def package(self):
         # CMake script

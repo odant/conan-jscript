@@ -1,5 +1,5 @@
 diff --git a/src/common.gypi b/src/common.gypi
-index a782cfbecb..be410c8f81 100644
+index 338ed2cbbb..891e08ddcf 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
 @@ -164,6 +164,7 @@
@@ -10,31 +10,33 @@ index a782cfbecb..be410c8f81 100644
          'cflags': [ '-O3' ],
          'conditions': [
            ['target_arch=="x64"', {
-@@ -283,7 +284,8 @@
+@@ -279,19 +280,11 @@
+         'conditions': [
+           ['target_arch=="ia32"', {
              'TargetMachine' : 1, # /MACHINE:X86
-             'target_conditions': [
-               ['_type=="executable"', {
+-            'target_conditions': [
+-              ['_type=="executable"', {
 -                'AdditionalOptions': [ '/SubSystem:Console,"5.01"' ],
-+                #'AdditionalOptions': [ '/SubSystem:Console,"5.01"' ],
-+                'AdditionalOptions': [ '/SubSystem:Console' ],
-               }],
-             ],
+-              }],
+-            ],
++            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
            }],
-@@ -291,7 +293,8 @@
+           ['target_arch=="x64"', {
              'TargetMachine' : 17, # /MACHINE:AMD64
-             'target_conditions': [
-               ['_type=="executable"', {
+-            'target_conditions': [
+-              ['_type=="executable"', {
 -                'AdditionalOptions': [ '/SubSystem:Console,"5.02"' ],
-+                #'AdditionalOptions': [ '/SubSystem:Console,"5.02"' ],
-+                'AdditionalOptions': [ '/SubSystem:Console' ],
-               }],
-             ],
+-              }],
+-            ],
++            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
            }],
-diff --git a/src/configure b/src/configure
-index 068fb8a769..232a1d6afa 100755
---- a/src/configure
-+++ b/src/configure
-@@ -573,6 +573,11 @@ parser.add_option('-C',
+           ['target_arch=="arm64"', {
+             'TargetMachine' : 0, # /MACHINE:ARM64 is inferred from the input files.
+diff --git a/src/configure.py b/src/configure.py
+index 8ae56fdeff..cd17e73645 100644
+--- a/src/configure.py
++++ b/src/configure.py
+@@ -600,6 +600,11 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -46,257 +48,64 @@ index 068fb8a769..232a1d6afa 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1049,6 +1054,9 @@ def configure_node(o):
-   else:
-     o['variables']['node_target_type'] = 'executable'
+@@ -1141,6 +1146,8 @@ def configure_node(o):
+   o['variables']['node_experimental_http_parser'] = \
+       b(options.experimental_http_parser)
  
-+  if options.node_core_target_name:
-+    o['variables']['node_core_target_name'] = options.node_core_target_name
++  o['variables']['node_core_target_name'] = options.node_core_target_name
 +
  def configure_library(lib, output):
    shared_lib = 'shared_' + lib
    output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
+diff --git a/src/deps/gtest/gtest.gyp b/src/deps/gtest/gtest.gyp
+index c7c850c52c..56a473153c 100644
+--- a/src/deps/gtest/gtest.gyp
++++ b/src/deps/gtest/gtest.gyp
+@@ -4,6 +4,7 @@
+       'target_name': 'gtest',
+       'type': 'static_library',
+       'cflags': ['-Wno-missing-field-initializers'],
++      'defines': [ 'GTEST_LANG_CXX11=1' ],
+       'direct_dependent_settings': {
+         'include_dirs': ['include'],
+       },
 diff --git a/src/node.gyp b/src/node.gyp
-index 56315baf70..0221a4d2bb 100644
+index a6e884e15c..245588be01 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -214,7 +214,8 @@
-       [ 'OS=="win" and '
-         'node_use_openssl=="true" and '
-         'node_shared_openssl=="false"', {
--        'use_openssl_def': 1,
-+        #'use_openssl_def': 1,
-+        'use_openssl_def': 0,
+@@ -26,6 +26,7 @@
+     'node_core_target_name%': 'node',
+     'node_lib_target_name%': 'node_lib',
+     'node_intermediate_lib_type%': 'static_library',
++    'use_openssl_def%': 0,
+     'library_files': [
+       'lib/internal/bootstrap/context.js',
+       'lib/internal/bootstrap/primordials.js',
+@@ -243,13 +244,6 @@
        }, {
-         'use_openssl_def': 0,
+         'node_target_type%': 'executable',
        }],
-@@ -917,79 +918,79 @@
-                 '<(PRODUCT_DIR)/<(node_core_target_name).exe',
-               ],
-               'action': [
--                'mv', '<@(_inputs)', '<@(_outputs)',
-+                'move', '<@(_inputs)', '<@(_outputs)',
-               ],
-             },
-           ],
-         } ],
-       ]
-     },
--    {
--      'target_name': 'cctest',
--      'type': 'executable',
--
--      'dependencies': [
--        '<(node_lib_target_name)',
--        'rename_node_bin_win',
--        'deps/gtest/gtest.gyp:gtest',
--        'node_js2c#host',
--        'node_dtrace_header',
--        'node_dtrace_ustack',
--        'node_dtrace_provider',
--      ],
--
--      'includes': [
--        'node.gypi'
--      ],
--
--      'include_dirs': [
--        'src',
--        'tools/msvs/genfiles',
--        'deps/v8/include',
--        'deps/cares/include',
--        'deps/uv/include',
--        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
--      ],
--
--      'defines': [ 'NODE_WANT_INTERNALS=1' ],
--
--      'sources': [
--        'test/cctest/node_test_fixture.cc',
--        'test/cctest/test_aliased_buffer.cc',
--        'test/cctest/test_base64.cc',
--        'test/cctest/test_node_postmortem_metadata.cc',
--        'test/cctest/test_environment.cc',
--        'test/cctest/test_platform.cc',
--        'test/cctest/test_traced_value.cc',
--        'test/cctest/test_util.cc',
--        'test/cctest/test_url.cc'
--      ],
--
--      'conditions': [
--        [ 'node_use_openssl=="true"', {
--          'defines': [
--            'HAVE_OPENSSL=1',
--          ],
--        }],
--        [ 'node_use_perfctr=="true"', {
--          'defines': [ 'HAVE_PERFCTR=1' ],
--        }],
--        ['v8_enable_inspector==1', {
--          'sources': [
--            'test/cctest/test_inspector_socket.cc',
--            'test/cctest/test_inspector_socket_server.cc'
--          ],
--          'defines': [
--            'HAVE_INSPECTOR=1',
--          ],
--        }, {
--          'defines': [ 'HAVE_INSPECTOR=0' ]
--        }],
--        ['OS=="solaris"', {
--          'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
--        }],
--      ],
--    }
-+#    {
-+#      'target_name': 'cctest',
-+#      'type': 'executable',
-+#
-+#      'dependencies': [
-+#        '<(node_lib_target_name)',
-+#        'rename_node_bin_win',
-+#        'deps/gtest/gtest.gyp:gtest',
-+#        'node_js2c#host',
-+#        'node_dtrace_header',
-+#        'node_dtrace_ustack',
-+#        'node_dtrace_provider',
-+#      ],
-+#
-+#      'includes': [
-+#        'node.gypi'
-+#      ],
-+#
-+#      'include_dirs': [
-+#        'src',
-+#        'tools/msvs/genfiles',
-+#        'deps/v8/include',
-+#        'deps/cares/include',
-+#        'deps/uv/include',
-+#        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
-+#      ],
-+#
-+#      'defines': [ 'NODE_WANT_INTERNALS=1' ],
-+#
-+#      'sources': [
-+#        'test/cctest/node_test_fixture.cc',
-+#        'test/cctest/test_aliased_buffer.cc',
-+#        'test/cctest/test_base64.cc',
-+#        'test/cctest/test_node_postmortem_metadata.cc',
-+#        'test/cctest/test_environment.cc',
-+#        'test/cctest/test_platform.cc',
-+#        'test/cctest/test_traced_value.cc',
-+#        'test/cctest/test_util.cc',
-+#        'test/cctest/test_url.cc'
-+#      ],
-+#
-+#      'conditions': [
-+#        [ 'node_use_openssl=="true"', {
-+#          'defines': [
-+#            'HAVE_OPENSSL=1',
-+#          ],
-+#        }],
-+#        [ 'node_use_perfctr=="true"', {
-+#          'defines': [ 'HAVE_PERFCTR=1' ],
-+#        }],
-+#        ['v8_enable_inspector==1', {
-+#          'sources': [
-+#            'test/cctest/test_inspector_socket.cc',
-+#            'test/cctest/test_inspector_socket_server.cc'
-+#          ],
-+#          'defines': [
-+#            'HAVE_INSPECTOR=1',
-+#          ],
-+#        }, {
-+#          'defines': [ 'HAVE_INSPECTOR=0' ]
-+#        }],
-+#        ['OS=="solaris"', {
-+#          'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
-+#        }],
-+#      ],
-+#    }
-   ], # end targets
+-      [ 'OS=="win" and '
+-        'node_use_openssl=="true" and '
+-        'node_shared_openssl=="false"', {
+-        'use_openssl_def%': 1,
+-      }, {
+-        'use_openssl_def%': 0,
+-      }],
+     ],
+   },
  
-   'conditions': [
 diff --git a/src/node.gypi b/src/node.gypi
-index b1d7d79033..3bcbe3c2e9 100644
+index c07b5ea704..cb0747f0ef 100644
 --- a/src/node.gypi
 +++ b/src/node.gypi
-@@ -138,13 +138,25 @@
-                   'zlib<(STATIC_LIB_SUFFIX)',
-             ],
-           },
--          'msvs_settings': {
--            'VCLinkerTool': {
--              'AdditionalOptions': [
--                '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\zlib<(STATIC_LIB_SUFFIX)',
--              ],
--            },
--          },
-+          'conditions': [
-+            ['GENERATOR=="ninja"', {
-+                'msvs_settings': {
-+                  'VCLinkerTool': {
-+                    'AdditionalOptions': [
-+                      '/WHOLEARCHIVE:<(obj_dir)\\deps\\zlib\\zlib<(STATIC_LIB_SUFFIX)',
-+                    ],
-+                  },
-+                },
-+            }, {
-+                'msvs_settings': {
-+                  'VCLinkerTool': {
-+                    'AdditionalOptions': [
-+                      '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\zlib<(STATIC_LIB_SUFFIX)',
-+                    ],
-+                  },
-+                },
-+            }],
-+          ],
-           'conditions': [
-             ['OS!="aix" and node_shared=="false"', {
-               'ldflags': [
-@@ -176,13 +188,25 @@
-                   'uv<(STATIC_LIB_SUFFIX)',
-             ],
-           },
--          'msvs_settings': {
--            'VCLinkerTool': {
--              'AdditionalOptions': [
--                '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\libuv<(STATIC_LIB_SUFFIX)',
--              ],
--            },
--          },
-+          'conditions': [
-+            ['GENERATOR=="ninja"', {
-+                'msvs_settings': {
-+                  'VCLinkerTool': {
-+                    'AdditionalOptions': [
-+                      '/WHOLEARCHIVE:<(obj_dir)\\deps\\uv\\libuv<(STATIC_LIB_SUFFIX)',
-+                    ],
-+                  },
-+                },
-+            }, {
-+                'msvs_settings': {
-+                  'VCLinkerTool': {
-+                    'AdditionalOptions': [
-+                      '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\libuv<(STATIC_LIB_SUFFIX)',
-+                    ],
-+                  },
-+                },
-+            }],
-+          ],
-           'conditions': [
-             ['OS!="aix" and node_shared=="false"', {
-               'ldflags': [
-@@ -330,9 +354,9 @@
+@@ -359,9 +359,6 @@
                  ['use_openssl_def==1', {
                    'sources': ['<(SHARED_INTERMEDIATE_DIR)/openssl.def'],
                  }],
 -                ['OS=="win" and use_openssl_def==0', {
 -                  'sources': ['deps/zlib/win32/zlib.def'],
 -                }],
-+                #['OS=="win" and use_openssl_def==0', {
-+                #  'sources': ['deps/zlib/win32/zlib.def'],
-+                #}],
                ],
              }],
            ],
