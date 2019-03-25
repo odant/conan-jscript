@@ -166,6 +166,9 @@ class JScriptConan(ConanFile):
         self.copy("*jscriptd.dll.pdb", dst="bin", keep_path=False)
         self.copy("*jscript64.dll.pdb", dst="bin", keep_path=False)
         self.copy("*jscript64d.dll.pdb", dst="bin", keep_path=False)
+        # Local build
+        if not self.in_local_cache:
+            self.copy("conanfile.py", dst=".", keep_path=False)
         # Sign DLL
         if get_safe(self.options, "dll_sign"):
             import windows_signtool
