@@ -25,8 +25,9 @@ Set package to *editable mode*:
 After change source (in folder *local*):
 
     conan build . -bf local && conan package . -bf local -pf local/p
-    build your test project using that jscript/x.y.z.b@odant/testing
+    Build your test project using that jscript/x.y.z.b@odant/testing
 
 Get patch (difference betwen source in package and local):
 
     git diff --diff-filter=a --no-index -- src/ src/local
+    Correct filepath, replace b/loca/ to b/
