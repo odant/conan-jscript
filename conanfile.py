@@ -28,9 +28,10 @@ class JScriptConan(ConanFile):
     }
     options = {
         "dll_sign": [False, True],
-        "ninja": [False, True]
+        "ninja": [False, True],
+        "with_unit_tests": [False, True]
     }
-    default_options = "dll_sign=True", "ninja=True"
+    default_options = "dll_sign=True", "ninja=True", "with_unit_tests=False"
     exports_sources = "src/*", "oda.patch", "FindJScript.cmake"
     no_copy_source = False
     build_policy = "missing"
@@ -133,6 +134,12 @@ class JScriptConan(ConanFile):
                 msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False)
             else:
                 self.run("make -j %s" % tools.cpu_count())
+            # Tests
+            if self.options.with_unit_tests:
+                shell = str(self.settings.build_type) + "/" + output_name
+                if self.options.ninja:
+                    shell = "out/" + shell
+                self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
 
     def package(self):
         # CMake script
