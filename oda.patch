@@ -1,0 +1,53 @@
+diff --git a/src/common.gypi b/src/common.gypi
+index 338ed2cbbb..0a48c05da5 100644
+--- a/src/common.gypi
++++ b/src/common.gypi
+@@ -279,19 +279,11 @@
+         'conditions': [
+           ['target_arch=="ia32"', {
+             'TargetMachine' : 1, # /MACHINE:X86
+-            'target_conditions': [
+-              ['_type=="executable"', {
+-                'AdditionalOptions': [ '/SubSystem:Console,"5.01"' ],
+-              }],
+-            ],
++            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
+           }],
+           ['target_arch=="x64"', {
+             'TargetMachine' : 17, # /MACHINE:AMD64
+-            'target_conditions': [
+-              ['_type=="executable"', {
+-                'AdditionalOptions': [ '/SubSystem:Console,"5.02"' ],
+-              }],
+-            ],
++            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
+           }],
+           ['target_arch=="arm64"', {
+             'TargetMachine' : 0, # /MACHINE:ARM64 is inferred from the input files.
+diff --git a/src/configure.py b/src/configure.py
+index 8ae56fdeff..f130296006 100644
+--- a/src/configure.py
++++ b/src/configure.py
+@@ -600,6 +600,12 @@ parser.add_option('-C',
+     dest='compile_commands_json',
+     help=optparse.SUPPRESS_HELP)
+ 
++# Custom output name
++parser.add_option('--node_core_target_name',
++    action='store',
++    dest='node_core_target_name',
++    help='custom output name')
++
+ (options, args) = parser.parse_args()
+ 
+ # Expand ~ in the install prefix now, it gets written to multiple files.
+@@ -1141,6 +1147,9 @@ def configure_node(o):
+   o['variables']['node_experimental_http_parser'] = \
+       b(options.experimental_http_parser)
+ 
++  o['variables']['node_core_target_name'] = options.node_core_target_name
++  o['variables']['node_lib_target_name'] = options.node_core_target_name + '_lib'
++
+ def configure_library(lib, output):
+   shared_lib = 'shared_' + lib
+   output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
