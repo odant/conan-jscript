@@ -138,26 +138,39 @@ class JScriptConan(ConanFile):
         # CMake script
         self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
         # Headers
-        self.copy("*oda/jscript.h", dst="include/oda", keep_path=False)
-        self.copy("*node.h", dst="include", keep_path=False)
-        self.copy("*node_version.h", dst="include", keep_path=False)
-        src_v8_headers = os.path.join(self.build_folder, "src", "deps", "v8", "include")
-        self.copy("*.h", src=src_v8_headers, dst="include", keep_path=True)
+        self.copy("jscript.h", dst="include/oda", src="src/src/oda", keep_path=False)
+        self.copy("node.h", dst="include/oda", src="src/src", keep_path=False)
+        self.copy("node_version.h", dst="include/oda", src="src/src", keep_path=False)
+        self.copy("*.h", dst="include/oda", src="src/deps/v8/include", keep_path=True)
         # Libraries
-        self.copy("*jscript.dll.lib", dst="lib", keep_path=False)
-        self.copy("*jscript.dll", dst="bin", keep_path=False)
-        self.copy("*jscriptd.lib", dst="lib", keep_path=False)
-        self.copy("*jscriptd.dll.lib", dst="lib", keep_path=False)
-        self.copy("*jscriptd.dll", dst="bin", keep_path=False)
-        self.copy("*jscript64.lib", dst="lib", keep_path=False)
-        self.copy("*jscript64.dll.lib", dst="lib", keep_path=False)
-        self.copy("*jscript64.dll", dst="bin", keep_path=False)
-        self.copy("*jscript64d.lib", dst="lib", keep_path=False)
-        self.copy("*jscript64d.dll.lib", dst="lib", keep_path=False)
-        self.copy("*jscript64d.dll", dst="bin", keep_path=False)
+        output_folder = "src"
+        if self.options.ninja:
+            output_folder += "/out"
+        output_folder += "/%s" % str(self.settings.build_type)
+        if self.settings.os == "Windows":
+            self.copy("jscript.dll.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript.dll", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscriptd.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscriptd.dll.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscriptd.dll", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript64.dll.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript64.dll", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64d.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript64d.dll.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("jscript64d.dll", dst="bin", src=output_folder, keep_path=False)
+            # PDB
+            self.copy("jscript.dll.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64.dll.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64d.dll.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscript64d.pdb", dst="bin", src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
-            src_lib_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type), "lib")
-            self.copy("libjscript.so.*", src=src_lib_folder, dst="lib", keep_path=False, excludes="*.TOC")
+            self.copy("libjscript.so.*", dst="lib", src=output_folder, keep_path=False, excludes="*.TOC")
             # Symlink
             lib_folder = os.path.join(self.package_folder, "lib")
             if not os.path.isdir(lib_folder):
@@ -167,11 +180,6 @@ class JScriptConan(ConanFile):
                     extension = ".so"
                     symlink = fname[0:fname.rfind(extension) + len(extension)]
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
-        # PDB
-        self.copy("*jscript.dll.pdb", dst="bin", keep_path=False)
-        self.copy("*jscriptd.dll.pdb", dst="bin", keep_path=False)
-        self.copy("*jscript64.dll.pdb", dst="bin", keep_path=False)
-        self.copy("*jscript64d.dll.pdb", dst="bin", keep_path=False)
         # Local build
         if not self.in_local_cache:
             self.copy("conanfile.py", dst=".", keep_path=False)
