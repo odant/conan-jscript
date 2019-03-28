@@ -21,7 +21,7 @@ In source package folder (where conanfile.py):
 
 Set package to **editable** mode:
 
-    conan editable add jscript/x.y.z.b@odant/editable local/p
+    conan editable add local/p jscript/x.y.z.b@odant/editable
 
 After change source in folder **local** (run commands in source package folder):
 
