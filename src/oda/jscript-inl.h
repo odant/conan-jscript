@@ -81,11 +81,21 @@ public:
             : _p(other._p) {
             addRefecence(_p);
         }
-        
+        Ptr(Ptr&& other)
+            : _p(other._p) {
+            other._p = nullptr;
+        }
+
         Ptr& operator=(Ptr const& other) {
             reset(other._p);
+            return *this;
         }
-        
+        Ptr& operator=(Ptr&& other) {
+            _p = other._p;
+            other._p = nullptr;
+            return *this;
+        }
+
         ~Ptr() {
             releaseRefecence(_p);
         }
@@ -235,6 +245,19 @@ public:
         STOP
     };
 
+    template <state_t State = state_t::STOP>
+    class AutoResetState {
+    public:
+        AutoResetState(JSInstanceImpl::Ptr const& p) : _instance(p) {}
+        AutoResetState(JSInstanceImpl::Ptr&& p) : _instance(std::move(p)) {}
+        ~AutoResetState() { 
+            if (_instance)
+                _instance->setState(State);
+        }
+    private:
+        JSInstanceImpl::Ptr _instance;
+    };
+
     JSInstanceImpl(_constructor_tag)
             : NodeInstanceData()
             {}
@@ -259,8 +282,17 @@ public:
         return _state == RUN;
     }
 
+    bool isInitialize() const {
+        return _state != CREATE;
+    }
+
+    node::Mutex _state_mutex;
+    node::ConditionVariable _state_cv;
+
     void setState(state_t state) {
         _state = state;
+        node::Mutex::ScopedLock lock(_state_mutex);
+        _state_cv.Broadcast(lock);
     }
 
     JSLogCallback& logCallback() {
@@ -426,6 +458,7 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
 
 
 void JSInstanceImpl::StartNodeInstance() {
+    AutoResetState<state_t::STOP> autoResetState(this);
     std::unique_ptr<ArrayBufferAllocator, decltype(&FreeArrayBufferAllocator)>
         allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
     _isolate = NewIsolate(allocator.get(), event_loop());
@@ -748,6 +781,10 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
 			instance->_thread.detach();
         }
     );
+
+    node::Mutex::ScopedLock lock(instance->_state_mutex);
+    while (!instance->isInitialize())
+        instance->_state_cv.Wait(lock);
 
     *outNewInstance = instance.detach();
 
