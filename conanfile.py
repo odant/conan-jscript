@@ -121,6 +121,10 @@ class JScriptConan(ConanFile):
             if self.options.ninja:
                 ninja_binpath = self.deps_cpp_info["ninja_installer"].bin_paths[0].replace("\\", "/")
                 env["PATH"].insert(0, ninja_binpath)
+            # OpenSSL DLL in PATH for run tests
+            if self.options.with_unit_tests:
+                openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
+                env["PATH"].insert(0, openssl_binpath)
         # Run build
         with tools.chdir("src"), tools.environment_append(env):
             self.run("python --version")
@@ -139,6 +143,8 @@ class JScriptConan(ConanFile):
                 shell = str(self.settings.build_type) + "/" + output_name
                 if self.options.ninja:
                     shell = "out/" + shell
+                if self.settings.os == "Windows":
+                    shell += ".exe"
                 self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
 
     def package(self):
