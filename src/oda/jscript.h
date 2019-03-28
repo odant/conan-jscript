@@ -48,8 +48,6 @@ JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb);
 
 JSCRIPT_EXTERN void Uninitilize();
 
-JSCRIPT_EXTERN int  RunInstance();
-
 typedef enum {
     JS_SUCCESS = 0,
     JS_ERROR

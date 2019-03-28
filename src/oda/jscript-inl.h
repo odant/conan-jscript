@@ -23,12 +23,9 @@ const std::string instanceScript;
 
 std::atomic<bool> is_initilized{false};
 
-int    argc = 0;
-char** argv = nullptr;
-
-int          exec_argc = 0;
-const char** exec_argv = nullptr;
-
+std::vector<std::string> args;
+std::vector<std::string> exec_args;
+std::vector<std::string> errors;
 
 class ExecutorCounter
 {
@@ -64,17 +61,113 @@ private:
     volatile std::size_t    _count{ 0 };
 };
 
-class NodeInstanceData {
+class RefCounter
+{
 public:
-    NodeInstanceData(int argc,
-                     const char** argv,
-                     int exec_argc,
-                     const char** exec_argv)
-        : exit_code_(1),
-          argc_(argc),
-          argv_(argv),
-          exec_argc_(exec_argc),
-          exec_argv_(exec_argv) {
+    RefCounter() = default;
+
+    friend inline void addRefecence(const RefCounter* p);
+    friend inline void releaseRefecence(const RefCounter* p);
+
+    template <typename Derived, typename = typename std::enable_if<std::is_convertible<Derived*, RefCounter*>::value, void>::type>
+    class Ptr {
+    public:
+        Ptr() : _p(nullptr) {}
+        Ptr(Derived* p)
+            : _p(p) { 
+            addRefecence(_p);
+        }
+        Ptr(Ptr const& other)
+            : _p(other._p) {
+            addRefecence(_p);
+        }
+        
+        Ptr& operator=(Ptr const& other) {
+            reset(other._p);
+        }
+        
+        ~Ptr() {
+            releaseRefecence(_p);
+        }
+
+        void reset() {
+            releaseRefecence(_p);
+            _p = nullptr;
+        }
+
+        void reset(Derived* p) {
+            releaseRefecence(_p);
+            _p = p;
+            addRefecence(_p);
+        }
+
+        void adopt(Derived* p) {
+            releaseRefecence(_p);
+            _p = p;
+        }
+
+        Derived* get() const {
+            return _p;
+        }
+
+        Derived* detach() {
+            Derived* p = _p;
+            _p = nullptr;
+            return p;
+        }
+
+        Derived& operator*() const {
+            assert(_p != nullptr);
+            return *_p;
+        }
+
+        Derived* operator->() const {
+            return _p;
+        }
+
+        explicit operator bool() const {
+            return _p != nullptr;
+        }
+
+    private:
+        Derived* _p;
+    };
+
+protected:
+    virtual ~RefCounter() = default;
+
+private:
+    RefCounter(const RefCounter&) = delete;
+    RefCounter& operator=(const RefCounter&) = delete;
+
+    inline void addRef() const {
+        ++_refCount;
+    }
+
+    inline std::uint32_t releaseRef() const {
+        return --_refCount;
+    }
+
+    mutable std::atomic<std::uint32_t> _refCount = ATOMIC_VAR_INIT(0);
+};
+
+inline void addRefecence(const RefCounter* p) {
+    if (p != nullptr);
+        p->addRef();
+}
+
+inline void releaseRefecence(const RefCounter* p) {
+    if (p != nullptr) {
+        const auto refCount = p->releaseRef();
+        if (refCount == 0)
+            delete p;
+    }
+}
+
+class NodeInstanceData : public RefCounter {
+public:
+    NodeInstanceData()
+        : exit_code_(1) {
         event_loop_init_ = uv_loop_init(event_loop()) == 0;
         assert(event_loop_init_);
     }
@@ -120,31 +213,11 @@ public:
         exit_code_ = exit_code;
     }
 
-    int argc() {
-        return argc_;
-    }
-
-    const char** argv() {
-        return argv_;
-    }
-
-    int exec_argc() {
-        return exec_argc_;
-    }
-
-    const char** exec_argv() {
-        return exec_argv_;
-    }
-
 private:
     uv_loop_t event_loop_;
     bool      event_loop_init_;
     
     int exit_code_;
-    const int argc_;
-    const char** argv_;
-    const int exec_argc_;
-    const char** exec_argv_;
 };
 
 
@@ -154,25 +227,20 @@ class JSInstanceImpl: public JSInstance,
     struct _constructor_tag {};
 
 public:
-    typedef std::shared_ptr<JSInstanceImpl> Ptr;
-    typedef std::weak_ptr<JSInstanceImpl>   WeakPtr;
+    typedef RefCounter::Ptr<JSInstanceImpl> Ptr;
+    enum state_t {
+        CREATE,
+        RUN,
+        STOPPING,
+        STOP
+    };
 
-    JSInstanceImpl(int argc,
-                   const char** argv,
-                   int exec_argc,
-                   const char** exec_argv,
-                   _constructor_tag)
-            : NodeInstanceData(argc,
-                               argv,
-                               exec_argc,
-                               exec_argv)
+    JSInstanceImpl(_constructor_tag)
+            : NodeInstanceData()
             {}
 
-    static JSInstanceImpl::Ptr create(int argc,
-                                      const char** argv,
-                                      int exec_argc,
-                                      const char** exec_argv) {
-        return std::make_shared<JSInstanceImpl>(argc, argv, exec_argc, exec_argv, _constructor_tag());
+    static JSInstanceImpl::Ptr create() {
+        return JSInstanceImpl::Ptr(new JSInstanceImpl(_constructor_tag()));
     }
 
     void StartNodeInstance();
@@ -187,8 +255,12 @@ public:
         return _state == STOPPING;
     }
 
-    void stopping() {
-        _state = STOPPING;
+    bool isRun() const {
+        return _state == RUN;
+    }
+
+    void setState(state_t state) {
+        _state = state;
     }
 
     JSLogCallback& logCallback() {
@@ -196,19 +268,10 @@ public:
     }
 
 private:
-
-    enum state_t {
-        CREATE,
-        START,
-        STOPPING,
-        STOP
-    };
-
-
     void overrideConsole(Environment* env);
     void overrideConsole(Environment* env, const char* name, const JSLogType type);
 
-    std::atomic<state_t> _state{ CREATE };
+    std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
     JSLogCallback _logCallback;
 };
@@ -225,7 +288,7 @@ void JSInstanceImpl::overrideConsole(Environment* env) {
 
 void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const JSLogType type) {
     HandleScope handle_scope(env->isolate());
-    TryCatch try_catch(env->isolate());
+    v8::TryCatch try_catch(env->isolate());
     try_catch.SetVerbose(true);
     Local<Object> global = env->context()->Global();
     if (global.IsEmpty())
@@ -365,82 +428,79 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
 void JSInstanceImpl::StartNodeInstance() {
     std::unique_ptr<ArrayBufferAllocator, decltype(&FreeArrayBufferAllocator)>
         allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
-    _isolate = NewIsolate(allocator.get());
+    _isolate = NewIsolate(allocator.get(), event_loop());
     if (_isolate == nullptr)
         return;  // Signal internal error.
 
-    {
-        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
-        if (node_isolate == nullptr)
-            node_isolate = _isolate;
-    }
-
+    int exit_code;
     {
         Locker locker(_isolate);
         Isolate::Scope isolate_scope(_isolate);
         HandleScope handle_scope(_isolate);
         std::unique_ptr<IsolateData, decltype(&FreeIsolateData)> isolate_data(
-            CreateIsolateData(
-                _isolate,
+            CreateIsolateData(_isolate,
                 event_loop(),
-                v8_platform.Platform(),
+                per_process::v8_platform.Platform(),
                 allocator.get()),
             &FreeIsolateData);
-        
-        if (track_heap_objects) {
+        // TODO(addaleax): This should load a real per-Isolate option, currently
+        // this is still effectively per-process.
+        if (isolate_data->options()->track_heap_objects) {
             _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
         }
-
+        
+        //HandleScope handle_scope2(_isolate);
         Local<Context> context = NewContext(_isolate);
         Context::Scope context_scope(context);
-        Environment env(isolate_data.get(), context, v8_platform.GetTracingAgent());
-        env.Start(argc(), argv(), exec_argc(), exec_argv(), v8_is_profiling);
+        int exit_code = 0;
+        Environment env(
+            isolate_data.get(),
+            context,
+            static_cast<Environment::Flags>(Environment::kIsMainThread |
+                                            Environment::kOwnsProcessState |
+                                            Environment::kOwnsInspector));
+        env.InitializeLibuv(per_process::v8_is_profiling);
+        env.ProcessCliArgs(args, exec_args);
         _env = &env;
 
-        char name_buffer[512];
-        if (uv_get_process_title(name_buffer, sizeof(name_buffer)) == 0) {
-            // Only emit the metadata event if the title can be retrieved successfully.
-            // Ignore it otherwise.
-            TRACE_EVENT_METADATA1("__metadata", "process_name", "name",
-                TRACE_STR_COPY(name_buffer));
+/*
+#if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
+        CHECK(!env.inspector_agent()->IsListening());
+        // Inspector agent can't fail to start, but if it was configured to listen
+        // right away on the websocket port and fails to bind/etc, this will return
+        // false.
+        env.inspector_agent()->Start(args.size() > 1 ? args[1].c_str() : "",
+            env.options()->debug_options(),
+            env.inspector_host_port(),
+            true);
+        if (env.options()->debug_options().inspector_enabled &&
+            !env.inspector_agent()->IsListening()) {
+            exit_code = 12;  // Signal internal error.
+            goto exit;
         }
-        TRACE_EVENT_METADATA1("__metadata", "version", "node", NODE_VERSION_STRING);
-        TRACE_EVENT_METADATA1("__metadata", "thread_name", "name",
-            "JavaScriptMainThread");
-
-        // —оздаетс€ асинхронных хендл один на все экземпл€ры Environment из-за одинакового threadId == 0
-        // его принудительна€ остановка приводит к ошибке, Environment считает что это дочерний Worker
-
-        //const char* path = argc() > 1 ? argv()[1] : nullptr;
-        //StartInspector(&env, path, debug_options);
-        //if (debug_options.inspector_enabled() && !v8_platform.InspectorStarted(&env))
-        //    return;  // Signal internal error.
-
-        env.set_abort_on_uncaught_exception(abort_on_uncaught_exception);
-
-        if (no_force_async_hooks_checks) {
-            env.async_hooks()->no_force_checks();
-        }
-
+#else
+        // inspector_enabled can't be true if !HAVE_INSPECTOR or !NODE_USE_V8_PLATFORM
+        // - the option parser should not allow that.
+        CHECK(!env.options()->debug_options().inspector_enabled);
+#endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
+*/
         {
             Environment::AsyncCallbackScope callback_scope(&env);
             env.async_hooks()->push_async_ids(1, 0);
             LoadEnvironment(&env);
-            this->overrideConsole(&env);
             env.async_hooks()->pop_async_id(1);
         }
-
-        env.set_trace_sync_io(trace_sync_io);
 
         {
             SealHandleScope seal(_isolate);
             bool more;
+            setState(JSInstanceImpl::RUN);
             env.performance_state()->Mark(
                 node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
             do {
                 uv_run(env.event_loop(), UV_RUN_DEFAULT);
 
-                v8_platform.DrainVMTasks(_isolate);
+                per_process::v8_platform.DrainVMTasks(_isolate);
 
                 more = uv_loop_alive(env.event_loop()) && !isStopping();
                 if (more)
@@ -454,53 +514,59 @@ void JSInstanceImpl::StartNodeInstance() {
             } while (more == true);
             env.performance_state()->Mark(
                 node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+            setState(JSInstanceImpl::STOP);
         }
+
         env.set_trace_sync_io(false);
 
-        const int exit_code = EmitExit(&env);
+        exit_code = EmitExit(&env);
 
-        // ќтключено синхронно с StartInspector
-        //WaitForInspectorDisconnect(&env);
+/*
+        WaitForInspectorDisconnect(&env);
+*/
 
+    exit:
         env.set_can_call_into_js(false);
         env.stop_sub_worker_contexts();
         uv_tty_reset_mode();
         env.RunCleanup();
         RunAtExit(&env);
 
-        v8_platform.DrainVMTasks(_isolate);
-        v8_platform.CancelVMTasks(_isolate);
+        per_process::v8_platform.DrainVMTasks(_isolate);
+        per_process::v8_platform.CancelVMTasks(_isolate);
 #if defined(LEAK_SANITIZER)
         __lsan_do_leak_check();
-#endif        
+#endif
 
         set_exit_code(exit_code);
-
         _env = nullptr;
     }
 
-    close_loop();
-
-    {
-        Mutex::ScopedLock scoped_lock(node_isolate_mutex);
-        if (node_isolate == _isolate)
-            node_isolate = nullptr;
-    }
-
     _isolate->Dispose();
+    per_process::v8_platform.Platform()->UnregisterIsolate(_isolate);
     _isolate = nullptr;
+
+    close_loop();
 }
 
 
 JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
     if (is_initilized.exchange(true))
         return;
-
+    
     atexit([]() { uv_tty_reset_mode(); });
     PlatformInit();
-    performance::performance_node_start = PERFORMANCE_NOW();
+    per_process::node_start_time = uv_hrtime();
 
     CHECK_GT(argc, 0);
+
+#ifdef NODE_ENABLE_LARGE_CODE_PAGES
+    if (node::IsLargePagesEnabled()) {
+        if (node::MapStaticCodeToLargePages() != 0) {
+            fprintf(stderr, "Reverting to default page size\n");
+        }
+    }
+#endif
 
     // Copy args, use continuous memory
     // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
@@ -519,16 +585,31 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
     // Hack around with the argv pointer. Used for process.title = "blah".
     argv = uv_setup_args(argc, argv);
 
-    // This needs to run *before* V8::Initialize().  The const_cast is not
-    // optional, in case you're wondering.
-    int exec_argc;
-    const char** exec_argv;
-    Init(&argc, const_cast<const char**>(argv), &exec_argc, &exec_argv);
+    args = std::vector<std::string>(argv, argv + argc);
+
+    // This needs to run *before* V8::Initialize().
+    {
+        const int exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
+        for (const std::string& error : errors)
+            fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
+        if (exit_code != 0)
+            return; //return exit_code;
+    }
+
+    if (per_process::cli_options->print_version) {
+        printf("%s\n", NODE_VERSION);
+        return;
+    }
+
+    if (per_process::cli_options->print_v8_help) {
+        V8::SetFlagsFromString("--help", 6);  // Doesn't return.
+        UNREACHABLE();
+    }
 
 #if HAVE_OPENSSL
     {
         std::string extra_ca_certs;
-        if (SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
+        if (credentials::SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
             crypto::UseExtraCaCerts(extra_ca_certs);
     }
 #ifdef NODE_FIPS_MODE
@@ -541,10 +622,10 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
     V8::SetEntropySource(crypto::EntropySource);
 #endif  // HAVE_OPENSSL
 
-    v8_platform.Initialize(v8_thread_pool_size);
+    InitializeV8Platform(per_process::cli_options->v8_thread_pool_size);
     V8::Initialize();
     performance::performance_v8_start = PERFORMANCE_NOW();
-    v8_initialized = true;
+    per_process::v8_initialized = true;
 }
 
 void empty_handler(int param) { }
@@ -610,7 +691,7 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
         "global.odantFramework.then(core => {\r\n"
         "  console.log('framework loaded!');\r\n"
 #ifdef _DEBUG
-        "  console.log(root.DEFAULTORIGIN);\r\n"
+        "  console.log(core.DEFAULTORIGIN);\r\n"
 #endif
         "}).catch((error)=>{\r\n"
         "  console.log(error);\r\n"
@@ -639,11 +720,10 @@ JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
 JSCRIPT_EXTERN void Uninitilize() {
     if (!is_initilized.exchange(false))
         return;
-    
+
     ExecutorCounter::global().waitAllStop();
 
-    v8_platform.StopTracingAgent();
-    v8_initialized = false;
+    per_process::v8_initialized = false;
     V8::Dispose();
 
     // uv_run cannot be called from the time before the beforeExit callback
@@ -652,28 +732,11 @@ JSCRIPT_EXTERN void Uninitilize() {
     // that happen to terminate during shutdown from being run unsafely.
     // Since uv_run cannot be called, uv_async handles held by the platform
     // will never be fully cleaned up.
-    v8_platform.Dispose();
-
-    delete[] exec_argv;
-    exec_argv = nullptr;
-}
-
-JSCRIPT_EXTERN int RunInstance() {
-    ExecutorCounter::ScopeExecute scopeExecute;
-    
-    JSInstanceImpl::Ptr instance = JSInstanceImpl::create(argc,
-                                                          const_cast<const char**>(argv),
-                                                          exec_argc,
-                                                          exec_argv);
-    instance->StartNodeInstance();
-    return instance->exit_code();
+    per_process::v8_platform.Dispose();
 }
 
 JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
-    JSInstanceImpl::Ptr instance = JSInstanceImpl::create(argc,
-                                                          const_cast<const char**>(argv),
-                                                          exec_argc,
-                                                          exec_argv);
+    JSInstanceImpl::Ptr instance = JSInstanceImpl::create();
     if (!instance)
         return JS_ERROR;
 
@@ -686,7 +749,7 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
         }
     );
 
-    *outNewInstance = instance.get();
+    *outNewInstance = instance.detach();
 
     return JS_SUCCESS;
 }
@@ -715,7 +778,7 @@ struct JSCallBackInfoInternal {
 struct JSAsyncInfo {
     std::unique_ptr<char>             script;
     std::list<JSCallBackInfoInternal> callbacks;
-    JSInstanceImpl*                   instance;
+    JSInstanceImpl::Ptr               instance;
     uv_async_t                        async_handle;
 
     static JSAsyncInfo* create() {
@@ -729,8 +792,10 @@ struct JSAsyncInfo {
 
 void _async_stop_instance(uv_async_t* handle) {
     JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
+    assert(async_info != nullptr);
     if (async_info) {
-        async_info->instance->stopping();
+        assert(async_info->instance);
+        async_info->instance->setState(JSInstanceImpl::STOPPING);
         uv_stop(async_info->instance->event_loop());
     }
 
@@ -751,21 +816,22 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance) {
 
     std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
 
-    info->instance = static_cast<JSInstanceImpl*>(instance);
+    info->instance.adopt(static_cast<JSInstanceImpl*>(instance));
+    if (info->instance->isRun()) {
+        int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_stop_instance);
+        CHECK_EQ(0, res_init);
 
-    int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_stop_instance);
-    CHECK_EQ(0, res_init);
+        if (res_init != 0)
+            return JS_ERROR;
 
-    if (res_init != 0)
-        return JS_ERROR;
+        uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
 
-    uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
+        int sendResult = uv_async_send(&info->async_handle);
 
-    int sendResult = uv_async_send(&info->async_handle);
-
-    if (sendResult == 0) {
-        info.release();
-        return JS_SUCCESS;
+        if (sendResult == 0) {
+            info.release();
+            return JS_SUCCESS;
+        }
     }
 
     return JS_ERROR;
@@ -776,7 +842,10 @@ void _async_execute_script(uv_async_t* handle) {
     static std::atomic<unsigned int> s_async_id{0};
 
     JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
+    assert(async_info != nullptr);
     if (async_info) {
+        assert(async_info->instance);
+
         node::Mutex::ScopedLock scoped_lock(async_info->instance->_isolate_mutex);
         node::Environment* env = async_info->instance->_env;
 
@@ -821,7 +890,7 @@ void _async_execute_script(uv_async_t* handle) {
                 auto test = compile_result.ToLocalChecked();
 
                 if (!script.IsEmpty()) {
-                    v8::Handle<v8::Value> result = script->Run();
+                    v8::Handle<v8::Value> result = script->Run(context).ToLocalChecked();
 
                     if (trycatch.HasCaught()) {
                         v8::Handle<v8::Value> exception = trycatch.Exception();
@@ -864,6 +933,8 @@ void _async_execute_script(uv_async_t* handle) {
 
 
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]) {
+    if (instance == nullptr)
+        return JS_ERROR;
     if (script == nullptr)
         return JS_ERROR;
 
@@ -897,29 +968,21 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, 
         }
     }
 
-    if (instance != nullptr)
-        info->instance = static_cast<JSInstanceImpl*>(instance);
-    else {
-        // Create instance
-        JSInstance* newInstance = nullptr;
-        auto createResult = CreateInstance(&newInstance);
-        if (createResult != JS_SUCCESS)
-            return createResult;
-        info->instance = static_cast<JSInstanceImpl*>(newInstance);
-    }
+    info->instance.reset(static_cast<JSInstanceImpl*>(instance));
+    if (info->instance->isRun()) {
+        int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_execute_script);
+        CHECK_EQ(0, res_init);
 
-    int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_execute_script);
-    CHECK_EQ(0, res_init);
+        if (res_init != 0)
+            return JS_ERROR;
 
-    if (res_init != 0)
-        return JS_ERROR;
+        uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
+        int sendResult = uv_async_send(&info->async_handle);
 
-    uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
-    int sendResult = uv_async_send(&info->async_handle);
-    
-    if (sendResult == 0) {
-        info.release();
-        return JS_SUCCESS;
+        if (sendResult == 0) {
+            info.release();
+            return JS_SUCCESS;
+        }
     }
 
     return JS_ERROR;
