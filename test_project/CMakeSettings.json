@@ -1,0 +1,27 @@
+{
+    // See https://go.microsoft.com//fwlink//?linkid=834763 for more information about this file.
+
+    "environments": [
+        {
+            "build_path": "${workspaceRoot}\\build",
+        }
+    ],
+
+    "configurations": [
+        {
+            "name": "x86_64-Debug",
+            "configurationType": "Debug",
+            "buildRoot": "${env.build_path}\\${name}",
+            "installRoot": "${env.install_path}",
+            "generator": "Visual Studio 15 2017 Win64",
+            "variables": [
+                {
+                    "name": "CMAKE_BUILD_TYPE",
+                    "value": "${configurationType}"
+                }
+            ],
+            "buildCommandArgs": "-m -verbosity:normal",
+            "ctestCommandArgs": "--output-on-failure --verbose"
+        }
+    ]
+}
