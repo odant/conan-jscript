@@ -4,7 +4,7 @@ jscript (based on Node.js) Conan package
 # Options
 
 ## dll_sign
-Sign DLL (Windows only), default True
+Signing DLL (Windows only), default True
 
 ## ninja
 Use Ninja build system, default True
@@ -23,7 +23,7 @@ Set package to **editable** mode:
 
     conan editable add jscript/x.y.z.b@odant/editable local/p
 
-After change source (in folder *local*):
+After change source in folder **local** (run commands in source package folder):
 
     conan build . -bf local && conan package . -bf local -pf local/p
     Build your test project using that jscript/x.y.z.b@odant/editable
