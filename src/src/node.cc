@@ -298,8 +298,6 @@ MaybeLocal<Value> RunBootstrapping(Environment* env) {
       env->process_string(),
       FIXED_ONE_BYTE_STRING(isolate, "getLinkedBinding"),
       FIXED_ONE_BYTE_STRING(isolate, "getInternalBinding"),
-      // --experimental-modules
-      FIXED_ONE_BYTE_STRING(isolate, "experimentalModules"),
       // --expose-internals
       FIXED_ONE_BYTE_STRING(isolate, "exposeInternals"),
       env->primordials_string()};
@@ -311,7 +309,6 @@ MaybeLocal<Value> RunBootstrapping(Environment* env) {
       env->NewFunctionTemplate(binding::GetInternalBinding)
           ->GetFunction(context)
           .ToLocalChecked(),
-      Boolean::New(isolate, env->options()->experimental_modules),
       Boolean::New(isolate, env->options()->expose_internals),
       env->primordials()};
 
@@ -333,22 +330,41 @@ MaybeLocal<Value> RunBootstrapping(Environment* env) {
       loader_exports_obj->Get(context, env->require_string()).ToLocalChecked();
   env->set_native_module_require(require.As<Function>());
 
-  // process, loaderExports, isMainThread, ownsProcessState, primordials
+  // process, require, internalBinding, isMainThread,
+  // ownsProcessState, primordials
   std::vector<Local<String>> node_params = {
       env->process_string(),
-      FIXED_ONE_BYTE_STRING(isolate, "loaderExports"),
+      env->require_string(),
+      env->internal_binding_string(),
       FIXED_ONE_BYTE_STRING(isolate, "isMainThread"),
       FIXED_ONE_BYTE_STRING(isolate, "ownsProcessState"),
       env->primordials_string()};
   std::vector<Local<Value>> node_args = {
       process,
-      loader_exports_obj,
+      require,
+      internal_binding_loader,
       Boolean::New(isolate, env->is_main_thread()),
       Boolean::New(isolate, env->owns_process_state()),
       env->primordials()};
 
   MaybeLocal<Value> result = ExecuteBootstrapper(
       env, "internal/bootstrap/node", &node_params, &node_args);
+
+  Local<Object> env_var_proxy;
+  if (!CreateEnvVarProxy(context, isolate, env->as_callback_data())
+           .ToLocal(&env_var_proxy) ||
+      process
+          ->Set(env->context(),
+                FIXED_ONE_BYTE_STRING(env->isolate(), "env"),
+                env_var_proxy)
+          .IsNothing())
+    return MaybeLocal<Value>();
+
+  // Make sure that no request or handle is created during bootstrap -
+  // if necessary those should be done in pre-exeuction.
+  // TODO(joyeecheung): print handles/requests before aborting
+  CHECK(env->req_wrap_queue()->IsEmpty());
+  CHECK(env->handle_wrap_queue()->IsEmpty());
 
   env->set_has_run_bootstrapping_code(true);
 
@@ -807,7 +823,7 @@ inline int StartNodeWithIsolate(Isolate* isolate,
 #endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
 
   {
-    Environment::AsyncCallbackScope callback_scope(&env);
+    AsyncCallbackScope callback_scope(&env);
     env.async_hooks()->push_async_ids(1, 0);
     LoadEnvironment(&env);
     env.async_hooks()->pop_async_id(1);
@@ -824,15 +840,14 @@ inline int StartNodeWithIsolate(Isolate* isolate,
       per_process::v8_platform.DrainVMTasks(isolate);
 
       more = uv_loop_alive(env.event_loop());
-      if (more)
-        continue;
+      if (more && !env.is_stopping()) continue;
 
       RunBeforeExit(&env);
 
       // Emit `beforeExit` if the loop became alive either after emitting
       // event, or after running some callbacks.
       more = uv_loop_alive(env.event_loop());
-    } while (more == true);
+    } while (more == true && !env.is_stopping());
     env.performance_state()->Mark(
         node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
   }
@@ -843,7 +858,9 @@ inline int StartNodeWithIsolate(Isolate* isolate,
 
   WaitForInspectorDisconnect(&env);
 
+#if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
 exit:
+#endif
   env.set_can_call_into_js(false);
   env.stop_sub_worker_contexts();
   uv_tty_reset_mode();
@@ -967,6 +984,11 @@ int Start(int argc, char** argv) {
   per_process::v8_platform.Dispose();
 
   return exit_code;
+}
+
+int Stop(Environment* env) {
+  env->ExitEnv();
+  return 0;
 }
 
 }  // namespace node
