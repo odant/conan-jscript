@@ -518,7 +518,7 @@ void JSInstanceImpl::StartNodeInstance() {
 #endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
 */
         {
-            Environment::AsyncCallbackScope callback_scope(&env);
+            AsyncCallbackScope callback_scope(&env);
             env.async_hooks()->push_async_ids(1, 0);
             LoadEnvironment(&env);
             env.async_hooks()->pop_async_id(1);
