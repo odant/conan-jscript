@@ -20,7 +20,7 @@ endif()
 
 include(conan.cmake)
 conan_cmake_run(
-    REQUIRES jscript/11.12.0.0@odant/editable
+    REQUIRES jscript/11.13.0.0@odant/editable
     BUILD_TYPE ${BUILD_TYPE_FOR_CONAN}
     IMPORTS "bin, *.dll -> ./bin" "bin, *.pdb -> ./bin" "lib, *.so* -> ./bin"
     BASIC_SETUP
