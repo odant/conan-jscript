@@ -494,6 +494,12 @@ void JSInstanceImpl::StartNodeInstance() {
                                             Environment::kOwnsInspector));
         env.InitializeLibuv(per_process::v8_is_profiling);
         env.ProcessCliArgs(args, exec_args);
+        env.thread_stopper()->Uninstall();
+        env.thread_stopper()->Install(&env, this, [](uv_async_t* handle) {
+            auto instance = static_cast<JSInstanceImpl*>(handle->data);
+            uv_stop(instance->event_loop());
+            instance->setState(JSInstanceImpl::STOPPING);
+        });
         _env = &env;
 
 /*
@@ -535,7 +541,7 @@ void JSInstanceImpl::StartNodeInstance() {
 
                 per_process::v8_platform.DrainVMTasks(_isolate);
 
-                more = uv_loop_alive(env.event_loop()) && !isStopping();
+                more = uv_loop_alive(env.event_loop()) && !_env->is_stopping();
                 if (more)
                     continue;
 
@@ -543,7 +549,7 @@ void JSInstanceImpl::StartNodeInstance() {
 
                 // Emit `beforeExit` if the loop became alive either after emitting
                 // event, or after running some callbacks.
-                more = uv_loop_alive(env.event_loop()) && !isStopping();
+                more = uv_loop_alive(env.event_loop()) && !_env->is_stopping();
             } while (more == true);
             env.performance_state()->Mark(
                 node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
@@ -827,52 +833,14 @@ struct JSAsyncInfo {
     }
 };
 
-void _async_stop_instance(uv_async_t* handle) {
-    JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
-    assert(async_info != nullptr);
-    if (async_info) {
-        assert(async_info->instance);
-        async_info->instance->setState(JSInstanceImpl::STOPPING);
-        uv_stop(async_info->instance->event_loop());
-    }
-
-    if (uv_is_closing((uv_handle_t*) handle) == 0)
-        uv_close((uv_handle_t*) handle,
-            []
-            (uv_handle_t* handle){
-                JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, (uv_async_t*) handle);
-                if (async_info != nullptr)
-                    async_info->Dispose();
-            }
-        );
-}
-
-JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance) {
-    if (instance == nullptr)
+JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
+    if (instance_ == nullptr)
         return JS_ERROR;
 
-    std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
+    auto instance  = static_cast<JSInstanceImpl*>(instance_);
+    instance->_env->thread_stopper()->Stop();
 
-    info->instance.adopt(static_cast<JSInstanceImpl*>(instance));
-    if (info->instance->isRun()) {
-        int res_init = uv_async_init(info->instance->event_loop(), &info->async_handle, _async_stop_instance);
-        CHECK_EQ(0, res_init);
-
-        if (res_init != 0)
-            return JS_ERROR;
-
-        uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
-
-        int sendResult = uv_async_send(&info->async_handle);
-
-        if (sendResult == 0) {
-            info.release();
-            return JS_SUCCESS;
-        }
-    }
-
-    return JS_ERROR;
-
+    return JS_SUCCESS;
 }
 
 void _async_execute_script(uv_async_t* handle) {
