@@ -36,3 +36,11 @@ set_target_properties(test_jscript
     INSTALL_RPATH "$ORIGIN"
     BUILD_WITH_INSTALL_RPATH True
 )
+
+add_executable(test_redirect_stderr test_redirect_stderr.cpp)
+target_link_libraries(test_redirect_stderr JScript::JScript)
+set_target_properties(test_redirect_stderr
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)

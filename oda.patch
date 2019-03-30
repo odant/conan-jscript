@@ -61,8 +61,75 @@ index 9494cc11078..bc650793fc2 100644
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
+diff --git a/src/src/node_errors.cc b/src/src/node_errors.cc
+index 1923cb6a22f..7b28e3304c0 100644
+--- a/src/src/node_errors.cc
++++ b/src/src/node_errors.cc
+@@ -265,9 +265,10 @@ void ReportException(Environment* env, const v8::TryCatch& try_catch) {
+   ReportException(env, try_catch.Exception(), try_catch.Message());
+ }
+ 
+-void PrintErrorString(const char* format, ...) {
+-  va_list ap;
+-  va_start(ap, format);
++struct OriginalPrintErrorString {};
++void PrintErrorString(OriginalPrintErrorString, const char* format, va_list ap) {
++  //va_list ap;
++  //va_start(ap, format);
+ #ifdef _WIN32
+   HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
+ 
+@@ -275,7 +276,7 @@ void PrintErrorString(const char* format, ...) {
+   if (stderr_handle == INVALID_HANDLE_VALUE || stderr_handle == nullptr ||
+       uv_guess_handle(_fileno(stderr)) != UV_TTY) {
+     vfprintf(stderr, format, ap);
+-    va_end(ap);
++    //va_end(ap);
+     return;
+   }
+ 
+@@ -296,6 +297,27 @@ void PrintErrorString(const char* format, ...) {
+ #else
+   vfprintf(stderr, format, ap);
+ #endif
++  //va_end(ap);
++}
++
++std::function<void(const std::string&)> redirectPrintErrorString;
++void SetRedirectPrintErrorString(std::function<void(const std::string&)> redirectFunction){
++  redirectPrintErrorString = std::move(redirectFunction);
++}
++
++void PrintErrorString(const char* format, ...) {
++  va_list ap;
++  va_start(ap, format);
++
++  if (redirectPrintErrorString) {
++    const int length = ::vsnprintf(nullptr, 0, format, ap);
++    std::string data(length, '\0');
++    ::vsnprintf(&data[0], length, format, ap);
++    redirectPrintErrorString(data);
++  } else {
++    PrintErrorString(OriginalPrintErrorString{}, format, ap);
++  }
++
+   va_end(ap);
+ }
+ 
+diff --git a/src/src/node_errors.h b/src/src/node_errors.h
+index 2e9fd761a83..a2b015ce94c 100644
+--- a/src/src/node_errors.h
++++ b/src/src/node_errors.h
+@@ -24,6 +24,7 @@ void AppendExceptionLine(Environment* env,
+ void OnFatalError(const char* location, const char* message);
+ 
+ void PrintErrorString(const char* format, ...);
++void SetRedirectPrintErrorString(std::function<void(const std::string&)>);
+ 
+ void ReportException(Environment* env, const v8::TryCatch& try_catch);
+ 
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index cf34694e0e2..30aed6a5fc9 100644
+index cf34694e0e2..89c4eeae050 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@

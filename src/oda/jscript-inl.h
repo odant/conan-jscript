@@ -670,7 +670,8 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
 void empty_handler(int param) { }
 
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder) {
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
+                               std::function<void(const std::string&)> logCallback) {
 
     auto h1 = signal(SIGKILL, empty_handler);
     auto h2 = signal(SIGABRT, empty_handler);
@@ -745,6 +746,7 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     argv[argc++] = instanceScript.c_str();
 
     Initialize(argc, argv.data());
+    SetRedirectPrintErrorString(std::move(logCallback));
 }
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
