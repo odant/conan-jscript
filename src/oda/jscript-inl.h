@@ -850,7 +850,11 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
 
     JSInstanceImpl::Ptr instance;
     instance.adopt(static_cast<JSInstanceImpl*>(instance_));
-    instance->_env->thread_stopper()->Stop();
+    if (instance->isRun()) {
+        auto env = instance->_env;
+        if (env != nullptr)
+            env->ExitEnv();
+    }
 
     return JS_SUCCESS;
 }
