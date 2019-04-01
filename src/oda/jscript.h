@@ -42,8 +42,10 @@ class JSInstance { };
 
 JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
-                               std::function<void(const std::string&)> logCallback = nullptr);
+                               std::function<void(const std::string&)> logCallback);
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb);
 

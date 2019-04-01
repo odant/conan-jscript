@@ -499,7 +499,11 @@ void JSInstanceImpl::StartNodeInstance() {
             auto instance = static_cast<JSInstanceImpl*>(handle->data);
             uv_stop(instance->event_loop());
             instance->setState(JSInstanceImpl::STOPPING);
+            auto isolate = instance->_isolate;
+            isolate->TerminateExecution();
         });
+        env.thread_stopper()->set_stopped(false);
+        uv_unref(reinterpret_cast<uv_handle_t*>(env.thread_stopper()->GetHandle()));
         _env = &env;
 
 /*
@@ -749,6 +753,11 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     SetRedirectPrintErrorString(std::move(logCallback));
 }
 
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder) {
+    Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, nullptr);
+}
+
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
     if (!is_initilized)
         return;
@@ -839,7 +848,8 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
     if (instance_ == nullptr)
         return JS_ERROR;
 
-    auto instance  = static_cast<JSInstanceImpl*>(instance_);
+    JSInstanceImpl::Ptr instance;
+    instance.adopt(static_cast<JSInstanceImpl*>(instance_));
     instance->_env->thread_stopper()->Stop();
 
     return JS_SUCCESS;
