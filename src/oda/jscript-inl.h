@@ -528,6 +528,54 @@ void JSInstanceImpl::StartNodeInstance() {
 #endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
 */
         {
+            EscapableHandleScope scope(env.isolate());
+            Isolate* isolate = env.isolate();
+            Local<Context> context = env.context();
+
+            Local<Object> global = context->Global();
+            assert(!global.IsEmpty());
+            if (!global.IsEmpty()) {
+                v8::Local<v8::String> functionName = v8::String::NewFromUtf8(isolate, "__oda_setRunState");
+                v8::Local<v8::External> instanceExt = v8::External::New(isolate, this);
+                v8::Local<v8::Array> array = v8::Array::New(isolate, 1);
+                array->Set(0, instanceExt);
+
+                v8::Local<v8::Function> setRunStateFunction = v8::Function::New(isolate, 
+                    []
+                    (const v8::FunctionCallbackInfo<v8::Value>& args) {
+                        v8::Isolate* isolate = args.GetIsolate();
+                        HandleScope handle_scope(isolate);
+
+                        v8::Local<v8::Value> data = args.Data();
+                        if (data.IsEmpty() || !data->IsArray())
+                            return;
+
+                        v8::Local<v8::Array> array = data.As<v8::Array>();
+                        if (array.IsEmpty())
+                            return;
+
+                        if (array->Length() < 1)
+                            return;
+
+                        v8::Local<v8::External> instanceExt = array->Get(0).As<v8::External>();
+                        if (instanceExt.IsEmpty())
+                            return;
+
+                        JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+                        if (instance == nullptr)
+                            return;
+
+                        instance->setState(JSInstanceImpl::RUN);
+                    },
+                    array
+                );
+
+                const bool isFunctionSet = global->Set(functionName, setRunStateFunction);
+                assert(isFunctionSet);
+            }
+        }
+
+        {
             AsyncCallbackScope callback_scope(&env);
             env.async_hooks()->push_async_ids(1, 0);
             LoadEnvironment(&env);
@@ -537,7 +585,6 @@ void JSInstanceImpl::StartNodeInstance() {
         {
             SealHandleScope seal(_isolate);
             bool more;
-            setState(JSInstanceImpl::RUN);
             env.performance_state()->Mark(
                 node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
             do {
@@ -733,19 +780,20 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
         "console.log('Start load framework.');\r\n"
         "global.odantFramework = require('" + coreScript + "');\r\n"
         "global.odantFramework.then(core => {\r\n"
+        "  var infiniteFunction = function() {\r\n"
+        "    setTimeout(function() {\r\n"
+        "        infiniteFunction();\r\n"
+        "    }, 1000);\r\n"
+        "  };\r\n"
+        "  infiniteFunction();\r\n"
         "  console.log('framework loaded!');\r\n"
 #ifdef _DEBUG
         "  console.log(core.DEFAULTORIGIN);\r\n"
 #endif
+        "  global.__oda_setRunState();"
         "}).catch((error)=>{\r\n"
         "  console.log(error);\r\n"
-        "});\r\n"
-        "var infiniteFunction = function() {\r\n"
-        "  setTimeout(function() {\r\n"
-        "      infiniteFunction();\r\n"
-        "  }, 1000);\r\n"
-        "};\r\n"
-        "infiniteFunction();";
+        "});";
 
     argv[argc++] = instanceScript.c_str();
 
