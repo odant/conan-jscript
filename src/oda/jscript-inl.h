@@ -949,7 +949,7 @@ void _async_execute_script(uv_async_t* handle) {
             v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
             if (trycatch.HasCaught()) {
                 v8::Handle<v8::Value> exception = trycatch.Exception();
-                v8::String::Utf8Value message(exception);
+                v8::String::Utf8Value message(env->isolate(), exception);
                 std::cerr << "exception: " << *message << std::endl;
             }
             else if (!compile_result.IsEmpty()) {
@@ -963,7 +963,7 @@ void _async_execute_script(uv_async_t* handle) {
 
                     if (trycatch.HasCaught()) {
                         v8::Handle<v8::Value> exception = trycatch.Exception();
-                        v8::String::Utf8Value message(exception);
+                        v8::String::Utf8Value message(env->isolate(), exception);
                         std::cerr << "exception: " << *message << std::endl;
                     }
                 }
