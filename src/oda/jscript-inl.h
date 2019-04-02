@@ -162,7 +162,7 @@ private:
 };
 
 inline void addRefecence(const RefCounter* p) {
-    if (p != nullptr);
+    if (p != nullptr)
         p->addRef();
 }
 
