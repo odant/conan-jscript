@@ -125,6 +125,9 @@ class JScriptConan(ConanFile):
             if self.options.with_unit_tests:
                 openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
                 env["PATH"].insert(0, openssl_binpath)
+        if self.settings.compiler == "gcc" or self.settings.compiler == "clang":
+            env["CFLAGS"] = "-Wno-unused-but-set-parameter"
+            env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
         # Run build
         with tools.chdir("src"), tools.environment_append(env):
             self.run("python --version")
