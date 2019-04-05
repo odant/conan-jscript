@@ -54,7 +54,11 @@ int main(int argc, char** argv) {
     const std::string coreFolder = cwd;
     const std::string nodeFolder = coreFolder + "/node_modules";
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
+    auto logCb = [](const std::string& msg) {
+        std::cout << "logCb: " << msg;
+    };
+
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, logCb);
     std::cout << "jscript::Initialize() done" << std::endl;
     {
 #ifndef _WIN32
