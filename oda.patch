@@ -62,7 +62,7 @@ index 9494cc11078..bc650793fc2 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_errors.cc b/src/src/node_errors.cc
-index 1923cb6a22f..7b28e3304c0 100644
+index 1923cb6a22f..e06b88c2ba5 100644
 --- a/src/src/node_errors.cc
 +++ b/src/src/node_errors.cc
 @@ -265,9 +265,10 @@ void ReportException(Environment* env, const v8::TryCatch& try_catch) {
@@ -70,31 +70,18 @@ index 1923cb6a22f..7b28e3304c0 100644
  }
  
 -void PrintErrorString(const char* format, ...) {
--  va_list ap;
--  va_start(ap, format);
 +struct OriginalPrintErrorString {};
-+void PrintErrorString(OriginalPrintErrorString, const char* format, va_list ap) {
-+  //va_list ap;
-+  //va_start(ap, format);
++void PrintErrorString(OriginalPrintErrorString, const char* format, va_list _ap) {
+   va_list ap;
+-  va_start(ap, format);
++  va_copy(ap, _ap);
  #ifdef _WIN32
    HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
  
-@@ -275,7 +276,7 @@ void PrintErrorString(const char* format, ...) {
-   if (stderr_handle == INVALID_HANDLE_VALUE || stderr_handle == nullptr ||
-       uv_guess_handle(_fileno(stderr)) != UV_TTY) {
-     vfprintf(stderr, format, ap);
--    va_end(ap);
-+    //va_end(ap);
-     return;
-   }
+@@ -299,6 +300,27 @@ void PrintErrorString(const char* format, ...) {
+   va_end(ap);
+ }
  
-@@ -296,6 +297,27 @@ void PrintErrorString(const char* format, ...) {
- #else
-   vfprintf(stderr, format, ap);
- #endif
-+  //va_end(ap);
-+}
-+
 +std::function<void(const std::string&)> redirectPrintErrorString;
 +void SetRedirectPrintErrorString(std::function<void(const std::string&)> redirectFunction){
 +  redirectPrintErrorString = std::move(redirectFunction);
@@ -113,9 +100,12 @@ index 1923cb6a22f..7b28e3304c0 100644
 +    PrintErrorString(OriginalPrintErrorString{}, format, ap);
 +  }
 +
-   va_end(ap);
- }
- 
++  va_end(ap);
++}
++
+ [[noreturn]] void FatalError(const char* location, const char* message) {
+   OnFatalError(location, message);
+   // to suppress compiler warning
 diff --git a/src/src/node_errors.h b/src/src/node_errors.h
 index 2e9fd761a83..a2b015ce94c 100644
 --- a/src/src/node_errors.h
@@ -128,6 +118,21 @@ index 2e9fd761a83..a2b015ce94c 100644
  
  void ReportException(Environment* env, const v8::TryCatch& try_catch);
  
+diff --git a/src/src/node_process_methods.cc b/src/src/node_process_methods.cc
+index 3cf2670a88b..efdbd65fec3 100644
+--- a/src/src/node_process_methods.cc
++++ b/src/src/node_process_methods.cc
+@@ -205,8 +205,8 @@ void RawDebug(const FunctionCallbackInfo<Value>& args) {
+   CHECK(args.Length() == 1 && args[0]->IsString() &&
+         "must be called with a single string");
+   Utf8Value message(args.GetIsolate(), args[0]);
+-  PrintErrorString("%s\n", *message);
+-  fflush(stderr);
++  PrintErrorString("%s", *message);
++  //fflush(stderr);
+ }
+ 
+ static void StartProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 diff --git a/src/src/node_version.h b/src/src/node_version.h
 index cf34694e0e2..89c4eeae050 100644
 --- a/src/src/node_version.h
@@ -136,7 +141,7 @@ index cf34694e0e2..89c4eeae050 100644
  #define NODE_MAJOR_VERSION 11
  #define NODE_MINOR_VERSION 13
  #define NODE_PATCH_VERSION 0
-+#define NODE_BUILD_VERSION 0
++#define NODE_BUILD_VERSION 1
  
  #define NODE_VERSION_IS_LTS 0
  #define NODE_VERSION_LTS_CODENAME ""

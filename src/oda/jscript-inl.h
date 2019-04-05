@@ -760,40 +760,46 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     // Path to odant.js
     const std::string coreScript = coreFolder + "/web/core/odant.js";
     const_cast<std::string&>(instanceScript) =
-        "'use strict';\r\n"
-        "process.on('uncaughtException', err => {\r\n"
-        "    console.log(err);\r\n"
-        "});\r\n"
-        "process.on('unhandledRejection', err => {\r\n"
-        "    console.log(err);\r\n"
-        "});\r\n";
+        "'use strict';\n"
+        "process.stdout.write = (msg) => {\n"
+        "   process._rawDebug(msg);\n"
+        "};\n"
+        "process.stderr.write = (msg) => {\n"
+        "   process._rawDebug(msg);\n"
+        "};\n"
+        "process.on('uncaughtException', err => {\n"
+        "    console.log(err);\n"
+        "});\n"
+        "process.on('unhandledRejection', err => {\n"
+        "    console.log(err);\n"
+        "});\n";
 
     if (!origin.empty())
         const_cast<std::string&>(instanceScript) +=
-            "global.DEFAULTORIGIN = '" + origin + "';\r\n";
+            "global.DEFAULTORIGIN = '" + origin + "';\n";
 
     if (!externalOrigin.empty())
         const_cast<std::string&>(instanceScript) +=
-            "global.EXTERNALORIGIN = '" + externalOrigin + "';\r\n";
+            "global.EXTERNALORIGIN = '" + externalOrigin + "';\n";
 
     const_cast<std::string&>(instanceScript) +=
-        "console.log('Start load framework.');\r\n"
-        "global.odantFramework = require('" + coreScript + "');\r\n"
-        "global.odantFramework.then(core => {\r\n"
-        "  var infiniteFunction = function() {\r\n"
-        "    setTimeout(function() {\r\n"
-        "        infiniteFunction();\r\n"
-        "    }, 1000);\r\n"
-        "  };\r\n"
-        "  infiniteFunction();\r\n"
-        "  console.log('framework loaded!');\r\n"
+        "console.log('Start load framework.');\n"
+        "global.odantFramework = require('" + coreScript + "');\n"
+        "global.odantFramework.then(core => {\n"
+        "  var infiniteFunction = function() {\n"
+        "    setTimeout(function() {\n"
+        "        infiniteFunction();\n"
+        "    }, 1000);\n"
+        "  };\n"
+        "  infiniteFunction();\n"
+        "  console.log('framework loaded!');\n"
 #ifdef _DEBUG
-        "  console.log(core.DEFAULTORIGIN);\r\n"
+        "  console.log(core.DEFAULTORIGIN);\n"
 #endif
         "  global.__oda_setRunState();"
-        "}).catch((error)=>{\r\n"
-        "  console.log(error);\r\n"
-        "});";
+        "}).catch((error)=>{\n"
+        "  console.log(error);\n"
+        "});\n";
 
     argv[argc++] = instanceScript.c_str();
 
