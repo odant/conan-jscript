@@ -113,6 +113,8 @@ class JScriptConan(ConanFile):
             flags.append("--ninja")
         #
         env = {}
+        if self.settings.os == "Linux":
+            env["LD_LIBRARY_PATH"] = openssl_libpath + ":" + os.environ["LD_LIBRARY_PATH"]
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
             env["GYP_MSVS_VERSION"] = "2017"
