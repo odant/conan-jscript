@@ -119,7 +119,7 @@ class JScriptConan(ConanFile):
             env["LD_LIBRARY_PATH"] = openssl_libpath + ":" + os.environ["LD_LIBRARY_PATH"]
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
-			if not "GYP_MSVS_VERSION" in os.environ:
+            if not "GYP_MSVS_VERSION" in os.environ:
                 env["GYP_MSVS_VERSION"] = "2017"
                 env["PLATFORM_TOOLSET"] = "v141"
             # Explicit use external Ninja
