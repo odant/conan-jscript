@@ -116,7 +116,10 @@ class JScriptConan(ConanFile):
         #
         env = {}
         if self.settings.os == "Linux":
-            env["LD_LIBRARY_PATH"] = openssl_libpath + ":" + os.environ["LD_LIBRARY_PATH"]
+            env["LD_LIBRARY_PATH"] = openssl_libpath
+            ld_env_path = os.environ.get("LD_LIBRARY_PATH")
+            if ld_env_path is not None:
+                env["LD_LIBRARY_PATH"] += ":" + ld_env_path
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
             if not "GYP_MSVS_VERSION" in os.environ:
