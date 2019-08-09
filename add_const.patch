@@ -1,0 +1,11 @@
+--- a/src/deps/v8/src/compiler/register-allocator.h
++++ b/src/deps/v8/src/compiler/register-allocator.h
+@@ -1041,7 +1041,7 @@
+ 
+  private:
+   struct LiveRangeOrdering {
+-    bool operator()(LiveRange* a, LiveRange* b) {
++    bool operator()(const LiveRange* a, const LiveRange* b) const {
+       return a->ShouldBeAllocatedBefore(b);
+     }
+   };
