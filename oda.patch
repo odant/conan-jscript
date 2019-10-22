@@ -78,7 +78,7 @@ index 1923cb6a22f..e06b88c2ba5 100644
  #ifdef _WIN32
    HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
  
-@@ -299,6 +300,27 @@ void PrintErrorString(const char* format, ...) {
+@@ -299,6 +300,29 @@ void PrintErrorString(const char* format, ...) {
    va_end(ap);
  }
  
@@ -93,9 +93,11 @@ index 1923cb6a22f..e06b88c2ba5 100644
 +
 +  if (redirectPrintErrorString) {
 +    const int length = ::vsnprintf(nullptr, 0, format, ap);
-+    std::string data(length, '\0');
-+    ::vsnprintf(&data[0], length, format, ap);
-+    redirectPrintErrorString(data);
++    if (length > 0) {
++        std::string data(length-1, '\0');
++        ::vsnprintf(&data[0], length, format, ap);
++        redirectPrintErrorString(data);
++    }
 +  } else {
 +    PrintErrorString(OriginalPrintErrorString{}, format, ap);
 +  }
