@@ -24,7 +24,7 @@ class JScriptConan(ConanFile):
         "os": ["Windows", "Linux"],
         "compiler": ["Visual Studio", "gcc"],
         "build_type": ["Debug", "Release"],
-        "arch": ["x86_64", "x86", "mips"]
+        "arch": ["x86_64", "x86", "mips", "armv7"]
     }
     options = {
         "dll_sign": [False, True],
@@ -32,12 +32,12 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=True", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "add_const.patch", "FindJScript.cmake"
+    exports_sources = "src/*", "oda.patch", "add_const.patch", "FindJScript.cmake", "add_libatomic.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.0h"
+    _openssl_version = "1.1.0k+1"
 
     def configure(self):
         if self.settings.os == "Windows":
@@ -60,14 +60,17 @@ class JScriptConan(ConanFile):
     def build_requirements(self):
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             self.build_requires("nasm/2.13.01@conan/stable")
-        if self.options.ninja:
-            self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
+        if self.settings.arch == "x86_64" or self.settings.arch == "x86":
+            if self.options.ninja:
+                self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
         if get_safe(self.options, "dll_sign"):
             self.build_requires("windows_signtool/[~=1.0]@%s/stable" % self.user)
 
     def source(self):
         tools.patch(patch_file="oda.patch")
         tools.patch(patch_file="add_const.patch")
+        if self.settings.arch == "mips" or self.settings.arch == "armv7":
+            tools.patch(patch_file="add_libatomic.patch")
 
     def build(self):
         output_name = "jscript"
@@ -89,7 +92,8 @@ class JScriptConan(ConanFile):
             "--dest-cpu=%s" % {
                                 "x86": "ia32",
                                 "x86_64": "x64",
-                                "mips": "mipsel"
+                                "mips": "mipsel",
+                                "armv7": "arm"
                             }.get(str(self.settings.arch)),
             "--node_core_target_name=%s" % output_name
         ]
