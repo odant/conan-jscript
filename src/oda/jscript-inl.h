@@ -579,6 +579,7 @@ void JSInstanceImpl::StartNodeInstance() {
             AsyncCallbackScope callback_scope(&env);
             env.async_hooks()->push_async_ids(1, 0);
             LoadEnvironment(&env);
+            this->overrideConsole(&env);
             env.async_hooks()->pop_async_id(1);
         }
 
