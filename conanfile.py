@@ -75,10 +75,6 @@ class JScriptConan(ConanFile):
     def build(self):
         output_name = "jscript"
         if self.settings.os == "Windows":
-            output_name += {
-                            "x86": "",
-                            "x86_64": "64"
-                        }.get(str(self.settings.arch))
             if self.settings.build_type == "Debug":
                 output_name += "d"
         #
@@ -183,21 +179,11 @@ class JScriptConan(ConanFile):
             self.copy("jscriptd.lib", dst="lib", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll.lib", dst="lib", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript64.dll.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript64.dll", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64d.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript64d.dll.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript64d.dll", dst="bin", src=output_folder, keep_path=False)
             # PDB
             self.copy("jscript.dll.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("jscript.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("jscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64d.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript64d.pdb", dst="bin", src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
             output_folder += "/lib"
             self.copy("libjscript.so.*", dst="lib", src=output_folder, keep_path=False, excludes="*.TOC")
