@@ -136,38 +136,51 @@ index 3cf2670a88b..efdbd65fec3 100644
  
  static void StartProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index cf34694e0e2..89c4eeae050 100644
+index cf34694e0..1fb692fc8 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 11
  #define NODE_MINOR_VERSION 13
  #define NODE_PATCH_VERSION 0
-+#define NODE_BUILD_VERSION 10
++#define NODE_BUILD_VERSION 11
  
  #define NODE_VERSION_IS_LTS 0
  #define NODE_VERSION_LTS_CODENAME ""
-@@ -50,14 +51,14 @@
- // NODE_TAG is passed without quotes when rc.exe is run from msbuild
- # define NODE_EXE_VERSION NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
+@@ -52,16 +53,31 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
--                          NODE_STRINGIFY(NODE_PATCH_VERSION)     \
--                          NODE_STRINGIFY(NODE_TAG)
-+                          NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
-+                          NODE_STRINGIFY(NODE_BUILD_VERSION)
+                           NODE_STRINGIFY(NODE_PATCH_VERSION)     \
+                           NODE_STRINGIFY(NODE_TAG)
++
++# define NODE_RC_EXE_VERSION NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
++                             NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
++                             NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
++                             NODE_STRINGIFY(NODE_BUILD_VERSION)
  #endif
  
  # define NODE_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
                                NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
--                              NODE_STRINGIFY(NODE_PATCH_VERSION)     \
--                              NODE_TAG
-+                              NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
-+                              NODE_STRINGIFY(NODE_BUILD_VERSION)
+                               NODE_STRINGIFY(NODE_PATCH_VERSION)     \
+                               NODE_TAG
++                              
++# define NODE_RC_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_BUILD_VERSION)     \
++                              
  #ifndef NODE_EXE_VERSION
  # define NODE_EXE_VERSION NODE_VERSION_STRING
  #endif
+ 
++#ifndef NODE_RC_EXE_VERSION
++# define NODE_RC_EXE_VERSION NODE_RC_VERSION_STRING
++#endif
++
+ #define NODE_VERSION "v" NODE_VERSION_STRING
+ 
+ 
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be70..1f6913a3370 100644
+index 9403e68be..d9f1f8b91 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
@@ -188,14 +201,16 @@ index 9403e68be70..1f6913a3370 100644
 -            VALUE "CompanyName", "Node.js"
 -            VALUE "ProductName", "Node.js"
 -            VALUE "FileDescription", "Node.js: Server-side JavaScript"
-+            VALUE "CompanyName", "BIS"
-+            VALUE "ProductName", "jscript (from Node.js)"
-+            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
-             VALUE "FileVersion", NODE_EXE_VERSION
-             VALUE "ProductVersion", NODE_EXE_VERSION
+-            VALUE "FileVersion", NODE_EXE_VERSION
+-            VALUE "ProductVersion", NODE_EXE_VERSION
 -            VALUE "OriginalFilename", "node.exe"
 -            VALUE "InternalName", "node"
 -            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
++            VALUE "CompanyName", "BIS"
++            VALUE "ProductName", "jscript (from Node.js)"
++            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
++            VALUE "FileVersion", NODE_RC_EXE_VERSION
++            VALUE "ProductVersion", NODE_RC_EXE_VERSION
 +            VALUE "OriginalFilename", "jscript.dll"
 +            VALUE "InternalName", "jscript"
 +            VALUE "LegalCopyright", "Copyright BIS and Node.js contributors. MIT license."
