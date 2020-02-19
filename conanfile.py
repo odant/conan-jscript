@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "11.13.0.11+0"
+    version = "11.13.0.11+1"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
