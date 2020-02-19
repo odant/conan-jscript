@@ -139,9 +139,9 @@ class JScriptConan(ConanFile):
             env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
         # Run build
         with tools.chdir("src"), tools.environment_append(env):
-            self.run("python --version")
+            self.run("python2 --version")
             #
-            self.run("python configure %s" % " ".join(flags))
+            self.run("python2 configure %s" % " ".join(flags))
             if self.options.ninja:
                 self.run("ninja --version")
                 self.run("ninja -C out/%s" % str(self.settings.build_type))
@@ -157,7 +157,7 @@ class JScriptConan(ConanFile):
                     shell = "out/" + shell
                 if self.settings.os == "Windows":
                     shell += ".exe"
-                self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
+                self.run("python2 tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
 
     def package(self):
         # CMake script
