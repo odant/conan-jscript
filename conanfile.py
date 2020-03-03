@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "11.13.0.11+0"
+    version = "12.16.1.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -37,7 +37,8 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.0l+2"
+    _openssl_version = "1.1.1d"
+    _openssl_channel = "testing"
 
     def configure(self):
         if self.settings.os == "Windows":
@@ -55,7 +56,7 @@ class JScriptConan(ConanFile):
             del self.options.dll_sign
 
     def requirements(self):
-        self.requires("openssl/%s@%s/stable" % (self._openssl_version, self.user))
+        self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
 
     def build_requirements(self):
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
@@ -67,6 +68,7 @@ class JScriptConan(ConanFile):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
     def source(self):
+        return
         tools.patch(patch_file="oda.patch")
         tools.patch(patch_file="add_const.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
@@ -91,11 +93,8 @@ class JScriptConan(ConanFile):
                                 "mips": "mipsel",
                                 "armv7": "arm"
                             }.get(str(self.settings.arch)),
-            "--node_core_target_name=%s" % output_name
+            #"--node_core_target_name=%s" % output_name
         ]
-        # !!! Without PCH build faild with MSBuild
-        if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
-            flags.append("--with-pch")
         # External OpenSSL
         openssl_includes = self.deps_cpp_info["openssl"].include_paths[0].replace("\\", "/")
         openssl_libpath = self.deps_cpp_info["openssl"].lib_paths[0].replace("\\", "/")
