@@ -29,18 +29,18 @@ customizable evaluation functions.
 
 The following special commands are supported by all REPL instances:
 
-* `.break` - When in the process of inputting a multi-line expression, entering
+* `.break`: When in the process of inputting a multi-line expression, entering
   the `.break` command (or pressing the `<ctrl>-C` key combination) will abort
   further input or processing of that expression.
-* `.clear` - Resets the REPL `context` to an empty object and clears any
+* `.clear`: Resets the REPL `context` to an empty object and clears any
   multi-line expression currently being input.
-* `.exit` - Close the I/O stream, causing the REPL to exit.
-* `.help` - Show this list of special commands.
-* `.save` - Save the current REPL session to a file:
+* `.exit`: Close the I/O stream, causing the REPL to exit.
+* `.help`: Show this list of special commands.
+* `.save`: Save the current REPL session to a file:
   `> .save ./file/to/save.js`
-* `.load` - Load a file into the current REPL session.
+* `.load`: Load a file into the current REPL session.
   `> .load ./file/to/load.js`
-* `.editor` - Enter editor mode (`<ctrl>-D` to finish, `<ctrl>-C` to cancel).
+* `.editor`: Enter editor mode (`<ctrl>-D` to finish, `<ctrl>-C` to cancel).
 
 ```console
 > .editor
@@ -58,11 +58,11 @@ welcome('Node.js User');
 
 The following key combinations in the REPL have these special effects:
 
-* `<ctrl>-C` - When pressed once, has the same effect as the `.break` command.
+* `<ctrl>-C`: When pressed once, has the same effect as the `.break` command.
   When pressed twice on a blank line, has the same effect as the `.exit`
   command.
-* `<ctrl>-D` - Has the same effect as the `.exit` command.
-* `<tab>` - When pressed on a blank line, displays global and local (scope)
+* `<ctrl>-D`: Has the same effect as the `.exit` command.
+* `<tab>`: When pressed on a blank line, displays global and local (scope)
   variables. When pressed while entering other input, displays relevant
   autocompletion options.
 
@@ -138,15 +138,45 @@ global or scoped variable, the input `fs` will be evaluated on-demand as
 ```
 
 #### Global Uncaught Exceptions
+<!-- YAML
+changes:
+  - version: v12.3.0
+    pr-url: https://github.com/nodejs/node/pull/27151
+    description: The `'uncaughtException'` event is from now on triggered if the
+                 repl is used as standalone program.
+-->
 
 The REPL uses the [`domain`][] module to catch all uncaught exceptions for that
 REPL session.
 
 This use of the [`domain`][] module in the REPL has these side effects:
 
-* Uncaught exceptions do not emit the [`'uncaughtException'`][] event.
+* Uncaught exceptions only emit the [`'uncaughtException'`][] event in the
+  standalone REPL. Adding a listener for this event in a REPL within
+  another Node.js program throws [`ERR_INVALID_REPL_INPUT`][].
 * Trying to use [`process.setUncaughtExceptionCaptureCallback()`][] throws
   an [`ERR_DOMAIN_CANNOT_SET_UNCAUGHT_EXCEPTION_CAPTURE`][] error.
+
+As standalone program:
+
+```js
+process.on('uncaughtException', () => console.log('Uncaught'));
+
+throw new Error('foobar');
+// Uncaught
+```
+
+When used in another application:
+
+```js
+process.on('uncaughtException', () => console.log('Uncaught'));
+// TypeError [ERR_INVALID_REPL_INPUT]: Listeners for `uncaughtException`
+// cannot be used in the REPL
+
+throw new Error('foobar');
+// Thrown:
+// Error: foobar
+```
 
 #### Assignment of the `_` (underscore) variable
 <!-- YAML
@@ -297,16 +327,27 @@ function myWriter(output) {
 }
 ```
 
-## Class: REPLServer
+## Class: `REPLServer`
 <!-- YAML
 added: v0.1.91
 -->
 
-The `repl.REPLServer` class inherits from the [`readline.Interface`][] class.
-Instances of `repl.REPLServer` are created using the `repl.start()` method and
-*should not* be created directly using the JavaScript `new` keyword.
+* `options` {Object|string} See [`repl.start()`][]
+* Extends: {readline.Interface}
 
-### Event: 'exit'
+Instances of `repl.REPLServer` are created using the [`repl.start()`][] method
+or directly using the JavaScript `new` keyword.
+
+```js
+const repl = require('repl');
+
+const options = { useColors: true };
+
+const firstInstance = repl.start(options);
+const secondInstance = new repl.REPLServer(options);
+```
+
+### Event: `'exit'`
 <!-- YAML
 added: v0.7.7
 -->
@@ -323,7 +364,7 @@ replServer.on('exit', () => {
 });
 ```
 
-### Event: 'reset'
+### Event: `'reset'`
 <!-- YAML
 added: v0.11.0
 -->
@@ -368,7 +409,7 @@ Clearing context...
 >
 ```
 
-### replServer.defineCommand(keyword, cmd)
+### `replServer.defineCommand(keyword, cmd)`
 <!-- YAML
 added: v0.3.0
 -->
@@ -407,14 +448,14 @@ replServer.defineCommand('saybye', function saybye() {
 
 The new commands can then be used from within the REPL instance:
 
-```txt
+```console
 > .sayhello Node.js User
 Hello, Node.js User!
 > .saybye
 Goodbye!
 ```
 
-### replServer.displayPrompt([preserveCursor])
+### `replServer.displayPrompt([preserveCursor])`
 <!-- YAML
 added: v0.1.91
 -->
@@ -434,7 +475,7 @@ The `replServer.displayPrompt` method is primarily intended to be called from
 within the action function for commands registered using the
 `replServer.defineCommand()` method.
 
-### replServer.clearBufferedCommand()
+### `replServer.clearBufferedCommand()`
 <!-- YAML
 added: v9.0.0
 -->
@@ -444,22 +485,22 @@ buffered but not yet executed. This method is primarily intended to be
 called from within the action function for commands registered using the
 `replServer.defineCommand()` method.
 
-### replServer.parseREPLKeyword(keyword[, rest])
+### `replServer.parseREPLKeyword(keyword[, rest])`
 <!-- YAML
 added: v0.8.9
 deprecated: v9.0.0
 -->
 
+> Stability: 0 - Deprecated.
+
 * `keyword` {string} the potential keyword to parse and execute
 * `rest` {any} any parameters to the keyword command
 * Returns: {boolean}
 
-> Stability: 0 - Deprecated.
-
 An internal method used to parse and execute `REPLServer` keywords.
 Returns `true` if `keyword` is a valid keyword, otherwise `false`.
 
-### replServer.setupHistory(historyPath, callback)
+### `replServer.setupHistory(historyPath, callback)`
 <!-- YAML
 added: v11.10.0
 -->
@@ -475,10 +516,14 @@ by default. However, this is not the case when creating a REPL
 programmatically. Use this method to initialize a history log file when working
 with REPL instances programmatically.
 
-## repl.start([options])
+## `repl.start([options])`
 <!-- YAML
 added: v0.1.91
 changes:
+  - version: v12.0.0
+    pr-url: https://github.com/nodejs/node/pull/26518
+    description: The `terminal` option now follows the default description in
+                 all cases and `useColors` checks `hasColors()` if available.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/19187
     description: The `REPL_MAGIC_MODE` `replMode` was removed.
@@ -495,7 +540,7 @@ changes:
   * `output` {stream.Writable} The `Writable` stream to which REPL output will
     be written. **Default:** `process.stdout`.
   * `terminal` {boolean} If `true`, specifies that the `output` should be
-    treated as a TTY terminal, and have ANSI/VT100 escape codes written to it.
+    treated as a TTY terminal.
     **Default:** checking the value of the `isTTY` property on the `output`
     stream upon instantiation.
   * `eval` {Function} The function to be used when evaluating each given line
@@ -504,8 +549,9 @@ changes:
     the input was incomplete and prompt for additional lines.
   * `useColors` {boolean} If `true`, specifies that the default `writer`
     function should include ANSI color styling to REPL output. If a custom
-    `writer` function is provided then this has no effect. **Default:** the
-     REPL instances `terminal` value.
+    `writer` function is provided then this has no effect. **Default:** checking
+    color support on the `output` stream if the REPL instance's `terminal` value
+    is `true`.
   * `useGlobal` {boolean} If `true`, specifies that the default evaluation
      function will use the JavaScript `global` as the context as opposed to
      creating a new separate context for the REPL instance. The node CLI REPL
@@ -520,12 +566,12 @@ changes:
   * `replMode` {symbol} A flag that specifies whether the default evaluator
     executes all JavaScript commands in strict mode or default (sloppy) mode.
     Acceptable values are:
-    * `repl.REPL_MODE_SLOPPY` - evaluates expressions in sloppy mode.
-    * `repl.REPL_MODE_STRICT` - evaluates expressions in strict mode. This is
+    * `repl.REPL_MODE_SLOPPY` to evaluate expressions in sloppy mode.
+    * `repl.REPL_MODE_STRICT` to evaluate expressions in strict mode. This is
       equivalent to prefacing every repl statement with `'use strict'`.
-  * `breakEvalOnSigint` - Stop evaluating the current piece of code when
-    `SIGINT` is received, i.e. `Ctrl+C` is pressed. This cannot be used together
-    with a custom `eval` function. **Default:** `false`.
+  * `breakEvalOnSigint` {boolean} Stop evaluating the current piece of code when
+    `SIGINT` is received, such as when `Ctrl+C` is pressed. This cannot be used
+    together with a custom `eval` function. **Default:** `false`.
 * Returns: {repl.REPLServer}
 
 The `repl.start()` method creates and starts a [`repl.REPLServer`][] instance.
@@ -564,17 +610,17 @@ undefined
 Various behaviors of the Node.js REPL can be customized using the following
 environment variables:
 
- - `NODE_REPL_HISTORY` - When a valid path is given, persistent REPL history
-   will be saved to the specified file rather than `.node_repl_history` in the
-   user's home directory. Setting this value to `''` (an empty string) will
-   disable persistent REPL history. Whitespace will be trimmed from the value.
-   On Windows platforms environment variables with empty values are invalid so
-   set this variable to one or more spaces to disable persistent REPL history.
- - `NODE_REPL_HISTORY_SIZE` - Controls how many lines of history will be
-   persisted if history is available. Must be a positive number.
-   **Default:** `1000`.
- - `NODE_REPL_MODE` - May be either `'sloppy'` or `'strict'`. **Default:**
-   `'sloppy'`, which will allow non-strict mode code to be run.
+* `NODE_REPL_HISTORY`: When a valid path is given, persistent REPL history
+  will be saved to the specified file rather than `.node_repl_history` in the
+  user's home directory. Setting this value to `''` (an empty string) will
+  disable persistent REPL history. Whitespace will be trimmed from the value.
+  On Windows platforms environment variables with empty values are invalid so
+  set this variable to one or more spaces to disable persistent REPL history.
+* `NODE_REPL_HISTORY_SIZE`: Controls how many lines of history will be
+  persisted if history is available. Must be a positive number.
+  **Default:** `1000`.
+* `NODE_REPL_MODE`: May be either `'sloppy'` or `'strict'`. **Default:**
+  `'sloppy'`, which will allow non-strict mode code to be run.
 
 ### Persistent History
 
@@ -656,11 +702,12 @@ For an example of running a REPL instance over [curl(1)][], see:
 [`'uncaughtException'`]: process.html#process_event_uncaughtexception
 [`--experimental-repl-await`]: cli.html#cli_experimental_repl_await
 [`ERR_DOMAIN_CANNOT_SET_UNCAUGHT_EXCEPTION_CAPTURE`]: errors.html#errors_err_domain_cannot_set_uncaught_exception_capture
+[`ERR_INVALID_REPL_INPUT`]: errors.html#errors_err_invalid_repl_input
 [`domain`]: domain.html
 [`process.setUncaughtExceptionCaptureCallback()`]: process.html#process_process_setuncaughtexceptioncapturecallback_fn
 [`readline.InterfaceCompleter`]: readline.html#readline_use_of_the_completer_function
-[`readline.Interface`]: readline.html#readline_class_interface
 [`repl.ReplServer`]: #repl_class_replserver
+[`repl.start()`]: #repl_repl_start_options
 [`util.inspect()`]: util.html#util_util_inspect_object_options
 [curl(1)]: https://curl.haxx.se/docs/manpage.html
 [stream]: stream.html

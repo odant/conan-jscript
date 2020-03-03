@@ -24,13 +24,13 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "async_wrap.h"
-#include "env.h"
 #include "handle_wrap.h"
 #include "uv.h"
 #include "v8.h"
 
 namespace node {
+
+class Environment;
 
 class UDPWrap: public HandleWrap {
  public:
@@ -45,13 +45,20 @@ class UDPWrap: public HandleWrap {
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Send(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Bind6(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Connect6(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Send6(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Disconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void RecvStart(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void RecvStop(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void AddMembership(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void DropMembership(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void AddSourceSpecificMembership(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void DropSourceSpecificMembership(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetMulticastInterface(
       const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetMulticastTTL(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -79,10 +86,15 @@ class UDPWrap: public HandleWrap {
 
   static void DoBind(const v8::FunctionCallbackInfo<v8::Value>& args,
                      int family);
+  static void DoConnect(const v8::FunctionCallbackInfo<v8::Value>& args,
+                     int family);
   static void DoSend(const v8::FunctionCallbackInfo<v8::Value>& args,
                      int family);
   static void SetMembership(const v8::FunctionCallbackInfo<v8::Value>& args,
                             uv_membership membership);
+  static void SetSourceMembership(
+      const v8::FunctionCallbackInfo<v8::Value>& args,
+      uv_membership membership);
 
   static void OnAlloc(uv_handle_t* handle,
                       size_t suggested_size,

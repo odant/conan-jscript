@@ -1,8 +1,9 @@
 #ifndef SRC_JS_NATIVE_API_H_
 #define SRC_JS_NATIVE_API_H_
 
-#include <stddef.h>
-#include <stdbool.h>
+// This file needs to be compatible with C compilers.
+#include <stddef.h>   // NOLINT(modernize-deprecated-headers)
+#include <stdbool.h>  // NOLINT(modernize-deprecated-headers)
 #include "js_native_api_types.h"
 
 // Use INT_MAX, this should only be consumed by the pre-processor anyway.
@@ -11,8 +12,13 @@
 #ifdef NAPI_EXPERIMENTAL
 #define NAPI_VERSION NAPI_VERSION_EXPERIMENTAL
 #else
-// The baseline version for N-API
-#define NAPI_VERSION 4
+// The baseline version for N-API.
+// The NAPI_VERSION controls which version will be used by default when
+// compilling a native addon. If the addon developer specifically wants to use
+// functions available in a new version of N-API that is not yet ported in all
+// LTS versions, they can set NAPI_VERSION knowing that they have specifically
+// depended on that version.
+#define NAPI_VERSION 5
 #endif
 #endif
 
@@ -447,7 +453,7 @@ NAPI_EXTERN napi_status napi_adjust_external_memory(napi_env env,
                                                     int64_t change_in_bytes,
                                                     int64_t* adjusted_value);
 
-#ifdef NAPI_EXPERIMENTAL
+#if NAPI_VERSION >= 5
 
 // Dates
 NAPI_EXTERN napi_status napi_create_date(napi_env env,
@@ -461,6 +467,18 @@ NAPI_EXTERN napi_status napi_is_date(napi_env env,
 NAPI_EXTERN napi_status napi_get_date_value(napi_env env,
                                             napi_value value,
                                             double* result);
+
+// Add finalizer for pointer
+NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
+                                           napi_value js_object,
+                                           void* native_object,
+                                           napi_finalize finalize_cb,
+                                           void* finalize_hint,
+                                           napi_ref* result);
+
+#endif  // NAPI_VERSION >= 5
+
+#ifdef NAPI_EXPERIMENTAL
 
 // BigInt
 NAPI_EXTERN napi_status napi_create_bigint_int64(napi_env env,
@@ -487,12 +505,23 @@ NAPI_EXTERN napi_status napi_get_value_bigint_words(napi_env env,
                                                     int* sign_bit,
                                                     size_t* word_count,
                                                     uint64_t* words);
-NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
-                                           napi_value js_object,
-                                           void* native_object,
-                                           napi_finalize finalize_cb,
-                                           void* finalize_hint,
-                                           napi_ref* result);
+
+// Instance data
+NAPI_EXTERN napi_status napi_set_instance_data(napi_env env,
+                                               void* data,
+                                               napi_finalize finalize_cb,
+                                               void* finalize_hint);
+
+NAPI_EXTERN napi_status napi_get_instance_data(napi_env env,
+                                               void** data);
+
+// ArrayBuffer detaching
+NAPI_EXTERN napi_status napi_detach_arraybuffer(napi_env env,
+                                                napi_value arraybuffer);
+
+NAPI_EXTERN napi_status napi_is_detached_arraybuffer(napi_env env,
+                                                     napi_value value,
+                                                     bool* result);
 #endif  // NAPI_EXPERIMENTAL
 
 EXTERN_C_END

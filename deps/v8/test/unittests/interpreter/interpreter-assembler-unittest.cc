@@ -4,16 +4,19 @@
 
 #include "test/unittests/interpreter/interpreter-assembler-unittest.h"
 
-#include "src/code-factory.h"
+#include "src/codegen/code-factory.h"
+#include "src/codegen/interface-descriptors.h"
+#include "src/compiler/node-properties.h"
 #include "src/compiler/node.h"
-#include "src/interface-descriptors.h"
-#include "src/isolate.h"
-#include "src/objects-inl.h"
+#include "src/execution/isolate.h"
+#include "src/objects/objects-inl.h"
 #include "test/unittests/compiler/compiler-test-utils.h"
 #include "test/unittests/compiler/node-test-utils.h"
 
 using ::testing::_;
+using ::testing::Eq;
 using v8::internal::compiler::Node;
+using v8::internal::compiler::TNode;
 
 namespace c = v8::internal::compiler;
 
@@ -62,6 +65,15 @@ Matcher<Node*> InterpreterAssemblerTest::InterpreterAssemblerForTest::IsLoad(
   return ::i::compiler::IsLoad(rep_matcher, base_matcher, index_matcher, _, _);
 }
 
+Matcher<Node*>
+InterpreterAssemblerTest::InterpreterAssemblerForTest::IsLoadFromObject(
+    const Matcher<c::LoadRepresentation>& rep_matcher,
+    const Matcher<Node*>& base_matcher, const Matcher<Node*>& index_matcher) {
+  CHECK_NE(PoisoningMitigationLevel::kPoisonAll, poisoning_level());
+  return ::i::compiler::IsLoadFromObject(rep_matcher, base_matcher,
+                                         index_matcher, _, _);
+}
+
 Matcher<Node*> InterpreterAssemblerTest::InterpreterAssemblerForTest::IsStore(
     const Matcher<c::StoreRepresentation>& rep_matcher,
     const Matcher<Node*>& base_matcher, const Matcher<Node*>& index_matcher,
@@ -72,8 +84,9 @@ Matcher<Node*> InterpreterAssemblerTest::InterpreterAssemblerForTest::IsStore(
 
 Matcher<Node*> InterpreterAssemblerTest::InterpreterAssemblerForTest::IsWordNot(
     const Matcher<Node*>& value_matcher) {
-  return kPointerSize == 8 ? IsWord64Xor(value_matcher, c::IsInt64Constant(-1))
-                           : IsWord32Xor(value_matcher, c::IsInt32Constant(-1));
+  return kSystemPointerSize == 8
+             ? IsWord64Xor(value_matcher, c::IsInt64Constant(-1))
+             : IsWord32Xor(value_matcher, c::IsInt32Constant(-1));
 }
 
 Matcher<Node*>
@@ -291,10 +304,10 @@ InterpreterAssemblerTest::InterpreterAssemblerForTest::IsLoadRegisterOperand(
     int offset, OperandSize operand_size) {
   Matcher<compiler::Node*> reg_operand = IsChangeInt32ToIntPtr(
       IsSignedOperand(offset, operand_size, LoadSensitivity::kSafe));
-  return IsLoad(
-      MachineType::AnyTagged(), c::IsLoadParentFramePointer(),
-      c::IsWordShl(reg_operand, c::IsIntPtrConstant(kPointerSizeLog2)),
-      LoadSensitivity::kCritical);
+  return IsBitcastWordToTagged(IsLoad(
+      MachineType::Pointer(), c::IsLoadParentFramePointer(),
+      c::IsWordShl(reg_operand, c::IsIntPtrConstant(kSystemPointerSizeLog2)),
+      LoadSensitivity::kCritical));
 }
 
 TARGET_TEST_F(InterpreterAssemblerTest, Jump) {
@@ -321,7 +334,7 @@ TARGET_TEST_F(InterpreterAssemblerTest, Jump) {
           MachineType::Pointer(),
           c::IsParameter(InterpreterDispatchDescriptor::kDispatchTable),
           c::IsWordShl(target_bytecode_matcher,
-                       c::IsIntPtrConstant(kPointerSizeLog2)));
+                       c::IsIntPtrConstant(kSystemPointerSizeLog2)));
 
       EXPECT_THAT(
           tail_call_node,
@@ -418,9 +431,10 @@ TARGET_TEST_F(InterpreterAssemblerTest, GetContext) {
     InterpreterAssemblerForTest m(&state, bytecode);
     EXPECT_THAT(
         m.GetContext(),
-        m.IsLoad(MachineType::AnyTagged(), c::IsLoadParentFramePointer(),
-                 c::IsIntPtrConstant(Register::current_context().ToOperand()
-                                     << kPointerSizeLog2)));
+        IsBitcastWordToTagged(m.IsLoad(
+            MachineType::Pointer(), c::IsLoadParentFramePointer(),
+            c::IsIntPtrConstant(Register::current_context().ToOperand() *
+                                kSystemPointerSize))));
   }
 }
 
@@ -429,9 +443,23 @@ TARGET_TEST_F(InterpreterAssemblerTest, LoadConstantPoolEntry) {
     InterpreterAssemblerTestState state(this, bytecode);
     InterpreterAssemblerForTest m(&state, bytecode);
     {
-      Node* index = m.IntPtrConstant(2);
+      TNode<IntPtrT> index = m.IntPtrConstant(2);
       Node* load_constant = m.LoadConstantPoolEntry(index);
-      Matcher<Node*> constant_pool_matcher = m.IsLoad(
+#ifdef V8_COMPRESS_POINTERS
+      Matcher<Node*> constant_pool_matcher =
+          IsChangeCompressedToTagged(m.IsLoadFromObject(
+              MachineType::AnyCompressed(),
+              c::IsParameter(InterpreterDispatchDescriptor::kBytecodeArray),
+              c::IsIntPtrConstant(BytecodeArray::kConstantPoolOffset -
+                                  kHeapObjectTag)));
+      EXPECT_THAT(load_constant,
+                  IsChangeCompressedToTagged(m.IsLoad(
+                      MachineType::AnyCompressed(), constant_pool_matcher,
+                      c::IsIntPtrConstant(FixedArray::OffsetOfElementAt(2) -
+                                          kHeapObjectTag),
+                      LoadSensitivity::kCritical)));
+#else
+      Matcher<Node*> constant_pool_matcher = m.IsLoadFromObject(
           MachineType::AnyTagged(),
           c::IsParameter(InterpreterDispatchDescriptor::kBytecodeArray),
           c::IsIntPtrConstant(BytecodeArray::kConstantPoolOffset -
@@ -442,11 +470,28 @@ TARGET_TEST_F(InterpreterAssemblerTest, LoadConstantPoolEntry) {
                    c::IsIntPtrConstant(FixedArray::OffsetOfElementAt(2) -
                                        kHeapObjectTag),
                    LoadSensitivity::kCritical));
+#endif
     }
     {
       Node* index = m.Parameter(2);
       Node* load_constant = m.LoadConstantPoolEntry(index);
-      Matcher<Node*> constant_pool_matcher = m.IsLoad(
+#if V8_COMPRESS_POINTERS
+      Matcher<Node*> constant_pool_matcher =
+          IsChangeCompressedToTagged(m.IsLoadFromObject(
+              MachineType::AnyCompressed(),
+              c::IsParameter(InterpreterDispatchDescriptor::kBytecodeArray),
+              c::IsIntPtrConstant(BytecodeArray::kConstantPoolOffset -
+                                  kHeapObjectTag)));
+      EXPECT_THAT(
+          load_constant,
+          IsChangeCompressedToTagged(m.IsLoad(
+              MachineType::AnyCompressed(), constant_pool_matcher,
+              c::IsIntPtrAdd(
+                  c::IsIntPtrConstant(FixedArray::kHeaderSize - kHeapObjectTag),
+                  c::IsWordShl(index, c::IsIntPtrConstant(kTaggedSizeLog2))),
+              LoadSensitivity::kCritical)));
+#else
+      Matcher<Node*> constant_pool_matcher = m.IsLoadFromObject(
           MachineType::AnyTagged(),
           c::IsParameter(InterpreterDispatchDescriptor::kBytecodeArray),
           c::IsIntPtrConstant(BytecodeArray::kConstantPoolOffset -
@@ -457,8 +502,9 @@ TARGET_TEST_F(InterpreterAssemblerTest, LoadConstantPoolEntry) {
               MachineType::AnyTagged(), constant_pool_matcher,
               c::IsIntPtrAdd(
                   c::IsIntPtrConstant(FixedArray::kHeaderSize - kHeapObjectTag),
-                  c::IsWordShl(index, c::IsIntPtrConstant(kPointerSizeLog2))),
+                  c::IsWordShl(index, c::IsIntPtrConstant(kTaggedSizeLog2))),
               LoadSensitivity::kCritical));
+#endif
     }
   }
 }
@@ -467,12 +513,19 @@ TARGET_TEST_F(InterpreterAssemblerTest, LoadObjectField) {
   TRACED_FOREACH(interpreter::Bytecode, bytecode, kBytecodes) {
     InterpreterAssemblerTestState state(this, bytecode);
     InterpreterAssemblerForTest m(&state, bytecode);
-    Node* object = m.IntPtrConstant(0xDEADBEEF);
+    TNode<HeapObject> object =
+        m.ReinterpretCast<HeapObject>(m.IntPtrConstant(0xDEADBEEF));
     int offset = 16;
-    Node* load_field = m.LoadObjectField(object, offset);
-    EXPECT_THAT(load_field,
-                m.IsLoad(MachineType::AnyTagged(), object,
-                         c::IsIntPtrConstant(offset - kHeapObjectTag)));
+    TNode<Object> load_field = m.LoadObjectField(object, offset);
+#ifdef V8_COMPRESS_POINTERS
+    EXPECT_THAT(load_field, IsChangeCompressedToTagged(m.IsLoadFromObject(
+                                MachineType::AnyCompressed(), Eq(object),
+                                c::IsIntPtrConstant(offset - kHeapObjectTag))));
+#else
+    EXPECT_THAT(load_field, m.IsLoadFromObject(
+                                MachineType::AnyTagged(), Eq(object),
+                                c::IsIntPtrConstant(offset - kHeapObjectTag)));
+#endif
   }
 }
 
@@ -480,12 +533,14 @@ TARGET_TEST_F(InterpreterAssemblerTest, CallRuntime2) {
   TRACED_FOREACH(interpreter::Bytecode, bytecode, kBytecodes) {
     InterpreterAssemblerTestState state(this, bytecode);
     InterpreterAssemblerForTest m(&state, bytecode);
-    Node* arg1 = m.Int32Constant(2);
-    Node* arg2 = m.Int32Constant(3);
-    Node* context = m.Int32Constant(4);
-    Node* call_runtime = m.CallRuntime(Runtime::kAdd, context, arg1, arg2);
-    EXPECT_THAT(call_runtime, c::IsCall(_, _, arg1, arg2, _,
-                                        c::IsInt32Constant(2), context, _, _));
+    TNode<Object> arg1 = m.ReinterpretCast<Object>(m.Int32Constant(2));
+    TNode<Object> arg2 = m.ReinterpretCast<Object>(m.Int32Constant(3));
+    TNode<Object> context = m.ReinterpretCast<Object>(m.Int32Constant(4));
+    TNode<Object> call_runtime =
+        m.CallRuntime(Runtime::kAdd, context, arg1, arg2);
+    EXPECT_THAT(call_runtime,
+                c::IsCall(_, _, Eq(arg1), Eq(arg2), _, c::IsInt32Constant(2),
+                          Eq(context), _, _));
   }
 }
 
@@ -499,29 +554,30 @@ TARGET_TEST_F(InterpreterAssemblerTest, CallRuntime) {
         Callable builtin =
             CodeFactory::InterpreterCEntry(isolate(), result_size);
 
-        Node* function_id = m.Int32Constant(0);
+        TNode<Int32T> function_id = m.Int32Constant(0);
         InterpreterAssembler::RegListNodePair registers(m.IntPtrConstant(1),
                                                         m.Int32Constant(2));
-        Node* context = m.IntPtrConstant(4);
+        TNode<Object> context = m.ReinterpretCast<Object>(m.Int32Constant(4));
 
         Matcher<Node*> function_table = c::IsExternalConstant(
             ExternalReference::runtime_function_table_address_for_unittests(
                 isolate()));
-        Matcher<Node*> function = c::IsIntPtrAdd(
-            function_table,
-            c::IsChangeUint32ToWord(c::IsInt32Mul(
-                function_id, c::IsInt32Constant(sizeof(Runtime::Function)))));
+        Matcher<Node*> function =
+            c::IsIntPtrAdd(function_table,
+                           c::IsChangeUint32ToWord(c::IsInt32Mul(
+                               Eq(function_id),
+                               c::IsInt32Constant(sizeof(Runtime::Function)))));
         Matcher<Node*> function_entry =
             m.IsLoad(MachineType::Pointer(), function,
                      c::IsIntPtrConstant(offsetof(Runtime::Function, entry)));
 
         Node* call_runtime =
             m.CallRuntimeN(function_id, context, registers, result_size);
-        EXPECT_THAT(
-            call_runtime,
-            c::IsCall(_, c::IsHeapConstant(builtin.code()),
-                      registers.reg_count(), registers.base_reg_location(),
-                      function_entry, context, _, _));
+        EXPECT_THAT(call_runtime,
+                    c::IsCall(_, c::IsHeapConstant(builtin.code()),
+                              Eq(registers.reg_count()),
+                              Eq(registers.base_reg_location()), function_entry,
+                              Eq(context), _, _));
       }
     }
   }
@@ -531,19 +587,45 @@ TARGET_TEST_F(InterpreterAssemblerTest, LoadFeedbackVector) {
   TRACED_FOREACH(interpreter::Bytecode, bytecode, kBytecodes) {
     InterpreterAssemblerTestState state(this, bytecode);
     InterpreterAssemblerForTest m(&state, bytecode);
-    Node* feedback_vector = m.LoadFeedbackVector();
+    TNode<HeapObject> feedback_vector = m.LoadFeedbackVector();
 
-    Matcher<Node*> load_function_matcher =
-        m.IsLoad(MachineType::AnyTagged(), c::IsLoadParentFramePointer(),
-                 c::IsIntPtrConstant(Register::function_closure().ToOperand()
-                                     << kPointerSizeLog2));
-    Matcher<Node*> load_vector_cell_matcher = m.IsLoad(
-        MachineType::AnyTagged(), load_function_matcher,
+    // Feedback vector is a phi node with two inputs. One of them is loading the
+    // feedback vector and the other is undefined constant (when feedback
+    // vectors aren't allocated). Find the input that loads feedback vector.
+    CHECK_EQ(static_cast<Node*>(feedback_vector)->opcode(),
+             i::compiler::IrOpcode::kPhi);
+    Node* value0 =
+        i::compiler::NodeProperties::GetValueInput(feedback_vector, 0);
+    Node* value1 =
+        i::compiler::NodeProperties::GetValueInput(feedback_vector, 1);
+    Node* load_feedback_vector = value0;
+    if (value0->opcode() == i::compiler::IrOpcode::kHeapConstant) {
+      load_feedback_vector = value1;
+    }
+
+    Matcher<Node*> load_function_matcher = IsBitcastWordToTagged(
+        m.IsLoad(MachineType::Pointer(), c::IsLoadParentFramePointer(),
+                 c::IsIntPtrConstant(Register::function_closure().ToOperand() *
+                                     kSystemPointerSize)));
+#ifdef V8_COMPRESS_POINTERS
+    Matcher<Node*> load_vector_cell_matcher =
+        IsChangeCompressedPointerToTaggedPointer(m.IsLoadFromObject(
+            MachineType::CompressedPointer(), load_function_matcher,
+            c::IsIntPtrConstant(JSFunction::kFeedbackCellOffset -
+                                kHeapObjectTag)));
+    EXPECT_THAT(load_feedback_vector,
+                IsChangeCompressedPointerToTaggedPointer(m.IsLoadFromObject(
+                    MachineType::CompressedPointer(), load_vector_cell_matcher,
+                    c::IsIntPtrConstant(Cell::kValueOffset - kHeapObjectTag))));
+#else
+    Matcher<Node*> load_vector_cell_matcher = m.IsLoadFromObject(
+        MachineType::TaggedPointer(), load_function_matcher,
         c::IsIntPtrConstant(JSFunction::kFeedbackCellOffset - kHeapObjectTag));
-    EXPECT_THAT(
-        feedback_vector,
-        m.IsLoad(MachineType::AnyTagged(), load_vector_cell_matcher,
-                 c::IsIntPtrConstant(Cell::kValueOffset - kHeapObjectTag)));
+    EXPECT_THAT(load_feedback_vector,
+                m.IsLoadFromObject(
+                    MachineType::TaggedPointer(), load_vector_cell_matcher,
+                    c::IsIntPtrConstant(Cell::kValueOffset - kHeapObjectTag)));
+#endif
   }
 }
 

@@ -4,11 +4,11 @@
 
 #include "test/common/wasm/wasm-module-runner.h"
 
-#include "src/handles.h"
-#include "src/isolate.h"
-#include "src/objects-inl.h"
-#include "src/objects.h"
-#include "src/property-descriptor.h"
+#include "src/execution/isolate.h"
+#include "src/handles/handles.h"
+#include "src/objects/heap-number-inl.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/property-descriptor.h"
 #include "src/wasm/module-decoder.h"
 #include "src/wasm/wasm-engine.h"
 #include "src/wasm/wasm-interpreter.h"
@@ -26,14 +26,21 @@ uint32_t GetInitialMemSize(const WasmModule* module) {
   return kWasmPageSize * module->initial_pages;
 }
 
-MaybeHandle<WasmInstanceObject> CompileAndInstantiateForTesting(
-    Isolate* isolate, ErrorThrower* thrower, const ModuleWireBytes& bytes) {
+MaybeHandle<WasmModuleObject> CompileForTesting(Isolate* isolate,
+                                                ErrorThrower* thrower,
+                                                const ModuleWireBytes& bytes) {
   auto enabled_features = WasmFeaturesFromIsolate(isolate);
   MaybeHandle<WasmModuleObject> module = isolate->wasm_engine()->SyncCompile(
       isolate, enabled_features, thrower, bytes);
   DCHECK_EQ(thrower->error(), module.is_null());
-  if (module.is_null()) return {};
+  return module;
+}
 
+MaybeHandle<WasmInstanceObject> CompileAndInstantiateForTesting(
+    Isolate* isolate, ErrorThrower* thrower, const ModuleWireBytes& bytes) {
+  MaybeHandle<WasmModuleObject> module =
+      CompileForTesting(isolate, thrower, bytes);
+  if (module.is_null()) return {};
   return isolate->wasm_engine()->SyncInstantiate(
       isolate, thrower, module.ToHandleChecked(), {}, {});
 }
@@ -46,21 +53,23 @@ std::shared_ptr<WasmModule> DecodeWasmModuleForTesting(
   auto enabled_features = WasmFeaturesFromIsolate(isolate);
   ModuleResult decoding_result = DecodeWasmModule(
       enabled_features, module_start, module_end, verify_functions, origin,
-      isolate->counters(), isolate->allocator());
+      isolate->counters(), isolate->wasm_engine()->allocator());
 
   if (decoding_result.failed()) {
     // Module verification failed. throw.
     thrower->CompileError("DecodeWasmModule failed: %s",
-                          decoding_result.error_msg().c_str());
+                          decoding_result.error().message().c_str());
   }
 
-  return std::move(decoding_result.val);
+  return std::move(decoding_result).value();
 }
 
 bool InterpretWasmModuleForTesting(Isolate* isolate,
                                    Handle<WasmInstanceObject> instance,
                                    const char* name, size_t argc,
                                    WasmValue* args) {
+  HandleScope handle_scope(isolate);  // Avoid leaking handles.
+  WasmCodeRefScope code_ref_scope;
   MaybeHandle<WasmExportedFunction> maybe_function =
       GetExportedFunction(isolate, instance, "main");
   Handle<WasmExportedFunction> function;
@@ -72,7 +81,10 @@ bool InterpretWasmModuleForTesting(Isolate* isolate,
   size_t param_count = signature->parameter_count();
   std::unique_ptr<WasmValue[]> arguments(new WasmValue[param_count]);
 
-  memcpy(arguments.get(), args, std::min(param_count, argc));
+  size_t arg_count = std::min(param_count, argc);
+  if (arg_count > 0) {
+    memcpy(arguments.get(), args, arg_count);
+  }
 
   // Fill the parameters up with default values.
   for (size_t i = argc; i < param_count; ++i) {
@@ -88,6 +100,12 @@ bool InterpretWasmModuleForTesting(Isolate* isolate,
         break;
       case kWasmF64:
         arguments[i] = WasmValue(0.0);
+        break;
+      case kWasmAnyRef:
+      case kWasmFuncRef:
+      case kWasmExnRef:
+        arguments[i] =
+            WasmValue(Handle<Object>::cast(isolate->factory()->null_value()));
         break;
       default:
         UNREACHABLE();
@@ -113,7 +131,11 @@ bool InterpretWasmModuleForTesting(Isolate* isolate,
                     arguments.get());
   WasmInterpreter::State interpreter_result = thread->Run(kMaxNumSteps);
 
-  isolate->clear_pending_exception();
+  if (isolate->has_pending_exception()) {
+    // Stack overflow during interpretation.
+    isolate->clear_pending_exception();
+    return false;
+  }
 
   return interpreter_result != WasmInterpreter::PAUSED;
 }
@@ -143,12 +165,16 @@ int32_t CompileAndRunAsmWasmModule(Isolate* isolate, const byte* module_start,
                                    const byte* module_end) {
   HandleScope scope(isolate);
   ErrorThrower thrower(isolate, "CompileAndRunAsmWasmModule");
-  MaybeHandle<WasmModuleObject> module =
+  MaybeHandle<AsmWasmData> data =
       isolate->wasm_engine()->SyncCompileTranslatedAsmJs(
           isolate, &thrower, ModuleWireBytes(module_start, module_end),
-          Handle<Script>::null(), Vector<const byte>());
-  DCHECK_EQ(thrower.error(), module.is_null());
-  if (module.is_null()) return -1;
+          Vector<const byte>(), Handle<HeapNumber>(), LanguageMode::kSloppy);
+  DCHECK_EQ(thrower.error(), data.is_null());
+  if (data.is_null()) return -1;
+
+  MaybeHandle<WasmModuleObject> module =
+      isolate->wasm_engine()->FinalizeTranslatedAsmJs(
+          isolate, data.ToHandleChecked(), Handle<Script>::null());
 
   MaybeHandle<WasmInstanceObject> instance =
       isolate->wasm_engine()->SyncInstantiate(
@@ -160,10 +186,9 @@ int32_t CompileAndRunAsmWasmModule(Isolate* isolate, const byte* module_start,
   return RunWasmModuleForTesting(isolate, instance.ToHandleChecked(), 0,
                                  nullptr);
 }
-int32_t InterpretWasmModule(Isolate* isolate,
-                            Handle<WasmInstanceObject> instance,
-                            ErrorThrower* thrower, int32_t function_index,
-                            WasmValue* args, bool* possible_nondeterminism) {
+WasmInterpretationResult InterpretWasmModule(
+    Isolate* isolate, Handle<WasmInstanceObject> instance,
+    int32_t function_index, WasmValue* args) {
   // Don't execute more than 16k steps.
   constexpr int kMaxNumSteps = 16 * 1024;
 
@@ -186,17 +211,19 @@ int32_t InterpretWasmModule(Isolate* isolate,
   bool stack_overflow = isolate->has_pending_exception();
   isolate->clear_pending_exception();
 
-  *possible_nondeterminism = thread->PossibleNondeterminism();
-  if (stack_overflow) return 0xDEADBEEF;
+  if (stack_overflow) return WasmInterpretationResult::Stopped();
 
-  if (thread->state() == WasmInterpreter::TRAPPED) return 0xDEADBEEF;
+  if (thread->state() == WasmInterpreter::TRAPPED) {
+    return WasmInterpretationResult::Trapped(thread->PossibleNondeterminism());
+  }
 
-  if (interpreter_result == WasmInterpreter::FINISHED)
-    return thread->GetReturnValue().to<int32_t>();
+  if (interpreter_result == WasmInterpreter::FINISHED) {
+    return WasmInterpretationResult::Finished(
+        thread->GetReturnValue().to<int32_t>(),
+        thread->PossibleNondeterminism());
+  }
 
-  thrower->RangeError(
-      "Interpreter did not finish execution within its step bound");
-  return -1;
+  return WasmInterpretationResult::Stopped();
 }
 
 MaybeHandle<WasmExportedFunction> GetExportedFunction(
@@ -244,7 +271,7 @@ int32_t CallWasmFunctionForTesting(Isolate* isolate,
     return Smi::ToInt(*result);
   }
   if (result->IsHeapNumber()) {
-    return static_cast<int32_t>(HeapNumber::cast(*result)->value());
+    return static_cast<int32_t>(HeapNumber::cast(*result).value());
   }
   thrower->RuntimeError(
       "Calling exported wasm function failed: Return value should be number");

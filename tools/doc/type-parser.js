@@ -15,10 +15,10 @@ const jsPrimitives = {
 
 const jsGlobalObjectsUrl = `${jsDocPrefix}Reference/Global_Objects/`;
 const jsGlobalTypes = [
-  'Array', 'ArrayBuffer', 'DataView', 'Date', 'Error', 'EvalError', 'Function',
-  'Map', 'Object', 'Promise', 'RangeError', 'ReferenceError', 'RegExp', 'Set',
-  'SharedArrayBuffer', 'SyntaxError', 'TypeError', 'TypedArray', 'URIError',
-  'Uint8Array',
+  'Array', 'ArrayBuffer', 'ArrayBufferView', 'DataView', 'Date', 'Error',
+  'EvalError', 'Function', 'Map', 'Object', 'Promise', 'RangeError',
+  'ReferenceError', 'RegExp', 'Set', 'SharedArrayBuffer', 'SyntaxError',
+  'TypeError', 'TypedArray', 'URIError', 'Uint8Array', 'WebAssembly.Instance',
 ];
 
 const customTypesMap = {
@@ -28,7 +28,7 @@ const customTypesMap = {
 
   'AsyncIterator': 'https://tc39.github.io/ecma262/#sec-asynciterator-interface',
 
-  'bigint': 'https://github.com/tc39/proposal-bigint',
+  'bigint': `${jsDocPrefix}Reference/Global_Objects/BigInt`,
 
   'Iterable':
     `${jsDocPrefix}Reference/Iteration_protocols#The_iterable_protocol`,
@@ -52,6 +52,7 @@ const customTypesMap = {
   'Cipher': 'crypto.html#crypto_class_cipher',
   'Decipher': 'crypto.html#crypto_class_decipher',
   'DiffieHellman': 'crypto.html#crypto_class_diffiehellman',
+  'DiffieHellmanGroup': 'crypto.html#crypto_class_diffiehellmangroup',
   'ECDH': 'crypto.html#crypto_class_ecdh',
   'Hash': 'crypto.html#crypto_class_hash',
   'Hmac': 'crypto.html#crypto_class_hmac',
@@ -64,11 +65,14 @@ const customTypesMap = {
 
   'Domain': 'domain.html#domain_class_domain',
 
+  'errors.Error': 'errors.html#errors_class_error',
+
   'import.meta': 'esm.html#esm_import_meta',
 
   'EventEmitter': 'events.html#events_class_eventemitter',
 
   'FileHandle': 'fs.html#fs_class_filehandle',
+  'fs.Dir': 'fs.html#fs_class_fs_dir',
   'fs.Dirent': 'fs.html#fs_class_fs_dirent',
   'fs.FSWatcher': 'fs.html#fs_class_fs_fswatcher',
   'fs.ReadStream': 'fs.html#fs_class_fs_readstream',
@@ -121,6 +125,7 @@ const customTypesMap = {
   'Stream': 'stream.html#stream_stream',
   'stream.Duplex': 'stream.html#stream_class_stream_duplex',
   'stream.Readable': 'stream.html#stream_class_stream_readable',
+  'stream.Transform': 'stream.html#stream_class_stream_transform',
   'stream.Writable': 'stream.html#stream_class_stream_writable',
 
   'Immediate': 'timers.html#timers_class_immediate',
@@ -136,6 +141,7 @@ const customTypesMap = {
   'URL': 'url.html#url_the_whatwg_url_api',
   'URLSearchParams': 'url.html#url_class_urlsearchparams',
 
+  'vm.Module': 'vm.html#vm_class_vm_module',
   'vm.SourceTextModule': 'vm.html#vm_class_vm_sourcetextmodule',
 
   'MessagePort': 'worker_threads.html#worker_threads_class_messageport',

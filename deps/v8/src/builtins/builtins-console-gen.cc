@@ -4,8 +4,9 @@
 
 #include "src/builtins/builtins-utils-gen.h"
 #include "src/builtins/builtins.h"
-#include "src/code-stub-assembler.h"
-#include "src/frame-constants.h"
+#include "src/codegen/code-stub-assembler.h"
+#include "src/codegen/macro-assembler.h"
+#include "src/execution/frame-constants.h"
 
 namespace v8 {
 namespace internal {
@@ -16,7 +17,8 @@ TF_BUILTIN(FastConsoleAssert, CodeStubAssembler) {
 
   // TODO(ishell): use constants from Descriptor once the JSFunction linkage
   // arguments are reordered.
-  Node* argc = Parameter(Descriptor::kJSActualArgumentsCount);
+  TNode<Int32T> argc =
+      UncheckedCast<Int32T>(Parameter(Descriptor::kJSActualArgumentsCount));
   Node* context = Parameter(Descriptor::kContext);
   Node* new_target = Parameter(Descriptor::kJSNewTarget);
   GotoIf(Word32Equal(argc, Int32Constant(0)), &runtime);

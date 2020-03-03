@@ -14,12 +14,28 @@
 #include "include/v8.h"
 
 #include "src/base/platform/platform.h"
-#include "src/flags.h"
-#include "src/utils.h"
-#include "src/vector.h"
+#include "src/flags/flags.h"
+#include "src/heap/read-only-heap.h"
+#include "src/utils/utils.h"
+#include "src/utils/vector.h"
 
 #include "test/inspector/isolate-data.h"
 #include "test/inspector/task-runner.h"
+
+namespace v8 {
+namespace internal {
+
+extern void DisableEmbeddedBlobRefcounting();
+extern void FreeCurrentEmbeddedBlob();
+
+extern v8::StartupData CreateSnapshotDataBlobInternal(
+    v8::SnapshotCreator::FunctionCodeHandling function_code_handling,
+    const char* embedded_source, v8::Isolate* isolate);
+extern v8::StartupData WarmUpSnapshotDataBlobInternal(
+    v8::StartupData cold_snapshot_blob, const char* warmup_source);
+
+}  // namespace internal
+}  // namespace v8
 
 namespace {
 
@@ -47,8 +63,22 @@ std::vector<uint16_t> ToVector(v8::Isolate* isolate,
   return buffer;
 }
 
+std::vector<uint8_t> ToBytes(v8::Isolate* isolate, v8::Local<v8::String> str) {
+  std::vector<uint8_t> buffer(str->Length());
+  str->WriteOneByte(isolate, buffer.data(), 0, str->Length());
+  return buffer;
+}
+
 v8::Local<v8::String> ToV8String(v8::Isolate* isolate, const char* str) {
   return v8::String::NewFromUtf8(isolate, str, v8::NewStringType::kNormal)
+      .ToLocalChecked();
+}
+
+v8::Local<v8::String> ToV8String(v8::Isolate* isolate,
+                                 const std::vector<uint8_t>& bytes) {
+  return v8::String::NewFromOneByte(isolate, bytes.data(),
+                                    v8::NewStringType::kNormal,
+                                    static_cast<int>(bytes.size()))
       .ToLocalChecked();
 }
 
@@ -86,7 +116,7 @@ class FrontendChannelImpl : public v8_inspector::V8Inspector::Channel {
       : task_runner_(task_runner),
         context_group_id_(context_group_id),
         function_(isolate, function) {}
-  virtual ~FrontendChannelImpl() = default;
+  ~FrontendChannelImpl() override = default;
 
   void set_session_id(int session_id) { session_id_ = session_id; }
 
@@ -109,7 +139,7 @@ class FrontendChannelImpl : public v8_inspector::V8Inspector::Channel {
     SendMessageTask(FrontendChannelImpl* channel,
                     const std::vector<uint16_t>& message)
         : channel_(channel), message_(message) {}
-    virtual ~SendMessageTask() {}
+    ~SendMessageTask() override = default;
     bool is_priority_task() final { return false; }
 
    private:
@@ -142,7 +172,7 @@ void RunSyncTask(TaskRunner* task_runner, T callback) {
    public:
     SyncTask(v8::base::Semaphore* ready_semaphore, T callback)
         : ready_semaphore_(ready_semaphore), callback_(callback) {}
-    virtual ~SyncTask() = default;
+    ~SyncTask() override = default;
     bool is_priority_task() final { return true; }
 
    private:
@@ -182,7 +212,7 @@ void RunAsyncTask(TaskRunner* task_runner,
   class AsyncTask : public TaskRunner::Task {
    public:
     explicit AsyncTask(TaskRunner::Task* inner) : inner_(inner) {}
-    virtual ~AsyncTask() = default;
+    ~AsyncTask() override = default;
     bool is_priority_task() override { return inner_->is_priority_task(); }
     void Run(IsolateData* data) override {
       data->AsyncTaskStarted(inner_.get());
@@ -216,8 +246,7 @@ class ExecuteStringTask : public TaskRunner::Task {
   ExecuteStringTask(const std::string& expression, int context_group_id)
       : expression_utf8_(expression), context_group_id_(context_group_id) {}
 
-  virtual ~ExecuteStringTask() {
-  }
+  ~ExecuteStringTask() override = default;
   bool is_priority_task() override { return false; }
   void Run(IsolateData* data) override {
     v8::MicrotasksScope microtasks_scope(data->isolate(),
@@ -254,7 +283,7 @@ class ExecuteStringTask : public TaskRunner::Task {
       int length = static_cast<int>(name_.size());
       v8::internal::Vector<uint16_t> buffer =
           v8::internal::Vector<uint16_t>::New(length);
-      std::copy(name_.begin(), name_.end(), buffer.start());
+      std::copy(name_.begin(), name_.end(), buffer.begin());
       data->RegisterModule(context, buffer, &scriptSource);
     }
   }
@@ -312,6 +341,9 @@ class UtilsExtension : public IsolateData::SetupGlobalTask {
     utils->Set(ToV8String(isolate, "createContextGroup"),
                v8::FunctionTemplate::New(isolate,
                                          &UtilsExtension::CreateContextGroup));
+    utils->Set(
+        ToV8String(isolate, "resetContextGroup"),
+        v8::FunctionTemplate::New(isolate, &UtilsExtension::ResetContextGroup));
     utils->Set(
         ToV8String(isolate, "connectSession"),
         v8::FunctionTemplate::New(isolate, &UtilsExtension::ConnectSession));
@@ -527,6 +559,18 @@ class UtilsExtension : public IsolateData::SetupGlobalTask {
         v8::Int32::New(args.GetIsolate(), context_group_id));
   }
 
+  static void ResetContextGroup(
+      const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (args.Length() != 1 || !args[0]->IsInt32()) {
+      fprintf(stderr, "Internal error: resetContextGroup(context_group_id).");
+      Exit();
+    }
+    int context_group_id = args[0].As<v8::Int32>()->Value();
+    RunSyncTask(backend_runner_, [&context_group_id](IsolateData* data) {
+      data->ResetContextGroup(context_group_id);
+    });
+  }
+
   static void ConnectSession(const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (args.Length() != 3 || !args[0]->IsInt32() || !args[1]->IsString() ||
         !args[2]->IsFunction()) {
@@ -541,8 +585,8 @@ class UtilsExtension : public IsolateData::SetupGlobalTask {
         IsolateData::FromContext(context)->GetContextGroupId(context),
         args.GetIsolate(), args[2].As<v8::Function>());
 
-    std::vector<uint16_t> state =
-        ToVector(args.GetIsolate(), args[1].As<v8::String>());
+    std::vector<uint8_t> state =
+        ToBytes(args.GetIsolate(), args[1].As<v8::String>());
     int context_group_id = args[0].As<v8::Int32>()->Value();
     int session_id = 0;
     RunSyncTask(backend_runner_, [&context_group_id, &session_id, &channel,
@@ -564,9 +608,9 @@ class UtilsExtension : public IsolateData::SetupGlobalTask {
       Exit();
     }
     int session_id = args[0].As<v8::Int32>()->Value();
-    std::vector<uint16_t> state;
+    std::vector<uint8_t> state;
     RunSyncTask(backend_runner_, [&session_id, &state](IsolateData* data) {
-      state = ToVector(data->DisconnectSession(session_id)->string());
+      state = data->DisconnectSession(session_id);
     });
     channels_.erase(session_id);
     args.GetReturnValue().Set(ToV8String(args.GetIsolate(), state));
@@ -595,7 +639,7 @@ class SetTimeoutTask : public TaskRunner::Task {
   SetTimeoutTask(int context_group_id, v8::Isolate* isolate,
                  v8::Local<v8::Function> function)
       : function_(isolate, function), context_group_id_(context_group_id) {}
-  virtual ~SetTimeoutTask() {}
+  ~SetTimeoutTask() override = default;
   bool is_priority_task() final { return false; }
 
  private:
@@ -1007,50 +1051,6 @@ class InspectorExtension : public IsolateData::SetupGlobalTask {
   }
 };
 
-bool RunExtraCode(v8::Isolate* isolate, v8::Local<v8::Context> context,
-                  const char* utf8_source, const char* name) {
-  v8::Context::Scope context_scope(context);
-  v8::TryCatch try_catch(isolate);
-  v8::Local<v8::String> source_string;
-  if (!v8::String::NewFromUtf8(isolate, utf8_source, v8::NewStringType::kNormal)
-           .ToLocal(&source_string)) {
-    return false;
-  }
-  v8::Local<v8::String> resource_name =
-      v8::String::NewFromUtf8(isolate, name, v8::NewStringType::kNormal)
-          .ToLocalChecked();
-  v8::ScriptOrigin origin(resource_name);
-  v8::ScriptCompiler::Source source(source_string, origin);
-  v8::Local<v8::Script> script;
-  if (!v8::ScriptCompiler::Compile(context, &source).ToLocal(&script))
-    return false;
-  if (script->Run(context).IsEmpty()) return false;
-  CHECK(!try_catch.HasCaught());
-  return true;
-}
-
-v8::StartupData CreateSnapshotDataBlob(const char* embedded_source = nullptr) {
-  // Create a new isolate and a new context from scratch, optionally run
-  // a script to embed, and serialize to create a snapshot blob.
-  v8::StartupData result = {nullptr, 0};
-  {
-    v8::SnapshotCreator snapshot_creator;
-    v8::Isolate* isolate = snapshot_creator.GetIsolate();
-    {
-      v8::HandleScope scope(isolate);
-      v8::Local<v8::Context> context = v8::Context::New(isolate);
-      if (embedded_source != nullptr &&
-          !RunExtraCode(isolate, context, embedded_source, "<embedded>")) {
-        return result;
-      }
-      snapshot_creator.SetDefaultContext(context);
-    }
-    result = snapshot_creator.CreateBlob(
-        v8::SnapshotCreator::FunctionCodeHandling::kClear);
-  }
-  return result;
-}
-
 }  //  namespace
 
 int main(int argc, char* argv[]) {
@@ -1060,6 +1060,7 @@ int main(int argc, char* argv[]) {
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
   v8::V8::InitializeExternalStartupData(argv[0]);
   v8::V8::Initialize();
+  i::DisableEmbeddedBlobRefcounting();
 
   v8::base::Semaphore ready_semaphore(0);
 
@@ -1068,54 +1069,64 @@ int main(int argc, char* argv[]) {
     if (strcmp(argv[i], "--embed") == 0) {
       argv[i++] = nullptr;
       printf("Embedding script '%s'\n", argv[i]);
-      startup_data = CreateSnapshotDataBlob(argv[i]);
+      startup_data = i::CreateSnapshotDataBlobInternal(
+          v8::SnapshotCreator::FunctionCodeHandling::kClear, argv[i], nullptr);
+      v8::internal::ReadOnlyHeap::ClearSharedHeapForTest();
       argv[i] = nullptr;
     }
   }
 
-  IsolateData::SetupGlobalTasks frontend_extensions;
-  frontend_extensions.emplace_back(new UtilsExtension());
-  TaskRunner frontend_runner(std::move(frontend_extensions), true,
-                             &ready_semaphore, nullptr, false);
-  ready_semaphore.Wait();
+  {
+    IsolateData::SetupGlobalTasks frontend_extensions;
+    frontend_extensions.emplace_back(new UtilsExtension());
+    TaskRunner frontend_runner(
+        std::move(frontend_extensions), true, &ready_semaphore,
+        startup_data.data ? &startup_data : nullptr, false);
+    ready_semaphore.Wait();
 
-  int frontend_context_group_id = 0;
-  RunSyncTask(&frontend_runner,
-              [&frontend_context_group_id](IsolateData* data) {
-                frontend_context_group_id = data->CreateContextGroup();
-              });
+    int frontend_context_group_id = 0;
+    RunSyncTask(&frontend_runner,
+                [&frontend_context_group_id](IsolateData* data) {
+                  frontend_context_group_id = data->CreateContextGroup();
+                });
 
-  IsolateData::SetupGlobalTasks backend_extensions;
-  backend_extensions.emplace_back(new SetTimeoutExtension());
-  backend_extensions.emplace_back(new InspectorExtension());
-  TaskRunner backend_runner(std::move(backend_extensions), false,
-                            &ready_semaphore,
-                            startup_data.data ? &startup_data : nullptr, true);
-  ready_semaphore.Wait();
-  UtilsExtension::set_backend_task_runner(&backend_runner);
+    IsolateData::SetupGlobalTasks backend_extensions;
+    backend_extensions.emplace_back(new SetTimeoutExtension());
+    backend_extensions.emplace_back(new InspectorExtension());
+    TaskRunner backend_runner(
+        std::move(backend_extensions), false, &ready_semaphore,
+        startup_data.data ? &startup_data : nullptr, true);
+    ready_semaphore.Wait();
+    UtilsExtension::set_backend_task_runner(&backend_runner);
 
-  task_runners.push_back(&frontend_runner);
-  task_runners.push_back(&backend_runner);
+    task_runners.push_back(&frontend_runner);
+    task_runners.push_back(&backend_runner);
 
-  for (int i = 1; i < argc; ++i) {
-    // Ignore unknown flags.
-    if (argv[i] == nullptr || argv[i][0] == '-') continue;
+    for (int i = 1; i < argc; ++i) {
+      // Ignore unknown flags.
+      if (argv[i] == nullptr || argv[i][0] == '-') continue;
 
-    bool exists = false;
-    std::string chars = v8::internal::ReadFile(argv[i], &exists, true);
-    if (!exists) {
-      fprintf(stderr, "Internal error: script file doesn't exists: %s\n",
-              argv[i]);
-      Exit();
+      bool exists = false;
+      std::string chars = v8::internal::ReadFile(argv[i], &exists, true);
+      if (!exists) {
+        fprintf(stderr, "Internal error: script file doesn't exists: %s\n",
+                argv[i]);
+        Exit();
+      }
+      frontend_runner.Append(
+          new ExecuteStringTask(chars, frontend_context_group_id));
     }
-    frontend_runner.Append(
-        new ExecuteStringTask(chars, frontend_context_group_id));
+
+    frontend_runner.Join();
+    backend_runner.Join();
+
+    UtilsExtension::ClearAllSessions();
+    delete startup_data.data;
+
+    // TaskRunners go out of scope here, which causes Isolate teardown and all
+    // running background tasks to be properly joined.
   }
 
-  frontend_runner.Join();
-  backend_runner.Join();
-
-  delete startup_data.data;
-  UtilsExtension::ClearAllSessions();
+  i::FreeCurrentEmbeddedBlob();
   return 0;
 }

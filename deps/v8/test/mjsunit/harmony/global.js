@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-global
-
 assertEquals(globalThis, this);
 assertEquals(this.globalThis, this);
 assertEquals(globalThis.globalThis, this);
@@ -13,7 +11,7 @@ assertEquals(globalThis.globalThis.globalThis.globalThis, this);
 {
   const realm = Realm.create();
   assertEquals(Realm.global(realm), Realm.eval(realm, 'globalThis'));
-  assertTrue(Realm.global(realm) !== globalThis);
+  assertNotEquals(Realm.global(realm), globalThis);
 }
 
 {

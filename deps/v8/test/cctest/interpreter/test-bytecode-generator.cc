@@ -4,12 +4,12 @@
 
 #include <fstream>
 
-#include "src/v8.h"
+#include "src/init/v8.h"
 
 #include "src/interpreter/bytecode-array-iterator.h"
 #include "src/interpreter/bytecode-generator.h"
 #include "src/interpreter/interpreter.h"
-#include "src/objects-inl.h"
+#include "src/objects/objects-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/interpreter/bytecode-expectations-printer.h"
 #include "test/cctest/test-feedback-vector.h"
@@ -91,6 +91,7 @@ class InitializedIgnitionHandleScope : public InitializedHandleScope {
   InitializedIgnitionHandleScope() {
     i::FLAG_always_opt = false;
     i::FLAG_allow_natives_syntax = true;
+    i::FLAG_enable_lazy_source_positions = false;
   }
 };
 
@@ -130,21 +131,22 @@ std::string BuildActual(const BytecodeExpectationsPrinter& printer,
 }
 
 // inplace left trim
-static inline void ltrim(std::string& str) {
+static inline void ltrim(std::string& str) {  // NOLINT(runtime/references)
   str.erase(str.begin(),
             std::find_if(str.begin(), str.end(),
                          [](unsigned char ch) { return !std::isspace(ch); }));
 }
 
 // inplace right trim
-static inline void rtrim(std::string& str) {
+static inline void rtrim(std::string& str) {  // NOLINT(runtime/references)
   str.erase(std::find_if(str.rbegin(), str.rend(),
                          [](unsigned char ch) { return !std::isspace(ch); })
                 .base(),
             str.end());
 }
 
-static inline std::string trim(std::string& str) {
+static inline std::string trim(
+    std::string& str) {  // NOLINT(runtime/references)
   ltrim(str);
   rtrim(str);
   return str;
@@ -157,13 +159,14 @@ bool CompareTexts(const std::string& generated, const std::string& expected) {
   std::string expected_line;
   // Line number does not include golden file header.
   int line_number = 0;
+  bool strings_match = true;
 
   do {
     std::getline(generated_stream, generated_line);
     std::getline(expected_stream, expected_line);
 
     if (!generated_stream.good() && !expected_stream.good()) {
-      return true;
+      return strings_match;
     }
 
     if (!generated_stream.good()) {
@@ -182,7 +185,7 @@ bool CompareTexts(const std::string& generated, const std::string& expected) {
       std::cerr << "Inputs differ at line " << line_number << "\n";
       std::cerr << "  Generated: '" << generated_line << "'\n";
       std::cerr << "  Expected:  '" << expected_line << "'\n";
-      return false;
+      strings_match = false;
     }
     line_number++;
   } while (true);
@@ -627,6 +630,98 @@ TEST(IIFEWithOneshotOpt) {
         return arguments.callee;
       })();
     )",
+      // CallNoFeedback instead of CallProperty
+      R"(
+      this.f0 = function() {};
+      this.f1 = function(a) {};
+      this.f2 = function(a, b) {};
+      this.f3 = function(a, b, c) {};
+      this.f4 = function(a, b, c, d) {};
+      this.f5 = function(a, b, c, d, e) {};
+      (function() {
+        this.f0();
+        this.f1(1);
+        this.f2(1, 2);
+        this.f3(1, 2, 3);
+        this.f4(1, 2, 3, 4);
+        this.f5(1, 2, 3, 4, 5);
+        return arguments.callee;
+      })();
+    )",
+      // CallNoFeedback instead of CallUndefinedReceiver
+      R"(
+      function f0() {}
+      function f1(a) {}
+      function f2(a, b) {}
+      function f3(a, b, c) {}
+      function f4(a, b, c, d) {}
+      function f5(a, b, c, d, e) {}
+      (function() {
+        f0();
+        f1(1);
+        f2(1, 2);
+        f3(1, 2, 3);
+        f4(1, 2, 3, 4);
+        f5(1, 2, 3, 4, 5);
+        return arguments.callee;
+      })();
+    )",
+      // TODO(rmcilroy): Make this function produce one-shot code.
+      R"(
+      var t = 0;
+      function f2() {};
+      if (t == 0) {
+        (function(){
+          l = {};
+          l.a = 3;
+          l.b = 4;
+          f2();
+          return arguments.callee;
+        })();
+      }
+    )",
+      // No one-shot opt for IIFE`s within a function
+      R"(
+        function f2() {};
+        function f() {
+          return (function(){
+            l = {};
+            l.a = 3;
+            l.b = 4;
+            f2();
+            return arguments.callee;
+          })();
+        }
+        f();
+    )",
+      R"(
+        var f = function(l) {  l.a = 3; return l; };
+        f({});
+        f;
+    )",
+      // No one-shot opt for top-level functions enclosed in parentheses
+      R"(
+        var f = (function(l) {  l.a = 3; return l; });
+        f;
+    )",
+      R"(
+        var f = (function foo(l) {  l.a = 3; return l; });
+        f;
+    )",
+      R"(
+        var f = function foo(l) {  l.a = 3; return l; };
+        f({});
+        f;
+    )",
+      R"(
+        l = {};
+        var f = (function foo(l) {  l.a = 3; return arguments.callee; })(l);
+        f;
+    )",
+      R"(
+        var f = (function foo(l) {  l.a = 3; return arguments.callee; })({});
+        f;
+    )",
   };
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("IIFEWithOneshotOpt.golden")));
@@ -660,6 +755,40 @@ TEST(IIFEWithoutOneshotOpt) {
         } else {
           l.a = l.b;
         }
+        return arguments.callee;
+      })();
+    )",
+      R"(
+      this.f0 = function() {};
+      this.f1 = function(a) {};
+      this.f2 = function(a, b) {};
+      this.f3 = function(a, b, c) {};
+      this.f4 = function(a, b, c, d) {};
+      this.f5 = function(a, b, c, d, e) {};
+      (function() {
+        this.f0();
+        this.f1(1);
+        this.f2(1, 2);
+        this.f3(1, 2, 3);
+        this.f4(1, 2, 3, 4);
+        this.f5(1, 2, 3, 4, 5);
+        return arguments.callee;
+      })();
+    )",
+      R"(
+      function f0() {}
+      function f1(a) {}
+      function f2(a, b) {}
+      function f3(a, b, c) {}
+      function f4(a, b, c, d) {}
+      function f5(a, b, c, d, e) {}
+      (function() {
+        f0();
+        f1(1);
+        f2(1, 2);
+        f3(1, 2, 3);
+        f4(1, 2, 3, 4);
+        f5(1, 2, 3, 4, 5);
         return arguments.callee;
       })();
     )",
@@ -1372,6 +1501,8 @@ TEST(Delete) {
       "return delete a[1];\n",
 
       "return delete 'test';\n",
+
+      "return delete this;\n",
   };
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
@@ -2145,6 +2276,33 @@ TEST(AssignmentsInBinaryExpression) {
                      LoadGolden("AssignmentsInBinaryExpression.golden")));
 }
 
+TEST(DestructuringAssignment) {
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  const char* snippets[] = {
+      "var x, a = [0,1,2,3];\n"
+      "[x] = a;\n",
+
+      "var x, y, a = [0,1,2,3];\n"
+      "[,x,...y] = a;\n",
+
+      "var x={}, y, a = [0];\n"
+      "[x.foo,y=4] = a;\n",
+
+      "var x, a = {x:1};\n"
+      "({x} = a);\n",
+
+      "var x={}, a = {y:1};\n"
+      "({y:x.foo} = a);\n",
+
+      "var x, a = {y:1, w:2, v:3};\n"
+      "({x=0,...y} = a);\n",
+  };
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("DestructuringAssignment.golden")));
+}
+
 TEST(Eval) {
   InitializedIgnitionHandleScope scope;
   BytecodeExpectationsPrinter printer(CcTest::isolate());
@@ -2264,7 +2422,7 @@ TEST(WideRegisters) {
   // Prepare prologue that creates frame for lots of registers.
   std::ostringstream os;
   for (size_t i = 0; i < 157; ++i) {
-    os << "var x" << i << ";\n";
+    os << "var x" << i << " = 0;\n";
   }
   std::string prologue(os.str());
 
@@ -2377,26 +2535,6 @@ TEST(LetVariableContextSlot) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("LetVariableContextSlot.golden")));
-}
-
-TEST(DoExpression) {
-  bool old_flag = FLAG_harmony_do_expressions;
-  FLAG_harmony_do_expressions = true;
-
-  InitializedIgnitionHandleScope scope;
-  BytecodeExpectationsPrinter printer(CcTest::isolate());
-  const char* snippets[] = {
-      "var a = do { }; return a;\n",
-
-      "var a = do { var x = 100; }; return a;\n",
-
-      "while(true) { var a = 10; a = do { ++a; break; }; a = 20; }\n",
-  };
-
-  CHECK(CompareTexts(BuildActual(printer, snippets),
-                     LoadGolden("DoExpression.golden")));
-
-  FLAG_harmony_do_expressions = old_flag;
 }
 
 TEST(WithStatement) {
@@ -2513,8 +2651,6 @@ TEST(ClassAndSuperClass) {
 }
 
 TEST(PublicClassFields) {
-  bool old_flag = i::FLAG_harmony_public_fields;
-  i::FLAG_harmony_public_fields = true;
   InitializedIgnitionHandleScope scope;
   BytecodeExpectationsPrinter printer(CcTest::isolate());
 
@@ -2563,12 +2699,9 @@ TEST(PublicClassFields) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("PublicClassFields.golden")));
-  i::FLAG_harmony_public_fields = old_flag;
 }
 
 TEST(PrivateClassFields) {
-  bool old_flag = i::FLAG_harmony_private_fields;
-  i::FLAG_harmony_private_fields = true;
   InitializedIgnitionHandleScope scope;
   BytecodeExpectationsPrinter printer(CcTest::isolate());
 
@@ -2623,14 +2756,195 @@ TEST(PrivateClassFields) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("PrivateClassFields.golden")));
-  i::FLAG_harmony_private_fields = old_flag;
+}
+
+TEST(PrivateMethodDeclaration) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+
+  const char* snippets[] = {
+      "{\n"
+      "  class A {\n"
+      "    #a() { return 1; }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class D {\n"
+      "    #d() { return 1; }\n"
+      "  }\n"
+      "  class E extends D {\n"
+      "    #e() { return 2; }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A { foo() {} }\n"
+      "  class C extends A {\n"
+      "    #m() { return super.foo; }\n"
+      "  }\n"
+      "}\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("PrivateMethodDeclaration.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
+}
+
+TEST(PrivateMethodAccess) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  printer.set_wrap(false);
+  printer.set_test_function_name("test");
+
+  const char* snippets[] = {
+      "class A {\n"
+      "  #a() { return 1; }\n"
+      "  constructor() { return this.#a(); }\n"
+      "}\n"
+      "\n"
+      "var test = A;\n"
+      "new A;\n",
+
+      "class B {\n"
+      "  #b() { return 1; }\n"
+      "  constructor() { this.#b = 1; }\n"
+      "}\n"
+      "\n"
+      "var test = B;\n"
+      "new test;\n",
+
+      "class C {\n"
+      "  #c() { return 1; }\n"
+      "  constructor() { this.#c++; }\n"
+      "}\n"
+      "\n"
+      "var test = C;\n"
+      "new test;\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("PrivateMethodAccess.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
+}
+
+TEST(PrivateAccessorAccess) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  printer.set_wrap(false);
+  printer.set_test_function_name("test");
+
+  const char* snippets[] = {
+      "class A {\n"
+      "  get #a() { return 1; }\n"
+      "  set #a(val) { }\n"
+      "\n"
+      "  constructor() {\n"
+      "    this.#a++;\n"
+      "    this.#a = 1;\n"
+      "    return this.#a;\n"
+      "  }\n"
+      "}\n"
+      "var test = A;\n"
+      "new test;\n",
+
+      "class B {\n"
+      "  get #b() { return 1; }\n"
+      "  constructor() { this.#b++; }\n"
+      "}\n"
+      "var test = B;\n"
+      "new test;\n",
+
+      "class C {\n"
+      "  set #c(val) { }\n"
+      "  constructor() { this.#c++; }\n"
+      "}\n"
+      "var test = C;\n"
+      "new test;\n",
+
+      "class D {\n"
+      "  get #d() { return 1; }\n"
+      "  constructor() { this.#d = 1; }\n"
+      "}\n"
+      "var test = D;\n"
+      "new test;\n",
+
+      "class E {\n"
+      "  set #e(val) { }\n"
+      "  constructor() { this.#e; }\n"
+      "}\n"
+      "var test = E;\n"
+      "new test;\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("PrivateAccessorAccess.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
+}
+
+TEST(PrivateAccessorDeclaration) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+
+  const char* snippets[] = {
+      "{\n"
+      "  class A {\n"
+      "    get #a() { return 1; }\n"
+      "    set #a(val) { }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class B {\n"
+      "    get #b() { return 1; }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class C {\n"
+      "    set #c(val) { }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class D {\n"
+      "    get #d() { return 1; }\n"
+      "    set #d(val) { }\n"
+      "  }\n"
+      "\n"
+      "  class E extends D {\n"
+      "    get #e() { return 2; }\n"
+      "    set #e(val) { }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A { foo() {} }\n"
+      "  class C extends A {\n"
+      "    get #a() { return super.foo; }\n"
+      "  }\n"
+      "  new C();\n"
+      "}\n",
+
+      "{\n"
+      "  class A { foo(val) {} }\n"
+      "  class C extends A {\n"
+      "    set #a(val) { super.foo(val); }\n"
+      "  }\n"
+      "  new C();\n"
+      "}\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("PrivateAccessorDeclaration.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
 }
 
 TEST(StaticClassFields) {
-  bool old_flag = i::FLAG_harmony_public_fields;
-  bool old_static_flag = i::FLAG_harmony_static_fields;
-  i::FLAG_harmony_public_fields = true;
-  i::FLAG_harmony_static_fields = true;
   InitializedIgnitionHandleScope scope;
   BytecodeExpectationsPrinter printer(CcTest::isolate());
 
@@ -2689,8 +3003,6 @@ TEST(StaticClassFields) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("StaticClassFields.golden")));
-  i::FLAG_harmony_public_fields = old_flag;
-  i::FLAG_harmony_static_fields = old_static_flag;
 }
 
 TEST(Generators) {

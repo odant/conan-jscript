@@ -46,9 +46,9 @@ server.listen(0, common.mustCall(function() {
         () => response[fnName](),
         {
           code: 'ERR_INVALID_ARG_TYPE',
-          name: 'TypeError [ERR_INVALID_ARG_TYPE]',
+          name: 'TypeError',
           message: 'The "name" argument must be of type string. Received ' +
-                   'type undefined'
+                   'undefined'
         }
       );
     });
@@ -86,7 +86,7 @@ server.listen(0, common.mustCall(function() {
       {
         code: 'ERR_INVALID_ARG_TYPE',
         type: TypeError,
-        message: 'The "name" argument must be of type string. Received type ' +
+        message: 'The "name" argument must be of type string. Received ' +
                  'undefined'
       }
     );

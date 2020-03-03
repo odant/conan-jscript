@@ -1,5 +1,5 @@
 'use strict';
-// Flags: --expose-internals
+// Flags: --expose-internals --experimental-modules
 
 // This test ensures that the type checking of ModuleMap throws
 // errors appropriately
@@ -7,7 +7,7 @@
 const common = require('../common');
 
 const { URL } = require('url');
-const Loader = require('internal/modules/esm/loader');
+const { Loader } = require('internal/modules/esm/loader');
 const ModuleMap = require('internal/modules/esm/module_map');
 const ModuleJob = require('internal/modules/esm/module_job');
 const createDynamicModule = require(
@@ -25,7 +25,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'The "url" argument must be of type string. Received type number'
+    message: 'The "url" argument must be of type string. Received type number' +
+             ' (1)'
   }
 );
 
@@ -34,7 +35,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'The "url" argument must be of type string. Received type number'
+    message: 'The "url" argument must be of type string. Received type number' +
+             ' (1)'
   }
 );
 
@@ -43,8 +45,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'The "job" argument must be of type ModuleJob. ' +
-             'Received type string'
+    message: 'The "job" argument must be an instance of ModuleJob. ' +
+             "Received type string ('notamodulejob')"
   }
 );
 
@@ -53,6 +55,7 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'The "url" argument must be of type string. Received type number'
+    message: 'The "url" argument must be of type string. Received type number' +
+             ' (1)'
   }
 );

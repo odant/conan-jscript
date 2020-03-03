@@ -60,24 +60,14 @@ assert.throws(() => {
   test_error.throwTypeError();
 }, /^TypeError: type error$/);
 
-function testThrowArbitrary(value) {
-  assert.throws(
+[42, {}, [], Symbol('xyzzy'), true, 'ball', undefined, null, NaN]
+  .forEach((value) => assert.throws(
     () => test_error.throwArbitrary(value),
     (err) => {
       assert.strictEqual(err, value);
       return true;
-    });
-}
-
-testThrowArbitrary(42);
-testThrowArbitrary({});
-testThrowArbitrary([]);
-testThrowArbitrary(Symbol('xyzzy'));
-testThrowArbitrary(true);
-testThrowArbitrary('ball');
-testThrowArbitrary(undefined);
-testThrowArbitrary(null);
-testThrowArbitrary(NaN);
+    }
+  ));
 
 common.expectsError(
   () => test_error.throwErrorCode(),
@@ -118,18 +108,18 @@ error = test_error.createErrorCode();
 assert.ok(error instanceof Error, 'expected error to be an instance of Error');
 assert.strictEqual(error.code, 'ERR_TEST_CODE');
 assert.strictEqual(error.message, 'Error [error]');
-assert.strictEqual(error.name, 'Error [ERR_TEST_CODE]');
+assert.strictEqual(error.name, 'Error');
 
 error = test_error.createRangeErrorCode();
 assert.ok(error instanceof RangeError,
           'expected error to be an instance of RangeError');
 assert.strictEqual(error.message, 'RangeError [range error]');
 assert.strictEqual(error.code, 'ERR_TEST_CODE');
-assert.strictEqual(error.name, 'RangeError [ERR_TEST_CODE]');
+assert.strictEqual(error.name, 'RangeError');
 
 error = test_error.createTypeErrorCode();
 assert.ok(error instanceof TypeError,
           'expected error to be an instance of TypeError');
 assert.strictEqual(error.message, 'TypeError [type error]');
 assert.strictEqual(error.code, 'ERR_TEST_CODE');
-assert.strictEqual(error.name, 'TypeError [ERR_TEST_CODE]');
+assert.strictEqual(error.name, 'TypeError');

@@ -96,7 +96,7 @@ assert.strictEqual(
   3
 );
 
-// test base64 encoding
+// Test base64 encoding
 assert.strictEqual(
   Buffer.from(b.toString('base64'), 'base64')
     .indexOf('ZA==', 0, 'base64'),
@@ -120,7 +120,7 @@ assert.strictEqual(
   3
 );
 
-// test latin1 encoding
+// Test latin1 encoding
 assert.strictEqual(
   Buffer.from(b.toString('latin1'), 'latin1')
     .indexOf('d', 0, 'latin1'),
@@ -147,7 +147,7 @@ assert.strictEqual(
   0
 );
 
-// test binary encoding
+// Test binary encoding
 assert.strictEqual(
   Buffer.from(b.toString('binary'), 'binary')
     .indexOf('d', 0, 'binary'),
@@ -236,7 +236,7 @@ assert.strictEqual(mixedByteStringUtf8.indexOf('bc'), 5);
 assert.strictEqual(mixedByteStringUtf8.indexOf('bc', 5), 5);
 assert.strictEqual(mixedByteStringUtf8.indexOf('bc', -8), 5);
 assert.strictEqual(mixedByteStringUtf8.indexOf('\u03a3'), 7);
-assert.strictEqual(-1, mixedByteStringUtf8.indexOf('\u0396'));
+assert.strictEqual(mixedByteStringUtf8.indexOf('\u0396'), -1);
 
 
 // Test complex string indexOf algorithms. Only trigger for long strings.
@@ -276,8 +276,9 @@ assert.strictEqual(asciiString.indexOf('leb', 0), 3);
 
 // Search in string containing many non-ASCII chars.
 const allCodePoints = [];
-for (let i = 0; i < 65536; i++) allCodePoints[i] = i;
-const allCharsString = String.fromCharCode.apply(String, allCodePoints);
+for (let i = 0; i < 65534; i++) allCodePoints[i] = i;
+const allCharsString = String.fromCharCode.apply(String, allCodePoints) +
+    String.fromCharCode(65534, 65535);
 const allCharsBufferUtf8 = Buffer.from(allCharsString);
 const allCharsBufferUcs2 = Buffer.from(allCharsString, 'ucs2');
 
@@ -356,8 +357,9 @@ assert.strictEqual(Buffer.from('aaaaa').indexOf('b', 'ucs2'), -1);
     {
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
-      message: 'The "value" argument must be one of type string, ' +
-               `Buffer, or Uint8Array. Received type ${typeof val}`
+      message: 'The "value" argument must be one of type number or string ' +
+               'or an instance of Buffer or Uint8Array.' +
+               common.invalidArgTypeHelper(val)
     }
   );
 });

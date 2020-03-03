@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "src/interpreter/bytecodes.h"
-#include "src/objects.h"
+#include "src/objects/objects.h"
 
 namespace v8 {
 
@@ -70,10 +70,11 @@ class BytecodeExpectationsPrinter final {
                      const BytecodeArrayIterator& bytecode_iterator,
                      int parameter_count) const;
   void PrintSourcePosition(std::ostream& stream,  // NOLINT
-                           SourcePositionTableIterator& source_iterator,
+                           SourcePositionTableIterator&
+                               source_iterator,  // NOLINT(runtime/references)
                            int bytecode_offset) const;
   void PrintV8String(std::ostream& stream,  // NOLINT
-                     i::String* string) const;
+                     i::String string) const;
   void PrintConstant(std::ostream& stream,  // NOLINT
                      i::Handle<i::Object> constant) const;
   void PrintFrameSize(std::ostream& stream,  // NOLINT
@@ -81,7 +82,7 @@ class BytecodeExpectationsPrinter final {
   void PrintBytecodeSequence(std::ostream& stream,  // NOLINT
                              i::Handle<i::BytecodeArray> bytecode_array) const;
   void PrintConstantPool(std::ostream& stream,  // NOLINT
-                         i::FixedArray* constant_pool) const;
+                         i::FixedArray constant_pool) const;
   void PrintCodeSnippet(std::ostream& stream,  // NOLINT
                         const std::string& body) const;
   void PrintBytecodeArray(std::ostream& stream,  // NOLINT

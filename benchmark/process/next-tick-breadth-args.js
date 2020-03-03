@@ -2,7 +2,7 @@
 
 const common = require('../common.js');
 const bench = common.createBenchmark(main, {
-  n: [4e6]
+  n: [1e7]
 });
 
 function main({ n }) {
@@ -13,16 +13,19 @@ function main({ n }) {
     if (j === n)
       bench.end(n);
   }
+
   function cb2(arg1, arg2) {
     j++;
     if (j === n)
       bench.end(n);
   }
+
   function cb3(arg1, arg2, arg3) {
     j++;
     if (j === n)
       bench.end(n);
   }
+
   function cb4(arg1, arg2, arg3, arg4) {
     j++;
     if (j === n)

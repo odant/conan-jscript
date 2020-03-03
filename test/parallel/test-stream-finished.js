@@ -3,6 +3,7 @@
 const common = require('../common');
 const { Writable, Readable, Transform, finished } = require('stream');
 const assert = require('assert');
+const EE = require('events');
 const fs = require('fs');
 const { promisify } = require('util');
 
@@ -104,7 +105,7 @@ const { promisify } = require('util');
   }));
 
   rs.push(null);
-  rs.emit('close'); // should not trigger an error
+  rs.emit('close'); // Should not trigger an error
   rs.resume();
 }
 
@@ -115,7 +116,7 @@ const { promisify } = require('util');
     assert(err, 'premature close error');
   }));
 
-  rs.emit('close'); // should trigger error
+  rs.emit('close'); // Should trigger error
   rs.push(null);
   rs.resume();
 }
@@ -129,21 +130,21 @@ const { promisify } = require('util');
   assert.throws(
     () => finished(rs, 'foo'),
     {
-      name: /ERR_INVALID_ARG_TYPE/,
+      code: 'ERR_INVALID_ARG_TYPE',
       message: /callback/
     }
   );
   assert.throws(
     () => finished(rs, 'foo', () => {}),
     {
-      name: /ERR_INVALID_ARG_TYPE/,
+      code: 'ERR_INVALID_ARG_TYPE',
       message: /opts/
     }
   );
   assert.throws(
     () => finished(rs, {}, 'foo'),
     {
-      name: /ERR_INVALID_ARG_TYPE/,
+      code: 'ERR_INVALID_ARG_TYPE',
       message: /callback/
     }
   );
@@ -174,4 +175,61 @@ const { promisify } = require('util');
   rs.emit('close');
   rs.push(null);
   rs.resume();
+}
+
+{
+  const streamLike = new EE();
+  streamLike.readableEnded = true;
+  streamLike.readable = true;
+  finished(streamLike, common.mustCall);
+  streamLike.emit('close');
+}
+
+
+{
+  // Test is readable check through readable
+  const streamLike = new EE();
+  streamLike.readable = false;
+  finished(streamLike, common.mustCall());
+  streamLike.emit('end');
+}
+
+{
+  // Test is readable check through readableEnded
+  const streamLike = new EE();
+  streamLike.readableEnded = true;
+  finished(streamLike, common.mustCall());
+  streamLike.emit('end');
+}
+
+{
+  // Test is readable check through _readableState
+  const streamLike = new EE();
+  streamLike._readableState = {};
+  finished(streamLike, common.mustCall());
+  streamLike.emit('end');
+}
+
+{
+  // Test is writable check through writable
+  const streamLike = new EE();
+  streamLike.writable = false;
+  finished(streamLike, common.mustCall());
+  streamLike.emit('finish');
+}
+
+{
+  // Test is writable check through writableEnded
+  const streamLike = new EE();
+  streamLike.writableEnded = true;
+  finished(streamLike, common.mustCall());
+  streamLike.emit('finish');
+}
+
+{
+  // Test is writable check through _writableState
+  const streamLike = new EE();
+  streamLike._writableState = {};
+  finished(streamLike, common.mustCall());
+  streamLike.emit('finish');
 }

@@ -3,7 +3,8 @@
 // found in the LICENSE file.
 
 #include "src/compiler/js-create-lowering.h"
-#include "src/code-factory.h"
+#include "src/codegen/code-factory.h"
+#include "src/codegen/tick-counter.h"
 #include "src/compiler/access-builder.h"
 #include "src/compiler/compilation-dependencies.h"
 #include "src/compiler/js-graph.h"
@@ -11,9 +12,9 @@
 #include "src/compiler/machine-operator.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/operator-properties.h"
-#include "src/feedback-vector.h"
-#include "src/isolate-inl.h"
+#include "src/execution/isolate-inl.h"
 #include "src/objects/arguments.h"
+#include "src/objects/feedback-vector.h"
 #include "test/unittests/compiler/compiler-test-utils.h"
 #include "test/unittests/compiler/graph-unittest.h"
 #include "test/unittests/compiler/node-test-utils.h"
@@ -32,9 +33,9 @@ class JSCreateLoweringTest : public TypedGraphTest {
   JSCreateLoweringTest()
       : TypedGraphTest(3),
         javascript_(zone()),
-        deps_(isolate(), zone()),
+        deps_(broker(), zone()),
         handle_scope_(isolate()) {}
-  ~JSCreateLoweringTest() override {}
+  ~JSCreateLoweringTest() override = default;
 
  protected:
   Reduction Reduce(Node* node) {
@@ -43,9 +44,9 @@ class JSCreateLoweringTest : public TypedGraphTest {
     JSGraph jsgraph(isolate(), graph(), common(), javascript(), &simplified,
                     &machine);
     // TODO(titzer): mock the GraphReducer here for better unit testing.
-    GraphReducer graph_reducer(zone(), graph());
-    JSCreateLowering reducer(&graph_reducer, &deps_, &jsgraph, js_heap_broker(),
-                             native_context(), zone());
+    GraphReducer graph_reducer(zone(), graph(), tick_counter());
+    JSCreateLowering reducer(&graph_reducer, &deps_, &jsgraph, broker(),
+                             zone());
     return reducer.Reduce(node);
   }
 
@@ -74,8 +75,7 @@ class JSCreateLoweringTest : public TypedGraphTest {
 
 TEST_F(JSCreateLoweringTest, JSCreate) {
   Handle<JSFunction> function = isolate()->object_function();
-  Node* const target = Parameter(
-      Type::HeapConstant(js_heap_broker(), function, graph()->zone()));
+  Node* const target = graph()->NewNode(common()->HeapConstant(function));
   Node* const context = Parameter(Type::Any());
   Node* const effect = graph()->start();
   Node* const control = graph()->start();
@@ -86,7 +86,7 @@ TEST_F(JSCreateLoweringTest, JSCreate) {
   EXPECT_THAT(
       r.replacement(),
       IsFinishRegion(
-          IsAllocate(IsNumberConstant(function->initial_map()->instance_size()),
+          IsAllocate(IsNumberConstant(function->initial_map().instance_size()),
                      IsBeginRegion(effect), control),
           _));
 }
@@ -172,7 +172,8 @@ TEST_F(JSCreateLoweringTest, JSCreateFunctionContextViaInlinedAllocation) {
 // JSCreateWithContext
 
 TEST_F(JSCreateLoweringTest, JSCreateWithContext) {
-  Handle<ScopeInfo> scope_info(factory()->NewScopeInfo(1));
+  Handle<ScopeInfo> scope_info =
+      ReadOnlyRoots(isolate()).empty_function_scope_info_handle();
   Node* const object = Parameter(Type::Receiver());
   Node* const context = Parameter(Type::Any());
   Node* const effect = graph()->start();
@@ -192,7 +193,8 @@ TEST_F(JSCreateLoweringTest, JSCreateWithContext) {
 // JSCreateCatchContext
 
 TEST_F(JSCreateLoweringTest, JSCreateCatchContext) {
-  Handle<ScopeInfo> scope_info(factory()->NewScopeInfo(1));
+  Handle<ScopeInfo> scope_info =
+      ReadOnlyRoots(isolate()).empty_function_scope_info_handle();
   Node* const exception = Parameter(Type::Receiver());
   Node* const context = Parameter(Type::Any());
   Node* const effect = graph()->start();

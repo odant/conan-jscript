@@ -47,7 +47,12 @@ class HostPort {
 class Options {
  public:
   virtual void CheckOptions(std::vector<std::string>* errors) {}
-  virtual ~Options() {}
+  virtual ~Options() = default;
+};
+
+struct InspectPublishUid {
+  bool console;
+  bool http;
 };
 
 // These options are currently essentially per-Environment, but it can be nice
@@ -70,19 +75,19 @@ class DebugOptions : public Options {
   bool break_first_line = false;
   // --inspect-brk-node
   bool break_node_first_line = false;
+  // --inspect-publish-uid
+  std::string inspect_publish_uid_string = "stderr,http";
+
+  InspectPublishUid inspect_publish_uid;
 
   enum { kDefaultInspectorPort = 9229 };
 
   HostPort host_port{"127.0.0.1", kDefaultInspectorPort};
 
-  bool deprecated_invocation() const {
-    return deprecated_debug &&
-      inspector_enabled &&
-      break_first_line;
-  }
-
-  bool invalid_invocation() const {
-    return deprecated_debug && !inspector_enabled;
+  // Used to patch the options as if --inspect-brk is passed.
+  void EnableBreakFirstLine() {
+    inspector_enabled = true;
+    break_first_line = true;
   }
 
   bool wait_for_connect() const {
@@ -95,30 +100,53 @@ class DebugOptions : public Options {
 class EnvironmentOptions : public Options {
  public:
   bool abort_on_uncaught_exception = false;
+  bool enable_source_maps = false;
+  bool experimental_json_modules = false;
   bool experimental_modules = false;
+  std::string experimental_specifier_resolution;
+  std::string es_module_specifier_resolution;
+  bool experimental_wasm_modules = false;
+  std::string module_type;
   std::string experimental_policy;
+  std::string experimental_policy_integrity;
+  bool has_policy_integrity_string;
   bool experimental_repl_await = false;
   bool experimental_vm_modules = false;
   bool expose_internals = false;
   bool frozen_intrinsics = false;
-  std::string http_parser =
-#ifdef NODE_EXPERIMENTAL_HTTP_DEFAULT
-    "llhttp";
-#else
-    "legacy";
-#endif
+  std::string heap_snapshot_signal;
+  std::string http_parser = "llhttp";
+  uint64_t http_server_default_timeout = 120000;
   bool no_deprecation = false;
   bool no_force_async_hooks_checks = false;
   bool no_warnings = false;
+  bool force_context_aware = false;
   bool pending_deprecation = false;
   bool preserve_symlinks = false;
   bool preserve_symlinks_main = false;
   bool prof_process = false;
+#if HAVE_INSPECTOR
+  std::string cpu_prof_dir;
+  static const uint64_t kDefaultCpuProfInterval = 1000;
+  uint64_t cpu_prof_interval = kDefaultCpuProfInterval;
+  std::string cpu_prof_name;
+  bool cpu_prof = false;
+  std::string heap_prof_dir;
+  std::string heap_prof_name;
+  static const uint64_t kDefaultHeapProfInterval = 512 * 1024;
+  uint64_t heap_prof_interval = kDefaultHeapProfInterval;
+  bool heap_prof = false;
+#endif  // HAVE_INSPECTOR
   std::string redirect_warnings;
+  bool test_udp_no_try_send = false;
   bool throw_deprecation = false;
   bool trace_deprecation = false;
+  bool trace_exit = false;
   bool trace_sync_io = false;
+  bool trace_tls = false;
+  bool trace_uncaught = false;
   bool trace_warnings = false;
+  std::string unhandled_rejections;
   std::string userland_loader;
 
   bool syntax_check_only = false;
@@ -126,16 +154,28 @@ class EnvironmentOptions : public Options {
 #ifdef NODE_REPORT
   bool experimental_report = false;
 #endif  //  NODE_REPORT
+  bool experimental_wasi = false;
   std::string eval_string;
   bool print_eval = false;
   bool force_repl = false;
+
+  bool insecure_http_parser = false;
+
+  bool tls_min_v1_0 = false;
+  bool tls_min_v1_1 = false;
+  bool tls_min_v1_2 = false;
+  bool tls_min_v1_3 = false;
+  bool tls_max_v1_2 = false;
+  bool tls_max_v1_3 = false;
+  std::string tls_keylog;
 
   std::vector<std::string> preload_modules;
 
   std::vector<std::string> user_argv;
 
-  inline DebugOptions* get_debug_options();
-  inline const DebugOptions& debug_options() const;
+  inline DebugOptions* get_debug_options() { return &debug_options_; }
+  inline const DebugOptions& debug_options() const { return debug_options_; }
+
   void CheckOptions(std::vector<std::string>* errors) override;
 
  private:
@@ -146,6 +186,7 @@ class PerIsolateOptions : public Options {
  public:
   std::shared_ptr<EnvironmentOptions> per_env { new EnvironmentOptions() };
   bool track_heap_objects = false;
+  bool no_node_snapshot = false;
 
 #ifdef NODE_REPORT
   bool report_uncaught_exception = false;
@@ -213,11 +254,7 @@ namespace options_parser {
 HostPort SplitHostPort(const std::string& arg,
     std::vector<std::string>* errors);
 void GetOptions(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-enum OptionEnvvarSettings {
-  kAllowedInEnvironment,
-  kDisallowedInEnvironment
-};
+std::string GetBashCompletion();
 
 enum OptionType {
   kNoOp,
@@ -233,7 +270,7 @@ enum OptionType {
 template <typename Options>
 class OptionsParser {
  public:
-  virtual ~OptionsParser() {}
+  virtual ~OptionsParser() = default;
 
   typedef Options TargetType;
 
@@ -297,7 +334,7 @@ class OptionsParser {
   // a method that yields the target options type from this parser's options
   // type.
   template <typename ChildOptions>
-  void Insert(const OptionsParser<ChildOptions>* child_options_parser,
+  void Insert(const OptionsParser<ChildOptions>& child_options_parser,
               ChildOptions* (Options::* get_child)());
 
   // Parse a sequence of options into an options struct, a list of
@@ -317,12 +354,12 @@ class OptionsParser {
   //
   // If `*error` is set, the result of the parsing should be discarded and the
   // contents of any of the argument vectors should be considered undefined.
-  virtual void Parse(std::vector<std::string>* const args,
-                     std::vector<std::string>* const exec_args,
-                     std::vector<std::string>* const v8_args,
-                     Options* const options,
-                     OptionEnvvarSettings required_env_settings,
-                     std::vector<std::string>* const errors) const;
+  void Parse(std::vector<std::string>* const args,
+             std::vector<std::string>* const exec_args,
+             std::vector<std::string>* const v8_args,
+             Options* const options,
+             OptionEnvvarSettings required_env_settings,
+             std::vector<std::string>* const errors) const;
 
  private:
   // We support the wide variety of different option types by remembering
@@ -331,7 +368,7 @@ class OptionsParser {
   // Represents a field within `Options`.
   class BaseOptionField {
    public:
-    virtual ~BaseOptionField() {}
+    virtual ~BaseOptionField() = default;
     virtual void* LookupImpl(Options* options) const = 0;
 
     template <typename T>
@@ -401,35 +438,15 @@ class OptionsParser {
   friend class OptionsParser;
 
   friend void GetOptions(const v8::FunctionCallbackInfo<v8::Value>& args);
+  friend std::string GetBashCompletion();
 };
 
-class DebugOptionsParser : public OptionsParser<DebugOptions> {
- public:
-  DebugOptionsParser();
-
-  static const DebugOptionsParser instance;
-};
-
-class EnvironmentOptionsParser : public OptionsParser<EnvironmentOptions> {
- public:
-  EnvironmentOptionsParser();
-
-  static const EnvironmentOptionsParser instance;
-};
-
-class PerIsolateOptionsParser : public OptionsParser<PerIsolateOptions> {
- public:
-  PerIsolateOptionsParser();
-
-  static const PerIsolateOptionsParser instance;
-};
-
-class PerProcessOptionsParser : public OptionsParser<PerProcessOptions> {
- public:
-  PerProcessOptionsParser();
-
-  static const PerProcessOptionsParser instance;
-};
+using StringVector = std::vector<std::string>;
+template <class OptionsType, class = Options>
+void Parse(
+  StringVector* const args, StringVector* const exec_args,
+  StringVector* const v8_args, OptionsType* const options,
+  OptionEnvvarSettings required_env_settings, StringVector* const errors);
 
 }  // namespace options_parser
 

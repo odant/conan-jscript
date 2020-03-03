@@ -5,7 +5,6 @@
 #error("This header can only be used when inspector is enabled")
 #endif
 
-#include "env.h"
 #include "inspector_agent.h"
 #include "node_mutex.h"
 
@@ -26,12 +25,12 @@ class MainThreadInterface;
 class Request {
  public:
   virtual void Call(MainThreadInterface*) = 0;
-  virtual ~Request() {}
+  virtual ~Request() = default;
 };
 
 class Deletable {
  public:
-  virtual ~Deletable() {}
+  virtual ~Deletable() = default;
 };
 
 std::unique_ptr<v8_inspector::StringBuffer> Utf8ToStringView(
@@ -70,7 +69,8 @@ class MainThreadHandle : public std::enable_shared_from_this<MainThreadHandle> {
   friend class MainThreadInterface;
 };
 
-class MainThreadInterface {
+class MainThreadInterface :
+    public std::enable_shared_from_this<MainThreadInterface> {
  public:
   MainThreadInterface(Agent* agent, uv_loop_t*, v8::Isolate* isolate,
                       v8::Platform* platform);

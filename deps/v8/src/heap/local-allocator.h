@@ -5,7 +5,7 @@
 #ifndef V8_HEAP_LOCAL_ALLOCATOR_H_
 #define V8_HEAP_LOCAL_ALLOCATOR_H_
 
-#include "src/globals.h"
+#include "src/common/globals.h"
 #include "src/heap/heap.h"
 #include "src/heap/spaces.h"
 
@@ -42,18 +42,20 @@ class LocalAllocator {
   }
 
   inline AllocationResult Allocate(AllocationSpace space, int object_size,
+                                   AllocationOrigin origin,
                                    AllocationAlignment alignment);
-  inline void FreeLast(AllocationSpace space, HeapObject* object,
+  inline void FreeLast(AllocationSpace space, HeapObject object,
                        int object_size);
 
  private:
   inline AllocationResult AllocateInNewSpace(int object_size,
+                                             AllocationOrigin origin,
                                              AllocationAlignment alignment);
   inline bool NewLocalAllocationBuffer();
   inline AllocationResult AllocateInLAB(int object_size,
                                         AllocationAlignment alignment);
-  inline void FreeLastInNewSpace(HeapObject* object, int object_size);
-  inline void FreeLastInOldSpace(HeapObject* object, int object_size);
+  inline void FreeLastInNewSpace(HeapObject object, int object_size);
+  inline void FreeLastInOldSpace(HeapObject object, int object_size);
 
   Heap* const heap_;
   NewSpace* const new_space_;

@@ -9,9 +9,13 @@
 #ifndef V8_OBJECTS_JS_RELATIVE_TIME_FORMAT_H_
 #define V8_OBJECTS_JS_RELATIVE_TIME_FORMAT_H_
 
+#include <set>
+#include <string>
+
+#include "src/execution/isolate.h"
 #include "src/heap/factory.h"
-#include "src/isolate.h"
-#include "src/objects.h"
+#include "src/objects/managed.h"
+#include "src/objects/objects.h"
 #include "unicode/uversion.h"
 
 // Has to be the last include (doesn't have include guards):
@@ -26,38 +30,45 @@ namespace internal {
 
 class JSRelativeTimeFormat : public JSObject {
  public:
-  // Initializes relative time format object with properties derived from input
+  // Creates relative time format object with properties derived from input
   // locales and options.
-  static MaybeHandle<JSRelativeTimeFormat> InitializeRelativeTimeFormat(
-      Isolate* isolate,
-      Handle<JSRelativeTimeFormat> relative_time_format_holder,
-      Handle<Object> locales, Handle<Object> options);
+  V8_WARN_UNUSED_RESULT static MaybeHandle<JSRelativeTimeFormat> New(
+      Isolate* isolate, Handle<Map> map, Handle<Object> locales,
+      Handle<Object> options);
 
-  static Handle<JSObject> ResolvedOptions(
+  V8_WARN_UNUSED_RESULT static Handle<JSObject> ResolvedOptions(
       Isolate* isolate, Handle<JSRelativeTimeFormat> format_holder);
 
-  // Unpacks formatter object from corresponding JavaScript object.
-  static icu::RelativeDateTimeFormatter* UnpackFormatter(
-      Handle<JSRelativeTimeFormat> relative_time_format_holder);
   Handle<String> StyleAsString() const;
   Handle<String> NumericAsString() const;
+
+  // ecma402/#sec-Intl.RelativeTimeFormat.prototype.format
+  V8_WARN_UNUSED_RESULT static MaybeHandle<String> Format(
+      Isolate* isolate, Handle<Object> value_obj, Handle<Object> unit_obj,
+      Handle<JSRelativeTimeFormat> format);
+
+  // ecma402/#sec-Intl.RelativeTimeFormat.prototype.formatToParts
+  V8_WARN_UNUSED_RESULT static MaybeHandle<JSArray> FormatToParts(
+      Isolate* isolate, Handle<Object> value_obj, Handle<Object> unit_obj,
+      Handle<JSRelativeTimeFormat> format);
+
+  V8_EXPORT_PRIVATE static const std::set<std::string>& GetAvailableLocales();
 
   DECL_CAST(JSRelativeTimeFormat)
 
   // RelativeTimeFormat accessors.
   DECL_ACCESSORS(locale, String)
 
-  DECL_ACCESSORS(formatter, Foreign)
+  DECL_ACCESSORS(icu_formatter, Managed<icu::RelativeDateTimeFormatter>)
 
   // Style: identifying the relative time format style used.
   //
   // ecma402/#sec-properties-of-intl-relativetimeformat-instances
 
   enum class Style {
-    LONG,    // Everything spelled out.
-    SHORT,   // Abbreviations used when possible.
-    NARROW,  // Use the shortest possible form.
-    COUNT
+    LONG,   // Everything spelled out.
+    SHORT,  // Abbreviations used when possible.
+    NARROW  // Use the shortest possible form.
   };
   inline void set_style(Style style);
   inline Style style() const;
@@ -69,9 +80,8 @@ class JSRelativeTimeFormat : public JSObject {
   // ecma402/#sec-properties-of-intl-relativetimeformat-instances
   enum class Numeric {
     ALWAYS,  // numerical descriptions are always used ("1 day ago")
-    AUTO,    // numerical descriptions are used only when no more specific
+    AUTO     // numerical descriptions are used only when no more specific
              // version is available ("yesterday")
-    COUNT
   };
   inline void set_numeric(Numeric numeric);
   inline Numeric numeric() const;
@@ -96,17 +106,14 @@ class JSRelativeTimeFormat : public JSObject {
   DECL_VERIFIER(JSRelativeTimeFormat)
 
   // Layout description.
-  static const int kJSRelativeTimeFormatOffset = JSObject::kHeaderSize;
-  static const int kLocaleOffset = kJSRelativeTimeFormatOffset + kPointerSize;
-  static const int kFormatterOffset = kLocaleOffset + kPointerSize;
-  static const int kFlagsOffset = kFormatterOffset + kPointerSize;
-  static const int kSize = kFlagsOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSObject::kHeaderSize,
+                                TORQUE_GENERATED_JSRELATIVE_TIME_FORMAT_FIELDS)
 
  private:
   static Style getStyle(const char* str);
   static Numeric getNumeric(const char* str);
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSRelativeTimeFormat);
+  OBJECT_CONSTRUCTORS(JSRelativeTimeFormat, JSObject);
 };
 
 }  // namespace internal

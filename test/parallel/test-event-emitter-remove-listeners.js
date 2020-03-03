@@ -25,6 +25,7 @@ const assert = require('assert');
 const EventEmitter = require('events');
 
 function listener1() {}
+
 function listener2() {}
 
 {
@@ -150,8 +151,8 @@ common.expectsError(() => {
 }, {
   code: 'ERR_INVALID_ARG_TYPE',
   type: TypeError,
-  message: 'The "listener" argument must be of type Function. ' +
-           'Received type object'
+  message: 'The "listener" argument must be of type function. ' +
+           'Received null'
 });
 
 {

@@ -19,20 +19,24 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/* eslint-disable node-core/required-modules, node-core/crypto-check */
+/* eslint-disable node-core/require-common-first, node-core/required-modules */
+/* eslint-disable node-core/crypto-check */
 'use strict';
 const process = global.process;  // Some tests tamper with the process global.
-const path = require('path');
-const fs = require('fs');
+
 const assert = require('assert');
-const os = require('os');
 const { exec, execSync, spawnSync } = require('child_process');
+const fs = require('fs');
+// Do not require 'os' until needed so that test-os-checked-fucnction can
+// monkey patch it. If 'os' is required here, that test will fail.
+const path = require('path');
 const util = require('util');
+const { isMainThread } = require('worker_threads');
+
 const tmpdir = require('./tmpdir');
 const bits = ['arm64', 'mips', 'mipsel', 'ppc64', 's390x', 'x64']
   .includes(process.arch) ? 64 : 32;
 const hasIntl = !!process.config.variables.v8_enable_i18n_support;
-const { isMainThread } = require('worker_threads');
 
 // Some tests assume a umask of 0o022 so set that up front. Tests that need a
 // different umask will set it themselves.
@@ -48,8 +52,12 @@ const hasCrypto = Boolean(process.versions.openssl);
 
 // Check for flags. Skip this for workers (both, the `cluster` module and
 // `worker_threads`) and child processes.
+// If the binary was built without-ssl then the crypto flags are
+// invalid (bad option). The test itself should handle this case.
 if (process.argv.length === 2 &&
+    !process.env.NODE_SKIP_FLAG_CHECK &&
     isMainThread &&
+    hasCrypto &&
     module.parent &&
     require('cluster').isMaster) {
   // The copyright notice is relatively big and the flags could come afterwards.
@@ -74,13 +82,22 @@ if (process.argv.length === 2 &&
     const args = process.execArgv.map((arg) => arg.replace(/_/g, '-'));
     for (const flag of flags) {
       if (!args.includes(flag) &&
-          // If the binary was built without-ssl then the crypto flags are
-          // invalid (bad option). The test itself should handle this case.
-          hasCrypto &&
           // If the binary is build without `intl` the inspect option is
           // invalid. The test itself should handle this case.
           (process.features.inspector || !flag.startsWith('--inspect'))) {
-        throw new Error(`Test has to be started with the flag: '${flag}'`);
+        console.log(
+          'NOTE: The test started as a child_process using these flags:',
+          util.inspect(flags),
+          'Use NODE_SKIP_FLAG_CHECK to run the test with the original flags.'
+        );
+        const args = [...flags, ...process.execArgv, ...process.argv.slice(1)];
+        const options = { encoding: 'utf8', stdio: 'inherit' };
+        const result = spawnSync(process.execPath, args, options);
+        if (result.signal) {
+          process.kill(0, result.signal);
+        } else {
+          process.exit(result.status);
+        }
       }
     }
   }
@@ -88,24 +105,17 @@ if (process.argv.length === 2 &&
 
 const isWindows = process.platform === 'win32';
 const isAIX = process.platform === 'aix';
-const isLinuxPPCBE = (process.platform === 'linux') &&
-                     (process.arch === 'ppc64') &&
-                     (os.endianness() === 'BE');
 const isSunOS = process.platform === 'sunos';
 const isFreeBSD = process.platform === 'freebsd';
 const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
 
-const enoughTestMem = os.totalmem() > 0x70000000; /* 1.75 Gb */
-const cpus = os.cpus();
-const enoughTestCpu = Array.isArray(cpus) &&
-                      (cpus.length > 1 || cpus[0].speed > 999);
-
 const rootDir = isWindows ? 'c:\\' : '/';
 
-const buildType = process.config.target_defaults.default_configuration;
-
+const buildType = process.config.target_defaults ?
+  process.config.target_defaults.default_configuration :
+  'Release';
 
 // If env var is set then enable async_hook hooks for all tests.
 if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
@@ -180,15 +190,6 @@ const PIPE = (() => {
   return path.join(pipePrefix, pipeName);
 })();
 
-const hasIPv6 = (() => {
-  const iFaces = os.networkInterfaces();
-  const re = isWindows ? /Loopback Pseudo-Interface/ : /lo/;
-  return Object.keys(iFaces).some((name) => {
-    return re.test(name) &&
-           iFaces[name].some(({ family }) => family === 'IPv6');
-  });
-})();
-
 /*
  * Check that when running a test with
  * `$node --abort-on-uncaught-exception $file child`
@@ -225,9 +226,6 @@ const pwdCommand = isWindows ?
 
 
 function platformTimeout(ms) {
-  // ESLint will not support 'bigint' in valid-typeof until it reaches stage 4.
-  // See https://github.com/eslint/eslint/pull/9636.
-  // eslint-disable-next-line valid-typeof
   const multipliers = typeof ms === 'bigint' ?
     { two: 2n, four: 4n, seven: 7n } : { two: 2, four: 4, seven: 7 };
 
@@ -252,66 +250,49 @@ function platformTimeout(ms) {
 }
 
 let knownGlobals = [
-  Buffer,
   clearImmediate,
   clearInterval,
   clearTimeout,
   global,
-  process,
   setImmediate,
   setInterval,
-  setTimeout
+  setTimeout,
+  queueMicrotask,
 ];
 
 if (global.gc) {
   knownGlobals.push(global.gc);
 }
 
-if (global.DTRACE_HTTP_SERVER_RESPONSE) {
-  knownGlobals.push(DTRACE_HTTP_SERVER_RESPONSE);
-  knownGlobals.push(DTRACE_HTTP_SERVER_REQUEST);
-  knownGlobals.push(DTRACE_HTTP_CLIENT_RESPONSE);
-  knownGlobals.push(DTRACE_HTTP_CLIENT_REQUEST);
-  knownGlobals.push(DTRACE_NET_STREAM_END);
-  knownGlobals.push(DTRACE_NET_SERVER_CONNECTION);
-}
-
-if (global.COUNTER_NET_SERVER_CONNECTION) {
-  knownGlobals.push(COUNTER_NET_SERVER_CONNECTION);
-  knownGlobals.push(COUNTER_NET_SERVER_CONNECTION_CLOSE);
-  knownGlobals.push(COUNTER_HTTP_SERVER_REQUEST);
-  knownGlobals.push(COUNTER_HTTP_SERVER_RESPONSE);
-  knownGlobals.push(COUNTER_HTTP_CLIENT_REQUEST);
-  knownGlobals.push(COUNTER_HTTP_CLIENT_RESPONSE);
-}
-
-if (process.env.NODE_TEST_KNOWN_GLOBALS) {
-  const knownFromEnv = process.env.NODE_TEST_KNOWN_GLOBALS.split(',');
-  allowGlobals(...knownFromEnv);
-}
-
 function allowGlobals(...whitelist) {
   knownGlobals = knownGlobals.concat(whitelist);
 }
 
-function leakedGlobals() {
-  const leaked = [];
+if (process.env.NODE_TEST_KNOWN_GLOBALS !== '0') {
+  if (process.env.NODE_TEST_KNOWN_GLOBALS) {
+    const knownFromEnv = process.env.NODE_TEST_KNOWN_GLOBALS.split(',');
+    allowGlobals(...knownFromEnv);
+  }
 
-  for (const val in global) {
-    if (!knownGlobals.includes(global[val])) {
-      leaked.push(val);
+  function leakedGlobals() {
+    const leaked = [];
+
+    for (const val in global) {
+      if (!knownGlobals.includes(global[val])) {
+        leaked.push(val);
+      }
     }
+
+    return leaked;
   }
 
-  return leaked;
+  process.on('exit', function() {
+    const leaked = leakedGlobals();
+    if (leaked.length > 0) {
+      assert.fail(`Unexpected global(s) found: ${leaked.join(', ')}`);
+    }
+  });
 }
-
-process.on('exit', function() {
-  const leaked = leakedGlobals();
-  if (leaked.length > 0) {
-    assert.fail(`Unexpected global(s) found: ${leaked.join(', ')}`);
-  }
-});
 
 const mustCallChecks = [];
 
@@ -407,7 +388,7 @@ function canCreateSymLink() {
                                  'System32', 'whoami.exe');
 
     try {
-      const output = execSync(`${whoamiPath} /priv`, { timout: 1000 });
+      const output = execSync(`${whoamiPath} /priv`, { timeout: 1000 });
       return output.includes('SeCreateSymbolicLinkPrivilege');
     } catch {
       return false;
@@ -483,12 +464,6 @@ function nodeProcessAborted(exitCode, signal) {
   }
 }
 
-function busyLoop(time) {
-  const startTime = Date.now();
-  const stopTime = startTime + time;
-  while (Date.now() < stopTime) {}
-}
-
 function isAlive(pid) {
   try {
     process.kill(pid, 'SIGCONT');
@@ -513,7 +488,11 @@ function _expectWarning(name, expected, code) {
   return mustCall((warning) => {
     const [ message, code ] = expected.shift();
     assert.strictEqual(warning.name, name);
-    assert.strictEqual(warning.message, message);
+    if (typeof message === 'string') {
+      assert.strictEqual(warning.message, message);
+    } else {
+      assert(message.test(warning.message));
+    }
     assert.strictEqual(warning.code, code);
   }, expected.length);
 }
@@ -527,7 +506,15 @@ let catchWarning;
 function expectWarning(nameOrMap, expected, code) {
   if (catchWarning === undefined) {
     catchWarning = {};
-    process.on('warning', (warning) => catchWarning[warning.name](warning));
+    process.on('warning', (warning) => {
+      if (!catchWarning[warning.name]) {
+        throw new TypeError(
+          `"${warning.name}" was triggered without being expected.\n` +
+          util.inspect(warning)
+        );
+      }
+      catchWarning[warning.name](warning);
+    });
   }
   if (typeof nameOrMap === 'string') {
     catchWarning[nameOrMap] = _expectWarning(nameOrMap, expected, code);
@@ -626,6 +613,19 @@ function expectsError(fn, settings, exact) {
   return mustCall(innerFn, exact);
 }
 
+const suffix = 'This is caused by either a bug in Node.js ' +
+  'or incorrect usage of Node.js internals.\n' +
+  'Please open an issue with this stack trace at ' +
+  'https://github.com/nodejs/node/issues\n';
+
+function expectsInternalAssertion(fn, message) {
+  assert.throws(fn, {
+    message: `${message}\n${suffix}`,
+    name: 'Error',
+    code: 'ERR_INTERNAL_ASSERTION'
+  });
+}
+
 function skipIfInspectorDisabled() {
   if (!process.features.inspector) {
     skip('V8 inspector is disabled');
@@ -718,17 +718,35 @@ function runWithInvalidFD(func) {
   printSkipMessage('Could not generate an invalid fd');
 }
 
+// A helper function to simplify checking for ERR_INVALID_ARG_TYPE output.
+function invalidArgTypeHelper(input) {
+  if (input == null) {
+    return ` Received ${input}`;
+  }
+  if (typeof input === 'function' && input.name) {
+    return ` Received function ${input.name}`;
+  }
+  if (typeof input === 'object') {
+    if (input.constructor && input.constructor.name) {
+      return ` Received an instance of ${input.constructor.name}`;
+    }
+    return ` Received ${util.inspect(input, { depth: -1 })}`;
+  }
+  let inspected = util.inspect(input, { colors: false });
+  if (inspected.length > 25)
+    inspected = `${inspected.slice(0, 25)}...`;
+  return ` Received type ${typeof input} (${inspected})`;
+}
+
 module.exports = {
   allowGlobals,
   buildType,
-  busyLoop,
   canCreateSymLink,
   childShouldThrowAndAbort,
   createZeroFilledFile,
   disableCrashOnUnhandledRejection,
-  enoughTestCpu,
-  enoughTestMem,
   expectsError,
+  expectsInternalAssertion,
   expectWarning,
   getArrayBufferViews,
   getBufferSources,
@@ -736,13 +754,12 @@ module.exports = {
   getTTYfd,
   hasIntl,
   hasCrypto,
-  hasIPv6,
   hasMultiLocalhost,
+  invalidArgTypeHelper,
   isAIX,
   isAlive,
   isFreeBSD,
   isLinux,
-  isLinuxPPCBE,
   isMainThread,
   isOpenBSD,
   isOSX,
@@ -766,10 +783,26 @@ module.exports = {
   skipIfReportDisabled,
   skipIfWorker,
 
-  get localhostIPv6() { return '::1'; },
+  get enoughTestCPU() {
+    const cpus = require('os').cpus();
+    return Array.isArray(cpus) && (cpus.length > 1 || cpus[0].speed > 999);
+  },
+
+  get enoughTestMem() {
+    return require('os').totalmem() > 0x70000000; /* 1.75 Gb */
+  },
 
   get hasFipsCrypto() {
-    return hasCrypto && require('crypto').fips;
+    return hasCrypto && require('crypto').getFips();
+  },
+
+  get hasIPv6() {
+    const iFaces = require('os').networkInterfaces();
+    const re = isWindows ? /Loopback Pseudo-Interface/ : /lo/;
+    return Object.keys(iFaces).some((name) => {
+      return re.test(name) &&
+             iFaces[name].some(({ family }) => family === 'IPv6');
+    });
   },
 
   get inFreeBSDJail() {
@@ -782,6 +815,17 @@ module.exports = {
       inFreeBSDJail = false;
     }
     return inFreeBSDJail;
+  },
+
+  // On IBMi, process.platform and os.platform() both return 'aix',
+  // It is not enough to differentiate between IBMi and real AIX system.
+  get isIBMi() {
+    return require('os').type() === 'OS400';
+  },
+
+  get isLinuxPPCBE() {
+    return (process.platform === 'linux') && (process.arch === 'ppc64') &&
+           (require('os').endianness() === 'BE');
   },
 
   get localhostIPv4() {
@@ -805,12 +849,14 @@ module.exports = {
     return localhostIPv4;
   },
 
+  get localhostIPv6() { return '::1'; },
+
   // opensslCli defined lazily to reduce overhead of spawnSync
   get opensslCli() {
     if (opensslCli !== null) return opensslCli;
 
     if (process.config.variables.node_shared_openssl) {
-      // use external command
+      // Use external command
       opensslCli = 'openssl';
     } else {
       // Use command built from sources included in Node.js repository

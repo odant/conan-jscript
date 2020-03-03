@@ -24,11 +24,12 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "env.h"
 #include "uv.h"
 #include "stream_wrap.h"
 
 namespace node {
+
+class Environment;
 
 class TTYWrap : public LibuvStreamWrap {
  public:
@@ -48,7 +49,6 @@ class TTYWrap : public LibuvStreamWrap {
           bool readable,
           int* init_err);
 
-  static void GuessHandleType(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void IsTTY(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void GetWindowSize(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetRawMode(const v8::FunctionCallbackInfo<v8::Value>& args);

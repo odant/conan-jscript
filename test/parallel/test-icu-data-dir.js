@@ -1,7 +1,7 @@
 // Flags: --expose-internals
 'use strict';
-const { internalBinding } = require('internal/test/binding');
 const common = require('../common');
+const { internalBinding } = require('internal/test/binding');
 const os = require('os');
 
 const { hasSmallICU } = internalBinding('config');
@@ -21,7 +21,7 @@ const expected =
 }
 
 {
-  const env = Object.assign({}, process.env, { NODE_ICU_DATA: '/' });
+  const env = { ...process.env, NODE_ICU_DATA: '/' };
   const child = spawnSync(process.execPath, ['-e', '0'], { env });
   assert(child.stderr.toString().includes(expected));
 }

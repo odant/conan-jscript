@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-list-format
-
 function assertListFormat(listFormat, input) {
   try {
     let result = listFormat.format(input);
@@ -43,6 +41,10 @@ function testFormatter(listFormat) {
   assertThrows(() => listFormat.format([null, 'world']), TypeError);
   assertThrows(() => listFormat.format(['hello', null]), TypeError);
   assertThrows(() => listFormat.format([null]), TypeError);
+
+  // Test that Cons strings are handled correctly.
+  let arr = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"];
+  assertListFormat(listFormat, [arr + "n"]);
 }
 testFormatter(new Intl.ListFormat());
 testFormatter(new Intl.ListFormat(["en"]));

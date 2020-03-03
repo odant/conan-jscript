@@ -54,13 +54,13 @@ read(buf, 'readUIntLE', [2, 2], 0xea48);
 // Error name and message
 const OOR_ERROR =
 {
-  name: 'RangeError [ERR_OUT_OF_RANGE]'
+  name: 'RangeError'
 };
 
 const OOB_ERROR =
 {
-  name: 'RangeError [ERR_BUFFER_OUT_OF_BOUNDS]',
-  message: 'Attempt to write outside buffer bounds'
+  name: 'RangeError',
+  message: 'Attempt to access memory outside buffer bounds'
 };
 
 // Attempt to overflow buffers, similar to previous bug in array buffers

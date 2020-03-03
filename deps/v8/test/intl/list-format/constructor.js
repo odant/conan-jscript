@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-list-format
-
 // ListFormat constructor can't be called as function.
 assertThrows(() => Intl.ListFormat(['sr']), TypeError);
 
@@ -87,22 +85,3 @@ assertDoesNotThrow(
 
 assertDoesNotThrow(
     () => new Intl.ListFormat(['sr'], {type: 'unit', style: 'narrow'}));
-
-// Throws only once during construction.
-// Check for all getters to prevent regression.
-// Preserve the order of getter initialization.
-let getCount = 0;
-let style = -1;
-let type = -1;
-
-new Intl.ListFormat(['en-US'], {
-  get style() {
-    style = ++getCount;
-  },
-  get type() {
-    type = ++getCount;
-  }
-});
-
-assertEquals(1, type);
-assertEquals(2, style);

@@ -17,11 +17,11 @@ if (!common.isMainThread)
     },
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError [ERR_INVALID_ARG_TYPE]',
+      name: 'TypeError',
       message:
         'The "user" argument must be ' +
-        'one of type number or string. ' +
-        `Received type ${typeof val}`
+        'one of type number or string.' +
+        common.invalidArgTypeHelper(val)
     }
   );
 });
@@ -33,11 +33,11 @@ if (!common.isMainThread)
     },
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError [ERR_INVALID_ARG_TYPE]',
+      name: 'TypeError',
       message:
         'The "extraGroup" argument must be ' +
-        'one of type number or string. ' +
-        `Received type ${typeof val}`
+        'one of type number or string.' +
+        common.invalidArgTypeHelper(val)
     }
   );
 });

@@ -6,8 +6,6 @@ if (!common.hasCrypto)
 const assert = require('assert');
 const crypto = require('crypto');
 
-const DH_NOT_SUITABLE_GENERATOR = crypto.constants.DH_NOT_SUITABLE_GENERATOR;
-
 // Test Diffie-Hellman with two parties sharing a secret,
 // using various encodings as we go along
 const dh1 = crypto.createDiffieHellman(common.hasFipsCrypto ? 1024 : 256);
@@ -55,8 +53,9 @@ assert.strictEqual(dh2.verifyError, 0);
     {
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
-      message: 'The "sizeOrKey" argument must be one of type number, string, ' +
-               `Buffer, TypedArray, or DataView. Received type ${typeof input}`
+      message: 'The "sizeOrKey" argument must be one of type number or string' +
+               ' or an instance of Buffer, TypedArray, or DataView.' +
+               common.invalidArgTypeHelper(input)
     }
   );
 });
@@ -91,8 +90,13 @@ const secret4 = dh4.computeSecret(key2, 'hex', 'base64');
 
 assert.strictEqual(secret1, secret4);
 
-const wrongBlockLength =
-  /^Error: error:0606506D:digital envelope routines:EVP_DecryptFinal_ex:wrong final block length$/;
+const wrongBlockLength = {
+  message: 'error:0606506D:digital envelope' +
+    ' routines:EVP_DecryptFinal_ex:wrong final block length',
+  code: 'ERR_OSSL_EVP_WRONG_FINAL_BLOCK_LENGTH',
+  library: 'digital envelope routines',
+  reason: 'wrong final block length'
+};
 
 // Run this one twice to make sure that the dh3 clears its error properly
 {
@@ -111,7 +115,7 @@ const wrongBlockLength =
 
 assert.throws(() => {
   dh3.computeSecret('');
-}, /^Error: Supplied key is too small$/);
+}, { message: 'Supplied key is too small' });
 
 // Create a shared using a DH group.
 const alice = crypto.createDiffieHellmanGroup('modp5');
@@ -121,8 +125,6 @@ bob.generateKeys();
 const aSecret = alice.computeSecret(bob.getPublicKey()).toString('hex');
 const bSecret = bob.computeSecret(alice.getPublicKey()).toString('hex');
 assert.strictEqual(aSecret, bSecret);
-assert.strictEqual(alice.verifyError, DH_NOT_SUITABLE_GENERATOR);
-assert.strictEqual(bob.verifyError, DH_NOT_SUITABLE_GENERATOR);
 
 /* Ensure specific generator (buffer) works as expected.
  * The values below (modp2/modp2buf) are for a 1024 bits long prime from
@@ -153,8 +155,6 @@ const modp2buf = Buffer.from([
   const exmodp2Secret = exmodp2.computeSecret(modp2.getPublicKey())
       .toString('hex');
   assert.strictEqual(modp2Secret, exmodp2Secret);
-  assert.strictEqual(modp2.verifyError, DH_NOT_SUITABLE_GENERATOR);
-  assert.strictEqual(exmodp2.verifyError, DH_NOT_SUITABLE_GENERATOR);
 }
 
 for (const buf of [modp2buf, ...common.getArrayBufferViews(modp2buf)]) {
@@ -167,7 +167,6 @@ for (const buf of [modp2buf, ...common.getArrayBufferViews(modp2buf)]) {
   const exmodp2Secret = exmodp2.computeSecret(modp2.getPublicKey())
       .toString('hex');
   assert.strictEqual(modp2Secret, exmodp2Secret);
-  assert.strictEqual(exmodp2.verifyError, DH_NOT_SUITABLE_GENERATOR);
 }
 
 {
@@ -179,7 +178,6 @@ for (const buf of [modp2buf, ...common.getArrayBufferViews(modp2buf)]) {
   const exmodp2Secret = exmodp2.computeSecret(modp2.getPublicKey())
       .toString('hex');
   assert.strictEqual(modp2Secret, exmodp2Secret);
-  assert.strictEqual(exmodp2.verifyError, DH_NOT_SUITABLE_GENERATOR);
 }
 
 {
@@ -191,17 +189,20 @@ for (const buf of [modp2buf, ...common.getArrayBufferViews(modp2buf)]) {
   const exmodp2Secret = exmodp2.computeSecret(modp2.getPublicKey())
       .toString('hex');
   assert.strictEqual(modp2Secret, exmodp2Secret);
-  assert.strictEqual(exmodp2.verifyError, DH_NOT_SUITABLE_GENERATOR);
 }
 
-
+// Second OAKLEY group, see
+// https://github.com/nodejs/node-v0.x-archive/issues/2338 and
+// https://xml2rfc.tools.ietf.org/public/rfc/html/rfc2412.html#anchor49
 const p = 'FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74' +
           '020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F1437' +
           '4FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED' +
           'EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381FFFFFFFFFFFFFFFF';
-const bad_dh = crypto.createDiffieHellman(p, 'hex');
-assert.strictEqual(bad_dh.verifyError, DH_NOT_SUITABLE_GENERATOR);
+crypto.createDiffieHellman(p, 'hex');
 
+// Confirm DH_check() results are exposed for optional examination.
+const bad_dh = crypto.createDiffieHellman('02', 'hex');
+assert.notStrictEqual(bad_dh.verifyError, 0);
 
 const availableCurves = new Set(crypto.getCurves());
 const availableHashes = new Set(crypto.getHashes());
@@ -230,7 +231,7 @@ if (availableCurves.has('prime256v1') && availableCurves.has('secp256k1')) {
   assert(firstByte === 2 || firstByte === 3);
   firstByte = ecdh1.getPublicKey('buffer', 'hybrid')[0];
   assert(firstByte === 6 || firstByte === 7);
-  // format value should be string
+  // Format value should be string
 
   common.expectsError(
     () => ecdh1.getPublicKey('buffer', 10),
@@ -260,7 +261,7 @@ if (availableCurves.has('prime256v1') && availableCurves.has('secp256k1')) {
 
   assert.throws(() => {
     ecdh4.setPublicKey(ecdh3.getPublicKey());
-  }, /^Error: Failed to convert Buffer to EC_POINT$/);
+  }, { message: 'Failed to convert Buffer to EC_POINT' });
 
   // Verify that we can use ECDH without having to use newly generated keys.
   const ecdh5 = crypto.createECDH('secp256k1');
@@ -381,5 +382,32 @@ common.expectsError(
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
     message: 'The "curve" argument must be of type string. ' +
-             'Received type undefined'
+             'Received undefined'
   });
+
+assert.throws(
+  function() {
+    crypto.getDiffieHellman('unknown-group');
+  },
+  /^Error: Unknown group$/,
+  'crypto.getDiffieHellman(\'unknown-group\') ' +
+  'failed to throw the expected error.'
+);
+assert.throws(
+  function() {
+    crypto.getDiffieHellman('modp1').setPrivateKey('');
+  },
+  new RegExp('^TypeError: crypto\\.getDiffieHellman\\(\\.\\.\\.\\)\\.' +
+  'setPrivateKey is not a function$'),
+  'crypto.getDiffieHellman(\'modp1\').setPrivateKey(\'\') ' +
+  'failed to throw the expected error.'
+);
+assert.throws(
+  function() {
+    crypto.getDiffieHellman('modp1').setPublicKey('');
+  },
+  new RegExp('^TypeError: crypto\\.getDiffieHellman\\(\\.\\.\\.\\)\\.' +
+  'setPublicKey is not a function$'),
+  'crypto.getDiffieHellman(\'modp1\').setPublicKey(\'\') ' +
+  'failed to throw the expected error.'
+);

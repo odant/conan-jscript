@@ -1,11 +1,16 @@
 // Flags: --experimental-modules
-/* eslint-disable node-core/required-modules */
-import common from './index.js';
+/* eslint-disable node-core/require-common-first, node-core/required-modules */
+
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const common = require('./index.js');
 
 const {
   isMainThread,
   isWindows,
   isAIX,
+  isIBMi,
   isLinuxPPCBE,
   isSunOS,
   isFreeBSD,
@@ -35,7 +40,6 @@ const {
   skip,
   ArrayStream,
   nodeProcessAborted,
-  busyLoop,
   isAlive,
   expectWarning,
   expectsError,
@@ -52,6 +56,7 @@ export {
   isMainThread,
   isWindows,
   isAIX,
+  isIBMi,
   isLinuxPPCBE,
   isSunOS,
   isFreeBSD,
@@ -81,7 +86,6 @@ export {
   skip,
   ArrayStream,
   nodeProcessAborted,
-  busyLoop,
   isAlive,
   expectWarning,
   expectsError,
@@ -91,5 +95,6 @@ export {
   getBufferSources,
   disableCrashOnUnhandledRejection,
   getTTYfd,
-  runWithInvalidFD
+  runWithInvalidFD,
+  createRequire
 };

@@ -59,13 +59,6 @@ Mutex umask_mutex;
 // used in Hrtime() and Uptime() below
 #define NANOS_PER_SEC 1000000000
 
-#ifdef _WIN32
-/* MAX_PATH is in characters, not bytes. Make sure we have enough headroom. */
-#define CHDIR_BUFSIZE (MAX_PATH * 4)
-#else
-#define CHDIR_BUFSIZE (PATH_MAX)
-#endif
-
 static void Abort(const FunctionCallbackInfo<Value>& args) {
   Abort();
 }
@@ -81,7 +74,7 @@ static void Chdir(const FunctionCallbackInfo<Value>& args) {
   if (err) {
     // Also include the original working directory, since that will usually
     // be helpful information when debugging a `chdir()` failure.
-    char buf[CHDIR_BUFSIZE];
+    char buf[PATH_MAX_BYTES];
     size_t cwd_len = sizeof(buf);
     uv_cwd(buf, &cwd_len);
     return env->ThrowUVException(err, "chdir", nullptr, buf, *path);
@@ -118,7 +111,8 @@ static void CPUUsage(const FunctionCallbackInfo<Value>& args) {
 
 static void Cwd(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  char buf[CHDIR_BUFSIZE];
+  CHECK(env->has_run_bootstrapping_code());
+  char buf[PATH_MAX_BYTES];
   size_t cwd_len = sizeof(buf);
   int err = uv_cwd(buf, &cwd_len);
   if (err)
@@ -171,6 +165,16 @@ static void Kill(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->Int32Value(context).To(&pid)) return;
   int sig;
   if (!args[1]->Int32Value(context).To(&sig)) return;
+
+  uv_pid_t own_pid = uv_os_getpid();
+  if (sig > 0 &&
+      (pid == 0 || pid == -1 || pid == own_pid || pid == -own_pid) &&
+      !HasSignalJSHandler(sig)) {
+    // This is most likely going to terminate this process.
+    // It's not an exact method but it might be close enough.
+    RunAtExit(env);
+  }
+
   int err = uv_kill(pid, sig);
   args.GetReturnValue().Set(err);
 }
@@ -220,12 +224,13 @@ static void StopProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void Umask(const FunctionCallbackInfo<Value>& args) {
-  uint32_t old;
-
+  Environment* env = Environment::GetCurrent(args);
+  CHECK(env->has_run_bootstrapping_code());
   CHECK_EQ(args.Length(), 1);
   CHECK(args[0]->IsUndefined() || args[0]->IsUint32());
   Mutex::ScopedLock scoped_lock(per_process::umask_mutex);
 
+  uint32_t old;
   if (args[0]->IsUndefined()) {
     old = umask(0);
     umask(static_cast<mode_t>(old));
@@ -255,7 +260,7 @@ static void GetActiveRequests(const FunctionCallbackInfo<Value>& args) {
     AsyncWrap* w = req_wrap->GetAsyncWrap();
     if (w->persistent().IsEmpty())
       continue;
-    request_v.push_back(w->GetOwner());
+    request_v.emplace_back(w->GetOwner());
   }
 
   args.GetReturnValue().Set(
@@ -271,10 +276,42 @@ void GetActiveHandles(const FunctionCallbackInfo<Value>& args) {
   for (auto w : *env->handle_wrap_queue()) {
     if (!HandleWrap::HasRef(w))
       continue;
-    handle_v.push_back(w->GetOwner());
+    handle_v.emplace_back(w->GetOwner());
   }
   args.GetReturnValue().Set(
       Array::New(env->isolate(), handle_v.data(), handle_v.size()));
+}
+
+static void ResourceUsage(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+
+  uv_rusage_t rusage;
+  int err = uv_getrusage(&rusage);
+  if (err)
+    return env->ThrowUVException(err, "uv_getrusage");
+
+  CHECK(args[0]->IsFloat64Array());
+  Local<Float64Array> array = args[0].As<Float64Array>();
+  CHECK_EQ(array->Length(), 16);
+  Local<ArrayBuffer> ab = array->Buffer();
+  double* fields = static_cast<double*>(ab->GetContents().Data());
+
+  fields[0] = MICROS_PER_SEC * rusage.ru_utime.tv_sec + rusage.ru_utime.tv_usec;
+  fields[1] = MICROS_PER_SEC * rusage.ru_stime.tv_sec + rusage.ru_stime.tv_usec;
+  fields[2] = rusage.ru_maxrss;
+  fields[3] = rusage.ru_ixrss;
+  fields[4] = rusage.ru_idrss;
+  fields[5] = rusage.ru_isrss;
+  fields[6] = rusage.ru_minflt;
+  fields[7] = rusage.ru_majflt;
+  fields[8] = rusage.ru_nswap;
+  fields[9] = rusage.ru_inblock;
+  fields[10] = rusage.ru_oublock;
+  fields[11] = rusage.ru_msgsnd;
+  fields[12] = rusage.ru_msgrcv;
+  fields[13] = rusage.ru_nsignals;
+  fields[14] = rusage.ru_nvcsw;
+  fields[15] = rusage.ru_nivcsw;
 }
 
 #ifdef __POSIX__
@@ -318,7 +355,7 @@ static void DebugProcess(const FunctionCallbackInfo<Value>& args) {
   LPTHREAD_START_ROUTINE* handler = nullptr;
   DWORD pid = 0;
 
-  OnScopeLeave cleanup([&]() {
+  auto cleanup = OnScopeLeave([&]() {
     if (process != nullptr) CloseHandle(process);
     if (thread != nullptr) CloseHandle(thread);
     if (handler != nullptr) UnmapViewOfFile(handler);
@@ -388,7 +425,7 @@ static void DebugEnd(const FunctionCallbackInfo<Value>& args) {
 
 static void ReallyExit(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  WaitForInspectorDisconnect(env);
+  RunAtExit(env);
   int code = args[0]->Int32Value(env->context()).FromMaybe(0);
   env->Exit(code);
 }
@@ -417,6 +454,7 @@ static void InitializeProcessMethods(Local<Object> target,
   env->SetMethod(target, "cpuUsage", CPUUsage);
   env->SetMethod(target, "hrtime", Hrtime);
   env->SetMethod(target, "hrtimeBigInt", HrtimeBigInt);
+  env->SetMethod(target, "resourceUsage", ResourceUsage);
 
   env->SetMethod(target, "_getActiveRequests", GetActiveRequests);
   env->SetMethod(target, "_getActiveHandles", GetActiveHandles);
@@ -426,6 +464,7 @@ static void InitializeProcessMethods(Local<Object> target,
   env->SetMethod(target, "dlopen", binding::DLOpen);
   env->SetMethod(target, "reallyExit", ReallyExit);
   env->SetMethodNoSideEffect(target, "uptime", Uptime);
+  env->SetMethod(target, "patchProcessObject", PatchProcessObject);
 }
 
 }  // namespace node

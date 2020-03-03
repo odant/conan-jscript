@@ -21,11 +21,12 @@ class ControlFlowOptimizerTest : public GraphTest {
  public:
   explicit ControlFlowOptimizerTest(int num_parameters = 3)
       : GraphTest(num_parameters), machine_(zone()), javascript_(zone()) {}
-  ~ControlFlowOptimizerTest() override {}
+  ~ControlFlowOptimizerTest() override = default;
 
  protected:
   void Optimize() {
-    ControlFlowOptimizer optimizer(graph(), common(), machine(), zone());
+    ControlFlowOptimizer optimizer(graph(), common(), machine(), tick_counter(),
+                                   zone());
     optimizer.Optimize();
   }
 

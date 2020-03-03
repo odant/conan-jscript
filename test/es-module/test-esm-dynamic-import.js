@@ -1,4 +1,5 @@
 // Flags: --experimental-modules
+
 'use strict';
 const common = require('../common');
 const assert = require('assert');
@@ -16,16 +17,19 @@ function expectErrorProperty(result, propertyKey, value) {
     }));
 }
 
-function expectMissingModuleError(result) {
-  expectErrorProperty(result, 'code', 'MODULE_NOT_FOUND');
+function expectModuleError(result, err) {
+  expectErrorProperty(result, 'code', err);
 }
 
 function expectOkNamespace(result) {
   Promise.resolve(result)
     .then(common.mustCall((ns) => {
-      // Can't deepStrictEqual because ns isn't a normal object
-      // eslint-disable-next-line no-restricted-properties
-      assert.deepEqual(ns, { default: true });
+      const expected = { default: true };
+      Object.defineProperty(expected, Symbol.toStringTag, {
+        value: 'Module'
+      });
+      Object.setPrototypeOf(expected, Object.getPrototypeOf(ns));
+      assert.deepStrictEqual(ns, expected);
     }));
 }
 
@@ -51,10 +55,10 @@ function expectFsNamespace(result) {
   expectFsNamespace(eval('import("fs")'));
   expectFsNamespace(eval('import("fs")'));
 
-  expectMissingModuleError(import('./not-an-existing-module.mjs'));
-  // TODO(jkrems): Right now this doesn't hit a protocol error because the
-  // module resolution step already rejects it. These arguably should be
-  // protocol errors.
-  expectMissingModuleError(import('node:fs'));
-  expectMissingModuleError(import('http://example.com/foo.js'));
+  expectModuleError(import('./not-an-existing-module.mjs'),
+                    'ERR_MODULE_NOT_FOUND');
+  expectModuleError(import('node:fs'),
+                    'ERR_UNSUPPORTED_ESM_URL_SCHEME');
+  expectModuleError(import('http://example.com/foo.js'),
+                    'ERR_UNSUPPORTED_ESM_URL_SCHEME');
 })();

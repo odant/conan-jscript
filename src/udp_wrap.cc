@@ -114,15 +114,24 @@ void UDPWrap::Initialize(Local<Object> target,
 
   env->SetProtoMethod(t, "open", Open);
   env->SetProtoMethod(t, "bind", Bind);
+  env->SetProtoMethod(t, "connect", Connect);
   env->SetProtoMethod(t, "send", Send);
   env->SetProtoMethod(t, "bind6", Bind6);
+  env->SetProtoMethod(t, "connect6", Connect6);
   env->SetProtoMethod(t, "send6", Send6);
+  env->SetProtoMethod(t, "disconnect", Disconnect);
   env->SetProtoMethod(t, "recvStart", RecvStart);
   env->SetProtoMethod(t, "recvStop", RecvStop);
+  env->SetProtoMethod(t, "getpeername",
+                      GetSockOrPeerName<UDPWrap, uv_udp_getpeername>);
   env->SetProtoMethod(t, "getsockname",
                       GetSockOrPeerName<UDPWrap, uv_udp_getsockname>);
   env->SetProtoMethod(t, "addMembership", AddMembership);
   env->SetProtoMethod(t, "dropMembership", DropMembership);
+  env->SetProtoMethod(t, "addSourceSpecificMembership",
+                      AddSourceSpecificMembership);
+  env->SetProtoMethod(t, "dropSourceSpecificMembership",
+                      DropSourceSpecificMembership);
   env->SetProtoMethod(t, "setMulticastInterface", SetMulticastInterface);
   env->SetProtoMethod(t, "setMulticastTTL", SetMulticastTTL);
   env->SetProtoMethod(t, "setMulticastLoopback", SetMulticastLoopback);
@@ -134,7 +143,7 @@ void UDPWrap::Initialize(Local<Object> target,
 
   target->Set(env->context(),
               udpString,
-              t->GetFunction(env->context()).ToLocalChecked()).FromJust();
+              t->GetFunction(env->context()).ToLocalChecked()).Check();
   env->set_udp_constructor_function(
       t->GetFunction(env->context()).ToLocalChecked());
 
@@ -147,13 +156,13 @@ void UDPWrap::Initialize(Local<Object> target,
   swt->SetClassName(sendWrapString);
   target->Set(env->context(),
               sendWrapString,
-              swt->GetFunction(env->context()).ToLocalChecked()).FromJust();
+              swt->GetFunction(env->context()).ToLocalChecked()).Check();
 
   Local<Object> constants = Object::New(env->isolate());
   NODE_DEFINE_CONSTANT(constants, UV_UDP_IPV6ONLY);
   target->Set(context,
               env->constants_string(),
-              constants).FromJust();
+              constants).Check();
 }
 
 
@@ -209,6 +218,30 @@ void UDPWrap::DoBind(const FunctionCallbackInfo<Value>& args, int family) {
     err = uv_udp_bind(&wrap->handle_,
                       reinterpret_cast<const sockaddr*>(&addr_storage),
                       flags);
+  }
+
+  args.GetReturnValue().Set(err);
+}
+
+
+void UDPWrap::DoConnect(const FunctionCallbackInfo<Value>& args, int family) {
+  UDPWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap,
+                          args.Holder(),
+                          args.GetReturnValue().Set(UV_EBADF));
+
+  CHECK_EQ(args.Length(), 2);
+
+  node::Utf8Value address(args.GetIsolate(), args[0]);
+  Local<Context> ctx = args.GetIsolate()->GetCurrentContext();
+  uint32_t port;
+  if (!args[1]->Uint32Value(ctx).To(&port))
+    return;
+  struct sockaddr_storage addr_storage;
+  int err = sockaddr_for_family(family, address.out(), port, &addr_storage);
+  if (err == 0) {
+    err = uv_udp_connect(&wrap->handle_,
+                         reinterpret_cast<const sockaddr*>(&addr_storage));
   }
 
   args.GetReturnValue().Set(err);
@@ -271,6 +304,30 @@ void UDPWrap::BufferSize(const FunctionCallbackInfo<Value>& args) {
   }
 
   args.GetReturnValue().Set(size);
+}
+
+
+void UDPWrap::Connect(const FunctionCallbackInfo<Value>& args) {
+  DoConnect(args, AF_INET);
+}
+
+
+void UDPWrap::Connect6(const FunctionCallbackInfo<Value>& args) {
+  DoConnect(args, AF_INET6);
+}
+
+
+void UDPWrap::Disconnect(const FunctionCallbackInfo<Value>& args) {
+  UDPWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap,
+                          args.Holder(),
+                          args.GetReturnValue().Set(UV_EBADF));
+
+  CHECK_EQ(args.Length(), 0);
+
+  int err = uv_udp_connect(&wrap->handle_, nullptr);
+
+  args.GetReturnValue().Set(err);
 }
 
 #define X(name, fn)                                                            \
@@ -344,6 +401,44 @@ void UDPWrap::DropMembership(const FunctionCallbackInfo<Value>& args) {
   SetMembership(args, UV_LEAVE_GROUP);
 }
 
+void UDPWrap::SetSourceMembership(const FunctionCallbackInfo<Value>& args,
+                                  uv_membership membership) {
+  UDPWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap,
+                          args.Holder(),
+                          args.GetReturnValue().Set(UV_EBADF));
+
+  CHECK_EQ(args.Length(), 3);
+
+  node::Utf8Value source_address(args.GetIsolate(), args[0]);
+  node::Utf8Value group_address(args.GetIsolate(), args[1]);
+  node::Utf8Value iface(args.GetIsolate(), args[2]);
+
+  if (*iface == nullptr) return;
+  const char* iface_cstr = *iface;
+  if (args[2]->IsUndefined() || args[2]->IsNull()) {
+    iface_cstr = nullptr;
+  }
+
+  int err = uv_udp_set_source_membership(&wrap->handle_,
+                                         *group_address,
+                                         iface_cstr,
+                                         *source_address,
+                                         membership);
+  args.GetReturnValue().Set(err);
+}
+
+void UDPWrap::AddSourceSpecificMembership(
+  const FunctionCallbackInfo<Value>& args) {
+  SetSourceMembership(args, UV_JOIN_GROUP);
+}
+
+
+void UDPWrap::DropSourceSpecificMembership(
+  const FunctionCallbackInfo<Value>& args) {
+  SetSourceMembership(args, UV_LEAVE_GROUP);
+}
+
 
 void UDPWrap::DoSend(const FunctionCallbackInfo<Value>& args, int family) {
   Environment* env = Environment::GetCurrent(args);
@@ -353,28 +448,29 @@ void UDPWrap::DoSend(const FunctionCallbackInfo<Value>& args, int family) {
                           args.Holder(),
                           args.GetReturnValue().Set(UV_EBADF));
 
-  // send(req, list, list.length, port, address, hasCallback)
+  CHECK(args.Length() == 4 || args.Length() == 6);
   CHECK(args[0]->IsObject());
   CHECK(args[1]->IsArray());
   CHECK(args[2]->IsUint32());
-  CHECK(args[3]->IsUint32());
-  CHECK(args[4]->IsString());
-  CHECK(args[5]->IsBoolean());
+
+  bool sendto = args.Length() == 6;
+  if (sendto) {
+    // send(req, list, list.length, port, address, hasCallback)
+    CHECK(args[3]->IsUint32());
+    CHECK(args[4]->IsString());
+    CHECK(args[5]->IsBoolean());
+  } else {
+    // send(req, list, list.length, hasCallback)
+    CHECK(args[3]->IsBoolean());
+  }
 
   Local<Object> req_wrap_obj = args[0].As<Object>();
   Local<Array> chunks = args[1].As<Array>();
   // it is faster to fetch the length of the
   // array in js-land
   size_t count = args[2].As<Uint32>()->Value();
-  const unsigned short port = args[3].As<Uint32>()->Value();
-  node::Utf8Value address(env->isolate(), args[4]);
-  const bool have_callback = args[5]->IsTrue();
+  const bool have_callback = sendto ? args[5]->IsTrue() : args[3]->IsTrue();
 
-  SendWrap* req_wrap;
-  {
-    AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(wrap);
-    req_wrap = new SendWrap(env, req_wrap_obj, have_callback);
-  }
   size_t msg_size = 0;
 
   MaybeStackBuffer<uv_buf_t, 16> bufs(count);
@@ -389,21 +485,58 @@ void UDPWrap::DoSend(const FunctionCallbackInfo<Value>& args, int family) {
     msg_size += length;
   }
 
-  req_wrap->msg_size = msg_size;
-
+  int err = 0;
   struct sockaddr_storage addr_storage;
-  int err = sockaddr_for_family(family, address.out(), port, &addr_storage);
-  if (err == 0) {
-    err = req_wrap->Dispatch(uv_udp_send,
-                             &wrap->handle_,
-                             *bufs,
-                             count,
-                             reinterpret_cast<const sockaddr*>(&addr_storage),
-                             OnSend);
+  sockaddr* addr = nullptr;
+  if (sendto) {
+    const unsigned short port = args[3].As<Uint32>()->Value();
+    node::Utf8Value address(env->isolate(), args[4]);
+    err = sockaddr_for_family(family, address.out(), port, &addr_storage);
+    if (err == 0) {
+      addr = reinterpret_cast<sockaddr*>(&addr_storage);
+    }
   }
 
-  if (err)
-    delete req_wrap;
+  uv_buf_t* bufs_ptr = *bufs;
+  if (err == 0 && !UNLIKELY(env->options()->test_udp_no_try_send)) {
+    err = uv_udp_try_send(&wrap->handle_, bufs_ptr, count, addr);
+    if (err == UV_ENOSYS || err == UV_EAGAIN) {
+      err = 0;
+    } else if (err >= 0) {
+      size_t sent = err;
+      while (count > 0 && bufs_ptr->len <= sent) {
+        sent -= bufs_ptr->len;
+        bufs_ptr++;
+        count--;
+      }
+      if (count > 0) {
+        CHECK_LT(sent, bufs_ptr->len);
+        bufs_ptr->base += sent;
+        bufs_ptr->len -= sent;
+      } else {
+        CHECK_EQ(static_cast<size_t>(err), msg_size);
+        // + 1 so that the JS side can distinguish 0-length async sends from
+        // 0-length sync sends.
+        args.GetReturnValue().Set(static_cast<uint32_t>(msg_size) + 1);
+        return;
+      }
+    }
+  }
+
+  if (err == 0) {
+    AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(wrap);
+    SendWrap* req_wrap = new SendWrap(env, req_wrap_obj, have_callback);
+    req_wrap->msg_size = msg_size;
+
+    err = req_wrap->Dispatch(uv_udp_send,
+                             &wrap->handle_,
+                             bufs_ptr,
+                             count,
+                             addr,
+                             OnSend);
+    if (err)
+      delete req_wrap;
+  }
 
   args.GetReturnValue().Set(err);
 }
