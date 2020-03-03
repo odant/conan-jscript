@@ -70,7 +70,6 @@ class JScriptConan(ConanFile):
     def source(self):
         return
         tools.patch(patch_file="oda.patch")
-        tools.patch(patch_file="add_const.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
             tools.patch(patch_file="add_libatomic.patch")
 
