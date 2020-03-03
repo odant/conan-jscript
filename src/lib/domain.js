@@ -26,7 +26,15 @@
 // No new pull requests targeting this module will be accepted
 // unless they address existing, critical bugs.
 
-const util = require('util');
+const {
+  Array,
+  Error,
+  Map,
+  ObjectDefineProperty,
+  ReflectApply,
+  Symbol,
+} = primordials;
+
 const EventEmitter = require('events');
 const {
   ERR_DOMAIN_CALLBACK_NOT_AVAILABLE,
@@ -41,8 +49,8 @@ const { WeakReference } = internalBinding('util');
 
 // Overwrite process.domain with a getter/setter that will allow for more
 // effective optimizations
-var _domain = [null];
-Object.defineProperty(process, 'domain', {
+const _domain = [null];
+ObjectDefineProperty(process, 'domain', {
   enumerable: true,
   get: function() {
     return _domain[0];
@@ -58,38 +66,31 @@ const asyncHook = createHook({
     if (process.domain !== null && process.domain !== undefined) {
       // If this operation is created while in a domain, let's mark it
       pairing.set(asyncId, process.domain[kWeak]);
-      Object.defineProperty(resource, 'domain', {
+      ObjectDefineProperty(resource, 'domain', {
         configurable: true,
         enumerable: false,
         value: process.domain,
         writable: true
       });
-      if (resource.promise !== undefined &&
-          resource.promise instanceof Promise) {
-        // resource.promise instanceof Promise make sure that the
-        // promise comes from the same context
-        // see https://github.com/nodejs/node/issues/15673
-        Object.defineProperty(resource.promise, 'domain', {
-          configurable: true,
-          enumerable: false,
-          value: process.domain,
-          writable: true
-        });
-      }
     }
   },
   before(asyncId) {
     const current = pairing.get(asyncId);
-    if (current !== undefined) { // enter domain for this cb
+    if (current !== undefined) { // Enter domain for this cb
       // We will get the domain through current.get(), because the resource
       // object's .domain property makes sure it is not garbage collected.
+      // However, we do need to make the reference to the domain non-weak,
+      // so that it cannot be garbage collected before the after() hook.
+      current.incRef();
       current.get().enter();
     }
   },
   after(asyncId) {
     const current = pairing.get(asyncId);
-    if (current !== undefined) { // exit domain for this cb
-      current.get().exit();
+    if (current !== undefined) { // Exit domain for this cb
+      const domain = current.get();
+      current.decRef();
+      domain.exit();
     }
   },
   destroy(asyncId) {
@@ -133,7 +134,7 @@ function topLevelDomainCallback(cb, ...args) {
 
   if (domain)
     domain.enter();
-  const ret = Reflect.apply(cb, this, args);
+  const ret = ReflectApply(cb, this, args);
   if (domain)
     domain.exit();
 
@@ -210,10 +211,10 @@ Domain.prototype.members = undefined;
 
 // Called by process._fatalException in case an error was thrown.
 Domain.prototype._errorHandler = function(er) {
-  var caught = false;
+  let caught = false;
 
-  if (!util.isPrimitive(er)) {
-    Object.defineProperty(er, 'domain', {
+  if ((typeof er === 'object' && er !== null) || typeof er === 'function') {
+    ObjectDefineProperty(er, 'domain', {
       configurable: true,
       enumerable: false,
       value: this,
@@ -298,7 +299,7 @@ Domain.prototype.enter = function() {
 
 Domain.prototype.exit = function() {
   // Don't do anything if this domain is not on the stack.
-  var index = stack.lastIndexOf(this);
+  const index = stack.lastIndexOf(this);
   if (index === -1) return;
 
   // Exit all domains until this one.
@@ -330,12 +331,12 @@ Domain.prototype.add = function(ee) {
   // e.add(d);
   // e.emit('error', er); // RangeError, stack overflow!
   if (this.domain && (ee instanceof Domain)) {
-    for (var d = this.domain; d; d = d.domain) {
+    for (let d = this.domain; d; d = d.domain) {
       if (ee === d) return;
     }
   }
 
-  Object.defineProperty(ee, 'domain', {
+  ObjectDefineProperty(ee, 'domain', {
     configurable: true,
     enumerable: false,
     value: this,
@@ -347,21 +348,21 @@ Domain.prototype.add = function(ee) {
 
 Domain.prototype.remove = function(ee) {
   ee.domain = null;
-  var index = this.members.indexOf(ee);
+  const index = this.members.indexOf(ee);
   if (index !== -1)
     this.members.splice(index, 1);
 };
 
 
 Domain.prototype.run = function(fn) {
-  var ret;
+  let ret;
 
   this.enter();
   if (arguments.length >= 2) {
-    var len = arguments.length;
-    var args = new Array(len - 1);
+    const len = arguments.length;
+    const args = new Array(len - 1);
 
-    for (var i = 1; i < len; i++)
+    for (let i = 1; i < len; i++)
       args[i - 1] = arguments[i];
 
     ret = fn.apply(this, args);
@@ -376,10 +377,10 @@ Domain.prototype.run = function(fn) {
 
 function intercepted(_this, self, cb, fnargs) {
   if (fnargs[0] && fnargs[0] instanceof Error) {
-    var er = fnargs[0];
+    const er = fnargs[0];
     er.domainBound = cb;
     er.domainThrown = false;
-    Object.defineProperty(er, 'domain', {
+    ObjectDefineProperty(er, 'domain', {
       configurable: true,
       enumerable: false,
       value: self,
@@ -389,12 +390,12 @@ function intercepted(_this, self, cb, fnargs) {
     return;
   }
 
-  var args = [];
-  var i, ret;
+  const args = [];
+  let ret;
 
   self.enter();
   if (fnargs.length > 1) {
-    for (i = 1; i < fnargs.length; i++)
+    for (let i = 1; i < fnargs.length; i++)
       args.push(fnargs[i]);
     ret = cb.apply(_this, args);
   } else {
@@ -407,7 +408,7 @@ function intercepted(_this, self, cb, fnargs) {
 
 
 Domain.prototype.intercept = function(cb) {
-  var self = this;
+  const self = this;
 
   function runIntercepted() {
     return intercepted(this, self, cb, arguments);
@@ -418,7 +419,7 @@ Domain.prototype.intercept = function(cb) {
 
 
 function bound(_this, self, cb, fnargs) {
-  var ret;
+  let ret;
 
   self.enter();
   if (fnargs.length > 0)
@@ -432,13 +433,13 @@ function bound(_this, self, cb, fnargs) {
 
 
 Domain.prototype.bind = function(cb) {
-  var self = this;
+  const self = this;
 
   function runBound() {
     return bound(this, self, cb, arguments);
   }
 
-  Object.defineProperty(runBound, 'domain', {
+  ObjectDefineProperty(runBound, 'domain', {
     configurable: true,
     enumerable: false,
     value: this,
@@ -453,7 +454,7 @@ EventEmitter.usingDomains = true;
 
 const eventInit = EventEmitter.init;
 EventEmitter.init = function() {
-  Object.defineProperty(this, 'domain', {
+  ObjectDefineProperty(this, 'domain', {
     configurable: true,
     enumerable: false,
     value: null,
@@ -478,7 +479,7 @@ EventEmitter.prototype.emit = function(...args) {
   // handler, there's no active domain or this is process
   if (shouldEmitError || domain === null || domain === undefined ||
       this === process) {
-    return Reflect.apply(eventEmit, this, args);
+    return ReflectApply(eventEmit, this, args);
   }
 
   if (type === 'error') {
@@ -487,7 +488,7 @@ EventEmitter.prototype.emit = function(...args) {
 
     if (typeof er === 'object') {
       er.domainEmitter = this;
-      Object.defineProperty(er, 'domain', {
+      ObjectDefineProperty(er, 'domain', {
         configurable: true,
         enumerable: false,
         value: domain,
@@ -501,7 +502,7 @@ EventEmitter.prototype.emit = function(...args) {
   }
 
   domain.enter();
-  const ret = Reflect.apply(eventEmit, this, args);
+  const ret = ReflectApply(eventEmit, this, args);
   domain.exit();
 
   return ret;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --allow-natives-syntax --harmony-bigint
+// Flags: --allow-natives-syntax
 
 'use strict'
 
@@ -19,6 +19,7 @@ function test(f, {input, check}) {
 
 function Test(f, ...cases) {
   for (let i = 0; i < cases.length; ++i) {
+    %PrepareFunctionForOptimization(f);
     test(f, cases[i]);
     %OptimizeFunctionOnNextCall(f);
     for (let j = 0; j < cases.length; ++j) {

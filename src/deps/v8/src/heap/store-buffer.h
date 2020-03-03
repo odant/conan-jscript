@@ -5,14 +5,14 @@
 #ifndef V8_HEAP_STORE_BUFFER_H_
 #define V8_HEAP_STORE_BUFFER_H_
 
-#include "src/allocation.h"
 #include "src/base/logging.h"
 #include "src/base/platform/platform.h"
-#include "src/cancelable-task.h"
-#include "src/globals.h"
+#include "src/common/globals.h"
 #include "src/heap/gc-tracer.h"
 #include "src/heap/remembered-set.h"
 #include "src/heap/slot-set.h"
+#include "src/tasks/cancelable-task.h"
+#include "src/utils/allocation.h"
 
 namespace v8 {
 namespace internal {
@@ -23,24 +23,21 @@ namespace internal {
 // one is the end address of the invalid range or null if there is just one slot
 // that needs to be removed from the remembered set. On buffer overflow the
 // slots are moved to the remembered set.
+// Store buffer entries are always full pointers.
 class StoreBuffer {
  public:
   enum StoreBufferMode { IN_GC, NOT_IN_GC };
 
-  static const int kStoreBufferSize = 1 << (11 + kPointerSizeLog2);
-  static const int kStoreBufferMask = kStoreBufferSize - 1;
   static const int kStoreBuffers = 2;
-  static const intptr_t kDeletionTag = 1;
+  static const int kStoreBufferSize =
+      Max(static_cast<int>(kMinExpectedOSPageSize / kStoreBuffers),
+          1 << (11 + kSystemPointerSizeLog2));
+  static const int kStoreBufferMask = kStoreBufferSize - 1;
 
   V8_EXPORT_PRIVATE static int StoreBufferOverflow(Isolate* isolate);
 
-  static void DeleteDuringGarbageCollection(StoreBuffer* store_buffer,
-                                            Address start, Address end);
   static void InsertDuringGarbageCollection(StoreBuffer* store_buffer,
                                             Address slot);
-
-  static void DeleteDuringRuntime(StoreBuffer* store_buffer, Address start,
-                                  Address end);
   static void InsertDuringRuntime(StoreBuffer* store_buffer, Address slot);
 
   explicit StoreBuffer(Heap* heap);
@@ -58,19 +55,6 @@ class StoreBuffer {
   // the remembered set.
   void MoveAllEntriesToRememberedSet();
 
-  inline bool IsDeletionAddress(Address address) const {
-    return address & kDeletionTag;
-  }
-
-  inline Address MarkDeletionAddress(Address address) {
-    return address | kDeletionTag;
-  }
-
-  inline Address UnmarkDeletionAddress(Address address) {
-    return address & ~kDeletionTag;
-  }
-
-  inline void InsertDeletionIntoStoreBuffer(Address start, Address end);
   inline void InsertIntoStoreBuffer(Address slot);
 
   void InsertEntry(Address slot) {
@@ -78,16 +62,6 @@ class StoreBuffer {
     // set. Insertions coming from the runtime are added to the store buffer to
     // allow concurrent processing.
     insertion_callback(this, slot);
-  }
-
-  // If we only want to delete a single slot, end should be set to null which
-  // will be written into the second field. When processing the store buffer
-  // the more efficient Remove method will be called in this case.
-  void DeleteEntry(Address start, Address end = kNullAddress) {
-    // Deletions coming from the GC are directly deleted from the remembered
-    // set. Deletions coming from the runtime are added to the store buffer
-    // to allow concurrent processing.
-    deletion_callback(this, start, end);
   }
 
   void SetMode(StoreBufferMode mode);
@@ -123,7 +97,7 @@ class StoreBuffer {
         : CancelableTask(isolate),
           store_buffer_(store_buffer),
           tracer_(isolate->heap()->tracer()) {}
-    virtual ~Task() {}
+    ~Task() override = default;
 
    private:
     void RunInternal() override {
@@ -171,7 +145,6 @@ class StoreBuffer {
   // Callbacks are more efficient than reading out the gc state for every
   // store buffer operation.
   void (*insertion_callback)(StoreBuffer*, Address);
-  void (*deletion_callback)(StoreBuffer*, Address, Address);
 };
 
 }  // namespace internal

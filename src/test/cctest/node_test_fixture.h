@@ -2,11 +2,13 @@
 #define TEST_CCTEST_NODE_TEST_FIXTURE_H_
 
 #include <cstdlib>
+#include <memory>
 #include "gtest/gtest.h"
 #include "node.h"
 #include "node_platform.h"
 #include "node_internals.h"
-#include "env.h"
+#include "env-inl.h"
+#include "util-inl.h"
 #include "v8.h"
 #include "libplatform/libplatform.h"
 
@@ -77,7 +79,7 @@ class NodeTestFixture : public ::testing::Test {
       node::Init(&argc, &argv0, &exec_argc, &exec_argv);
     }
 
-    tracing_agent.reset(new node::tracing::Agent());
+    tracing_agent = std::make_unique<node::tracing::Agent>();
     node::tracing::TraceEventHelper::SetAgent(tracing_agent.get());
     CHECK_EQ(0, uv_loop_init(&current_loop));
     platform.reset(static_cast<node::NodePlatform*>(
@@ -104,8 +106,9 @@ class NodeTestFixture : public ::testing::Test {
 
   void TearDown() override {
     isolate_->Exit();
-    isolate_->Dispose();
+    platform->DrainTasks(isolate_);
     platform->UnregisterIsolate(isolate_);
+    isolate_->Dispose();
     isolate_ = nullptr;
   }
 };
@@ -130,8 +133,6 @@ class EnvironmentTestFixture : public NodeTestFixture {
                                              1, *argv,
                                              argv.nr_args(), *argv);
       CHECK_NE(nullptr, environment_);
-      // TODO(addaleax): Make this a public API.
-      CHECK(!RunBootstrapping(environment_).IsEmpty());
     }
 
     ~Env() {

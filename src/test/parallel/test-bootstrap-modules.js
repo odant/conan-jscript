@@ -1,4 +1,3 @@
-// Flags: --expose-internals
 'use strict';
 
 // This list must be computed before we require any modules to
@@ -9,6 +8,7 @@ const common = require('../common');
 const assert = require('assert');
 
 const expectedModules = new Set([
+  'Internal Binding errors',
   'Internal Binding async_wrap',
   'Internal Binding buffer',
   'Internal Binding config',
@@ -16,11 +16,13 @@ const expectedModules = new Set([
   'Internal Binding contextify',
   'Internal Binding credentials',
   'Internal Binding fs',
+  'Internal Binding fs_dir',
   'Internal Binding inspector',
   'Internal Binding module_wrap',
   'Internal Binding native_module',
   'Internal Binding options',
   'Internal Binding process_methods',
+  'Internal Binding string_decoder',
   'Internal Binding task_queue',
   'Internal Binding timers',
   'Internal Binding trace_events',
@@ -40,9 +42,11 @@ const expectedModules = new Set([
   'NativeModule internal/encoding',
   'NativeModule internal/errors',
   'NativeModule internal/fixed_queue',
+  'NativeModule internal/fs/dir',
   'NativeModule internal/fs/utils',
   'NativeModule internal/idna',
   'NativeModule internal/linkedlist',
+  'NativeModule internal/modules/run_main',
   'NativeModule internal/modules/cjs/helpers',
   'NativeModule internal/modules/cjs/loader',
   'NativeModule internal/options',
@@ -50,9 +54,11 @@ const expectedModules = new Set([
   'NativeModule internal/process/execution',
   'NativeModule internal/process/per_thread',
   'NativeModule internal/process/promises',
+  'NativeModule internal/process/signal',
   'NativeModule internal/process/task_queues',
   'NativeModule internal/process/warning',
   'NativeModule internal/querystring',
+  'NativeModule internal/source_map/source_map_cache',
   'NativeModule internal/timers',
   'NativeModule internal/url',
   'NativeModule internal/util',
@@ -63,14 +69,10 @@ const expectedModules = new Set([
   'NativeModule path',
   'NativeModule timers',
   'NativeModule url',
-  'NativeModule util',
   'NativeModule vm',
 ]);
 
-if (common.isMainThread) {
-  expectedModules.add('NativeModule internal/process/main_thread_only');
-  expectedModules.add('NativeModule internal/process/stdio');
-} else {
+if (!common.isMainThread) {
   expectedModules.add('Internal Binding messaging');
   expectedModules.add('Internal Binding symbols');
   expectedModules.add('Internal Binding worker');
@@ -89,7 +91,6 @@ if (common.isMainThread) {
   expectedModules.add('NativeModule internal/streams/state');
   expectedModules.add('NativeModule internal/worker');
   expectedModules.add('NativeModule internal/worker/io');
-  expectedModules.add('NativeModule module');
   expectedModules.add('NativeModule stream');
   expectedModules.add('NativeModule worker_threads');
 }
@@ -106,7 +107,7 @@ if (process.features.inspector) {
 }
 
 if (process.env.NODE_V8_COVERAGE) {
-  expectedModules.add('NativeModule internal/profiler');
+  expectedModules.add('Internal Binding profiler');
 }
 
 const difference = (setA, setB) => {

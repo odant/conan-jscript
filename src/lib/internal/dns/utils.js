@@ -1,4 +1,9 @@
 'use strict';
+
+const {
+  ArrayIsArray,
+} = primordials;
+
 const errors = require('internal/errors');
 const { isIP } = require('internal/net');
 const {
@@ -38,7 +43,7 @@ class Resolver {
   }
 
   setServers(servers) {
-    if (!Array.isArray(servers)) {
+    if (!ArrayIsArray(servers)) {
       throw new ERR_INVALID_ARG_TYPE('servers', 'Array', servers);
     }
 
@@ -52,7 +57,7 @@ class Resolver {
       if (typeof serv !== 'string') {
         throw new ERR_INVALID_ARG_TYPE(`servers[${index}]`, 'string', serv);
       }
-      var ipVersion = isIP(serv);
+      let ipVersion = isIP(serv);
 
       if (ipVersion !== 0)
         return newSet.push([ipVersion, serv, IANA_DNS_PORT]);
@@ -65,8 +70,7 @@ class Resolver {
 
         if (ipVersion !== 0) {
           const port =
-            parseInt(serv.replace(addrSplitRE, '$2')) ||
-            IANA_DNS_PORT;
+            parseInt(serv.replace(addrSplitRE, '$2')) || IANA_DNS_PORT;
           return newSet.push([ipVersion, match[1], port]);
         }
       }
@@ -103,18 +107,18 @@ let defaultResolver = new Resolver();
 const resolverKeys = [
   'getServers',
   'resolve',
-  'resolveAny',
   'resolve4',
   'resolve6',
+  'resolveAny',
   'resolveCname',
   'resolveMx',
-  'resolveNs',
-  'resolveTxt',
-  'resolveSrv',
-  'resolvePtr',
   'resolveNaptr',
+  'resolveNs',
+  'resolvePtr',
   'resolveSoa',
-  'reverse'
+  'resolveSrv',
+  'resolveTxt',
+  'reverse',
 ];
 
 function getDefaultResolver() {

@@ -3,6 +3,23 @@
 // The Console constructor is not actually used to construct the global
 // console. It's exported for backwards compatibility.
 
+const {
+  ArrayFrom,
+  ArrayIsArray,
+  Boolean,
+  Error,
+  Map,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
+  ObjectValues,
+  ReflectOwnKeys,
+  Symbol,
+  SymbolHasInstance,
+  WeakMap,
+} = primordials;
+
 const { trace } = internalBinding('trace_events');
 const {
   isStackOverflowError,
@@ -29,17 +46,6 @@ const kTraceCount = 'C'.charCodeAt(0);
 const kTraceBegin = 'b'.charCodeAt(0);
 const kTraceEnd = 'e'.charCodeAt(0);
 const kTraceInstant = 'n'.charCodeAt(0);
-
-const {
-  keys: ObjectKeys,
-  values: ObjectValues,
-} = Object;
-const hasOwnProperty = Function.call.bind(Object.prototype.hasOwnProperty);
-
-const {
-  isArray: ArrayIsArray,
-  from: ArrayFrom,
-} = Array;
 
 // Lazy loaded for startup performance.
 let cliTable;
@@ -106,13 +112,12 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
   }
 
   // Bind the prototype functions to this Console instance
-  var keys = Object.keys(Console.prototype);
-  for (var v = 0; v < keys.length; v++) {
-    var k = keys[v];
+  const keys = ObjectKeys(Console.prototype);
+  for (const key of keys) {
     // We have to bind the methods grabbed from the instance instead of from
     // the prototype so that users extending the Console can override them
     // from the prototype chain of the subclass.
-    this[k] = this[k].bind(this);
+    this[key] = this[key].bind(this);
   }
 
   this[kBindStreamsEager](stdout, stderr);
@@ -126,7 +131,7 @@ const consolePropAttributes = {
 };
 
 // Fixup global.console instanceof global.console.Console
-Object.defineProperty(Console, Symbol.hasInstance, {
+ObjectDefineProperty(Console, SymbolHasInstance, {
   value(instance) {
     return instance[kIsConsole];
   }
@@ -134,7 +139,7 @@ Object.defineProperty(Console, Symbol.hasInstance, {
 
 // Eager version for the Console constructor
 Console.prototype[kBindStreamsEager] = function(stdout, stderr) {
-  Object.defineProperties(this, {
+  ObjectDefineProperties(this, {
     '_stdout': { ...consolePropAttributes, value: stdout },
     '_stderr': { ...consolePropAttributes, value: stderr }
   });
@@ -145,7 +150,7 @@ Console.prototype[kBindStreamsEager] = function(stdout, stderr) {
 Console.prototype[kBindStreamsLazy] = function(object) {
   let stdout;
   let stderr;
-  Object.defineProperties(this, {
+  ObjectDefineProperties(this, {
     '_stdout': {
       enumerable: false,
       configurable: true,
@@ -168,7 +173,7 @@ Console.prototype[kBindStreamsLazy] = function(object) {
 };
 
 Console.prototype[kBindProperties] = function(ignoreErrors, colorMode) {
-  Object.defineProperties(this, {
+  ObjectDefineProperties(this, {
     '_stdoutErrorHandler': {
       ...consolePropAttributes,
       value: createWriteErrorHandler(this, kUseStdout)
@@ -181,15 +186,13 @@ Console.prototype[kBindProperties] = function(ignoreErrors, colorMode) {
       ...consolePropAttributes,
       value: Boolean(ignoreErrors)
     },
-    '_times': { ...consolePropAttributes, value: new Map() }
+    '_times': { ...consolePropAttributes, value: new Map() },
+    // Corresponds to https://console.spec.whatwg.org/#count-map
+    [kCounts]: { ...consolePropAttributes, value: new Map() },
+    [kColorMode]: { ...consolePropAttributes, value: colorMode },
+    [kIsConsole]: { ...consolePropAttributes, value: true },
+    [kGroupIndent]: { ...consolePropAttributes, value: '' }
   });
-
-  // TODO(joyeecheung): use consolePropAttributes for these
-  // Corresponds to https://console.spec.whatwg.org/#count-map
-  this[kCounts] = new Map();
-  this[kColorMode] = colorMode;
-  this[kIsConsole] = true;
-  this[kGroupIndent] = '';
 };
 
 // Make a function that can serve as the callback passed to `stream.write()`.
@@ -207,7 +210,7 @@ function createWriteErrorHandler(instance, streamSymbol) {
       // removed after the event, non-console.* writes won't be affected.
       // we are only adding noop if there is no one else listening for 'error'
       if (stream.listenerCount('error') === 0) {
-        stream.on('error', noop);
+        stream.once('error', noop);
       }
     }
   };
@@ -237,7 +240,8 @@ Console.prototype[kWriteToConsole] = function(streamSymbol, string) {
   // handle both situations.
   try {
     // Add and later remove a noop error handler to catch synchronous errors.
-    stream.once('error', noop);
+    if (stream.listenerCount('error') === 0)
+      stream.once('error', noop);
 
     stream.write(string, errorHandler);
   } catch (e) {
@@ -292,6 +296,7 @@ const consoleMethods = {
     this[kWriteToConsole](kUseStderr, this[kFormatForStderr](args));
   },
 
+
   dir(object, options) {
     this[kWriteToConsole](kUseStdout, inspect(object, {
       customInspect: false,
@@ -314,9 +319,9 @@ const consoleMethods = {
   timeEnd(label = 'default') {
     // Coerces everything other than Symbol to a string
     label = `${label}`;
-    const hasWarned = timeLogImpl(this, 'timeEnd', label);
+    const found = timeLogImpl(this, 'timeEnd', label);
     trace(kTraceEnd, kTraceConsoleCategory, `time::${label}`, 0);
-    if (!hasWarned) {
+    if (found) {
       this._times.delete(label);
     }
   },
@@ -328,12 +333,13 @@ const consoleMethods = {
     trace(kTraceInstant, kTraceConsoleCategory, `time::${label}`, 0);
   },
 
-  trace(...args) {
+  trace: function trace(...args) {
     const err = {
       name: 'Trace',
       message: this[kFormatForStderr](args)
     };
-    Error.captureStackTrace(err, this.trace);
+    // eslint-disable-next-line no-restricted-syntax
+    Error.captureStackTrace(err, trace);
     this.error(err.stack);
   },
 
@@ -348,7 +354,7 @@ const consoleMethods = {
   clear() {
     // It only makes sense to clear if _stdout is a TTY.
     // Otherwise, do nothing.
-    if (this._stdout.isTTY) {
+    if (this._stdout.isTTY && process.env.TERM !== 'dumb') {
       // The require is here intentionally to avoid readline being
       // required too early when console is first loaded.
       const { cursorTo, clearScreenDown } = require('readline');
@@ -415,6 +421,7 @@ const consoleMethods = {
       const opt = {
         depth,
         maxArrayLength: 3,
+        breakLength: Infinity,
         ...this[kGetInspectOptions](this._stdout)
       };
       return inspect(v, opt);
@@ -489,10 +496,11 @@ const consoleMethods = {
         for (const key of keys) {
           if (map[key] === undefined)
             map[key] = [];
-          if ((primitive && properties) || !hasOwnProperty(item, key))
+          if ((primitive && properties) ||
+               !ObjectPrototypeHasOwnProperty(item, key))
             map[key][i] = '';
           else
-            map[key][i] = item == null ? item : _inspect(item[key]);
+            map[key][i] = _inspect(item[key]);
         }
       }
     }
@@ -510,12 +518,12 @@ const consoleMethods = {
   },
 };
 
-// Returns true if label was not found
+// Returns true if label was found
 function timeLogImpl(self, name, label, data) {
   const time = self._times.get(label);
-  if (!time) {
+  if (time === undefined) {
     process.emitWarning(`No such label '${label}' for console.${name}()`);
-    return true;
+    return false;
   }
   const duration = process.hrtime(time);
   const ms = duration[0] * 1000 + duration[1] / 1e6;
@@ -524,7 +532,7 @@ function timeLogImpl(self, name, label, data) {
   } else {
     self.log('%s: %sms', label, ms.toFixed(3), ...data);
   }
-  return false;
+  return true;
 }
 
 const keyKey = 'Key';
@@ -536,7 +544,7 @@ const isArray = (v) => ArrayIsArray(v) || isTypedArray(v) || isBuffer(v);
 
 function noop() {}
 
-for (const method of Reflect.ownKeys(consoleMethods))
+for (const method of ReflectOwnKeys(consoleMethods))
   Console.prototype[method] = consoleMethods[method];
 
 Console.prototype.debug = Console.prototype.log;

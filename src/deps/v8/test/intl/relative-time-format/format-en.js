@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-relative-time-format
-
 // The following test are not part of the comformance. Just some output in
 // English to verify the format does return something reasonable for English.
 // It may be changed when we update the CLDR data.
@@ -25,8 +23,8 @@ assertEquals('in 345 seconds', longAuto.format(345, 'second'));
 assertEquals('3 minutes ago', longAuto.format(-3, 'minute'));
 assertEquals('2 minutes ago', longAuto.format(-2, 'minute'));
 assertEquals('1 minute ago', longAuto.format(-1, 'minute'));
-assertEquals('in 0 minutes', longAuto.format(0, 'minute'));
-assertEquals('0 minutes ago', longAuto.format(-0, 'minute'));
+assertEquals('this minute', longAuto.format(0, 'minute'));
+assertEquals('this minute', longAuto.format(-0, 'minute'));
 assertEquals('in 1 minute', longAuto.format(1, 'minute'));
 assertEquals('in 2 minutes', longAuto.format(2, 'minute'));
 assertEquals('in 345 minutes', longAuto.format(345, 'minute'));
@@ -34,8 +32,8 @@ assertEquals('in 345 minutes', longAuto.format(345, 'minute'));
 assertEquals('3 hours ago', longAuto.format(-3, 'hour'));
 assertEquals('2 hours ago', longAuto.format(-2, 'hour'));
 assertEquals('1 hour ago', longAuto.format(-1, 'hour'));
-assertEquals('in 0 hours', longAuto.format(0, 'hour'));
-assertEquals('0 hours ago', longAuto.format(-0, 'hour'));
+assertEquals('this hour', longAuto.format(0, 'hour'));
+assertEquals('this hour', longAuto.format(-0, 'hour'));
 assertEquals('in 1 hour', longAuto.format(1, 'hour'));
 assertEquals('in 2 hours', longAuto.format(2, 'hour'));
 assertEquals('in 345 hours', longAuto.format(345, 'hour'));
@@ -67,9 +65,6 @@ assertEquals('next month', longAuto.format(1, 'month'));
 assertEquals('in 2 months', longAuto.format(2, 'month'));
 assertEquals('in 345 months', longAuto.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-// Tracked by ICU bug in http://bugs.icu-project.org/trac/ticket/12171
-/*
 assertEquals('3 quarters ago', longAuto.format(-3, 'quarter'));
 assertEquals('2 quarters ago', longAuto.format(-2, 'quarter'));
 assertEquals('last quarter', longAuto.format(-1, 'quarter'));
@@ -78,7 +73,6 @@ assertEquals('this quarter', longAuto.format(-0, 'quarter'));
 assertEquals('next quarter', longAuto.format(1, 'quarter'));
 assertEquals('in 2 quarters', longAuto.format(2, 'quarter'));
 assertEquals('in 345 quarters', longAuto.format(345, 'quarter'));
-*/
 
 assertEquals('3 years ago', longAuto.format(-3, 'year'));
 assertEquals('2 years ago', longAuto.format(-2, 'year'));
@@ -104,8 +98,8 @@ assertEquals('in 345 sec.', shortAuto.format(345, 'second'));
 assertEquals('3 min. ago', shortAuto.format(-3, 'minute'));
 assertEquals('2 min. ago', shortAuto.format(-2, 'minute'));
 assertEquals('1 min. ago', shortAuto.format(-1, 'minute'));
-assertEquals('in 0 min.', shortAuto.format(0, 'minute'));
-assertEquals('0 min. ago', shortAuto.format(-0, 'minute'));
+assertEquals('this minute', shortAuto.format(0, 'minute'));
+assertEquals('this minute', shortAuto.format(-0, 'minute'));
 assertEquals('in 1 min.', shortAuto.format(1, 'minute'));
 assertEquals('in 2 min.', shortAuto.format(2, 'minute'));
 assertEquals('in 345 min.', shortAuto.format(345, 'minute'));
@@ -113,8 +107,8 @@ assertEquals('in 345 min.', shortAuto.format(345, 'minute'));
 assertEquals('3 hr. ago', shortAuto.format(-3, 'hour'));
 assertEquals('2 hr. ago', shortAuto.format(-2, 'hour'));
 assertEquals('1 hr. ago', shortAuto.format(-1, 'hour'));
-assertEquals('in 0 hr.', shortAuto.format(0, 'hour'));
-assertEquals('0 hr. ago', shortAuto.format(-0, 'hour'));
+assertEquals('this hour', shortAuto.format(0, 'hour'));
+assertEquals('this hour', shortAuto.format(-0, 'hour'));
 assertEquals('in 1 hr.', shortAuto.format(1, 'hour'));
 assertEquals('in 2 hr.', shortAuto.format(2, 'hour'));
 assertEquals('in 345 hr.', shortAuto.format(345, 'hour'));
@@ -146,8 +140,6 @@ assertEquals('next mo.', shortAuto.format(1, 'month'));
 assertEquals('in 2 mo.', shortAuto.format(2, 'month'));
 assertEquals('in 345 mo.', shortAuto.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-/*
 assertEquals('3 qtrs. ago', shortAuto.format(-3, 'quarter'));
 assertEquals('2 qtrs. ago', shortAuto.format(-2, 'quarter'));
 assertEquals('last qtr.', shortAuto.format(-1, 'quarter'));
@@ -156,7 +148,6 @@ assertEquals('this qtr.', shortAuto.format(-0, 'quarter'));
 assertEquals('next qtr.', shortAuto.format(1, 'quarter'));
 assertEquals('in 2 qtrs.', shortAuto.format(2, 'quarter'));
 assertEquals('in 345 qtrs.', shortAuto.format(345, 'quarter'));
-*/
 
 assertEquals('3 yr. ago', shortAuto.format(-3, 'year'));
 assertEquals('2 yr. ago', shortAuto.format(-2, 'year'));
@@ -183,8 +174,8 @@ assertEquals('in 345 sec.', narrowAuto.format(345, 'second'));
 assertEquals('3 min. ago', narrowAuto.format(-3, 'minute'));
 assertEquals('2 min. ago', narrowAuto.format(-2, 'minute'));
 assertEquals('1 min. ago', narrowAuto.format(-1, 'minute'));
-assertEquals('in 0 min.', narrowAuto.format(0, 'minute'));
-assertEquals('0 min. ago', narrowAuto.format(-0, 'minute'));
+assertEquals('this minute', narrowAuto.format(0, 'minute'));
+assertEquals('this minute', narrowAuto.format(-0, 'minute'));
 assertEquals('in 1 min.', narrowAuto.format(1, 'minute'));
 assertEquals('in 2 min.', narrowAuto.format(2, 'minute'));
 assertEquals('in 345 min.', narrowAuto.format(345, 'minute'));
@@ -192,8 +183,8 @@ assertEquals('in 345 min.', narrowAuto.format(345, 'minute'));
 assertEquals('3 hr. ago', narrowAuto.format(-3, 'hour'));
 assertEquals('2 hr. ago', narrowAuto.format(-2, 'hour'));
 assertEquals('1 hr. ago', narrowAuto.format(-1, 'hour'));
-assertEquals('in 0 hr.', narrowAuto.format(0, 'hour'));
-assertEquals('0 hr. ago', narrowAuto.format(-0, 'hour'));
+assertEquals('this hour', narrowAuto.format(0, 'hour'));
+assertEquals('this hour', narrowAuto.format(-0, 'hour'));
 assertEquals('in 1 hr.', narrowAuto.format(1, 'hour'));
 assertEquals('in 2 hr.', narrowAuto.format(2, 'hour'));
 assertEquals('in 345 hr.', narrowAuto.format(345, 'hour'));
@@ -225,8 +216,6 @@ assertEquals('next mo.', narrowAuto.format(1, 'month'));
 assertEquals('in 2 mo.', narrowAuto.format(2, 'month'));
 assertEquals('in 345 mo.', narrowAuto.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-/*
 assertEquals('3 qtrs. ago', narrowAuto.format(-3, 'quarter'));
 assertEquals('2 qtrs. ago', narrowAuto.format(-2, 'quarter'));
 assertEquals('last qtr.', narrowAuto.format(-1, 'quarter'));
@@ -235,7 +224,6 @@ assertEquals('this qtr.', narrowAuto.format(-0, 'quarter'));
 assertEquals('next qtr.', narrowAuto.format(1, 'quarter'));
 assertEquals('in 2 qtrs.', narrowAuto.format(2, 'quarter'));
 assertEquals('in 345 qtrs.', narrowAuto.format(345, 'quarter'));
-*/
 
 assertEquals('3 yr. ago', narrowAuto.format(-3, 'year'));
 assertEquals('2 yr. ago', narrowAuto.format(-2, 'year'));
@@ -303,8 +291,6 @@ assertEquals('in 1 month', longAlways.format(1, 'month'));
 assertEquals('in 2 months', longAlways.format(2, 'month'));
 assertEquals('in 345 months', longAlways.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-/*
 assertEquals('3 quarters ago', longAlways.format(-3, 'quarter'));
 assertEquals('2 quarters ago', longAlways.format(-2, 'quarter'));
 assertEquals('1 quarter ago', longAlways.format(-1, 'quarter'));
@@ -313,7 +299,6 @@ assertEquals('0 quarters ago', longAlways.format(-0, 'quarter'));
 assertEquals('in 1 quarter', longAlways.format(1, 'quarter'));
 assertEquals('in 2 quarters', longAlways.format(2, 'quarter'));
 assertEquals('in 345 quarters', longAlways.format(345, 'quarter'));
-*/
 
 assertEquals('3 years ago', longAlways.format(-3, 'year'));
 assertEquals('2 years ago', longAlways.format(-2, 'year'));
@@ -381,17 +366,14 @@ assertEquals('in 1 mo.', shortAlways.format(1, 'month'));
 assertEquals('in 2 mo.', shortAlways.format(2, 'month'));
 assertEquals('in 345 mo.', shortAlways.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-/*
 assertEquals('3 qtrs. ago', shortAlways.format(-3, 'quarter'));
 assertEquals('2 qtrs. ago', shortAlways.format(-2, 'quarter'));
 assertEquals('1 qtr. ago', shortAlways.format(-1, 'quarter'));
 assertEquals('in 0 qtrs.', shortAlways.format(0, 'quarter'));
-assertEquals('0 qtr. ago', shortAlways.format(-0, 'quarter'));
+assertEquals('0 qtrs. ago', shortAlways.format(-0, 'quarter'));
 assertEquals('in 1 qtr.', shortAlways.format(1, 'quarter'));
 assertEquals('in 2 qtrs.', shortAlways.format(2, 'quarter'));
 assertEquals('in 345 qtrs.', shortAlways.format(345, 'quarter'));
-*/
 
 assertEquals('3 yr. ago', shortAlways.format(-3, 'year'));
 assertEquals('2 yr. ago', shortAlways.format(-2, 'year'));
@@ -460,17 +442,14 @@ assertEquals('in 1 mo.', narrowAlways.format(1, 'month'));
 assertEquals('in 2 mo.', narrowAlways.format(2, 'month'));
 assertEquals('in 345 mo.', narrowAlways.format(345, 'month'));
 
-// "quarter" is not working in ICU now
-/*
 assertEquals('3 qtrs. ago', narrowAlways.format(-3, 'quarter'));
 assertEquals('2 qtrs. ago', narrowAlways.format(-2, 'quarter'));
 assertEquals('1 qtr. ago', narrowAlways.format(-1, 'quarter'));
 assertEquals('in 0 qtrs.', narrowAlways.format(0, 'quarter'));
-assertEquals('0 qtr. ago', narrowAlways.format(-0, 'quarter'));
+assertEquals('0 qtrs. ago', narrowAlways.format(-0, 'quarter'));
 assertEquals('in 1 qtr.', narrowAlways.format(1, 'quarter'));
 assertEquals('in 2 qtrs.', narrowAlways.format(2, 'quarter'));
 assertEquals('in 345 qtrs.', narrowAlways.format(345, 'quarter'));
-*/
 
 assertEquals('3 yr. ago', narrowAlways.format(-3, 'year'));
 assertEquals('2 yr. ago', narrowAlways.format(-2, 'year'));

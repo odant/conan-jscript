@@ -13,14 +13,6 @@ PerIsolateOptions* PerProcessOptions::get_per_isolate_options() {
   return per_isolate.get();
 }
 
-DebugOptions* EnvironmentOptions::get_debug_options() {
-  return &debug_options_;
-}
-
-const DebugOptions& EnvironmentOptions::debug_options() const {
-  return debug_options_;
-}
-
 EnvironmentOptions* PerIsolateOptions::get_per_env_options() {
   return per_env.get();
 }
@@ -213,15 +205,15 @@ auto OptionsParser<Options>::Convert(
 template <typename Options>
 template <typename ChildOptions>
 void OptionsParser<Options>::Insert(
-    const OptionsParser<ChildOptions>* child_options_parser,
+    const OptionsParser<ChildOptions>& child_options_parser,
     ChildOptions* (Options::* get_child)()) {
-  aliases_.insert(child_options_parser->aliases_.begin(),
-                  child_options_parser->aliases_.end());
+  aliases_.insert(std::begin(child_options_parser.aliases_),
+                  std::end(child_options_parser.aliases_));
 
-  for (const auto& pair : child_options_parser->options_)
+  for (const auto& pair : child_options_parser.options_)
     options_.emplace(pair.first, Convert(pair.second, get_child));
 
-  for (const auto& pair : child_options_parser->implications_)
+  for (const auto& pair : child_options_parser.implications_)
     implications_.emplace(pair.first, Convert(pair.second, get_child));
 }
 
@@ -416,7 +408,7 @@ void OptionsParser<Options>::Parse(
         *Lookup<int64_t>(info.field, options) = std::atoll(value.c_str());
         break;
       case kUInteger:
-        *Lookup<uint64_t>(info.field, options) = std::stoull(value.c_str());
+        *Lookup<uint64_t>(info.field, options) = std::stoull(value);
         break;
       case kString:
         *Lookup<std::string>(info.field, options) = value;

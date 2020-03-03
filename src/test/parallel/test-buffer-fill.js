@@ -196,7 +196,7 @@ common.expectsError(
     {
       code: 'ERR_INVALID_ARG_TYPE',
       message: 'The "encoding" argument must be of type ' +
-      `string. Received type ${args[3] === null ? 'null' : typeof args[3]}`
+      `string.${common.invalidArgTypeHelper(args[3])}`
     }
   );
 });
@@ -333,34 +333,18 @@ assert.strictEqual(
 // Make sure "end" is properly checked, even if it's magically mangled using
 // Symbol.toPrimitive.
 {
-  let elseWasLast = false;
-  const expectedErrorMessage =
-    'The value of "end" is out of range. It must be >= 0 and <= 1. Received -1';
-
   common.expectsError(() => {
-    let ctr = 0;
     const end = {
       [Symbol.toPrimitive]() {
-        // We use this condition to get around the check in lib/buffer.js
-        if (ctr === 0) {
-          elseWasLast = false;
-          ctr++;
-          return 1;
-        }
-        elseWasLast = true;
-        // Once buffer.js calls the C++ implementation of fill, return -1
-        return -1;
+        return 1;
       }
     };
     Buffer.alloc(1).fill(Buffer.alloc(1), 0, end);
   }, {
-    code: 'ERR_OUT_OF_RANGE',
-    type: RangeError,
-    message: expectedErrorMessage
+    code: 'ERR_INVALID_ARG_TYPE',
+    message: 'The "end" argument must be of type number. Received an ' +
+             'instance of Object'
   });
-  // Make sure -1 is making it to Buffer::Fill().
-  assert.ok(elseWasLast,
-            'internal API changed, -1 no longer in correct location');
 }
 
 // Testing process.binding. Make sure "end" is properly checked for -1 wrap
@@ -379,7 +363,7 @@ common.expectsError(() => {
 }, {
   code: 'ERR_BUFFER_OUT_OF_BOUNDS',
   type: RangeError,
-  message: 'Attempt to write outside buffer bounds'
+  message: 'Attempt to access memory outside buffer bounds'
 });
 
 assert.deepStrictEqual(

@@ -1,8 +1,6 @@
 // Copyright 2016 the V8 project authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// TODO(luoe): remove flag when it is on by default.
-// Flags: --harmony-bigint
 
 let {session, contextGroup, Protocol} = InspectorTest.start('Tests that Runtime.callFunctionOn works with awaitPromise flag.');
 let callFunctionOn = Protocol.Runtime.callFunctionOn.bind(Protocol.Runtime);
@@ -146,6 +144,28 @@ let testSuite = [
       returnByValue: true,
       generatePreview: false,
       awaitPromise: false
+    }));
+  },
+
+  async function testThrowNumber() {
+    InspectorTest.logMessage(await callFunctionOn({
+      executionContextId,
+      functionDeclaration: '(() => { throw 100500; } )',
+      arguments: prepareArguments([]),
+      returnByValue: true,
+      generatePreview: false,
+      awaitPromise: true
+    }));
+  },
+
+  async function testAsyncFunctionWithUnknownReferenceReturnByValue() {
+    InspectorTest.logMessage(await callFunctionOn({
+      executionContextId,
+      functionDeclaration: '(async () => does_not_exist.click())',
+      arguments: prepareArguments([]),
+      returnByValue: true,
+      generatePreview: false,
+      awaitPromise: true
     }));
   },
 ];

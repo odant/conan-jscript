@@ -21,7 +21,6 @@
 
 #include "async_wrap-inl.h"
 #include "env-inl.h"
-#include "util-inl.h"
 #include "node.h"
 #include "handle_wrap.h"
 #include "string_bytes.h"
@@ -65,7 +64,7 @@ class FSEventWrap: public HandleWrap {
   static const encoding kDefaultEncoding = UTF8;
 
   FSEventWrap(Environment* env, Local<Object> object);
-  ~FSEventWrap() override;
+  ~FSEventWrap() = default;
 
   static void OnEvent(uv_fs_event_t* handle, const char* filename, int events,
     int status);
@@ -83,9 +82,6 @@ FSEventWrap::FSEventWrap(Environment* env, Local<Object> object)
   MarkAsUninitialized();
 }
 
-
-FSEventWrap::~FSEventWrap() {
-}
 
 void FSEventWrap::GetInitialized(const FunctionCallbackInfo<Value>& args) {
   FSEventWrap* wrap = Unwrap<FSEventWrap>(args.This());
@@ -122,7 +118,7 @@ void FSEventWrap::Initialize(Local<Object> target,
 
   target->Set(env->context(),
               fsevent_string,
-              t->GetFunction(context).ToLocalChecked()).FromJust();
+              t->GetFunction(context).ToLocalChecked()).Check();
 }
 
 

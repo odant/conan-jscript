@@ -256,7 +256,7 @@ function checkGit (localData, cb) {
   statGitFolder(function (er) {
     var doGit = !er && npm.config.get('git-tag-version')
     if (!doGit) {
-      if (er) log.verbose('version', 'error checking for .git', er)
+      if (er && npm.config.get('git-tag-version')) log.verbose('version', 'error checking for .git', er)
       log.verbose('version', 'not tagging in git')
       return cb(null, false)
     }
@@ -301,7 +301,7 @@ function _commit (version, localData, cb) {
     ...(signCommit ? ['-S', '-m'] : ['-m']),
     message
   ])
-  const flagForTag = signTag ? '-sm' : '-am'
+  const flagForTag = signTag ? '-sm' : '-m'
 
   stagePackageFiles(localData, options).then(() => {
     return git.exec(commitArgs, options)

@@ -4,18 +4,15 @@ const {
   prepareMainThreadExecution
 } = require('internal/bootstrap/pre_execution');
 
-// Expand process.argv[1] into a full path.
-const path = require('path');
-process.argv[1] = path.resolve(process.argv[1]);
-
-prepareMainThreadExecution();
-
-const CJSModule = require('internal/modules/cjs/loader');
+prepareMainThreadExecution(true);
 
 markBootstrapComplete();
 
-// Note: this actually tries to run the module as a ESM first if
-// --experimental-modules is on.
-// TODO(joyeecheung): can we move that logic to here? Note that this
-// is an undocumented method available via `require('module').runMain`
-CJSModule.runMain();
+// Note: this loads the module through the ESM loader if
+// --experimental-loader is provided or --experimental-modules is on
+// and the module is determined to be an ES module. This hangs from the CJS
+// module loader because we currently allow monkey-patching of the module
+// loaders in the preloaded scripts through require('module').
+// runMain here might be monkey-patched by users in --require.
+// XXX: the monkey-patchability here should probably be deprecated.
+require('internal/modules/cjs/loader').Module.runMain(process.argv[1]);

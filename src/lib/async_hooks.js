@@ -1,6 +1,12 @@
 'use strict';
 
 const {
+  NumberIsSafeInteger,
+  ReflectApply,
+  Symbol,
+} = primordials;
+
+const {
   ERR_ASYNC_CALLBACK,
   ERR_INVALID_ASYNC_ID
 } = require('internal/errors').codes;
@@ -15,6 +21,7 @@ const {
   executionAsyncId,
   triggerAsyncId,
   // Private API
+  hasAsyncIdStack,
   getHookArrays,
   enableHooks,
   disableHooks,
@@ -25,6 +32,7 @@ const {
   emitBefore,
   emitAfter,
   emitDestroy,
+  initHooksExist,
 } = internal_async_hooks;
 
 // Get symbols
@@ -127,73 +135,60 @@ function createHook(fns) {
 
 const destroyedSymbol = Symbol('destroyed');
 
-let emitBeforeAfterWarning = true;
-function showEmitBeforeAfterWarning() {
-  if (emitBeforeAfterWarning) {
-    process.emitWarning(
-      'asyncResource.emitBefore and emitAfter are deprecated. Please use ' +
-      'asyncResource.runInAsyncScope instead',
-      'DeprecationWarning', 'DEP0098');
-    emitBeforeAfterWarning = false;
-  }
-}
-
 class AsyncResource {
   constructor(type, opts = {}) {
     validateString(type, 'type');
 
-    if (typeof opts === 'number') {
-      opts = { triggerAsyncId: opts, requireManualDestroy: false };
-    } else if (opts.triggerAsyncId === undefined) {
-      opts.triggerAsyncId = getDefaultTriggerAsyncId();
+    let triggerAsyncId = opts;
+    let requireManualDestroy = false;
+    if (typeof opts !== 'number') {
+      triggerAsyncId = opts.triggerAsyncId === undefined ?
+        getDefaultTriggerAsyncId() : opts.triggerAsyncId;
+      requireManualDestroy = !!opts.requireManualDestroy;
     }
 
     // Unlike emitInitScript, AsyncResource doesn't supports null as the
     // triggerAsyncId.
-    const triggerAsyncId = opts.triggerAsyncId;
-    if (!Number.isSafeInteger(triggerAsyncId) || triggerAsyncId < -1) {
+    if (!NumberIsSafeInteger(triggerAsyncId) || triggerAsyncId < -1) {
       throw new ERR_INVALID_ASYNC_ID('triggerAsyncId', triggerAsyncId);
     }
 
-    this[async_id_symbol] = newAsyncId();
+    const asyncId = newAsyncId();
+    this[async_id_symbol] = asyncId;
     this[trigger_async_id_symbol] = triggerAsyncId;
-    // This prop name (destroyed) has to be synchronized with C++
-    this[destroyedSymbol] = { destroyed: false };
 
-    emitInit(
-      this[async_id_symbol], type, this[trigger_async_id_symbol], this
-    );
-
-    if (!opts.requireManualDestroy) {
-      registerDestroyHook(this, this[async_id_symbol], this[destroyedSymbol]);
+    if (initHooksExist()) {
+      emitInit(asyncId, type, triggerAsyncId, this);
     }
-  }
 
-  emitBefore() {
-    showEmitBeforeAfterWarning();
-    emitBefore(this[async_id_symbol], this[trigger_async_id_symbol]);
-    return this;
-  }
-
-  emitAfter() {
-    showEmitBeforeAfterWarning();
-    emitAfter(this[async_id_symbol]);
-    return this;
+    if (!requireManualDestroy) {
+      // This prop name (destroyed) has to be synchronized with C++
+      const destroyed = { destroyed: false };
+      this[destroyedSymbol] = destroyed;
+      registerDestroyHook(this, asyncId, destroyed);
+    }
   }
 
   runInAsyncScope(fn, thisArg, ...args) {
-    emitBefore(this[async_id_symbol], this[trigger_async_id_symbol]);
-    let ret;
+    const asyncId = this[async_id_symbol];
+    emitBefore(asyncId, this[trigger_async_id_symbol]);
+
     try {
-      ret = Reflect.apply(fn, thisArg, args);
+      const ret = thisArg === undefined ?
+        fn(...args) :
+        ReflectApply(fn, thisArg, args);
+
+      return ret;
     } finally {
-      emitAfter(this[async_id_symbol]);
+      if (hasAsyncIdStack())
+        emitAfter(asyncId);
     }
-    return ret;
   }
 
   emitDestroy() {
-    this[destroyedSymbol].destroyed = true;
+    if (this[destroyedSymbol] !== undefined) {
+      this[destroyedSymbol].destroyed = true;
+    }
     emitDestroy(this[async_id_symbol]);
     return this;
   }

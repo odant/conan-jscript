@@ -29,7 +29,7 @@ let caughtException = false;
 try {
   // Should throw ENOENT, not EBADF
   // see https://github.com/joyent/node/pull/1228
-  fs.openSync('/path/to/file/that/does/not/exist', 'r');
+  fs.openSync('/8hvftyuncxrt/path/to/file/that/does/not/exist', 'r');
 } catch (e) {
   assert.strictEqual(e.code, 'ENOENT');
   caughtException = true;
@@ -98,15 +98,36 @@ for (const extra of [[], ['r'], ['r', 0], ['r', 0, 'bad callback']]) {
       type: TypeError
     }
   );
-  fs.promises.open(i, 'r')
-    .then(common.mustNotCall())
-    .catch(common.mustCall((err) => {
-      common.expectsError(
-        () => { throw err; },
-        {
-          code: 'ERR_INVALID_ARG_TYPE',
-          type: TypeError
-        }
-      );
-    }));
+  assert.rejects(
+    fs.promises.open(i, 'r'),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      name: 'TypeError'
+    }
+  );
+});
+
+// Check invalid modes.
+[false, [], {}].forEach((mode) => {
+  assert.throws(
+    () => fs.open(__filename, 'r', mode, common.mustNotCall()),
+    {
+      message: /'mode' must be a 32-bit/,
+      code: 'ERR_INVALID_ARG_VALUE'
+    }
+  );
+  assert.throws(
+    () => fs.openSync(__filename, 'r', mode, common.mustNotCall()),
+    {
+      message: /'mode' must be a 32-bit/,
+      code: 'ERR_INVALID_ARG_VALUE'
+    }
+  );
+  assert.rejects(
+    fs.promises.open(__filename, 'r', mode),
+    {
+      message: /'mode' must be a 32-bit/,
+      code: 'ERR_INVALID_ARG_VALUE'
+    }
+  );
 });

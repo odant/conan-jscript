@@ -1,6 +1,12 @@
 'use strict';
 
 const {
+  JSONParse,
+  ObjectFreeze,
+  ReflectSetPrototypeOf,
+} = primordials;
+
+const {
   ERR_MANIFEST_TDZ,
 } = require('internal/errors').codes;
 const { Manifest } = require('internal/policy/manifest');
@@ -8,7 +14,7 @@ let manifest;
 let manifestSrc;
 let manifestURL;
 
-module.exports = Object.freeze({
+module.exports = ObjectFreeze({
   __proto__: null,
   setup(src, url) {
     manifestSrc = src;
@@ -18,10 +24,10 @@ module.exports = Object.freeze({
       return;
     }
 
-    const json = JSON.parse(src, (_, o) => {
+    const json = JSONParse(src, (_, o) => {
       if (o && typeof o === 'object') {
-        Reflect.setPrototypeOf(o, null);
-        Object.freeze(o);
+        ReflectSetPrototypeOf(o, null);
+        ObjectFreeze(o);
       }
       return o;
     });
@@ -50,6 +56,6 @@ module.exports = Object.freeze({
   },
 
   assertIntegrity(moduleURL, content) {
-    this.manifest.matchesIntegrity(moduleURL, content);
+    this.manifest.assertIntegrity(moduleURL, content);
   }
 });

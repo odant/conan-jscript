@@ -4,7 +4,6 @@
 
 // Flags: --allow-natives-syntax
 
-load('test/mjsunit/wasm/wasm-constants.js');
 load('test/mjsunit/wasm/wasm-module-builder.js');
 
 // =============================================================================
@@ -26,11 +25,11 @@ function checkStack(stack, expected_lines) {
   }
 }
 
-(function testGrowMemoryBetweenInterpretedAndCompiled() {
+(function testMemoryGrowBetweenInterpretedAndCompiled() {
   // grow_memory can be called from interpreted or compiled code, and changes
   // should be reflected in either execution.
   var builder = new WasmModuleBuilder();
-  var grow_body = [kExprGetLocal, 0, kExprGrowMemory, kMemoryZero];
+  var grow_body = [kExprGetLocal, 0, kExprMemoryGrow, kMemoryZero];
   var load_body = [kExprGetLocal, 0, kExprI32LoadMem, 0, 0];
   var store_body = [kExprGetLocal, 0, kExprGetLocal, 1, kExprI32StoreMem, 0, 0];
   builder.addFunction('grow_memory', kSig_i_i).addBody(grow_body).exportFunc();
@@ -185,8 +184,8 @@ function redirectToInterpreter(
       checkStack(stripPath(e.stack), [
         'Error: i=8',                                                // -
         /^    at imp \(file:\d+:29\)$/,                              // -
-        '    at plus_one (wasm-function[1]:6)',                      // -
-        '    at plus_two (wasm-function[1]:3)',                      // -
+        '    at plus_one (wasm-function[1]:0x3b)',                   // -
+        '    at plus_two (wasm-function[1]:0x3e)',                   // -
         /^    at testStackTraceThroughCWasmEntry \(file:\d+:25\)$/,  // -
         /^    at file:\d+:3$/
       ]);

@@ -1,4 +1,3 @@
-// Flags: --expose-internals
 'use strict';
 
 const common = require('../common');
@@ -20,8 +19,9 @@ const request = Buffer.from(
   'GET /hello HTTP/1.1\r\n\r\n'
 );
 
-const parser = new HTTPParser(REQUEST);
-const as = hooks.activitiesOfTypes('HTTPPARSER');
+const parser = new HTTPParser();
+parser.initialize(REQUEST, {});
+const as = hooks.activitiesOfTypes('HTTPINCOMINGMESSAGE');
 const httpparser = as[0];
 
 assert.strictEqual(as.length, 1);
@@ -47,7 +47,7 @@ process.on('exit', onexit);
 
 function onexit() {
   hooks.disable();
-  hooks.sanityCheck('HTTPPARSER');
+  hooks.sanityCheck('HTTPINCOMINGMESSAGE');
   checkInvocations(httpparser, { init: 1, before: 1, after: 1, destroy: 1 },
                    'when process exits');
 }

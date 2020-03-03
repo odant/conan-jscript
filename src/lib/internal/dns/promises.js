@@ -1,4 +1,11 @@
 'use strict';
+
+const {
+  ObjectCreate,
+  ObjectDefineProperty,
+  Promise,
+} = primordials;
+
 const {
   bindDefaultResolver,
   Resolver: CallbackResolver,
@@ -7,7 +14,7 @@ const {
 } = require('internal/dns/utils');
 const { codes, dnsException } = require('internal/errors');
 const { toASCII } = require('internal/idna');
-const { isIP, isIPv4, isLegalPort } = require('internal/net');
+const { isIP, isLegalPort } = require('internal/net');
 const {
   getaddrinfo,
   getnameinfo,
@@ -31,7 +38,7 @@ function onlookup(err, addresses) {
     return;
   }
 
-  const family = this.family ? this.family : isIPv4(addresses[0]) ? 4 : 6;
+  const family = this.family ? this.family : isIP(addresses[0]);
   this.resolve({ address: addresses[0], family });
 }
 
@@ -48,7 +55,7 @@ function onlookupall(err, addresses) {
 
     addresses[i] = {
       address,
-      family: family ? family : isIPv4(addresses[i]) ? 4 : 6
+      family: family ? family : isIP(addresses[i])
     };
   }
 
@@ -148,17 +155,17 @@ function createLookupServicePromise(hostname, port) {
   });
 }
 
-function lookupService(hostname, port) {
+function lookupService(address, port) {
   if (arguments.length !== 2)
-    throw new ERR_MISSING_ARGS('hostname', 'port');
+    throw new ERR_MISSING_ARGS('address', 'port');
 
-  if (isIP(hostname) === 0)
-    throw new ERR_INVALID_OPT_VALUE('hostname', hostname);
+  if (isIP(address) === 0)
+    throw new ERR_INVALID_OPT_VALUE('address', address);
 
   if (!isLegalPort(port))
     throw new ERR_SOCKET_BAD_PORT(port);
 
-  return createLookupServicePromise(hostname, +port);
+  return createLookupServicePromise(address, +port);
 }
 
 
@@ -200,12 +207,12 @@ function resolver(bindingName) {
     return createResolverPromise(this, bindingName, name, ttl);
   }
 
-  Object.defineProperty(query, 'name', { value: bindingName });
+  ObjectDefineProperty(query, 'name', { value: bindingName });
   return query;
 }
 
 
-const resolveMap = Object.create(null);
+const resolveMap = ObjectCreate(null);
 
 // Resolver instances correspond 1:1 to c-ares channels.
 class Resolver {

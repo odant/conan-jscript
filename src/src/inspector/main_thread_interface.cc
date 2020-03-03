@@ -7,6 +7,7 @@
 #include <unicode/unistr.h>
 
 #include <functional>
+#include <memory>
 
 namespace node {
 namespace inspector {
@@ -86,15 +87,15 @@ class CallRequest : public Request {
 
 class DispatchMessagesTask : public v8::Task {
  public:
-  explicit DispatchMessagesTask(MainThreadInterface* thread)
+  explicit DispatchMessagesTask(std::weak_ptr<MainThreadInterface> thread)
                                 : thread_(thread) {}
 
   void Run() override {
-    thread_->DispatchMessages();
+    if (auto thread = thread_.lock()) thread->DispatchMessages();
   }
 
  private:
-  MainThreadInterface* thread_;
+  std::weak_ptr<MainThreadInterface> thread_;
 };
 
 template <typename T>
@@ -114,8 +115,7 @@ class AnotherThreadObjectReference {
 
   ~AnotherThreadObjectReference() {
     // Disappearing thread may cause a memory leak
-    thread_->Post(
-        std::unique_ptr<DeleteRequest>(new DeleteRequest(object_id_)));
+    thread_->Post(std::make_unique<DeleteRequest>(object_id_));
   }
 
   template <typename Fn>
@@ -151,8 +151,7 @@ class MainThreadSessionState {
 
   static std::unique_ptr<MainThreadSessionState> Create(
       MainThreadInterface* thread, bool prevent_shutdown) {
-    return std::unique_ptr<MainThreadSessionState>(
-        new MainThreadSessionState(thread, prevent_shutdown));
+    return std::make_unique<MainThreadSessionState>(thread, prevent_shutdown);
   }
 
   void Connect(std::unique_ptr<InspectorSessionDelegate> delegate) {
@@ -232,11 +231,16 @@ void MainThreadInterface::Post(std::unique_ptr<Request> request) {
   if (needs_notify) {
     if (isolate_ != nullptr && platform_ != nullptr) {
       std::shared_ptr<v8::TaskRunner> taskrunner =
-        platform_->GetForegroundTaskRunner(isolate_);
-      taskrunner->PostTask(std::make_unique<DispatchMessagesTask>(this));
-      isolate_->RequestInterrupt([](v8::Isolate* isolate, void* thread) {
-        static_cast<MainThreadInterface*>(thread)->DispatchMessages();
-      }, this);
+          platform_->GetForegroundTaskRunner(isolate_);
+      std::weak_ptr<MainThreadInterface>* interface_ptr =
+          new std::weak_ptr<MainThreadInterface>(shared_from_this());
+      taskrunner->PostTask(
+          std::make_unique<DispatchMessagesTask>(*interface_ptr));
+      isolate_->RequestInterrupt([](v8::Isolate* isolate, void* opaque) {
+        std::unique_ptr<std::weak_ptr<MainThreadInterface>> interface_ptr {
+          static_cast<std::weak_ptr<MainThreadInterface>*>(opaque) };
+        if (auto iface = interface_ptr->lock()) iface->DispatchMessages();
+      }, static_cast<void*>(interface_ptr));
     }
   }
   incoming_message_cond_.Broadcast(scoped_lock);
@@ -270,13 +274,7 @@ void MainThreadInterface::DispatchMessages() {
       std::swap(dispatching_message_queue_.front(), task);
       dispatching_message_queue_.pop_front();
 
-      // TODO(addaleax): The V8 inspector code currently sometimes allocates
-      // handles that leak to the outside scope, rendering a HandleScope here
-      // necessary. This handle scope can be removed/turned into a
-      // SealHandleScope once/if
-      // https://chromium-review.googlesource.com/c/v8/v8/+/1484304 makes it
-      // into our copy of V8, maybe guarded with #ifdef DEBUG if we want.
-      v8::HandleScope handle_scope(isolate_);
+      v8::SealHandleScope seal_handle_scope(isolate_);
       task->Call(this);
     }
   } while (had_messages);

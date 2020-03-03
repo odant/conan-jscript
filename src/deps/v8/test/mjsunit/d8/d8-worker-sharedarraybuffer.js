@@ -45,7 +45,7 @@ if (this.Worker) {
         Atomics.store(ta, 0, 100);
       };`;
 
-    var w = new Worker(workerScript);
+    var w = new Worker(workerScript, {type: 'string'});
 
     var sab = new SharedArrayBuffer(16);
     var ta = new Uint32Array(sab);
@@ -55,7 +55,7 @@ if (this.Worker) {
 
     // Clone SharedArrayBuffer
     w.postMessage(sab);
-    assertEquals(16, sab.byteLength);  // ArrayBuffer should not be neutered.
+    assertEquals(16, sab.byteLength);  // ArrayBuffer should not be detached.
 
     // Spinwait for the worker to update ta[0]
     var ta0;
@@ -65,7 +65,7 @@ if (this.Worker) {
 
     w.terminate();
 
-    assertEquals(16, sab.byteLength);  // Still not neutered.
+    assertEquals(16, sab.byteLength);  // Still not detached.
   })();
 
   (function TestCloneMulti() {
@@ -84,7 +84,7 @@ if (this.Worker) {
     var id;
     var workers = [];
     for (id = 0; id < 4; ++id) {
-      workers[id] = new Worker(workerScript);
+      workers[id] = new Worker(workerScript, {type: 'string'});
       workers[id].postMessage({sab: sab, id: id});
     }
 

@@ -1,5 +1,11 @@
 'use strict';
 
+const {
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
+
 const errors = require('internal/errors');
 const {
   kFsStatsFieldsNumber,
@@ -10,7 +16,7 @@ const { UV_ENOSPC } = internalBinding('uv');
 const { EventEmitter } = require('events');
 const {
   getStatsFromBinding,
-  validatePath
+  getValidatedPath
 } = require('internal/fs/utils');
 const {
   defaultTriggerAsyncIdScope,
@@ -18,8 +24,6 @@ const {
 } = require('internal/async_hooks');
 const { toNamespacedPath } = require('path');
 const { validateUint32 } = require('internal/validators');
-const { toPathIfFileURL } = require('internal/url');
-const util = require('util');
 const assert = require('internal/assert');
 
 const kOldStatus = Symbol('kOldStatus');
@@ -36,7 +40,8 @@ function StatWatcher(bigint) {
   this[kOldStatus] = -1;
   this[kUseBigint] = bigint;
 }
-util.inherits(StatWatcher, EventEmitter);
+ObjectSetPrototypeOf(StatWatcher.prototype, EventEmitter.prototype);
+ObjectSetPrototypeOf(StatWatcher, EventEmitter);
 
 function onchange(newStatus, stats) {
   const self = this[owner_symbol];
@@ -71,8 +76,7 @@ StatWatcher.prototype.start = function(filename, persistent, interval) {
   // the sake of backwards compatibility
   this[kOldStatus] = -1;
 
-  filename = toPathIfFileURL(filename);
-  validatePath(filename, 'filename');
+  filename = getValidatedPath(filename, 'filename');
   validateUint32(interval, 'interval');
   const err = this._handle.start(toNamespacedPath(filename), interval);
   if (err) {
@@ -132,7 +136,8 @@ function FSWatcher() {
     }
   };
 }
-util.inherits(FSWatcher, EventEmitter);
+ObjectSetPrototypeOf(FSWatcher.prototype, EventEmitter.prototype);
+ObjectSetPrototypeOf(FSWatcher, EventEmitter);
 
 
 // FIXME(joyeecheung): this method is not documented.
@@ -154,8 +159,7 @@ FSWatcher.prototype.start = function(filename,
     return;
   }
 
-  filename = toPathIfFileURL(filename);
-  validatePath(filename, 'filename');
+  filename = getValidatedPath(filename, 'filename');
 
   const err = this._handle.start(toNamespacedPath(filename),
                                  persistent,
@@ -195,7 +199,7 @@ function emitCloseNT(self) {
 
 // Legacy alias on the C++ wrapper object. This is not public API, so we may
 // want to runtime-deprecate it at some point. There's no hurry, though.
-Object.defineProperty(FSEvent.prototype, 'owner', {
+ObjectDefineProperty(FSEvent.prototype, 'owner', {
   get() { return this[owner_symbol]; },
   set(v) { return this[owner_symbol] = v; }
 });

@@ -32,7 +32,10 @@ const tls = require('tls');
 const https = require('https');
 const fixtures = require('../common/fixtures');
 
-// renegotiation limits to test
+// Renegotiation as a protocol feature was dropped after TLS1.2.
+tls.DEFAULT_MAX_VERSION = 'TLSv1.2';
+
+// Renegotiation limits to test
 const LIMITS = [0, 1, 2, 3, 5, 10, 16];
 
 {
@@ -47,8 +50,8 @@ const LIMITS = [0, 1, 2, 3, 5, 10, 16];
 
 function test(next) {
   const options = {
-    cert: fixtures.readSync('test_cert.pem'),
-    key: fixtures.readSync('test_key.pem'),
+    cert: fixtures.readKey('rsa_cert.crt'),
+    key: fixtures.readKey('rsa_private.pem'),
   };
 
   const server = https.createServer(options, (req, res) => {
@@ -93,7 +96,7 @@ function test(next) {
 
       spam();
 
-      // simulate renegotiation attack
+      // Simulate renegotiation attack
       function spam() {
         client.renegotiate({}, (err) => {
           assert.ifError(err);

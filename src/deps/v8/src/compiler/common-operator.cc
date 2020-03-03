@@ -4,13 +4,12 @@
 
 #include "src/compiler/common-operator.h"
 
-#include "src/assembler.h"
 #include "src/base/lazy-instance.h"
 #include "src/compiler/linkage.h"
 #include "src/compiler/node.h"
 #include "src/compiler/opcodes.h"
 #include "src/compiler/operator.h"
-#include "src/handles-inl.h"
+#include "src/handles/handles-inl.h"
 #include "src/zone/zone.h"
 
 namespace v8 {
@@ -70,7 +69,16 @@ const BranchOperatorInfo& BranchOperatorInfoOf(const Operator* const op) {
 }
 
 BranchHint BranchHintOf(const Operator* const op) {
-  return BranchOperatorInfoOf(op).hint;
+  switch (op->opcode()) {
+    case IrOpcode::kBranch:
+      return BranchOperatorInfoOf(op).hint;
+    case IrOpcode::kIfValue:
+      return IfValueParametersOf(op).hint();
+    case IrOpcode::kIfDefault:
+      return OpParameter<BranchHint>(op);
+    default:
+      UNREACHABLE();
+  }
 }
 
 int ValueInputCountOfReturn(Operator const* const op) {
@@ -91,7 +99,8 @@ bool operator!=(DeoptimizeParameters lhs, DeoptimizeParameters rhs) {
 }
 
 size_t hash_value(DeoptimizeParameters p) {
-  return base::hash_combine(p.kind(), p.reason(), p.feedback(),
+  FeedbackSource::Hash feebdack_hash;
+  return base::hash_combine(p.kind(), p.reason(), feebdack_hash(p.feedback()),
                             p.is_safety_check());
 }
 
@@ -136,6 +145,13 @@ const Operator* CommonOperatorBuilder::MarkAsSafetyCheck(
   }
 }
 
+const Operator* CommonOperatorBuilder::DelayedStringConstant(
+    const StringConstantBase* str) {
+  return new (zone()) Operator1<const StringConstantBase*>(
+      IrOpcode::kDelayedStringConstant, Operator::kPure,
+      "DelayedStringConstant", 0, 0, 0, 1, 0, 0, str);
+}
+
 bool operator==(SelectParameters const& lhs, SelectParameters const& rhs) {
   return lhs.representation() == rhs.representation() &&
          lhs.hint() == rhs.hint();
@@ -164,7 +180,6 @@ SelectParameters const& SelectParametersOf(const Operator* const op) {
 
 CallDescriptor const* CallDescriptorOf(const Operator* const op) {
   DCHECK(op->opcode() == IrOpcode::kCall ||
-         op->opcode() == IrOpcode::kCallWithCallerSavedRegisters ||
          op->opcode() == IrOpcode::kTailCall);
   return OpParameter<CallDescriptor const*>(op);
 }
@@ -413,16 +428,18 @@ ZoneVector<MachineType> const* MachineTypesOf(Operator const* op) {
 
 V8_EXPORT_PRIVATE bool operator==(IfValueParameters const& l,
                                   IfValueParameters const& r) {
-  return l.value() == r.value() && r.comparison_order() == r.comparison_order();
+  return l.value() == r.value() &&
+         r.comparison_order() == r.comparison_order() && l.hint() == r.hint();
 }
 
 size_t hash_value(IfValueParameters const& p) {
-  return base::hash_combine(p.value(), p.comparison_order());
+  return base::hash_combine(p.value(), p.comparison_order(), p.hint());
 }
 
 V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream& out,
                                            IfValueParameters const& p) {
-  out << p.value() << " (order " << p.comparison_order() << ")";
+  out << p.value() << " (order " << p.comparison_order() << ", hint "
+      << p.hint() << ")";
   return out;
 }
 
@@ -438,7 +455,6 @@ IfValueParameters const& IfValueParametersOf(const Operator* op) {
   V(IfFalse, Operator::kKontrol, 0, 0, 1, 0, 0, 1)                            \
   V(IfSuccess, Operator::kKontrol, 0, 0, 1, 0, 0, 1)                          \
   V(IfException, Operator::kKontrol, 0, 1, 1, 1, 1, 1)                        \
-  V(IfDefault, Operator::kKontrol, 0, 0, 1, 0, 0, 1)                          \
   V(Throw, Operator::kKontrol, 0, 1, 1, 0, 0, 1)                              \
   V(Terminate, Operator::kKontrol, 0, 1, 1, 0, 0, 1)                          \
   V(OsrNormalEntry, Operator::kFoldable, 0, 1, 1, 0, 1, 1)                    \
@@ -448,7 +464,8 @@ IfValueParameters const& IfValueParametersOf(const Operator* op) {
   V(LoopExitEffect, Operator::kNoThrow, 0, 1, 1, 0, 1, 0)                     \
   V(Checkpoint, Operator::kKontrol, 0, 1, 1, 0, 1, 0)                         \
   V(FinishRegion, Operator::kKontrol, 1, 1, 0, 1, 1, 0)                       \
-  V(Retain, Operator::kKontrol, 1, 1, 0, 0, 1, 0)
+  V(Retain, Operator::kKontrol, 1, 1, 0, 0, 1, 0)                             \
+  V(StaticAssert, Operator::kFoldable, 1, 1, 0, 0, 1, 0)
 
 #define CACHED_BRANCH_LIST(V)   \
   V(None, CriticalSafetyCheck)  \
@@ -712,7 +729,7 @@ struct CommonOperatorGlobalCache final {
               Operator::kFoldable | Operator::kNoThrow,  // properties
               "Deoptimize",                              // name
               1, 1, 1, 0, 0, 1,                          // counts
-              DeoptimizeParameters(kKind, kReason, VectorSlotPair(),
+              DeoptimizeParameters(kKind, kReason, FeedbackSource(),
                                    IsSafetyCheck::kNoSafetyCheck)) {}
   };
 #define CACHED_DEOPTIMIZE(Kind, Reason)                                    \
@@ -730,7 +747,7 @@ struct CommonOperatorGlobalCache final {
               Operator::kFoldable | Operator::kNoThrow,  // properties
               "DeoptimizeIf",                            // name
               2, 1, 1, 0, 1, 1,                          // counts
-              DeoptimizeParameters(kKind, kReason, VectorSlotPair(),
+              DeoptimizeParameters(kKind, kReason, FeedbackSource(),
                                    is_safety_check)) {}
   };
 #define CACHED_DEOPTIMIZE_IF(Kind, Reason, IsCheck)                          \
@@ -750,7 +767,7 @@ struct CommonOperatorGlobalCache final {
               Operator::kFoldable | Operator::kNoThrow,  // properties
               "DeoptimizeUnless",                        // name
               2, 1, 1, 0, 1, 1,                          // counts
-              DeoptimizeParameters(kKind, kReason, VectorSlotPair(),
+              DeoptimizeParameters(kKind, kReason, FeedbackSource(),
                                    is_safety_check)) {}
   };
 #define CACHED_DEOPTIMIZE_UNLESS(Kind, Reason, IsCheck) \
@@ -865,11 +882,13 @@ struct CommonOperatorGlobalCache final {
 #undef CACHED_STATE_VALUES
 };
 
-static base::LazyInstance<CommonOperatorGlobalCache>::type
-    kCommonOperatorGlobalCache = LAZY_INSTANCE_INITIALIZER;
+namespace {
+DEFINE_LAZY_LEAKY_OBJECT_GETTER(CommonOperatorGlobalCache,
+                                GetCommonOperatorGlobalCache)
+}
 
 CommonOperatorBuilder::CommonOperatorBuilder(Zone* zone)
-    : cache_(kCommonOperatorGlobalCache.Get()), zone_(zone) {}
+    : cache_(*GetCommonOperatorGlobalCache()), zone_(zone) {}
 
 #define CACHED(Name, properties, value_input_count, effect_input_count,      \
                control_input_count, value_output_count, effect_output_count, \
@@ -929,7 +948,7 @@ const Operator* CommonOperatorBuilder::Branch(BranchHint hint,
 
 const Operator* CommonOperatorBuilder::Deoptimize(
     DeoptimizeKind kind, DeoptimizeReason reason,
-    VectorSlotPair const& feedback) {
+    FeedbackSource const& feedback) {
 #define CACHED_DEOPTIMIZE(Kind, Reason)                               \
   if (kind == DeoptimizeKind::k##Kind &&                              \
       reason == DeoptimizeReason::k##Reason && !feedback.IsValid()) { \
@@ -950,7 +969,7 @@ const Operator* CommonOperatorBuilder::Deoptimize(
 
 const Operator* CommonOperatorBuilder::DeoptimizeIf(
     DeoptimizeKind kind, DeoptimizeReason reason,
-    VectorSlotPair const& feedback, IsSafetyCheck is_safety_check) {
+    FeedbackSource const& feedback, IsSafetyCheck is_safety_check) {
 #define CACHED_DEOPTIMIZE_IF(Kind, Reason, IsCheck)                          \
   if (kind == DeoptimizeKind::k##Kind &&                                     \
       reason == DeoptimizeReason::k##Reason &&                               \
@@ -971,7 +990,7 @@ const Operator* CommonOperatorBuilder::DeoptimizeIf(
 
 const Operator* CommonOperatorBuilder::DeoptimizeUnless(
     DeoptimizeKind kind, DeoptimizeReason reason,
-    VectorSlotPair const& feedback, IsSafetyCheck is_safety_check) {
+    FeedbackSource const& feedback, IsSafetyCheck is_safety_check) {
 #define CACHED_DEOPTIMIZE_UNLESS(Kind, Reason, IsCheck)                      \
   if (kind == DeoptimizeKind::k##Kind &&                                     \
       reason == DeoptimizeReason::k##Reason &&                               \
@@ -1036,14 +1055,22 @@ const Operator* CommonOperatorBuilder::Switch(size_t control_output_count) {
 }
 
 const Operator* CommonOperatorBuilder::IfValue(int32_t index,
-                                               int32_t comparison_order) {
-  return new (zone()) Operator1<IfValueParameters>(  // --
-      IrOpcode::kIfValue, Operator::kKontrol,        // opcode
-      "IfValue",                                     // name
-      0, 0, 1, 0, 0, 1,                              // counts
-      IfValueParameters(index, comparison_order));   // parameter
+                                               int32_t comparison_order,
+                                               BranchHint hint) {
+  return new (zone()) Operator1<IfValueParameters>(       // --
+      IrOpcode::kIfValue, Operator::kKontrol,             // opcode
+      "IfValue",                                          // name
+      0, 0, 1, 0, 0, 1,                                   // counts
+      IfValueParameters(index, comparison_order, hint));  // parameter
 }
 
+const Operator* CommonOperatorBuilder::IfDefault(BranchHint hint) {
+  return new (zone()) Operator1<BranchHint>(     // --
+      IrOpcode::kIfDefault, Operator::kKontrol,  // opcode
+      "IfDefault",                               // name
+      0, 0, 1, 0, 0, 1,                          // counts
+      hint);                                     // parameter
+}
 
 const Operator* CommonOperatorBuilder::Start(int value_output_count) {
   return new (zone()) Operator(                                    // --
@@ -1189,9 +1216,24 @@ const Operator* CommonOperatorBuilder::HeapConstant(
       value);                                         // parameter
 }
 
+const Operator* CommonOperatorBuilder::CompressedHeapConstant(
+    const Handle<HeapObject>& value) {
+  return new (zone()) Operator1<Handle<HeapObject>>(       // --
+      IrOpcode::kCompressedHeapConstant, Operator::kPure,  // opcode
+      "CompressedHeapConstant",                            // name
+      0, 0, 0, 1, 0, 0,                                    // counts
+      value);                                              // parameter
+}
+
 Handle<HeapObject> HeapConstantOf(const Operator* op) {
-  DCHECK_EQ(IrOpcode::kHeapConstant, op->opcode());
+  DCHECK(IrOpcode::kHeapConstant == op->opcode() ||
+         IrOpcode::kCompressedHeapConstant == op->opcode());
   return OpParameter<Handle<HeapObject>>(op);
+}
+
+const StringConstantBase* StringConstantBaseOf(const Operator* op) {
+  DCHECK_EQ(IrOpcode::kDelayedStringConstant, op->opcode());
+  return OpParameter<const StringConstantBase*>(op);
 }
 
 const Operator* CommonOperatorBuilder::RelocatableInt32Constant(
@@ -1431,31 +1473,8 @@ const Operator* CommonOperatorBuilder::Call(
               Operator::ZeroIfNoThrow(call_descriptor->properties()),
               call_descriptor) {}
 
-    void PrintParameter(std::ostream& os, PrintVerbosity verbose) const {
-      os << "[" << *parameter() << "]";
-    }
-  };
-  return new (zone()) CallOperator(call_descriptor);
-}
-
-const Operator* CommonOperatorBuilder::CallWithCallerSavedRegisters(
-    const CallDescriptor* call_descriptor) {
-  class CallOperator final : public Operator1<const CallDescriptor*> {
-   public:
-    explicit CallOperator(const CallDescriptor* call_descriptor)
-        : Operator1<const CallDescriptor*>(
-              IrOpcode::kCallWithCallerSavedRegisters,
-              call_descriptor->properties(), "CallWithCallerSavedRegisters",
-              call_descriptor->InputCount() +
-                  call_descriptor->FrameStateCount(),
-              Operator::ZeroIfPure(call_descriptor->properties()),
-              Operator::ZeroIfEliminatable(call_descriptor->properties()),
-              call_descriptor->ReturnCount(),
-              Operator::ZeroIfPure(call_descriptor->properties()),
-              Operator::ZeroIfNoThrow(call_descriptor->properties()),
-              call_descriptor) {}
-
-    void PrintParameter(std::ostream& os, PrintVerbosity verbose) const {
+    void PrintParameter(std::ostream& os,
+                        PrintVerbosity verbose) const override {
       os << "[" << *parameter() << "]";
     }
   };
@@ -1474,7 +1493,8 @@ const Operator* CommonOperatorBuilder::TailCall(
                   call_descriptor->FrameStateCount(),
               1, 1, 0, 0, 1, call_descriptor) {}
 
-    void PrintParameter(std::ostream& os, PrintVerbosity verbose) const {
+    void PrintParameter(std::ostream& os,
+                        PrintVerbosity verbose) const override {
       os << "[" << *parameter() << "]";
     }
   };

@@ -1,9 +1,12 @@
 #include "inspector_socket_server.h"
 
 #include "node.h"
+#include "node_options.h"
+#include "util-inl.h"
 #include "gtest/gtest.h"
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 
 static uv_loop_t loop;
@@ -356,8 +359,11 @@ ServerHolder::ServerHolder(bool has_targets, uv_loop_t* loop,
     targets = { MAIN_TARGET_ID };
   std::unique_ptr<TestSocketServerDelegate> delegate(
       new TestSocketServerDelegate(this, targets));
-  server_.reset(
-      new InspectorSocketServer(std::move(delegate), loop, host, port, out));
+  node::InspectPublishUid inspect_publish_uid;
+  inspect_publish_uid.console = true;
+  inspect_publish_uid.http = true;
+  server_ = std::make_unique<InspectorSocketServer>(
+      std::move(delegate), loop, host, port, inspect_publish_uid, out);
 }
 
 static void TestHttpRequest(int port, const std::string& path,

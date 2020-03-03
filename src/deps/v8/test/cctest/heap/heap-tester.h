@@ -6,6 +6,7 @@
 #define HEAP_HEAP_TESTER_H_
 
 #include "src/heap/spaces.h"
+#include "src/objects/fixed-array.h"
 
 // Tests that should have access to private methods of {v8::internal::Heap}.
 // Those tests need to be defined using HEAP_TEST(Name) { ... }.
@@ -18,6 +19,10 @@
   V(CompactionSpaceDivideSinglePage)                      \
   V(InvalidatedSlotsAfterTrimming)                        \
   V(InvalidatedSlotsAllInvalidatedRanges)                 \
+  V(InvalidatedSlotsCleanupEachObject)                    \
+  V(InvalidatedSlotsCleanupFull)                          \
+  V(InvalidatedSlotsCleanupRightTrim)                     \
+  V(InvalidatedSlotsCleanupOverlapRight)                  \
   V(InvalidatedSlotsEvacuationCandidate)                  \
   V(InvalidatedSlotsNoInvalidatedRanges)                  \
   V(InvalidatedSlotsResetObjectRegression)                \
@@ -29,6 +34,8 @@
   V(TestNewSpaceRefsInCopiedCode)                         \
   V(GCFlags)                                              \
   V(MarkCompactCollector)                                 \
+  V(MarkCompactEpochCounter)                              \
+  V(MemoryReducerActivationForSmallHeaps)                 \
   V(NoPromotion)                                          \
   V(NumberStringCacheSize)                                \
   V(ObjectGroups)                                         \
@@ -87,19 +94,19 @@ class HeapTester {
 
   // test-invalidated-slots.cc
   static Page* AllocateByteArraysOnPage(Heap* heap,
-                                        std::vector<ByteArray*>* byte_arrays);
+                                        std::vector<ByteArray>* byte_arrays);
 
   // test-api.cc
   static void ResetWeakHandle(bool global_gc);
 
   // test-heap.cc
   static AllocationResult AllocateByteArrayForTest(Heap* heap, int length,
-                                                   PretenureFlag pretenure);
+                                                   AllocationType allocation);
 
   // test-mark-compact.cc
   static AllocationResult AllocateMapForTest(v8::internal::Isolate* isolate);
   static AllocationResult AllocateFixedArrayForTest(Heap* heap, int length,
-                                                    PretenureFlag pretenure);
+                                                    AllocationType allocation);
 
   static void UncommitFromSpace(Heap* heap);
 };

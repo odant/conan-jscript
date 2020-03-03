@@ -26,6 +26,7 @@ const stat = promisify(fs.stat);
 
 {
   function fn() {}
+
   function promisifedFn() {}
   fn[promisify.custom] = promisifedFn;
   assert.strictEqual(promisify(fn), promisifedFn);
@@ -189,7 +190,7 @@ const stat = promisify(fs.stat);
     {
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
-      message: 'The "original" argument must be of type Function. ' +
-               `Received type ${typeof input}`
+      message: 'The "original" argument must be of type function.' +
+               common.invalidArgTypeHelper(input)
     });
 });

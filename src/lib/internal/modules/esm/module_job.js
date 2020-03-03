@@ -1,10 +1,13 @@
 'use strict';
 
-const { ModuleWrap } = internalBinding('module_wrap');
 const {
+  ObjectSetPrototypeOf,
+  PromiseAll,
   SafeSet,
-  SafePromise
+  SafePromise,
 } = primordials;
+
+const { ModuleWrap } = internalBinding('module_wrap');
 
 const { decorateErrorStack } = require('internal/util');
 const assert = require('internal/assert');
@@ -12,32 +15,33 @@ const resolvedPromise = SafePromise.resolve();
 
 function noop() {}
 
+let hasPausedEntry = false;
+
 /* A ModuleJob tracks the loading of a single Module, and the ModuleJobs of
  * its dependencies, over time. */
 class ModuleJob {
   // `loader` is the Loader instance used for loading dependencies.
   // `moduleProvider` is a function
-  constructor(loader, url, moduleProvider, isMain) {
+  constructor(loader, url, moduleProvider, isMain, inspectBrk) {
     this.loader = loader;
     this.isMain = isMain;
+    this.inspectBrk = inspectBrk;
 
     // This is a Promise<{ module, reflect }>, whose fields will be copied
     // onto `this` by `link()` below once it has been resolved.
-    this.modulePromise = moduleProvider(url, isMain);
+    this.modulePromise = moduleProvider.call(loader, url, isMain);
     this.module = undefined;
-    this.reflect = undefined;
 
     // Wait for the ModuleWrap instance being linked with all dependencies.
     const link = async () => {
-      ({ module: this.module,
-         reflect: this.reflect } = await this.modulePromise);
+      this.module = await this.modulePromise;
       assert(this.module instanceof ModuleWrap);
 
       const dependencyJobs = [];
       const promises = this.module.link(async (specifier) => {
         const jobPromise = this.loader.getModuleJob(specifier, url);
         dependencyJobs.push(jobPromise);
-        return (await (await jobPromise).modulePromise).module;
+        return (await jobPromise).modulePromise;
       });
 
       if (promises !== undefined)
@@ -76,16 +80,16 @@ class ModuleJob {
       }
       jobsInGraph.add(moduleJob);
       const dependencyJobs = await moduleJob.linked;
-      return Promise.all(dependencyJobs.map(addJobsToDependencyGraph));
+      return PromiseAll(dependencyJobs.map(addJobsToDependencyGraph));
     };
     await addJobsToDependencyGraph(this);
     try {
-      if (this.isMain && process._breakFirstLine) {
-        delete process._breakFirstLine;
+      if (!hasPausedEntry && this.inspectBrk) {
+        hasPausedEntry = true;
         const initWrapper = internalBinding('inspector').callAndPauseOnStart;
         initWrapper(this.module.instantiate, this.module);
       } else {
-        this.module.instantiate();
+        this.module.instantiate(true);
       }
     } catch (e) {
       decorateErrorStack(e);
@@ -101,9 +105,10 @@ class ModuleJob {
 
   async run() {
     const module = await this.instantiate();
-    module.evaluate(-1, false);
-    return module;
+    const timeout = -1;
+    const breakOnSigint = false;
+    return { module, result: module.evaluate(timeout, breakOnSigint) };
   }
 }
-Object.setPrototypeOf(ModuleJob.prototype, null);
+ObjectSetPrototypeOf(ModuleJob.prototype, null);
 module.exports = ModuleJob;

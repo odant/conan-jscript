@@ -4,10 +4,18 @@
 // message port.
 
 const {
+  ObjectDefineProperty,
+} = primordials;
+
+const {
+  patchProcessObject,
   setupCoverageHooks,
+  setupInspectorHooks,
   setupWarningHandler,
   setupDebugEnv,
   initializeDeprecations,
+  initializeWASI,
+  initializeCJSLoader,
   initializeESMLoader,
   initializeFrozenIntrinsics,
   initializeReport,
@@ -20,6 +28,7 @@ const {
   getEnvMessagePort
 } = internalBinding('worker');
 
+const workerIo = require('internal/worker/io');
 const {
   messageTypes: {
     // Messages that may be received by workers
@@ -33,17 +42,20 @@ const {
     STDIO_WANTS_MORE_DATA,
   },
   kStdioWantsMoreDataCallback
-} = require('internal/worker/io');
+} = workerIo;
 
 const {
-  fatalException: originalFatalException
+  onGlobalUncaughtException
 } = require('internal/process/execution');
 
 const publicWorker = require('worker_threads');
+const debug = require('internal/util/debuglog').debuglog('worker');
 
+const assert = require('internal/assert');
+
+patchProcessObject();
+setupInspectorHooks();
 setupDebugEnv();
-
-const debug = require('util').debuglog('worker');
 
 setupWarningHandler();
 
@@ -63,12 +75,12 @@ const port = getEnvMessagePort();
 // related IPC properties as unavailable.
 if (process.env.NODE_CHANNEL_FD) {
   const workerThreadSetup = require('internal/process/worker_thread_only');
-  Object.defineProperty(process, 'channel', {
+  ObjectDefineProperty(process, 'channel', {
     enumerable: false,
     get: workerThreadSetup.unavailable('process.channel')
   });
 
-  Object.defineProperty(process, 'connected', {
+  ObjectDefineProperty(process, 'connected', {
     enumerable: false,
     get: workerThreadSetup.unavailable('process.connected')
   });
@@ -81,6 +93,8 @@ if (process.env.NODE_CHANNEL_FD) {
 port.on('message', (message) => {
   if (message.type === LOAD_SCRIPT) {
     const {
+      argv,
+      cwdCounter,
       filename,
       doEval,
       workerData,
@@ -96,11 +110,30 @@ port.on('message', (message) => {
       require('internal/process/policy').setup(manifestSrc, manifestURL);
     }
     initializeDeprecations();
-    initializeFrozenIntrinsics();
+    initializeWASI();
+    initializeCJSLoader();
     initializeESMLoader();
+
+    const CJSLoader = require('internal/modules/cjs/loader');
+    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
     loadPreloadModules();
+    initializeFrozenIntrinsics();
+    if (argv !== undefined) {
+      process.argv = process.argv.concat(argv);
+    }
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;
+
+    // The counter is only passed to the workers created by the main thread, not
+    // to workers created by other workers.
+    let cachedCwd = '';
+    const originalCwd = process.cwd;
+
+    process.cwd = function() {
+      cachedCwd = originalCwd();
+      return cachedCwd;
+    };
+    workerIo.sharedCwdCounter = cwdCounter;
 
     if (!hasStdin)
       process.stdin.push(null);
@@ -111,57 +144,73 @@ port.on('message', (message) => {
     port.postMessage({ type: UP_AND_RUNNING });
     if (doEval) {
       const { evalScript } = require('internal/process/execution');
-      evalScript('[worker eval]', filename);
+      const name = '[worker eval]';
+      // This is necessary for CJS module compilation.
+      // TODO: pass this with something really internal.
+      ObjectDefineProperty(process, '_eval', {
+        configurable: true,
+        enumerable: true,
+        value: filename,
+      });
+      process.argv.splice(1, 0, name);
+      evalScript(name, filename);
     } else {
-      process.argv[1] = filename; // script filename
-      require('module').runMain();
+      // script filename
+      // runMain here might be monkey-patched by users in --require.
+      // XXX: the monkey-patchability here should probably be deprecated.
+      process.argv.splice(1, 0, filename);
+      CJSLoader.Module.runMain(filename);
     }
-    return;
   } else if (message.type === STDIO_PAYLOAD) {
     const { stream, chunk, encoding } = message;
     process[stream].push(chunk, encoding);
-    return;
-  } else if (message.type === STDIO_WANTS_MORE_DATA) {
+  } else {
+    assert(
+      message.type === STDIO_WANTS_MORE_DATA,
+      `Unknown worker message type ${message.type}`
+    );
     const { stream } = message;
     process[stream][kStdioWantsMoreDataCallback]();
-    return;
   }
-
-  require('assert').fail(`Unknown worker message type ${message.type}`);
 });
 
-// Overwrite fatalException
-process._fatalException = (error) => {
-  debug(`[${threadId}] gets fatal exception`);
-  let caught = false;
+function workerOnGlobalUncaughtException(error, fromPromise) {
+  debug(`[${threadId}] gets uncaught exception`);
+  let handled = false;
   try {
-    caught = originalFatalException.call(this, error);
+    handled = onGlobalUncaughtException(error, fromPromise);
   } catch (e) {
     error = e;
   }
-  debug(`[${threadId}] fatal exception caught = ${caught}`);
+  debug(`[${threadId}] uncaught exception handled = ${handled}`);
 
-  if (!caught) {
-    let serialized;
-    try {
-      const { serializeError } = require('internal/error-serdes');
-      serialized = serializeError(error);
-    } catch {}
-    debug(`[${threadId}] fatal exception serialized = ${!!serialized}`);
-    if (serialized)
-      port.postMessage({
-        type: ERROR_MESSAGE,
-        error: serialized
-      });
-    else
-      port.postMessage({ type: COULD_NOT_SERIALIZE_ERROR });
-
-    const { clearAsyncIdStack } = require('internal/async_hooks');
-    clearAsyncIdStack();
-
-    process.exit();
+  if (handled) {
+    return true;
   }
-};
+
+  let serialized;
+  try {
+    const { serializeError } = require('internal/error-serdes');
+    serialized = serializeError(error);
+  } catch {}
+  debug(`[${threadId}] uncaught exception serialized = ${!!serialized}`);
+  if (serialized)
+    port.postMessage({
+      type: ERROR_MESSAGE,
+      error: serialized
+    });
+  else
+    port.postMessage({ type: COULD_NOT_SERIALIZE_ERROR });
+
+  const { clearAsyncIdStack } = require('internal/async_hooks');
+  clearAsyncIdStack();
+
+  process.exit();
+}
+
+// Patch the global uncaught exception handler so it gets picked up by
+// node::errors::TriggerUncaughtException().
+process._fatalException = workerOnGlobalUncaughtException;
 
 markBootstrapComplete();
 

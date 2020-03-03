@@ -26,19 +26,23 @@
 
 'use strict';
 
+const {
+  ObjectDefineProperty,
+  ObjectKeys,
+  ObjectSetPrototypeOf,
+} = primordials;
+
 module.exports = Duplex;
 
-const util = require('util');
 const Readable = require('_stream_readable');
 const Writable = require('_stream_writable');
 
-util.inherits(Duplex, Readable);
+ObjectSetPrototypeOf(Duplex.prototype, Readable.prototype);
+ObjectSetPrototypeOf(Duplex, Readable);
 
 {
   // Allow the keys array to be GC'ed.
-  const keys = Object.keys(Writable.prototype);
-  for (var v = 0; v < keys.length; v++) {
-    const method = keys[v];
+  for (const method of ObjectKeys(Writable.prototype)) {
     if (!Duplex.prototype[method])
       Duplex.prototype[method] = Writable.prototype[method];
   }
@@ -66,17 +70,17 @@ function Duplex(options) {
   }
 }
 
-Object.defineProperty(Duplex.prototype, 'writableHighWaterMark', {
+ObjectDefineProperty(Duplex.prototype, 'writableHighWaterMark', {
   // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
   get() {
-    return this._writableState.highWaterMark;
+    return this._writableState && this._writableState.highWaterMark;
   }
 });
 
-Object.defineProperty(Duplex.prototype, 'writableBuffer', {
+ObjectDefineProperty(Duplex.prototype, 'writableBuffer', {
   // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
@@ -86,23 +90,53 @@ Object.defineProperty(Duplex.prototype, 'writableBuffer', {
   }
 });
 
-Object.defineProperty(Duplex.prototype, 'writableLength', {
+ObjectDefineProperty(Duplex.prototype, 'writableLength', {
   // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail
   enumerable: false,
   get() {
-    return this._writableState.length;
+    return this._writableState && this._writableState.length;
   }
 });
 
-// the no-half-open enforcer
+ObjectDefineProperty(Duplex.prototype, 'writableFinished', {
+  // Making it explicit this property is not enumerable
+  // because otherwise some prototype manipulation in
+  // userland will fail
+  enumerable: false,
+  get() {
+    return this._writableState ? this._writableState.finished : false;
+  }
+});
+
+ObjectDefineProperty(Duplex.prototype, 'writableCorked', {
+  // Making it explicit this property is not enumerable
+  // because otherwise some prototype manipulation in
+  // userland will fail
+  enumerable: false,
+  get() {
+    return this._writableState ? this._writableState.corked : 0;
+  }
+});
+
+ObjectDefineProperty(Duplex.prototype, 'writableEnded', {
+  // Making it explicit this property is not enumerable
+  // because otherwise some prototype manipulation in
+  // userland will fail
+  enumerable: false,
+  get() {
+    return this._writableState ? this._writableState.ending : false;
+  }
+});
+
+// The no-half-open enforcer
 function onend() {
   // If the writable side ended, then we're ok.
   if (this._writableState.ended)
     return;
 
-  // no more data can be written.
+  // No more data can be written.
   // But allow more writes to happen in this tick.
   process.nextTick(onEndNT, this);
 }
@@ -111,7 +145,7 @@ function onEndNT(self) {
   self.end();
 }
 
-Object.defineProperty(Duplex.prototype, 'destroyed', {
+ObjectDefineProperty(Duplex.prototype, 'destroyed', {
   // Making it explicit this property is not enumerable
   // because otherwise some prototype manipulation in
   // userland will fail

@@ -21,12 +21,22 @@
 
 'use strict';
 
+const {
+  ObjectDefineProperties,
+  SymbolToPrimitive,
+} = primordials;
+
 const { safeGetenv } = internalBinding('credentials');
 const constants = internalBinding('constants').os;
 const { deprecate } = require('internal/util');
 const isWindows = process.platform === 'win32';
 
-const { codes: { ERR_SYSTEM_ERROR } } = require('internal/errors');
+const {
+  codes: {
+    ERR_SYSTEM_ERROR
+  },
+  hideStackFrames
+} = require('internal/errors');
 const { validateInt32 } = require('internal/validators');
 
 const {
@@ -47,16 +57,14 @@ const {
 } = internalBinding('os');
 
 function getCheckedFunction(fn) {
-  return function checkError(...args) {
+  return hideStackFrames(function checkError(...args) {
     const ctx = {};
     const ret = fn(...args, ctx);
     if (ret === undefined) {
-      const err = new ERR_SYSTEM_ERROR(ctx);
-      Error.captureStackTrace(err, checkError);
-      throw err;
+      throw new ERR_SYSTEM_ERROR(ctx);
     }
     return ret;
-  };
+  });
 }
 
 const getHomeDirectory = getCheckedFunction(_getHomeDirectory);
@@ -65,21 +73,18 @@ const getInterfaceAddresses = getCheckedFunction(_getInterfaceAddresses);
 const getOSRelease = getCheckedFunction(_getOSRelease);
 const getOSType = getCheckedFunction(_getOSType);
 
-getFreeMem[Symbol.toPrimitive] = () => getFreeMem();
-getHostname[Symbol.toPrimitive] = () => getHostname();
-getHomeDirectory[Symbol.toPrimitive] = () => getHomeDirectory();
-getOSRelease[Symbol.toPrimitive] = () => getOSRelease();
-getOSType[Symbol.toPrimitive] = () => getOSType();
-getTotalMem[Symbol.toPrimitive] = () => getTotalMem();
-getUptime[Symbol.toPrimitive] = () => getUptime();
+getFreeMem[SymbolToPrimitive] = () => getFreeMem();
+getHostname[SymbolToPrimitive] = () => getHostname();
+getHomeDirectory[SymbolToPrimitive] = () => getHomeDirectory();
+getOSRelease[SymbolToPrimitive] = () => getOSRelease();
+getOSType[SymbolToPrimitive] = () => getOSType();
+getTotalMem[SymbolToPrimitive] = () => getTotalMem();
+getUptime[SymbolToPrimitive] = () => getUptime();
 
 const kEndianness = isBigEndian ? 'BE' : 'LE';
 
 const tmpDirDeprecationMsg =
   'os.tmpDir() is deprecated. Use os.tmpdir() instead.';
-
-const getNetworkInterfacesDepMsg =
-  'os.getNetworkInterfaces is deprecated. Use os.networkInterfaces instead.';
 
 const avgValues = new Float64Array(3);
 
@@ -112,12 +117,12 @@ function cpus() {
 function arch() {
   return process.arch;
 }
-arch[Symbol.toPrimitive] = () => process.arch;
+arch[SymbolToPrimitive] = () => process.arch;
 
 function platform() {
   return process.platform;
 }
-platform[Symbol.toPrimitive] = () => process.platform;
+platform[SymbolToPrimitive] = () => process.platform;
 
 function tmpdir() {
   var path;
@@ -138,12 +143,12 @@ function tmpdir() {
 
   return path;
 }
-tmpdir[Symbol.toPrimitive] = () => tmpdir();
+tmpdir[SymbolToPrimitive] = () => tmpdir();
 
 function endianness() {
   return kEndianness;
 }
-endianness[Symbol.toPrimitive] = () => kEndianness;
+endianness[SymbolToPrimitive] = () => kEndianness;
 
 // Returns the number of ones in the binary representation of the decimal
 // number.
@@ -282,13 +287,10 @@ module.exports = {
   uptime: getUptime,
 
   // Deprecated APIs
-  getNetworkInterfaces: deprecate(getInterfaceAddresses,
-                                  getNetworkInterfacesDepMsg,
-                                  'DEP0023'),
   tmpDir: deprecate(tmpdir, tmpDirDeprecationMsg, 'DEP0022')
 };
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   constants: {
     configurable: false,
     enumerable: true,

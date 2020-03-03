@@ -135,7 +135,7 @@ if (cluster.isMaster) {
         // But don't keep the process open just for that!
         killtimer.unref();
 
-        // stop taking new requests.
+        // Stop taking new requests.
         server.close();
 
         // Let the master know we're dead. This will trigger a
@@ -184,7 +184,7 @@ function handleRequest(req, res) {
 }
 ```
 
-## Additions to Error objects
+## Additions to `Error` objects
 
 <!-- type=misc -->
 
@@ -267,26 +267,27 @@ serverDomain.run(() => {
 });
 ```
 
-## domain.create()
+## `domain.create()`
 
 * Returns: {Domain}
 
-## Class: Domain
+## Class: `Domain`
+
+* Extends: {EventEmitter}
 
 The `Domain` class encapsulates the functionality of routing errors and
 uncaught exceptions to the active `Domain` object.
 
-`Domain` is a child class of [`EventEmitter`][]. To handle the errors that it
-catches, listen to its `'error'` event.
+To handle the errors that it catches, listen to its `'error'` event.
 
-### domain.members
+### `domain.members`
 
 * {Array}
 
 An array of timers and event emitters that have been explicitly added
 to the domain.
 
-### domain.add(emitter)
+### `domain.add(emitter)`
 
 * `emitter` {EventEmitter|Timer} emitter or timer to be added to the domain
 
@@ -302,7 +303,7 @@ the domain `'error'` handler.
 If the Timer or `EventEmitter` was already bound to a domain, it is removed
 from that one, and bound to this one instead.
 
-### domain.bind(callback)
+### `domain.bind(callback)`
 
 * `callback` {Function} The callback function
 * Returns: {Function} The bound function
@@ -316,19 +317,18 @@ const d = domain.create();
 
 function readSomeFile(filename, cb) {
   fs.readFile(filename, 'utf8', d.bind((er, data) => {
-    // If this throws, it will also be passed to the domain
+    // If this throws, it will also be passed to the domain.
     return cb(er, data ? JSON.parse(data) : null);
   }));
 }
 
 d.on('error', (er) => {
-  // an error occurred somewhere.
-  // if we throw it now, it will crash the program
+  // An error occurred somewhere. If we throw it now, it will crash the program
   // with the normal line number and stack message.
 });
 ```
 
-### domain.enter()
+### `domain.enter()`
 
 The `enter()` method is plumbing used by the `run()`, `bind()`, and
 `intercept()` methods to set the active domain. It sets `domain.active` and
@@ -341,7 +341,7 @@ Calling `enter()` changes only the active domain, and does not alter the domain
 itself. `enter()` and `exit()` can be called an arbitrary number of times on a
 single domain.
 
-### domain.exit()
+### `domain.exit()`
 
 The `exit()` method exits the current domain, popping it off the domain stack.
 Any time execution is going to switch to the context of a different chain of
@@ -356,7 +356,7 @@ Calling `exit()` changes only the active domain, and does not alter the domain
 itself. `enter()` and `exit()` can be called an arbitrary number of times on a
 single domain.
 
-### domain.intercept(callback)
+### `domain.intercept(callback)`
 
 * `callback` {Function} The callback function
 * Returns: {Function} The intercepted function
@@ -377,7 +377,7 @@ function readSomeFile(filename, cb) {
     // callback since it is assumed to be the 'Error' argument
     // and thus intercepted by the domain.
 
-    // if this throws, it will also be passed to the domain
+    // If this throws, it will also be passed to the domain
     // so the error-handling logic can be moved to the 'error'
     // event on the domain instead of being repeated throughout
     // the program.
@@ -386,20 +386,19 @@ function readSomeFile(filename, cb) {
 }
 
 d.on('error', (er) => {
-  // an error occurred somewhere.
-  // if we throw it now, it will crash the program
+  // An error occurred somewhere. If we throw it now, it will crash the program
   // with the normal line number and stack message.
 });
 ```
 
-### domain.remove(emitter)
+### `domain.remove(emitter)`
 
 * `emitter` {EventEmitter|Timer} emitter or timer to be removed from the domain
 
 The opposite of [`domain.add(emitter)`][]. Removes domain handling from the
 specified emitter.
 
-### domain.run(fn[, ...args])
+### `domain.run(fn[, ...args])`
 
 * `fn` {Function}
 * `...args` {any}
@@ -472,12 +471,11 @@ d2.run(() => {
 });
 ```
 
-Note that domains will not interfere with the error handling mechanisms for
-Promises, i.e. no `'error'` event will be emitted for unhandled `Promise`
-rejections.
+Domains will not interfere with the error handling mechanisms for
+Promises. In other words, no `'error'` event will be emitted for unhandled
+`Promise` rejections.
 
 [`Error`]: errors.html#errors_class_error
-[`EventEmitter`]: events.html#events_class_eventemitter
 [`domain.add(emitter)`]: #domain_domain_add_emitter
 [`domain.bind(callback)`]: #domain_domain_bind_callback
 [`domain.exit()`]: #domain_domain_exit

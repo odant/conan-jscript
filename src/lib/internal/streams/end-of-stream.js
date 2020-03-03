@@ -13,6 +13,18 @@ function isRequest(stream) {
   return stream.setHeader && typeof stream.abort === 'function';
 }
 
+function isReadable(stream) {
+  return typeof stream.readable === 'boolean' ||
+    typeof stream.readableEnded === 'boolean' ||
+    !!stream._readableState;
+}
+
+function isWritable(stream) {
+  return typeof stream.writable === 'boolean' ||
+    typeof stream.writableEnded === 'boolean' ||
+    !!stream._writableState;
+}
+
 function eos(stream, opts, callback) {
   if (arguments.length === 2) {
     callback = opts;
@@ -28,21 +40,24 @@ function eos(stream, opts, callback) {
 
   callback = once(callback);
 
-  let readable = opts.readable || (opts.readable !== false && stream.readable);
-  let writable = opts.writable || (opts.writable !== false && stream.writable);
+  let readable = opts.readable ||
+    (opts.readable !== false && isReadable(stream));
+  let writable = opts.writable ||
+    (opts.writable !== false && isWritable(stream));
 
   const onlegacyfinish = () => {
     if (!stream.writable) onfinish();
   };
 
-  var writableEnded = stream._writableState && stream._writableState.finished;
+  let writableEnded = stream._writableState && stream._writableState.finished;
   const onfinish = () => {
     writable = false;
     writableEnded = true;
     if (!readable) callback.call(stream);
   };
 
-  var readableEnded = stream._readableState && stream._readableState.endEmitted;
+  let readableEnded = stream.readableEnded ||
+    (stream._readableState && stream._readableState.endEmitted);
   const onend = () => {
     readable = false;
     readableEnded = true;
@@ -81,12 +96,18 @@ function eos(stream, opts, callback) {
     stream.on('close', onlegacyfinish);
   }
 
+  // Not all streams will emit 'close' after 'aborted'.
+  if (typeof stream.aborted === 'boolean') {
+    stream.on('aborted', onclose);
+  }
+
   stream.on('end', onend);
   stream.on('finish', onfinish);
   if (opts.error !== false) stream.on('error', onerror);
   stream.on('close', onclose);
 
   return function() {
+    stream.removeListener('aborted', onclose);
     stream.removeListener('complete', onfinish);
     stream.removeListener('abort', onclose);
     stream.removeListener('request', onrequest);

@@ -1,4 +1,11 @@
 'use strict';
+
+const {
+  Map,
+  ObjectKeys,
+  ObjectValues,
+} = primordials;
+
 const assert = require('internal/assert');
 const { fork } = require('child_process');
 const path = require('path');
@@ -8,7 +15,6 @@ const SharedHandle = require('internal/cluster/shared_handle');
 const Worker = require('internal/cluster/worker');
 const { internal, sendHelper } = require('internal/cluster/utils');
 const { ERR_SOCKET_BAD_PORT } = require('internal/errors').codes;
-const keys = Object.keys;
 const cluster = new EventEmitter();
 const intercom = new EventEmitter();
 const SCHED_NONE = 1;
@@ -27,12 +33,12 @@ cluster.settings = {};
 cluster.SCHED_NONE = SCHED_NONE;  // Leave it to the operating system.
 cluster.SCHED_RR = SCHED_RR;      // Master distributes connections.
 
-var ids = 0;
-var debugPortOffset = 1;
-var initialized = false;
+let ids = 0;
+let debugPortOffset = 1;
+let initialized = false;
 
 // XXX(bnoordhuis) Fold cluster.schedulingPolicy into cluster.settings?
-var schedulingPolicy = {
+let schedulingPolicy = {
   'none': SCHED_NONE,
   'rr': SCHED_RR
 }[process.env.NODE_CLUSTER_SCHED_POLICY];
@@ -80,7 +86,7 @@ cluster.setupMaster = function(options) {
     if (message.cmd !== 'NODE_DEBUG_ENABLED')
       return;
 
-    for (const worker of Object.values(cluster.workers)) {
+    for (const worker of ObjectValues(cluster.workers)) {
       if (worker.state === 'online' || worker.state === 'listening') {
         process._debugProcess(worker.process.pid);
       } else {
@@ -128,6 +134,7 @@ function createWorkerProcess(id, env) {
   return fork(cluster.settings.exec, cluster.settings.args, {
     cwd: cluster.settings.cwd,
     env: workerEnv,
+    serialization: cluster.settings.serialization,
     silent: cluster.settings.silent,
     windowsHide: cluster.settings.windowsHide,
     execArgv: execArgv,
@@ -141,7 +148,7 @@ function removeWorker(worker) {
   assert(worker);
   delete cluster.workers[worker.id];
 
-  if (keys(cluster.workers).length === 0) {
+  if (ObjectKeys(cluster.workers).length === 0) {
     assert(handles.size === 0, 'Resource leak detected.');
     intercom.emit('disconnect');
   }
@@ -219,12 +226,12 @@ function emitForkNT(worker) {
 }
 
 cluster.disconnect = function(cb) {
-  const workers = keys(cluster.workers);
+  const workers = ObjectKeys(cluster.workers);
 
   if (workers.length === 0) {
     process.nextTick(() => intercom.emit('disconnect'));
   } else {
-    for (const worker of Object.values(cluster.workers)) {
+    for (const worker of ObjectValues(cluster.workers)) {
       if (worker.isConnected()) {
         worker.disconnect();
       }
@@ -268,7 +275,7 @@ function queryServer(worker, message) {
 
   const key = `${message.address}:${message.port}:${message.addressType}:` +
               `${message.fd}:${message.index}`;
-  var handle = handles.get(key);
+  let handle = handles.get(key);
 
   if (handle === undefined) {
     let address = message.address;
@@ -283,7 +290,7 @@ function queryServer(worker, message) {
         address = message.address;
     }
 
-    var constructor = RoundRobinHandle;
+    let constructor = RoundRobinHandle;
     // UDP is exempt from round-robin connection balancing for what should
     // be obvious reasons: it's connectionless. There is nothing to send to
     // the workers except raw datagrams and that's pointless.

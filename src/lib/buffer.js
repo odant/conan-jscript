@@ -22,8 +22,25 @@
 'use strict';
 
 const {
+  Array,
+  ArrayIsArray,
+  Error,
+  MathFloor,
+  MathMin,
+  MathTrunc,
+  NumberIsNaN,
+  NumberMAX_SAFE_INTEGER,
+  NumberMIN_SAFE_INTEGER,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  SymbolSpecies,
+  SymbolToPrimitive,
+} = primordials;
+
+const {
   byteLengthUtf8,
-  copy: _copy,
   compare: _compare,
   compareOffset,
   createFromString,
@@ -56,23 +73,28 @@ const {
   isArrayBufferView,
   isUint8Array
 } = require('internal/util/types');
-
 const {
-  formatProperty,
-  kObjectType
+  inspect: utilInspect
 } = require('internal/util/inspect');
+const { encodings } = internalBinding('string_decoder');
+
 
 const {
-  ERR_BUFFER_OUT_OF_BOUNDS,
-  ERR_OUT_OF_RANGE,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_BUFFER_SIZE,
-  ERR_INVALID_OPT_VALUE,
-  ERR_NO_LONGER_SUPPORTED,
-  ERR_UNKNOWN_ENCODING
-} = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+  codes: {
+    ERR_BUFFER_OUT_OF_BOUNDS,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_BUFFER_SIZE,
+    ERR_INVALID_OPT_VALUE,
+    ERR_OUT_OF_RANGE,
+    ERR_UNKNOWN_ENCODING
+  },
+  hideStackFrames
+} = require('internal/errors');
+const {
+  validateInt32,
+  validateString
+} = require('internal/validators');
 
 const {
   FastBuffer,
@@ -83,7 +105,7 @@ FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
 addBufferPrototypeMethods(Buffer.prototype);
 
-const constants = Object.defineProperties({}, {
+const constants = ObjectDefineProperties({}, {
   MAX_LENGTH: {
     value: kMaxLength,
     writable: false,
@@ -104,6 +126,10 @@ let poolSize, poolOffset, allocPool;
 // |zeroFill| can be undefined when running inside an isolate where we
 // do not own the ArrayBuffer allocator.  Zero fill is always on in that case.
 const zeroFill = bindingZeroFill || [0];
+
+const encodingsMap = ObjectCreate(null);
+for (let i = 0; i < encodings.length; ++i)
+  encodingsMap[encodings[i]] = i;
 
 function createUnsafeBuffer(size) {
   zeroFill[0] = 0;
@@ -153,6 +179,74 @@ function showFlaggedDeprecation() {
   bufferWarningAlreadyEmitted = true;
 }
 
+function toInteger(n, defaultVal) {
+  n = +n;
+  if (!NumberIsNaN(n) &&
+      n >= NumberMIN_SAFE_INTEGER &&
+      n <= NumberMAX_SAFE_INTEGER) {
+    return ((n % 1) === 0 ? n : MathFloor(n));
+  }
+  return defaultVal;
+}
+
+function _copy(source, target, targetStart, sourceStart, sourceEnd) {
+  if (!isUint8Array(source))
+    throw new ERR_INVALID_ARG_TYPE('source', ['Buffer', 'Uint8Array'], source);
+  if (!isUint8Array(target))
+    throw new ERR_INVALID_ARG_TYPE('target', ['Buffer', 'Uint8Array'], target);
+
+  if (targetStart === undefined) {
+    targetStart = 0;
+  } else {
+    targetStart = toInteger(targetStart, 0);
+    if (targetStart < 0)
+      throw new ERR_OUT_OF_RANGE('targetStart', '>= 0', targetStart);
+  }
+
+  if (sourceStart === undefined) {
+    sourceStart = 0;
+  } else {
+    sourceStart = toInteger(sourceStart, 0);
+    if (sourceStart < 0)
+      throw new ERR_OUT_OF_RANGE('sourceStart', '>= 0', sourceStart);
+  }
+
+  if (sourceEnd === undefined) {
+    sourceEnd = source.length;
+  } else {
+    sourceEnd = toInteger(sourceEnd, 0);
+    if (sourceEnd < 0)
+      throw new ERR_OUT_OF_RANGE('sourceEnd', '>= 0', sourceEnd);
+  }
+
+  if (targetStart >= target.length || sourceStart >= sourceEnd)
+    return 0;
+
+  if (sourceStart > source.length) {
+    throw new ERR_OUT_OF_RANGE('sourceStart',
+                               `<= ${source.length}`,
+                               sourceStart);
+  }
+
+  if (sourceEnd - sourceStart > target.length - targetStart)
+    sourceEnd = sourceStart + target.length - targetStart;
+
+  let nb = sourceEnd - sourceStart;
+  const targetLen = target.length - targetStart;
+  const sourceLen = source.length - sourceStart;
+  if (nb > targetLen)
+    nb = targetLen;
+  if (nb > sourceLen)
+    nb = sourceLen;
+
+  if (sourceStart !== 0 || sourceEnd !== source.length)
+    source = new Uint8Array(source.buffer, source.byteOffset + sourceStart, nb);
+
+  target.set(source, targetStart);
+
+  return nb;
+}
+
 /**
  * The Buffer() constructor is deprecated in documentation and should not be
  * used moving forward. Rather, developers should use one of the three new
@@ -175,7 +269,7 @@ function Buffer(arg, encodingOrOffset, length) {
   return Buffer.from(arg, encodingOrOffset, length);
 }
 
-Object.defineProperty(Buffer, Symbol.species, {
+ObjectDefineProperty(Buffer, SymbolSpecies, {
   enumerable: false,
   configurable: true,
   get() { return FastBuffer; }
@@ -193,33 +287,27 @@ Buffer.from = function from(value, encodingOrOffset, length) {
   if (typeof value === 'string')
     return fromString(value, encodingOrOffset);
 
-  if (isAnyArrayBuffer(value))
-    return fromArrayBuffer(value, encodingOrOffset, length);
+  if (typeof value === 'object' && value !== null) {
+    if (isAnyArrayBuffer(value))
+      return fromArrayBuffer(value, encodingOrOffset, length);
 
-  if (value === null || value === undefined) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'first argument',
-      ['string', 'Buffer', 'ArrayBuffer', 'Array', 'Array-like Object'],
-      value
-    );
-  }
+    const valueOf = value.valueOf && value.valueOf();
+    if (valueOf != null &&
+        valueOf !== value &&
+        (typeof valueOf === 'string' || typeof valueOf === 'object')) {
+      return from(valueOf, encodingOrOffset, length);
+    }
 
-  if (typeof value === 'number') {
-    throw new ERR_INVALID_ARG_TYPE('value', 'not number', value);
-  }
+    const b = fromObject(value);
+    if (b)
+      return b;
 
-  const valueOf = value.valueOf && value.valueOf();
-  if (valueOf !== null && valueOf !== undefined && valueOf !== value)
-    return Buffer.from(valueOf, encodingOrOffset, length);
-
-  const b = fromObject(value);
-  if (b)
-    return b;
-
-  if (typeof value[Symbol.toPrimitive] === 'function') {
-    return Buffer.from(value[Symbol.toPrimitive]('string'),
-                       encodingOrOffset,
-                       length);
+    if (typeof value[SymbolToPrimitive] === 'function') {
+      const primitive = value[SymbolToPrimitive]('string');
+      if (typeof primitive === 'string') {
+        return fromString(primitive, encodingOrOffset);
+      }
+    }
   }
 
   throw new ERR_INVALID_ARG_TYPE(
@@ -237,31 +325,25 @@ Buffer.from = function from(value, encodingOrOffset, length) {
 // Refs: https://esdiscuss.org/topic/isconstructor#content-11
 const of = (...items) => {
   const newObj = createUnsafeBuffer(items.length);
-  for (var k = 0; k < items.length; k++)
+  for (let k = 0; k < items.length; k++)
     newObj[k] = items[k];
   return newObj;
 };
 Buffer.of = of;
 
-Object.setPrototypeOf(Buffer, Uint8Array);
+ObjectSetPrototypeOf(Buffer, Uint8Array);
 
 // The 'assertSize' method will remove itself from the callstack when an error
 // occurs. This is done simply to keep the internal details of the
 // implementation from bleeding out to users.
-function assertSize(size) {
-  let err = null;
-
+const assertSize = hideStackFrames((size) => {
   if (typeof size !== 'number') {
-    err = new ERR_INVALID_ARG_TYPE('size', 'number', size);
-  } else if (size < 0 || size > kMaxLength) {
-    err = new ERR_INVALID_OPT_VALUE.RangeError('size', size);
+    throw new ERR_INVALID_ARG_TYPE('size', 'number', size);
   }
-
-  if (err !== null) {
-    Error.captureStackTrace(err, assertSize);
-    throw err;
+  if (!(size >= 0 && size <= kMaxLength)) {
+    throw new ERR_INVALID_OPT_VALUE.RangeError('size', size);
   }
-}
+});
 
 /**
  * Creates a new filled Buffer instance.
@@ -298,14 +380,12 @@ Buffer.allocUnsafeSlow = function allocUnsafeSlow(size) {
 // If --zero-fill-buffers command line argument is set, a zero-filled
 // buffer is returned.
 function SlowBuffer(length) {
-  if (typeof length !== 'number')
-    length = +length;
   assertSize(length);
   return createUnsafeBuffer(length);
 }
 
-Object.setPrototypeOf(SlowBuffer.prototype, Uint8Array.prototype);
-Object.setPrototypeOf(SlowBuffer, Uint8Array);
+ObjectSetPrototypeOf(SlowBuffer.prototype, Uint8Array.prototype);
+ObjectSetPrototypeOf(SlowBuffer, Uint8Array);
 
 function allocate(size) {
   if (size <= 0) {
@@ -322,28 +402,16 @@ function allocate(size) {
   return createUnsafeBuffer(size);
 }
 
-function fromString(string, encoding) {
-  let length;
-  if (typeof encoding !== 'string' || encoding.length === 0) {
-    if (string.length === 0)
-      return new FastBuffer();
-    encoding = 'utf8';
-    length = byteLengthUtf8(string);
-  } else {
-    length = byteLength(string, encoding, true);
-    if (length === -1)
-      throw new ERR_UNKNOWN_ENCODING(encoding);
-    if (string.length === 0)
-      return new FastBuffer();
-  }
+function fromStringFast(string, ops) {
+  const length = ops.byteLength(string);
 
   if (length >= (Buffer.poolSize >>> 1))
-    return createFromString(string, encoding);
+    return createFromString(string, ops.encodingVal);
 
   if (length > (poolSize - poolOffset))
     createPool();
   let b = new FastBuffer(allocPool, poolOffset, length);
-  const actual = b.write(string, encoding);
+  const actual = ops.write(b, string, 0, length);
   if (actual !== length) {
     // byteLength() may overestimate. That's a rare case, though.
     b = new FastBuffer(allocPool, poolOffset, actual);
@@ -353,21 +421,38 @@ function fromString(string, encoding) {
   return b;
 }
 
+function fromString(string, encoding) {
+  let ops;
+  if (typeof encoding !== 'string' || encoding.length === 0) {
+    if (string.length === 0)
+      return new FastBuffer();
+    ops = encodingOps.utf8;
+    encoding = undefined;
+  } else {
+    ops = getEncodingOps(encoding);
+    if (ops === undefined)
+      throw new ERR_UNKNOWN_ENCODING(encoding);
+    if (string.length === 0)
+      return new FastBuffer();
+  }
+  return fromStringFast(string, ops);
+}
+
 function fromArrayLike(obj) {
   const length = obj.length;
   const b = allocate(length);
-  for (var i = 0; i < length; i++)
+  for (let i = 0; i < length; i++)
     b[i] = obj[i];
   return b;
 }
 
 function fromArrayBuffer(obj, byteOffset, length) {
-  // convert byteOffset to integer
+  // Convert byteOffset to integer
   if (byteOffset === undefined) {
     byteOffset = 0;
   } else {
     byteOffset = +byteOffset;
-    if (Number.isNaN(byteOffset))
+    if (NumberIsNaN(byteOffset))
       byteOffset = 0;
   }
 
@@ -410,7 +495,7 @@ function fromObject(obj) {
     return fromArrayLike(obj);
   }
 
-  if (obj.type === 'Buffer' && Array.isArray(obj.data)) {
+  if (obj.type === 'Buffer' && ArrayIsArray(obj.data)) {
     return fromArrayLike(obj.data);
   }
 }
@@ -445,9 +530,8 @@ Buffer[kIsEncodingSymbol] = Buffer.isEncoding;
 
 Buffer.concat = function concat(list, length) {
   let i;
-  if (!Array.isArray(list)) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'list', ['Array', 'Buffer', 'Uint8Array'], list);
+  if (!ArrayIsArray(list)) {
+    throw new ERR_INVALID_ARG_TYPE('list', 'Array', list);
   }
 
   if (list.length === 0)
@@ -455,10 +539,13 @@ Buffer.concat = function concat(list, length) {
 
   if (length === undefined) {
     length = 0;
-    for (i = 0; i < list.length; i++)
-      length += list[i].length;
+    for (i = 0; i < list.length; i++) {
+      if (list[i].length) {
+        length += list[i].length;
+      }
+    }
   } else {
-    length = length >>> 0;
+    validateInt32(length, 'length', 0);
   }
 
   const buffer = Buffer.allocUnsafe(length);
@@ -469,7 +556,7 @@ Buffer.concat = function concat(list, length) {
       // TODO(BridgeAR): This should not be of type ERR_INVALID_ARG_TYPE.
       // Instead, find the proper error code for this.
       throw new ERR_INVALID_ARG_TYPE(
-        `list[${i}]`, ['Array', 'Buffer', 'Uint8Array'], list[i]);
+        `list[${i}]`, ['Buffer', 'Uint8Array'], list[i]);
     }
     _copy(buf, buffer, pos);
     pos += buf.length;
@@ -497,6 +584,126 @@ function base64ByteLength(str, bytes) {
   return (bytes * 3) >>> 2;
 }
 
+const encodingOps = {
+  utf8: {
+    encoding: 'utf8',
+    encodingVal: encodingsMap.utf8,
+    byteLength: byteLengthUtf8,
+    write: (buf, string, offset, len) => buf.utf8Write(string, offset, len),
+    slice: (buf, start, end) => buf.utf8Slice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir)
+  },
+  ucs2: {
+    encoding: 'ucs2',
+    encodingVal: encodingsMap.utf16le,
+    byteLength: (string) => string.length * 2,
+    write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
+    slice: (buf, start, end) => buf.ucs2Slice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir)
+  },
+  utf16le: {
+    encoding: 'utf16le',
+    encodingVal: encodingsMap.utf16le,
+    byteLength: (string) => string.length * 2,
+    write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
+    slice: (buf, start, end) => buf.ucs2Slice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir)
+  },
+  latin1: {
+    encoding: 'latin1',
+    encodingVal: encodingsMap.latin1,
+    byteLength: (string) => string.length,
+    write: (buf, string, offset, len) => buf.latin1Write(string, offset, len),
+    slice: (buf, start, end) => buf.latin1Slice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir)
+  },
+  ascii: {
+    encoding: 'ascii',
+    encodingVal: encodingsMap.ascii,
+    byteLength: (string) => string.length,
+    write: (buf, string, offset, len) => buf.asciiWrite(string, offset, len),
+    slice: (buf, start, end) => buf.asciiSlice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfBuffer(buf,
+                    fromStringFast(val, encodingOps.ascii),
+                    byteOffset,
+                    encodingsMap.ascii,
+                    dir)
+  },
+  base64: {
+    encoding: 'base64',
+    encodingVal: encodingsMap.base64,
+    byteLength: (string) => base64ByteLength(string, string.length),
+    write: (buf, string, offset, len) => buf.base64Write(string, offset, len),
+    slice: (buf, start, end) => buf.base64Slice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfBuffer(buf,
+                    fromStringFast(val, encodingOps.base64),
+                    byteOffset,
+                    encodingsMap.base64,
+                    dir)
+  },
+  hex: {
+    encoding: 'hex',
+    encodingVal: encodingsMap.hex,
+    byteLength: (string) => string.length >>> 1,
+    write: (buf, string, offset, len) => buf.hexWrite(string, offset, len),
+    slice: (buf, start, end) => buf.hexSlice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfBuffer(buf,
+                    fromStringFast(val, encodingOps.hex),
+                    byteOffset,
+                    encodingsMap.hex,
+                    dir)
+  }
+};
+function getEncodingOps(encoding) {
+  encoding += '';
+  switch (encoding.length) {
+    case 4:
+      if (encoding === 'utf8') return encodingOps.utf8;
+      if (encoding === 'ucs2') return encodingOps.ucs2;
+      encoding = encoding.toLowerCase();
+      if (encoding === 'utf8') return encodingOps.utf8;
+      if (encoding === 'ucs2') return encodingOps.ucs2;
+      break;
+    case 5:
+      if (encoding === 'utf-8') return encodingOps.utf8;
+      if (encoding === 'ascii') return encodingOps.ascii;
+      if (encoding === 'ucs-2') return encodingOps.ucs2;
+      encoding = encoding.toLowerCase();
+      if (encoding === 'utf-8') return encodingOps.utf8;
+      if (encoding === 'ascii') return encodingOps.ascii;
+      if (encoding === 'ucs-2') return encodingOps.ucs2;
+      break;
+    case 7:
+      if (encoding === 'utf16le' || encoding.toLowerCase() === 'utf16le')
+        return encodingOps.utf16le;
+      break;
+    case 8:
+      if (encoding === 'utf-16le' || encoding.toLowerCase() === 'utf-16le')
+        return encodingOps.utf16le;
+      break;
+    case 6:
+      if (encoding === 'latin1' || encoding === 'binary')
+        return encodingOps.latin1;
+      if (encoding === 'base64') return encodingOps.base64;
+      encoding = encoding.toLowerCase();
+      if (encoding === 'latin1' || encoding === 'binary')
+        return encodingOps.latin1;
+      if (encoding === 'base64') return encodingOps.base64;
+      break;
+    case 3:
+      if (encoding === 'hex' || encoding.toLowerCase() === 'hex')
+        return encodingOps.hex;
+      break;
+  }
+}
+
 function byteLength(string, encoding) {
   if (typeof string !== 'string') {
     if (isArrayBufferView(string) || isAnyArrayBuffer(string)) {
@@ -516,51 +723,16 @@ function byteLength(string, encoding) {
   if (!encoding)
     return (mustMatch ? -1 : byteLengthUtf8(string));
 
-  encoding += '';
-  switch (encoding.length) {
-    case 4:
-      if (encoding === 'utf8') return byteLengthUtf8(string);
-      if (encoding === 'ucs2') return len * 2;
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf8') return byteLengthUtf8(string);
-      if (encoding === 'ucs2') return len * 2;
-      break;
-    case 5:
-      if (encoding === 'utf-8') return byteLengthUtf8(string);
-      if (encoding === 'ascii') return len;
-      if (encoding === 'ucs-2') return len * 2;
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf-8') return byteLengthUtf8(string);
-      if (encoding === 'ascii') return len;
-      if (encoding === 'ucs-2') return len * 2;
-      break;
-    case 7:
-      if (encoding === 'utf16le' || encoding.toLowerCase() === 'utf16le')
-        return len * 2;
-      break;
-    case 8:
-      if (encoding === 'utf-16le' || encoding.toLowerCase() === 'utf-16le')
-        return len * 2;
-      break;
-    case 6:
-      if (encoding === 'latin1' || encoding === 'binary') return len;
-      if (encoding === 'base64') return base64ByteLength(string, len);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'latin1' || encoding === 'binary') return len;
-      if (encoding === 'base64') return base64ByteLength(string, len);
-      break;
-    case 3:
-      if (encoding === 'hex' || encoding.toLowerCase() === 'hex')
-        return len >>> 1;
-      break;
-  }
-  return (mustMatch ? -1 : byteLengthUtf8(string));
+  const ops = getEncodingOps(encoding);
+  if (ops === undefined)
+    return (mustMatch ? -1 : byteLengthUtf8(string));
+  return ops.byteLength(string);
 }
 
 Buffer.byteLength = byteLength;
 
 // For backwards compatibility.
-Object.defineProperty(Buffer.prototype, 'parent', {
+ObjectDefineProperty(Buffer.prototype, 'parent', {
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -568,7 +740,7 @@ Object.defineProperty(Buffer.prototype, 'parent', {
     return this.buffer;
   }
 });
-Object.defineProperty(Buffer.prototype, 'offset', {
+ObjectDefineProperty(Buffer.prototype, 'offset', {
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -576,51 +748,6 @@ Object.defineProperty(Buffer.prototype, 'offset', {
     return this.byteOffset;
   }
 });
-
-function stringSlice(buf, encoding, start, end) {
-  if (encoding === undefined) return buf.utf8Slice(start, end);
-  encoding += '';
-  switch (encoding.length) {
-    case 4:
-      if (encoding === 'utf8') return buf.utf8Slice(start, end);
-      if (encoding === 'ucs2') return buf.ucs2Slice(start, end);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf8') return buf.utf8Slice(start, end);
-      if (encoding === 'ucs2') return buf.ucs2Slice(start, end);
-      break;
-    case 5:
-      if (encoding === 'utf-8') return buf.utf8Slice(start, end);
-      if (encoding === 'ascii') return buf.asciiSlice(start, end);
-      if (encoding === 'ucs-2') return buf.ucs2Slice(start, end);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf-8') return buf.utf8Slice(start, end);
-      if (encoding === 'ascii') return buf.asciiSlice(start, end);
-      if (encoding === 'ucs-2') return buf.ucs2Slice(start, end);
-      break;
-    case 6:
-      if (encoding === 'latin1' || encoding === 'binary')
-        return buf.latin1Slice(start, end);
-      if (encoding === 'base64') return buf.base64Slice(start, end);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'latin1' || encoding === 'binary')
-        return buf.latin1Slice(start, end);
-      if (encoding === 'base64') return buf.base64Slice(start, end);
-      break;
-    case 3:
-      if (encoding === 'hex' || encoding.toLowerCase() === 'hex')
-        return buf.hexSlice(start, end);
-      break;
-    case 7:
-      if (encoding === 'utf16le' || encoding.toLowerCase() === 'utf16le')
-        return buf.ucs2Slice(start, end);
-      break;
-    case 8:
-      if (encoding === 'utf-16le' || encoding.toLowerCase() === 'utf-16le')
-        return buf.ucs2Slice(start, end);
-      break;
-  }
-  throw new ERR_UNKNOWN_ENCODING(encoding);
-}
 
 Buffer.prototype.copy =
   function copy(target, targetStart, sourceStart, sourceEnd) {
@@ -652,7 +779,15 @@ Buffer.prototype.toString = function toString(encoding, start, end) {
 
   if (end <= start)
     return '';
-  return stringSlice(this, encoding, start, end);
+
+  if (encoding === undefined)
+    return this.utf8Slice(start, end);
+
+  const ops = getEncodingOps(encoding);
+  if (ops === undefined)
+    throw new ERR_UNKNOWN_ENCODING(encoding);
+
+  return ops.slice(this, start, end);
 };
 
 Buffer.prototype.equals = function equals(otherBuffer) {
@@ -660,29 +795,45 @@ Buffer.prototype.equals = function equals(otherBuffer) {
     throw new ERR_INVALID_ARG_TYPE(
       'otherBuffer', ['Buffer', 'Uint8Array'], otherBuffer);
   }
+
   if (this === otherBuffer)
     return true;
 
-  return _compare(this, otherBuffer) === 0;
+  if (this.byteLength !== otherBuffer.byteLength)
+    return false;
+
+  return this.byteLength === 0 || _compare(this, otherBuffer) === 0;
 };
 
+let INSPECT_MAX_BYTES = 50;
 // Override how buffers are presented by util.inspect().
 Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
-  const max = exports.INSPECT_MAX_BYTES;
-  const actualMax = Math.min(max, this.length);
+  const max = INSPECT_MAX_BYTES;
+  const actualMax = MathMin(max, this.length);
   const remaining = this.length - max;
   let str = this.hexSlice(0, actualMax).replace(/(.{2})/g, '$1 ').trim();
   if (remaining > 0)
     str += ` ... ${remaining} more byte${remaining > 1 ? 's' : ''}`;
   // Inspect special properties as well, if possible.
   if (ctx) {
+    let extras = false;
     const filter = ctx.showHidden ? ALL_PROPERTIES : ONLY_ENUMERABLE;
-    str += getOwnNonIndexProperties(this, filter).reduce((str, key) => {
-      // Using `formatProperty()` expects an indentationLvl to be set.
-      ctx.indentationLvl = 0;
-      str += `, ${formatProperty(ctx, this, recurseTimes, key, kObjectType)}`;
-      return str;
-    }, '');
+    const obj = getOwnNonIndexProperties(this, filter).reduce((obj, key) => {
+      extras = true;
+      obj[key] = this[key];
+      return obj;
+    }, ObjectCreate(null));
+    if (extras) {
+      if (this.length !== 0)
+        str += ', ';
+      // '[Object: null prototype] {'.length === 26
+      // This is guarded with a test.
+      str += utilInspect(obj, {
+        ...ctx,
+        breakLength: Infinity,
+        compact: true
+      }).slice(27, -2);
+    }
   }
   return `<${this.constructor.name} ${str}>`;
 };
@@ -701,35 +852,27 @@ Buffer.prototype.compare = function compare(target,
 
   if (targetStart === undefined)
     targetStart = 0;
-  else if (targetStart < 0)
-    throw new ERR_OUT_OF_RANGE('targetStart', '>= 0', targetStart);
   else
-    targetStart >>>= 0;
+    validateInt32(targetStart, 'targetStart', 0);
 
   if (targetEnd === undefined)
     targetEnd = target.length;
-  else if (targetEnd > target.length)
-    throw new ERR_OUT_OF_RANGE('targetEnd', `<= ${target.length}`, targetEnd);
   else
-    targetEnd >>>= 0;
+    validateInt32(targetEnd, 'targetEnd', 0, target.length);
 
   if (sourceStart === undefined)
     sourceStart = 0;
-  else if (sourceStart < 0)
-    throw new ERR_OUT_OF_RANGE('sourceStart', '>= 0', sourceStart);
   else
-    sourceStart >>>= 0;
+    validateInt32(sourceStart, 'sourceStart', 0);
 
   if (sourceEnd === undefined)
     sourceEnd = this.length;
-  else if (sourceEnd > this.length)
-    throw new ERR_OUT_OF_RANGE('sourceEnd', `<= ${this.length}`, sourceEnd);
   else
-    sourceEnd >>>= 0;
+    validateInt32(sourceEnd, 'sourceEnd', 0, this.length);
 
   if (sourceStart >= sourceEnd)
     return (targetStart >= targetEnd ? 0 : -1);
-  else if (targetStart >= targetEnd)
+  if (targetStart >= targetEnd)
     return 1;
 
   return compareOffset(this, target, targetStart, sourceStart, targetEnd,
@@ -757,56 +900,35 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   // Coerce to Number. Values like null and [] become 0.
   byteOffset = +byteOffset;
   // If the offset is undefined, "foo", {}, coerces to NaN, search whole buffer.
-  if (Number.isNaN(byteOffset)) {
+  if (NumberIsNaN(byteOffset)) {
     byteOffset = dir ? 0 : buffer.length;
   }
   dir = !!dir;  // Cast to bool.
 
-  if (typeof val === 'string') {
-    if (encoding === undefined) {
-      return indexOfString(buffer, val, byteOffset, encoding, dir);
-    }
-    return slowIndexOf(buffer, val, byteOffset, encoding, dir);
-  } else if (isUint8Array(val)) {
-    return indexOfBuffer(buffer, val, byteOffset, encoding, dir);
-  } else if (typeof val === 'number') {
+  if (typeof val === 'number')
     return indexOfNumber(buffer, val >>> 0, byteOffset, dir);
+
+  let ops;
+  if (encoding === undefined)
+    ops = encodingOps.utf8;
+  else
+    ops = getEncodingOps(encoding);
+
+  if (typeof val === 'string') {
+    if (ops === undefined)
+      throw new ERR_UNKNOWN_ENCODING(encoding);
+    return ops.indexOf(buffer, val, byteOffset, dir);
+  }
+
+  if (isUint8Array(val)) {
+    const encodingVal =
+      (ops === undefined ? encodingsMap.utf8 : ops.encodingVal);
+    return indexOfBuffer(buffer, val, byteOffset, encodingVal, dir);
   }
 
   throw new ERR_INVALID_ARG_TYPE(
-    'value', ['string', 'Buffer', 'Uint8Array'], val
+    'value', ['number', 'string', 'Buffer', 'Uint8Array'], val
   );
-}
-
-function slowIndexOf(buffer, val, byteOffset, encoding, dir) {
-  let loweredCase = false;
-  for (;;) {
-    switch (encoding) {
-      case 'utf8':
-      case 'utf-8':
-      case 'ucs2':
-      case 'ucs-2':
-      case 'utf16le':
-      case 'utf-16le':
-      case 'latin1':
-      case 'binary':
-        return indexOfString(buffer, val, byteOffset, encoding, dir);
-
-      case 'base64':
-      case 'ascii':
-      case 'hex':
-        return indexOfBuffer(
-          buffer, Buffer.from(val, encoding), byteOffset, encoding, dir);
-
-      default:
-        if (loweredCase) {
-          throw new ERR_UNKNOWN_ENCODING(encoding);
-        }
-
-        encoding = ('' + encoding).toLowerCase();
-        loweredCase = true;
-    }
-  }
 }
 
 Buffer.prototype.indexOf = function indexOf(val, byteOffset, encoding) {
@@ -868,17 +990,13 @@ function _fill(buf, value, offset, end, encoding) {
     offset = 0;
     end = buf.length;
   } else {
+    validateInt32(offset, 'offset', 0);
     // Invalid ranges are not set to a default, so can range check early.
-    if (offset < 0)
-      throw new ERR_OUT_OF_RANGE('offset', '>= 0', offset);
     if (end === undefined) {
       end = buf.length;
     } else {
-      if (end > buf.length || end < 0)
-        throw new ERR_OUT_OF_RANGE('end', `>= 0 and <= ${buf.length}`, end);
-      end = end >>> 0;
+      validateInt32(end, 'end', 0, buf.length);
     }
-    offset = offset >>> 0;
     if (offset >= end)
       return buf;
   }
@@ -897,89 +1015,44 @@ Buffer.prototype.write = function write(string, offset, length, encoding) {
   // Buffer#write(string);
   if (offset === undefined) {
     return this.utf8Write(string, 0, this.length);
-
+  }
   // Buffer#write(string, encoding)
-  } else if (length === undefined && typeof offset === 'string') {
+  if (length === undefined && typeof offset === 'string') {
     encoding = offset;
     length = this.length;
     offset = 0;
 
   // Buffer#write(string, offset[, length][, encoding])
-  } else if (isFinite(offset)) {
-    offset = offset >>> 0;
-    if (isFinite(length)) {
-      length = length >>> 0;
-    } else {
-      encoding = length;
-      length = undefined;
-    }
+  } else {
+    validateInt32(offset, 'offset', 0, this.length);
 
     const remaining = this.length - offset;
-    if (length === undefined || length > remaining)
+
+    if (length === undefined) {
       length = remaining;
-
-    if (string.length > 0 && (length < 0 || offset < 0))
-      throw new ERR_BUFFER_OUT_OF_BOUNDS();
-  } else {
-    // If someone is still calling the obsolete form of write(), tell them.
-    // we don't want eg buf.write("foo", "utf8", 10) to silently turn into
-    // buf.write("foo", "utf8"), so we can't ignore extra args
-    throw new ERR_NO_LONGER_SUPPORTED(
-      'Buffer.write(string, encoding, offset[, length])'
-    );
+    } else if (typeof length === 'string') {
+      encoding = length;
+      length = remaining;
+    } else {
+      validateInt32(length, 'length', 0, this.length);
+      if (length > remaining)
+        length = remaining;
+    }
   }
 
-  if (!encoding) return this.utf8Write(string, offset, length);
+  if (!encoding)
+    return this.utf8Write(string, offset, length);
 
-  encoding += '';
-  switch (encoding.length) {
-    case 4:
-      if (encoding === 'utf8') return this.utf8Write(string, offset, length);
-      if (encoding === 'ucs2') return this.ucs2Write(string, offset, length);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf8') return this.utf8Write(string, offset, length);
-      if (encoding === 'ucs2') return this.ucs2Write(string, offset, length);
-      break;
-    case 5:
-      if (encoding === 'utf-8') return this.utf8Write(string, offset, length);
-      if (encoding === 'ascii') return this.asciiWrite(string, offset, length);
-      if (encoding === 'ucs-2') return this.ucs2Write(string, offset, length);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'utf-8') return this.utf8Write(string, offset, length);
-      if (encoding === 'ascii') return this.asciiWrite(string, offset, length);
-      if (encoding === 'ucs-2') return this.ucs2Write(string, offset, length);
-      break;
-    case 7:
-      if (encoding === 'utf16le' || encoding.toLowerCase() === 'utf16le')
-        return this.ucs2Write(string, offset, length);
-      break;
-    case 8:
-      if (encoding === 'utf-16le' || encoding.toLowerCase() === 'utf-16le')
-        return this.ucs2Write(string, offset, length);
-      break;
-    case 6:
-      if (encoding === 'latin1' || encoding === 'binary')
-        return this.latin1Write(string, offset, length);
-      if (encoding === 'base64')
-        return this.base64Write(string, offset, length);
-      encoding = encoding.toLowerCase();
-      if (encoding === 'latin1' || encoding === 'binary')
-        return this.latin1Write(string, offset, length);
-      if (encoding === 'base64')
-        return this.base64Write(string, offset, length);
-      break;
-    case 3:
-      if (encoding === 'hex' || encoding.toLowerCase() === 'hex')
-        return this.hexWrite(string, offset, length);
-      break;
-  }
-  throw new ERR_UNKNOWN_ENCODING(encoding);
+  const ops = getEncodingOps(encoding);
+  if (ops === undefined)
+    throw new ERR_UNKNOWN_ENCODING(encoding);
+  return ops.write(this, string, offset, length);
 };
 
 Buffer.prototype.toJSON = function toJSON() {
   if (this.length > 0) {
     const data = new Array(this.length);
-    for (var i = 0; i < this.length; ++i)
+    for (let i = 0; i < this.length; ++i)
       data[i] = this[i];
     return { type: 'Buffer', data };
   }
@@ -989,7 +1062,7 @@ Buffer.prototype.toJSON = function toJSON() {
 function adjustOffset(offset, length) {
   // Use Math.trunc() to convert offset to an integer value that can be larger
   // than an Int32. Hence, don't use offset | 0 or similar techniques.
-  offset = Math.trunc(offset);
+  offset = MathTrunc(offset);
   if (offset === 0) {
     return 0;
   }
@@ -1000,7 +1073,7 @@ function adjustOffset(offset, length) {
   if (offset < length) {
     return offset;
   }
-  return Number.isNaN(offset) ? 0 : length;
+  return NumberIsNaN(offset) ? 0 : length;
 }
 
 Buffer.prototype.slice = function slice(start, end) {
@@ -1025,7 +1098,7 @@ Buffer.prototype.swap16 = function swap16() {
   if (len % 2 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('16-bits');
   if (len < 128) {
-    for (var i = 0; i < len; i += 2)
+    for (let i = 0; i < len; i += 2)
       swap(this, i, i + 1);
     return this;
   }
@@ -1040,7 +1113,7 @@ Buffer.prototype.swap32 = function swap32() {
   if (len % 4 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('32-bits');
   if (len < 192) {
-    for (var i = 0; i < len; i += 4) {
+    for (let i = 0; i < len; i += 4) {
       swap(this, i, i + 3);
       swap(this, i + 1, i + 2);
     }
@@ -1057,7 +1130,7 @@ Buffer.prototype.swap64 = function swap64() {
   if (len % 8 !== 0)
     throw new ERR_INVALID_BUFFER_SIZE('64-bits');
   if (len < 192) {
-    for (var i = 0; i < len; i += 8) {
+    for (let i = 0; i < len; i += 8) {
       swap(this, i, i + 7);
       swap(this, i + 1, i + 6);
       swap(this, i + 2, i + 5);
@@ -1101,19 +1174,25 @@ if (internalBinding('config').hasIntl) {
   };
 }
 
-module.exports = exports = {
+module.exports = {
   Buffer,
   SlowBuffer,
   transcode,
-  INSPECT_MAX_BYTES: 50,
-
   // Legacy
   kMaxLength,
   kStringMaxLength
 };
 
-Object.defineProperty(exports, 'constants', {
-  configurable: false,
-  enumerable: true,
-  value: constants
+ObjectDefineProperties(module.exports, {
+  constants: {
+    configurable: false,
+    enumerable: true,
+    value: constants
+  },
+  INSPECT_MAX_BYTES: {
+    configurable: true,
+    enumerable: true,
+    get() { return INSPECT_MAX_BYTES; },
+    set(val) { INSPECT_MAX_BYTES = val; }
+  }
 });

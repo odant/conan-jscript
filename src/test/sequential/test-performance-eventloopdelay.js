@@ -1,3 +1,4 @@
+// Flags: --expose-gc --expose-internals
 'use strict';
 
 const common = require('../common');
@@ -5,6 +6,7 @@ const assert = require('assert');
 const {
   monitorEventLoopDelay
 } = require('perf_hooks');
+const { sleep } = require('internal/util');
 
 {
   const histogram = monitorEventLoopDelay();
@@ -53,7 +55,7 @@ const {
   histogram.enable();
   let m = 5;
   function spinAWhile() {
-    common.busyLoop(1000);
+    sleep(1000);
     if (--m > 0) {
       setTimeout(spinAWhile, common.platformTimeout(500));
     } else {
@@ -97,3 +99,7 @@ const {
   }
   spinAWhile();
 }
+
+// Make sure that the histogram instances can be garbage-collected without
+// and not just implictly destroyed when the Environment is torn down.
+process.on('exit', global.gc);

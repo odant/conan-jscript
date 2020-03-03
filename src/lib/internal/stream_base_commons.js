@@ -1,5 +1,10 @@
 'use strict';
 
+const {
+  Array,
+  Symbol,
+} = primordials;
+
 const { Buffer } = require('buffer');
 const { FastBuffer } = require('internal/buffer');
 const {
@@ -11,13 +16,31 @@ const {
   streamBaseState
 } = internalBinding('stream_wrap');
 const { UV_EOF } = internalBinding('uv');
-const { errnoException } = require('internal/errors');
+const {
+  codes: {
+    ERR_INVALID_CALLBACK
+  },
+  errnoException
+} = require('internal/errors');
 const { owner_symbol } = require('internal/async_hooks').symbols;
+const {
+  kTimeout,
+  setUnrefTimeout,
+  getTimerDuration
+} = require('internal/timers');
+const { isUint8Array } = require('internal/util/types');
+const { clearTimeout } = require('timers');
 
 const kMaybeDestroy = Symbol('kMaybeDestroy');
 const kUpdateTimer = Symbol('kUpdateTimer');
 const kAfterAsyncWrite = Symbol('kAfterAsyncWrite');
 const kHandle = Symbol('kHandle');
+const kSession = Symbol('kSession');
+
+const debug = require('internal/util/debuglog').debuglog('stream');
+const kBuffer = Symbol('kBuffer');
+const kBufferGen = Symbol('kBufferGen');
+const kBufferCb = Symbol('kBufferCb');
 
 function handleWriteReq(req, data, encoding) {
   const { handle } = req;
@@ -55,6 +78,8 @@ function handleWriteReq(req, data, encoding) {
 }
 
 function onWriteComplete(status) {
+  debug('onWriteComplete', status, this.error);
+
   const stream = this.handle[owner_symbol];
 
   if (stream.destroyed) {
@@ -77,7 +102,7 @@ function onWriteComplete(status) {
 }
 
 function createWriteWrap(handle) {
-  var req = new WriteWrap();
+  const req = new WriteWrap();
 
   req.handle = handle;
   req.oncomplete = onWriteComplete;
@@ -90,22 +115,21 @@ function createWriteWrap(handle) {
 
 function writevGeneric(self, data, cb) {
   const req = createWriteWrap(self[kHandle]);
-  var allBuffers = data.allBuffers;
-  var chunks;
-  var i;
+  const allBuffers = data.allBuffers;
+  let chunks;
   if (allBuffers) {
     chunks = data;
-    for (i = 0; i < data.length; i++)
+    for (let i = 0; i < data.length; i++)
       data[i] = data[i].chunk;
   } else {
     chunks = new Array(data.length << 1);
-    for (i = 0; i < data.length; i++) {
-      var entry = data[i];
+    for (let i = 0; i < data.length; i++) {
+      const entry = data[i];
       chunks[i * 2] = entry.chunk;
       chunks[i * 2 + 1] = entry.encoding;
     }
   }
-  var err = req.handle.writev(req, chunks, allBuffers);
+  const err = req.handle.writev(req, chunks, allBuffers);
 
   // Retain chunks
   if (err === 0) req._chunks = chunks;
@@ -116,7 +140,7 @@ function writevGeneric(self, data, cb) {
 
 function writeGeneric(self, data, encoding, cb) {
   const req = createWriteWrap(self[kHandle]);
-  var err = handleWriteReq(req, data, encoding);
+  const err = handleWriteReq(req, data, encoding);
 
   afterWriteDispatched(self, req, err, cb);
   return req;
@@ -145,9 +169,23 @@ function onStreamRead(arrayBuffer) {
   stream[kUpdateTimer]();
 
   if (nread > 0 && !stream.destroyed) {
-    const offset = streamBaseState[kArrayBufferOffset];
-    const buf = new FastBuffer(arrayBuffer, offset, nread);
-    if (!stream.push(buf)) {
+    let ret;
+    let result;
+    const userBuf = stream[kBuffer];
+    if (userBuf) {
+      result = (stream[kBufferCb](nread, userBuf) !== false);
+      const bufGen = stream[kBufferGen];
+      if (bufGen !== null) {
+        const nextBuf = bufGen();
+        if (isUint8Array(nextBuf))
+          stream[kBuffer] = ret = nextBuf;
+      }
+    } else {
+      const offset = streamBaseState[kArrayBufferOffset];
+      const buf = new FastBuffer(arrayBuffer, offset, nread);
+      result = stream.push(buf);
+    }
+    if (!result) {
       handle.reading = false;
       if (!stream.destroyed) {
         const err = handle.readStop();
@@ -156,7 +194,7 @@ function onStreamRead(arrayBuffer) {
       }
     }
 
-    return;
+    return ret;
   }
 
   if (nread === 0) {
@@ -183,6 +221,38 @@ function onStreamRead(arrayBuffer) {
   }
 }
 
+function setStreamTimeout(msecs, callback) {
+  if (this.destroyed)
+    return;
+
+  this.timeout = msecs;
+
+  // Type checking identical to timers.enroll()
+  msecs = getTimerDuration(msecs, 'msecs');
+
+  // Attempt to clear an existing timer in both cases -
+  //  even if it will be rescheduled we don't want to leak an existing timer.
+  clearTimeout(this[kTimeout]);
+
+  if (msecs === 0) {
+    if (callback !== undefined) {
+      if (typeof callback !== 'function')
+        throw new ERR_INVALID_CALLBACK(callback);
+      this.removeListener('timeout', callback);
+    }
+  } else {
+    this[kTimeout] = setUnrefTimeout(this._onTimeout.bind(this), msecs);
+    if (this[kSession]) this[kSession][kUpdateTimer]();
+
+    if (callback !== undefined) {
+      if (typeof callback !== 'function')
+        throw new ERR_INVALID_CALLBACK(callback);
+      this.once('timeout', callback);
+    }
+  }
+  return this;
+}
+
 module.exports = {
   createWriteWrap,
   writevGeneric,
@@ -191,5 +261,10 @@ module.exports = {
   kAfterAsyncWrite,
   kMaybeDestroy,
   kUpdateTimer,
-  kHandle
+  kHandle,
+  kSession,
+  setStreamTimeout,
+  kBuffer,
+  kBufferCb,
+  kBufferGen
 };

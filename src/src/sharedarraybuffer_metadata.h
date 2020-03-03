@@ -37,6 +37,9 @@ class SharedArrayBufferMetadata
   // count is increased by 1.
   v8::MaybeLocal<v8::SharedArrayBuffer> GetSharedArrayBuffer(
       Environment* env, v8::Local<v8::Context> context);
+  std::shared_ptr<v8::ArrayBuffer::Allocator> allocator() const {
+    return allocator_;
+  }
 
   SharedArrayBufferMetadata(SharedArrayBufferMetadata&& other) = delete;
   SharedArrayBufferMetadata& operator=(
@@ -46,7 +49,9 @@ class SharedArrayBufferMetadata
   SharedArrayBufferMetadata(const SharedArrayBufferMetadata&) = delete;
 
  private:
-  explicit SharedArrayBufferMetadata(const v8::SharedArrayBuffer::Contents&);
+  SharedArrayBufferMetadata(
+      const v8::SharedArrayBuffer::Contents&,
+      std::shared_ptr<v8::ArrayBuffer::Allocator>);
 
   // Attach a lifetime tracker object with a reference count to `target`.
   v8::Maybe<bool> AssignToSharedArrayBuffer(
@@ -55,6 +60,7 @@ class SharedArrayBufferMetadata
       v8::Local<v8::SharedArrayBuffer> target);
 
   v8::SharedArrayBuffer::Contents contents_;
+  std::shared_ptr<v8::ArrayBuffer::Allocator> allocator_;
 };
 
 }  // namespace worker

@@ -25,6 +25,10 @@
 'use strict';
 
 const {
+  ObjectDefineProperties,
+} = primordials;
+
+const {
   assertCrypto,
   deprecate
 } = require('internal/util');
@@ -80,7 +84,9 @@ const {
 } = require('internal/crypto/cipher');
 const {
   Sign,
-  Verify
+  signOneShot,
+  Verify,
+  verifyOneShot
 } = require('internal/crypto/sig');
 const {
   Hash,
@@ -93,8 +99,7 @@ const {
   getHashes,
   setDefaultEncoding,
   setEngine,
-  timingSafeEqual,
-  toBuf
+  timingSafeEqual
 } = require('internal/crypto/util');
 const Certificate = require('internal/crypto/certificate');
 
@@ -144,7 +149,7 @@ function createVerify(algorithm, options) {
   return new Verify(algorithm, options);
 }
 
-module.exports = exports = {
+module.exports = {
   // Methods
   createCipheriv,
   createDecipheriv,
@@ -175,12 +180,14 @@ module.exports = exports = {
   randomFillSync,
   scrypt,
   scryptSync,
+  sign: signOneShot,
   setEngine,
   timingSafeEqual,
   getFips: !fipsMode ? getFipsDisabled :
     fipsForced ? getFipsForced : getFipsCrypto,
   setFips: !fipsMode ? setFipsDisabled :
     fipsForced ? setFipsForced : setFipsCrypto,
+  verify: verifyOneShot,
 
   // Classes
   Certificate,
@@ -215,11 +222,7 @@ function getFipsForced() {
   return 1;
 }
 
-Object.defineProperties(exports, {
-  _toBuf: {
-    enumerable: false,
-    value: deprecate(toBuf, 'crypto._toBuf is deprecated.', 'DEP0114')
-  },
+ObjectDefineProperties(module.exports, {
   createCipher: {
     enumerable: false,
     value: deprecate(createCipher,
@@ -238,7 +241,7 @@ Object.defineProperties(exports, {
       fipsForced ? setFipsForced : setFipsCrypto
   },
   DEFAULT_ENCODING: {
-    enumerable: true,
+    enumerable: false,
     configurable: true,
     get: deprecate(getDefaultEncoding,
                    'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091'),

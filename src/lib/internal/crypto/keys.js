@@ -1,6 +1,11 @@
 'use strict';
 
 const {
+  ObjectDefineProperty,
+  Symbol,
+} = primordials;
+
+const {
   KeyObject: KeyObjectHandle,
   kKeyTypeSecret,
   kKeyTypePublic,
@@ -42,11 +47,11 @@ class KeyObject {
     if (type !== 'secret' && type !== 'public' && type !== 'private')
       throw new ERR_INVALID_ARG_VALUE('type', type);
     if (typeof handle !== 'object')
-      throw new ERR_INVALID_ARG_TYPE('handle', 'string', handle);
+      throw new ERR_INVALID_ARG_TYPE('handle', 'object', handle);
 
     this[kKeyType] = type;
 
-    Object.defineProperty(this, kHandle, {
+    ObjectDefineProperty(this, kHandle, {
       value: handle,
       enumerable: false,
       configurable: false,
@@ -186,14 +191,18 @@ function parseKeyEncoding(enc, keyType, isPublic, objName) {
   if (isPublic !== true) {
     ({ cipher, passphrase } = enc);
 
-    if (!isInput && cipher != null) {
-      if (typeof cipher !== 'string')
+    if (!isInput) {
+      if (cipher != null) {
+        if (typeof cipher !== 'string')
+          throw new ERR_INVALID_OPT_VALUE(option('cipher', objName), cipher);
+        if (format === kKeyFormatDER &&
+            (type === kKeyEncodingPKCS1 ||
+             type === kKeyEncodingSEC1)) {
+          throw new ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS(
+            encodingNames[type], 'does not support encryption');
+        }
+      } else if (passphrase !== undefined) {
         throw new ERR_INVALID_OPT_VALUE(option('cipher', objName), cipher);
-      if (format === kKeyFormatDER &&
-          (type === kKeyEncodingPKCS1 ||
-           type === kKeyEncodingSEC1)) {
-        throw new ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS(
-          encodingNames[type], 'does not support encryption');
       }
     }
 
@@ -264,7 +273,10 @@ function prepareAsymmetricKey(key, ctx) {
          ...(ctx !== kCreatePrivate ? ['KeyObject'] : [])],
         key);
     }
-    return { data, ...parseKeyEncoding(key, undefined) };
+
+    const isPublic =
+      (ctx === kConsumePrivate || ctx === kCreatePrivate) ? false : undefined;
+    return { data, ...parseKeyEncoding(key, undefined, isPublic) };
   } else {
     throw new ERR_INVALID_ARG_TYPE(
       'key',

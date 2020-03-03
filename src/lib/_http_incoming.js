@@ -21,7 +21,10 @@
 
 'use strict';
 
-const util = require('util');
+const {
+  ObjectSetPrototypeOf,
+} = primordials;
+
 const Stream = require('stream');
 
 function readStart(socket) {
@@ -36,7 +39,15 @@ function readStop(socket) {
 
 /* Abstract base class for ServerRequest and ClientResponse. */
 function IncomingMessage(socket) {
-  Stream.Readable.call(this);
+  let streamOptions;
+
+  if (socket) {
+    streamOptions = {
+      highWaterMark: socket.readableHighWaterMark
+    };
+  }
+
+  Stream.Readable.call(this, streamOptions);
 
   this._readableState.readingMore = true;
 
@@ -72,8 +83,8 @@ function IncomingMessage(socket) {
   // read by the user, so there's no point continuing to handle it.
   this._dumped = false;
 }
-util.inherits(IncomingMessage, Stream.Readable);
-
+ObjectSetPrototypeOf(IncomingMessage.prototype, Stream.Readable.prototype);
+ObjectSetPrototypeOf(IncomingMessage, Stream.Readable);
 
 IncomingMessage.prototype.setTimeout = function setTimeout(msecs, callback) {
   if (callback)
@@ -109,7 +120,7 @@ IncomingMessage.prototype.destroy = function destroy(error) {
 IncomingMessage.prototype._addHeaderLines = _addHeaderLines;
 function _addHeaderLines(headers, n) {
   if (headers && headers.length) {
-    var dest;
+    let dest;
     if (this.complete) {
       this.rawTrailers = headers;
       dest = this.trailers;
@@ -118,7 +129,7 @@ function _addHeaderLines(headers, n) {
       dest = this.headers;
     }
 
-    for (var i = 0; i < n; i += 2) {
+    for (let i = 0; i < n; i += 2) {
       this._addHeaderLine(headers[i], headers[i + 1], dest);
     }
   }
@@ -244,7 +255,7 @@ function matchKnownFields(field, lowercased) {
 IncomingMessage.prototype._addHeaderLine = _addHeaderLine;
 function _addHeaderLine(field, value, dest) {
   field = matchKnownFields(field);
-  var flag = field.charCodeAt(0);
+  const flag = field.charCodeAt(0);
   if (flag === 0 || flag === 2) {
     field = field.slice(1);
     // Make a delimited list

@@ -1,5 +1,9 @@
 'use strict';
 
+const {
+  ObjectDefineProperty,
+} = primordials;
+
 const { Buffer } = require('buffer');
 const {
   ERR_CRYPTO_ECDH_INVALID_FORMAT,
@@ -11,7 +15,6 @@ const { isArrayBufferView } = require('internal/util/types');
 const {
   getDefaultEncoding,
   kHandle,
-  legacyNativeHandle,
   toBuf
 } = require('internal/crypto/util');
 const {
@@ -62,7 +65,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     generator = toBuf(generator, genEncoding);
 
   this[kHandle] = new _DiffieHellman(sizeOrKey, generator);
-  Object.defineProperty(this, 'verifyError', {
+  ObjectDefineProperty(this, 'verifyError', {
     enumerable: true,
     value: this[kHandle].verifyError,
     writable: false
@@ -74,7 +77,7 @@ function DiffieHellmanGroup(name) {
   if (!(this instanceof DiffieHellmanGroup))
     return new DiffieHellmanGroup(name);
   this[kHandle] = new _DiffieHellmanGroup(name);
-  Object.defineProperty(this, 'verifyError', {
+  ObjectDefineProperty(this, 'verifyError', {
     enumerable: true,
     value: this[kHandle].verifyError,
     writable: false
@@ -165,9 +168,6 @@ DiffieHellman.prototype.setPrivateKey = function setPrivateKey(key, encoding) {
   return this;
 };
 
-legacyNativeHandle(DiffieHellman);
-legacyNativeHandle(DiffieHellmanGroup);
-
 
 function ECDH(curve) {
   if (!(this instanceof ECDH))
@@ -194,8 +194,6 @@ ECDH.prototype.getPublicKey = function getPublicKey(encoding, format) {
   encoding = encoding || getDefaultEncoding();
   return encode(key, encoding);
 };
-
-legacyNativeHandle(ECDH);
 
 ECDH.convertKey = function convertKey(key, curve, inEnc, outEnc, format) {
   if (typeof key !== 'string' && !isArrayBufferView(key)) {

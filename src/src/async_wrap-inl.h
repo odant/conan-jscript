@@ -34,6 +34,11 @@ inline AsyncWrap::ProviderType AsyncWrap::provider_type() const {
   return provider_type_;
 }
 
+inline AsyncWrap::ProviderType AsyncWrap::set_provider_type(
+    AsyncWrap::ProviderType provider) {
+  provider_type_ = provider;
+  return provider_type_;
+}
 
 inline double AsyncWrap::get_async_id() const {
   return async_id_;
@@ -42,20 +47,6 @@ inline double AsyncWrap::get_async_id() const {
 
 inline double AsyncWrap::get_trigger_async_id() const {
   return trigger_async_id_;
-}
-
-
-inline AsyncWrap::AsyncScope::AsyncScope(AsyncWrap* wrap)
-    : wrap_(wrap) {
-  Environment* env = wrap->env();
-  if (env->async_hooks()->fields()[AsyncHooks::kBefore] == 0) return;
-  EmitBefore(env, wrap->get_async_id());
-}
-
-inline AsyncWrap::AsyncScope::~AsyncScope() {
-  Environment* env = wrap_->env();
-  if (env->async_hooks()->fields()[AsyncHooks::kAfter] == 0) return;
-  EmitAfter(env, wrap_->get_async_id());
 }
 
 

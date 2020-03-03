@@ -1,19 +1,34 @@
 'use strict';
 
+/* global SharedArrayBuffer */
+
+const {
+  ArrayIsArray,
+  MathMax,
+  ObjectCreate,
+  ObjectEntries,
+  Promise,
+  PromiseResolve,
+  Symbol,
+  SymbolFor,
+} = primordials;
+
 const EventEmitter = require('events');
 const assert = require('internal/assert');
 const path = require('path');
 
+const errorCodes = require('internal/errors').codes;
 const {
   ERR_WORKER_PATH,
   ERR_WORKER_UNSERIALIZABLE_ERROR,
   ERR_WORKER_UNSUPPORTED_EXTENSION,
   ERR_WORKER_INVALID_EXEC_ARGV,
   ERR_INVALID_ARG_TYPE,
-} = require('internal/errors').codes;
+} = errorCodes;
 const { validateString } = require('internal/validators');
 const { getOptionValue } = require('internal/options');
 
+const workerIo = require('internal/worker/io');
 const {
   drainMessagePort,
   MessageChannel,
@@ -24,16 +39,21 @@ const {
   kStdioWantsMoreDataCallback,
   setupPortReferencing,
   ReadableWorkerStdio,
-  WritableWorkerStdio,
-} = require('internal/worker/io');
+  WritableWorkerStdio
+} = workerIo;
 const { deserializeError } = require('internal/error-serdes');
 const { pathToFileURL } = require('url');
 
 const {
   ownsProcessState,
   isMainThread,
+  resourceLimits: resourceLimitsRaw,
   threadId,
   Worker: WorkerImpl,
+  kMaxYoungGenerationSizeMb,
+  kMaxOldGenerationSizeMb,
+  kCodeRangeSizeMb,
+  kTotalResourceLimitCount
 } = internalBinding('worker');
 
 const kHandle = Symbol('kHandle');
@@ -45,12 +65,18 @@ const kOnCouldNotSerializeErr = Symbol('kOnCouldNotSerializeErr');
 const kOnErrorMessage = Symbol('kOnErrorMessage');
 const kParentSideStdio = Symbol('kParentSideStdio');
 
-let debuglog;
-function debug(...args) {
-  if (!debuglog) {
-    debuglog = require('internal/util/debuglog').debuglog('worker');
-  }
-  debuglog(...args);
+const SHARE_ENV = SymbolFor('nodejs.worker_threads.SHARE_ENV');
+const debug = require('internal/util/debuglog').debuglog('worker');
+
+let cwdCounter;
+
+if (isMainThread) {
+  cwdCounter = new Uint32Array(new SharedArrayBuffer(4));
+  const originalChdir = process.chdir;
+  process.chdir = function(path) {
+    Atomics.add(cwdCounter, 0, 1);
+    originalChdir(path);
+  };
 }
 
 class Worker extends EventEmitter {
@@ -58,17 +84,20 @@ class Worker extends EventEmitter {
     super();
     debug(`[${threadId}] create new worker`, filename, options);
     validateString(filename, 'filename');
-    if (options.execArgv && !Array.isArray(options.execArgv)) {
+    if (options.execArgv && !ArrayIsArray(options.execArgv)) {
       throw new ERR_INVALID_ARG_TYPE('options.execArgv',
-                                     'array',
+                                     'Array',
                                      options.execArgv);
     }
+    let argv;
+    if (options.argv) {
+      if (!ArrayIsArray(options.argv)) {
+        throw new ERR_INVALID_ARG_TYPE('options.argv', 'Array', options.argv);
+      }
+      argv = options.argv.map(String);
+    }
     if (!options.eval) {
-      if (!path.isAbsolute(filename) &&
-          !filename.startsWith('./') &&
-          !filename.startsWith('../') &&
-          !filename.startsWith('.' + path.sep) &&
-          !filename.startsWith('..' + path.sep)) {
+      if (!path.isAbsolute(filename) && !/^\.\.?[\\/]/.test(filename)) {
         throw new ERR_WORKER_PATH(filename);
       }
       filename = path.resolve(filename);
@@ -79,13 +108,35 @@ class Worker extends EventEmitter {
       }
     }
 
+    let env;
+    if (typeof options.env === 'object' && options.env !== null) {
+      env = ObjectCreate(null);
+      for (const [ key, value ] of ObjectEntries(options.env))
+        env[key] = `${value}`;
+    } else if (options.env == null) {
+      env = process.env;
+    } else if (options.env !== SHARE_ENV) {
+      throw new ERR_INVALID_ARG_TYPE(
+        'options.env',
+        ['object', 'undefined', 'null', 'worker_threads.SHARE_ENV'],
+        options.env);
+    }
+
     const url = options.eval ? null : pathToFileURL(filename);
     // Set up the C++ handle for the worker, as well as some internal wiring.
-    this[kHandle] = new WorkerImpl(url, options.execArgv);
+    this[kHandle] = new WorkerImpl(url, options.execArgv,
+                                   parseResourceLimits(options.resourceLimits));
     if (this[kHandle].invalidExecArgv) {
       throw new ERR_WORKER_INVALID_EXEC_ARGV(this[kHandle].invalidExecArgv);
     }
-    this[kHandle].onexit = (code) => this[kOnExit](code);
+    if (env === process.env) {
+      // This may be faster than manually cloning the object in C++, especially
+      // when recursively spawning Workers.
+      this[kHandle].cloneParentEnvVars();
+    } else if (env !== undefined) {
+      this[kHandle].setEnvVars(env);
+    }
+    this[kHandle].onexit = (code, customErr) => this[kOnExit](code, customErr);
     this[kPort] = this[kHandle].messagePort;
     this[kPort].on('message', (data) => this[kOnMessage](data));
     this[kPort].start();
@@ -114,9 +165,11 @@ class Worker extends EventEmitter {
     this[kPublicPort].on('message', (message) => this.emit('message', message));
     setupPortReferencing(this[kPublicPort], this, 'message');
     this[kPort].postMessage({
+      argv,
       type: messageTypes.LOAD_SCRIPT,
       filename,
       doEval: !!options.eval,
+      cwdCounter: cwdCounter || workerIo.sharedCwdCounter,
       workerData: options.workerData,
       publicPort: port2,
       manifestSrc: getOptionValue('--experimental-policy') ?
@@ -128,11 +181,15 @@ class Worker extends EventEmitter {
     this[kHandle].startThread();
   }
 
-  [kOnExit](code) {
+  [kOnExit](code, customErr) {
     debug(`[${threadId}] hears end event for Worker ${this.threadId}`);
     drainMessagePort(this[kPublicPort]);
     drainMessagePort(this[kPort]);
     this[kDispose]();
+    if (customErr) {
+      debug(`[${threadId}] failing with custom error ${customErr}`);
+      this.emit('error', new errorCodes[customErr]());
+    }
     this.emit('exit', code);
     this.removeAllListeners();
   }
@@ -178,11 +235,11 @@ class Worker extends EventEmitter {
 
     const { stdout, stderr } = this[kParentSideStdio];
 
-    if (!stdout._readableState.ended) {
+    if (!stdout.readableEnded) {
       debug(`[${threadId}] explicitly closes stdout for ${this.threadId}`);
       stdout.push(null);
     }
-    if (!stderr._readableState.ended) {
+    if (!stderr.readableEnded) {
       debug(`[${threadId}] explicitly closes stderr for ${this.threadId}`);
       stderr.push(null);
     }
@@ -195,14 +252,29 @@ class Worker extends EventEmitter {
   }
 
   terminate(callback) {
-    if (this[kHandle] === null) return;
-
     debug(`[${threadId}] terminates Worker with ID ${this.threadId}`);
 
-    if (typeof callback !== 'undefined')
+    this.ref();
+
+    if (typeof callback === 'function') {
+      process.emitWarning(
+        'Passing a callback to worker.terminate() is deprecated. ' +
+        'It returns a Promise instead.',
+        'DeprecationWarning', 'DEP0132');
+      if (this[kHandle] === null) return PromiseResolve();
       this.once('exit', (exitCode) => callback(null, exitCode));
+    }
+
+    if (this[kHandle] === null) return PromiseResolve();
 
     this[kHandle].stopThread();
+
+    // Do not use events.once() here, because the 'exit' event will always be
+    // emitted regardless of any errors, and the point is to only resolve
+    // once the thread has actually stopped.
+    return new Promise((resolve) => {
+      this.once('exit', resolve);
+    });
   }
 
   ref() {
@@ -236,6 +308,12 @@ class Worker extends EventEmitter {
   get stderr() {
     return this[kParentSideStdio].stderr;
   }
+
+  get resourceLimits() {
+    if (this[kHandle] === null) return {};
+
+    return makeResourceLimits(this[kHandle].getResourceLimits());
+  }
 }
 
 function pipeWithoutWarning(source, dest) {
@@ -250,9 +328,35 @@ function pipeWithoutWarning(source, dest) {
   dest._maxListeners = destMaxListeners;
 }
 
+const resourceLimitsArray = new Float64Array(kTotalResourceLimitCount);
+function parseResourceLimits(obj) {
+  const ret = resourceLimitsArray;
+  ret.fill(-1);
+  if (typeof obj !== 'object' || obj === null) return ret;
+
+  if (typeof obj.maxOldGenerationSizeMb === 'number')
+    ret[kMaxOldGenerationSizeMb] = MathMax(obj.maxOldGenerationSizeMb, 2);
+  if (typeof obj.maxYoungGenerationSizeMb === 'number')
+    ret[kMaxYoungGenerationSizeMb] = obj.maxYoungGenerationSizeMb;
+  if (typeof obj.codeRangeSizeMb === 'number')
+    ret[kCodeRangeSizeMb] = obj.codeRangeSizeMb;
+  return ret;
+}
+
+function makeResourceLimits(float64arr) {
+  return {
+    maxYoungGenerationSizeMb: float64arr[kMaxYoungGenerationSizeMb],
+    maxOldGenerationSizeMb: float64arr[kMaxOldGenerationSizeMb],
+    codeRangeSizeMb: float64arr[kCodeRangeSizeMb]
+  };
+}
+
 module.exports = {
   ownsProcessState,
   isMainThread,
+  SHARE_ENV,
+  resourceLimits:
+    !isMainThread ? makeResourceLimits(resourceLimitsRaw) : {},
   threadId,
   Worker,
 };

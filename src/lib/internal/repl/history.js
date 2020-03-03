@@ -1,10 +1,15 @@
 'use strict';
 
+const {
+  Boolean,
+} = primordials;
+
 const { Interface } = require('readline');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const debug = require('internal/util/debuglog').debuglog('repl');
+const { clearTimeout, setTimeout } = require('timers');
 
 // XXX(chrisdickinson): The 15ms debounce value is somewhat arbitrary.
 // The debounce is to guard against code pasted into the REPL.
@@ -40,9 +45,9 @@ function setupHistory(repl, historyPath, ready) {
     }
   }
 
-  var timer = null;
-  var writing = false;
-  var pending = false;
+  let timer = null;
+  let writing = false;
+  let pending = false;
   repl.pause();
   // History files are conventionally not readable by others:
   // https://github.com/nodejs/node/issues/3392

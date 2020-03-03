@@ -1,6 +1,7 @@
 #include "node_internals.h"
 #include "node_buffer.h"
 #include "node_errors.h"
+#include "util-inl.h"
 #include "base_object-inl.h"
 
 namespace node {
@@ -33,7 +34,7 @@ class SerializerContext : public BaseObject,
   SerializerContext(Environment* env,
                     Local<Object> wrap);
 
-  ~SerializerContext() override {}
+  ~SerializerContext() override = default;
 
   void ThrowDataCloneError(Local<String> message) override;
   Maybe<bool> WriteHostObject(Isolate* isolate, Local<Object> object) override;
@@ -68,7 +69,7 @@ class DeserializerContext : public BaseObject,
                       Local<Object> wrap,
                       Local<Value> buffer);
 
-  ~DeserializerContext() override {}
+  ~DeserializerContext() override = default;
 
   MaybeLocal<Object> ReadHostObject(Isolate* isolate) override;
 
@@ -192,9 +193,8 @@ void SerializerContext::SetTreatArrayBufferViewsAsHostObjects(
   SerializerContext* ctx;
   ASSIGN_OR_RETURN_UNWRAP(&ctx, args.Holder());
 
-  Maybe<bool> value = args[0]->BooleanValue(ctx->env()->context());
-  if (value.IsNothing()) return;
-  ctx->serializer_.SetTreatArrayBufferViewsAsHostObjects(value.FromJust());
+  bool value = args[0]->BooleanValue(ctx->env()->isolate());
+  ctx->serializer_.SetTreatArrayBufferViewsAsHostObjects(value);
 }
 
 void SerializerContext::ReleaseBuffer(const FunctionCallbackInfo<Value>& args) {
@@ -274,8 +274,8 @@ void SerializerContext::WriteRawBytes(const FunctionCallbackInfo<Value>& args) {
         ctx->env(), "source must be a TypedArray or a DataView");
   }
 
-  ctx->serializer_.WriteRawBytes(Buffer::Data(args[0]),
-                                 Buffer::Length(args[0]));
+  ArrayBufferViewContents<char> bytes(args[0]);
+  ctx->serializer_.WriteRawBytes(bytes.data(), bytes.length());
 }
 
 DeserializerContext::DeserializerContext(Environment* env,
@@ -285,7 +285,7 @@ DeserializerContext::DeserializerContext(Environment* env,
     data_(reinterpret_cast<const uint8_t*>(Buffer::Data(buffer))),
     length_(Buffer::Length(buffer)),
     deserializer_(env->isolate(), data_, length_, this) {
-  object()->Set(env->context(), env->buffer_string(), buffer).FromJust();
+  object()->Set(env->context(), env->buffer_string(), buffer).Check();
   deserializer_.SetExpectInlineWasm(true);
 
   MakeWeak();
@@ -300,6 +300,7 @@ MaybeLocal<Object> DeserializerContext::ReadHostObject(Isolate* isolate) {
     return ValueDeserializer::Delegate::ReadHostObject(isolate);
   }
 
+  Isolate::AllowJavascriptExecutionScope allow_js(isolate);
   MaybeLocal<Value> ret =
       read_host_object.As<Function>()->Call(env()->context(),
                                             object(),
@@ -471,7 +472,7 @@ void Initialize(Local<Object> target,
   ser->SetClassName(serializerString);
   target->Set(env->context(),
               serializerString,
-              ser->GetFunction(env->context()).ToLocalChecked()).FromJust();
+              ser->GetFunction(env->context()).ToLocalChecked()).Check();
 
   Local<FunctionTemplate> des =
       env->NewFunctionTemplate(DeserializerContext::New);
@@ -496,7 +497,7 @@ void Initialize(Local<Object> target,
   des->SetClassName(deserializerString);
   target->Set(env->context(),
               deserializerString,
-              des->GetFunction(env->context()).ToLocalChecked()).FromJust();
+              des->GetFunction(env->context()).ToLocalChecked()).Check();
 }
 
 }  // anonymous namespace

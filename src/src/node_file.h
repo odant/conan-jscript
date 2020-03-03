@@ -4,111 +4,71 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "node.h"
+#include "aliased_buffer.h"
 #include "stream_base.h"
-#include "req_wrap-inl.h"
+#include <iostream>
 
 namespace node {
-
-using v8::Context;
-using v8::FunctionCallbackInfo;
-using v8::HandleScope;
-using v8::Local;
-using v8::MaybeLocal;
-using v8::Object;
-using v8::Promise;
-using v8::Undefined;
-using v8::Value;
-
 namespace fs {
 
 // structure used to store state during a complex operation, e.g., mkdirp.
 class FSContinuationData : public MemoryRetainer {
  public:
-  FSContinuationData(uv_fs_t* req, int mode, uv_fs_cb done_cb)
-      : req(req), mode(mode), done_cb(done_cb) {
-  }
+  inline FSContinuationData(uv_fs_t* req, int mode, uv_fs_cb done_cb);
 
-  uv_fs_t* req;
-  int mode;
-  std::vector<std::string> paths{};
+  inline void PushPath(std::string&& path);
+  inline void PushPath(const std::string& path);
+  inline std::string PopPath();
+  inline void Done(int result);
 
-  void PushPath(std::string&& path) {
-    paths.emplace_back(std::move(path));
-  }
+  int mode() const { return mode_; }
+  const std::vector<std::string>& paths() const { return paths_; }
 
-  void PushPath(const std::string& path) {
-    paths.push_back(path);
-  }
-
-  std::string PopPath() {
-    CHECK_GT(paths.size(), 0);
-    std::string path = std::move(paths.back());
-    paths.pop_back();
-    return path;
-  }
-
-  void Done(int result) {
-    req->result = result;
-    done_cb(req);
-  }
-
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackField("paths", paths);
-  }
-
+  void MemoryInfo(MemoryTracker* tracker) const override;
   SET_MEMORY_INFO_NAME(FSContinuationData)
   SET_SELF_SIZE(FSContinuationData)
 
  private:
-  uv_fs_cb done_cb;
+  uv_fs_cb done_cb_;
+  uv_fs_t* req_;
+  int mode_;
+  std::vector<std::string> paths_;
 };
 
 class FSReqBase : public ReqWrap<uv_fs_t> {
  public:
   typedef MaybeStackBuffer<char, 64> FSReqBuffer;
-  std::unique_ptr<FSContinuationData> continuation_data = nullptr;
 
-  FSReqBase(Environment* env, Local<Object> req, AsyncWrap::ProviderType type,
-            bool use_bigint)
-      : ReqWrap(env, req, type), use_bigint_(use_bigint) {
-  }
+  inline FSReqBase(Environment* env,
+                   v8::Local<v8::Object> req,
+                   AsyncWrap::ProviderType type,
+                   bool use_bigint);
+  ~FSReqBase() override;
 
-  void Init(const char* syscall,
-            const char* data,
-            size_t len,
-            enum encoding encoding) {
-    syscall_ = syscall;
-    encoding_ = encoding;
+  inline void Init(const char* syscall,
+                   const char* data,
+                   size_t len,
+                   enum encoding encoding);
+  inline FSReqBuffer& Init(const char* syscall, size_t len,
+                           enum encoding encoding);
 
-    if (data != nullptr) {
-      CHECK(!has_data_);
-      buffer_.AllocateSufficientStorage(len + 1);
-      buffer_.SetLengthAndZeroTerminate(len);
-      memcpy(*buffer_, data, len);
-      has_data_ = true;
-    }
-  }
-
-  FSReqBuffer& Init(const char* syscall, size_t len,
-                    enum encoding encoding) {
-    syscall_ = syscall;
-    encoding_ = encoding;
-
-    buffer_.AllocateSufficientStorage(len + 1);
-    has_data_ = false;  // so that the data does not show up in error messages
-    return buffer_;
-  }
-
-  virtual void Reject(Local<Value> reject) = 0;
-  virtual void Resolve(Local<Value> value) = 0;
+  virtual void Reject(v8::Local<v8::Value> reject) = 0;
+  virtual void Resolve(v8::Local<v8::Value> value) = 0;
   virtual void ResolveStat(const uv_stat_t* stat) = 0;
-  virtual void SetReturnValue(const FunctionCallbackInfo<Value>& args) = 0;
+  virtual void SetReturnValue(
+      const v8::FunctionCallbackInfo<v8::Value>& args) = 0;
 
   const char* syscall() const { return syscall_; }
   const char* data() const { return has_data_ ? *buffer_ : nullptr; }
   enum encoding encoding() const { return encoding_; }
-
   bool use_bigint() const { return use_bigint_; }
+
+  FSContinuationData* continuation_data() const {
+    return continuation_data_.get();
+  }
+  void set_continuation_data(std::unique_ptr<FSContinuationData> data) {
+    continuation_data_ = std::move(data);
+  }
 
   static FSReqBase* from_req(uv_fs_t* req) {
     return static_cast<FSReqBase*>(ReqWrap::from_req(req));
@@ -117,7 +77,10 @@ class FSReqBase : public ReqWrap<uv_fs_t> {
   FSReqBase(const FSReqBase&) = delete;
   FSReqBase& operator=(const FSReqBase&) = delete;
 
+  void MemoryInfo(MemoryTracker* tracker) const override;
+
  private:
+  std::unique_ptr<FSContinuationData> continuation_data_;
   enum encoding encoding_ = UTF8;
   bool has_data_ = false;
   const char* syscall_ = nullptr;
@@ -128,19 +91,16 @@ class FSReqBase : public ReqWrap<uv_fs_t> {
   FSReqBuffer buffer_;
 };
 
-class FSReqCallback : public FSReqBase {
+class FSReqCallback final : public FSReqBase {
  public:
-  FSReqCallback(Environment* env, Local<Object> req, bool use_bigint)
-      : FSReqBase(env, req, AsyncWrap::PROVIDER_FSREQCALLBACK, use_bigint) { }
+  inline FSReqCallback(Environment* env,
+                       v8::Local<v8::Object> req,
+                       bool use_bigint);
 
-  void Reject(Local<Value> reject) override;
-  void Resolve(Local<Value> value) override;
+  void Reject(v8::Local<v8::Value> reject) override;
+  void Resolve(v8::Local<v8::Value> value) override;
   void ResolveStat(const uv_stat_t* stat) override;
-  void SetReturnValue(const FunctionCallbackInfo<Value>& args) override;
-
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackField("continuation_data", continuation_data);
-  }
+  void SetReturnValue(const v8::FunctionCallbackInfo<v8::Value>& args) override;
 
   SET_MEMORY_INFO_NAME(FSReqCallback)
   SET_SELF_SIZE(FSReqCallback)
@@ -149,146 +109,28 @@ class FSReqCallback : public FSReqBase {
   FSReqCallback& operator=(const FSReqCallback&) = delete;
 };
 
-// Wordaround a GCC4.9 bug that C++14 N3652 was not implemented
-// Refs: https://www.gnu.org/software/gcc/projects/cxx-status.html#cxx14
-// Refs: https://isocpp.org/files/papers/N3652.html
-#if __cpp_constexpr < 201304
-#  define constexpr inline
-#endif
-
-template <typename NativeT,
-          // SFINAE limit NativeT to arithmetic types
-          typename = std::enable_if<std::is_arithmetic<NativeT>::value>>
-constexpr NativeT ToNative(uv_timespec_t ts) {
-  // This template has exactly two specializations below.
-  static_assert(std::is_arithmetic<NativeT>::value == false, "Not implemented");
-  UNREACHABLE();
-}
-
-template <>
-constexpr double ToNative(uv_timespec_t ts) {
-  // We need to do a static_cast since the original FS values are ulong.
-  /* NOLINTNEXTLINE(runtime/int) */
-  const auto u_sec = static_cast<unsigned long>(ts.tv_sec);
-  const double full_sec = u_sec * 1000.0;
-  /* NOLINTNEXTLINE(runtime/int) */
-  const auto u_nsec = static_cast<unsigned long>(ts.tv_nsec);
-  const double full_nsec = u_nsec / 1000'000.0;
-  return full_sec + full_nsec;
-}
-
-template <>
-constexpr uint64_t ToNative(uv_timespec_t ts) {
-  // We need to do a static_cast since the original FS values are ulong.
-  /* NOLINTNEXTLINE(runtime/int) */
-  const auto u_sec = static_cast<unsigned long>(ts.tv_sec);
-  const auto full_sec = static_cast<uint64_t>(u_sec) * 1000UL;
-  /* NOLINTNEXTLINE(runtime/int) */
-  const auto u_nsec = static_cast<unsigned long>(ts.tv_nsec);
-  const auto full_nsec = static_cast<uint64_t>(u_nsec) / 1000'000UL;
-  return full_sec + full_nsec;
-}
-
-#undef constexpr  // end N3652 bug workaround
-
 template <typename NativeT, typename V8T>
-constexpr void FillStatsArray(AliasedBuffer<NativeT, V8T>* fields,
-                              const uv_stat_t* s, const size_t offset = 0) {
-  fields->SetValue(offset + 0, static_cast<NativeT>(s->st_dev));
-  fields->SetValue(offset + 1, static_cast<NativeT>(s->st_mode));
-  fields->SetValue(offset + 2, static_cast<NativeT>(s->st_nlink));
-  fields->SetValue(offset + 3, static_cast<NativeT>(s->st_uid));
-  fields->SetValue(offset + 4, static_cast<NativeT>(s->st_gid));
-  fields->SetValue(offset + 5, static_cast<NativeT>(s->st_rdev));
-  fields->SetValue(offset + 6, static_cast<NativeT>(s->st_blksize));
-  fields->SetValue(offset + 7, static_cast<NativeT>(s->st_ino));
-  fields->SetValue(offset + 8, static_cast<NativeT>(s->st_size));
-  fields->SetValue(offset + 9, static_cast<NativeT>(s->st_blocks));
-// Dates.
-  fields->SetValue(offset + 10, ToNative<NativeT>(s->st_atim));
-  fields->SetValue(offset + 11, ToNative<NativeT>(s->st_mtim));
-  fields->SetValue(offset + 12, ToNative<NativeT>(s->st_ctim));
-  fields->SetValue(offset + 13, ToNative<NativeT>(s->st_birthtim));
-}
+void FillStatsArray(AliasedBufferBase<NativeT, V8T>* fields,
+                    const uv_stat_t* s,
+                    const size_t offset = 0);
 
-inline Local<Value> FillGlobalStatsArray(Environment* env,
-                                         const bool use_bigint,
-                                         const uv_stat_t* s,
-                                         const bool second = false) {
-  const ptrdiff_t offset = second ? kFsStatsFieldsNumber : 0;
-  if (use_bigint) {
-    auto* const arr = env->fs_stats_field_bigint_array();
-    FillStatsArray(arr, s, offset);
-    return arr->GetJSArray();
-  } else {
-    auto* const arr = env->fs_stats_field_array();
-    FillStatsArray(arr, s, offset);
-    return arr->GetJSArray();
-  }
-}
+inline v8::Local<v8::Value> FillGlobalStatsArray(Environment* env,
+                                                 const bool use_bigint,
+                                                 const uv_stat_t* s,
+                                                 const bool second = false);
 
-template <typename NativeT = double, typename V8T = v8::Float64Array>
-class FSReqPromise : public FSReqBase {
+template <typename AliasedBufferT>
+class FSReqPromise final : public FSReqBase {
  public:
-  static FSReqPromise* New(Environment* env, bool use_bigint) {
-    v8::Local<Object> obj;
-    if (!env->fsreqpromise_constructor_template()
-             ->NewInstance(env->context())
-             .ToLocal(&obj)) {
-      return nullptr;
-    }
-    v8::Local<v8::Promise::Resolver> resolver;
-    if (!v8::Promise::Resolver::New(env->context()).ToLocal(&resolver) ||
-        obj->Set(env->context(), env->promise_string(), resolver).IsNothing()) {
-      return nullptr;
-    }
-    return new FSReqPromise(env, obj, use_bigint);
-  }
+  static inline FSReqPromise* New(Environment* env, bool use_bigint);
+  inline ~FSReqPromise() override;
 
-  ~FSReqPromise() override {
-    // Validate that the promise was explicitly resolved or rejected.
-    CHECK(finished_);
-  }
-
-  void Reject(Local<Value> reject) override {
-    finished_ = true;
-    HandleScope scope(env()->isolate());
-    InternalCallbackScope callback_scope(this);
-    Local<Value> value =
-        object()->Get(env()->context(),
-                      env()->promise_string()).ToLocalChecked();
-    Local<Promise::Resolver> resolver = value.As<Promise::Resolver>();
-    USE(resolver->Reject(env()->context(), reject).FromJust());
-  }
-
-  void Resolve(Local<Value> value) override {
-    finished_ = true;
-    HandleScope scope(env()->isolate());
-    InternalCallbackScope callback_scope(this);
-    Local<Value> val =
-        object()->Get(env()->context(),
-                      env()->promise_string()).ToLocalChecked();
-    Local<Promise::Resolver> resolver = val.As<Promise::Resolver>();
-    USE(resolver->Resolve(env()->context(), value).FromJust());
-  }
-
-  void ResolveStat(const uv_stat_t* stat) override {
-    FillStatsArray(&stats_field_array_, stat);
-    Resolve(stats_field_array_.GetJSArray());
-  }
-
-  void SetReturnValue(const FunctionCallbackInfo<Value>& args) override {
-    Local<Value> val =
-        object()->Get(env()->context(),
-                      env()->promise_string()).ToLocalChecked();
-    Local<Promise::Resolver> resolver = val.As<Promise::Resolver>();
-    args.GetReturnValue().Set(resolver->GetPromise());
-  }
-
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackField("stats_field_array", stats_field_array_);
-    tracker->TrackField("continuation_data", continuation_data);
-  }
+  inline void Reject(v8::Local<v8::Value> reject) override;
+  inline void Resolve(v8::Local<v8::Value> value) override;
+  inline void ResolveStat(const uv_stat_t* stat) override;
+  inline void SetReturnValue(
+      const v8::FunctionCallbackInfo<v8::Value>& args) override;
+  inline void MemoryInfo(MemoryTracker* tracker) const override;
 
   SET_MEMORY_INFO_NAME(FSReqPromise)
   SET_SELF_SIZE(FSReqPromise)
@@ -299,15 +141,15 @@ class FSReqPromise : public FSReqBase {
   FSReqPromise& operator=(const FSReqPromise&&) = delete;
 
  private:
-  FSReqPromise(Environment* env, v8::Local<v8::Object> obj, bool use_bigint)
-      : FSReqBase(env, obj, AsyncWrap::PROVIDER_FSREQPROMISE, use_bigint),
-        stats_field_array_(env->isolate(), kFsStatsFieldsNumber) {}
+  inline FSReqPromise(Environment* env,
+                      v8::Local<v8::Object> obj,
+                      bool use_bigint);
 
   bool finished_ = false;
-  AliasedBuffer<NativeT, V8T> stats_field_array_;
+  AliasedBufferT stats_field_array_;
 };
 
-class FSReqAfterScope {
+class FSReqAfterScope final {
  public:
   FSReqAfterScope(FSReqBase* wrap, uv_fs_t* req);
   ~FSReqAfterScope();
@@ -324,17 +166,18 @@ class FSReqAfterScope {
  private:
   FSReqBase* wrap_ = nullptr;
   uv_fs_t* req_ = nullptr;
-  HandleScope handle_scope_;
-  Context::Scope context_scope_;
+  v8::HandleScope handle_scope_;
+  v8::Context::Scope context_scope_;
 };
 
 class FileHandle;
 
 // A request wrap specifically for uv_fs_read()s scheduled for reading
 // from a FileHandle.
-class FileHandleReadWrap : public ReqWrap<uv_fs_t> {
+class FileHandleReadWrap final : public ReqWrap<uv_fs_t> {
  public:
   FileHandleReadWrap(FileHandle* handle, v8::Local<v8::Object> obj);
+  ~FileHandleReadWrap() override;
 
   static inline FileHandleReadWrap* from_req(uv_fs_t* req) {
     return static_cast<FileHandleReadWrap*>(ReqWrap::from_req(req));
@@ -353,7 +196,7 @@ class FileHandleReadWrap : public ReqWrap<uv_fs_t> {
 
 // A wrapper for a file descriptor that will automatically close the fd when
 // the object is garbage collected
-class FileHandle : public AsyncWrap, public StreamBase {
+class FileHandle final : public AsyncWrap, public StreamBase {
  public:
   static FileHandle* New(Environment* env,
                          int fd,
@@ -366,10 +209,10 @@ class FileHandle : public AsyncWrap, public StreamBase {
 
   // Will asynchronously close the FD and return a Promise that will
   // be resolved once closing is complete.
-  static void Close(const FunctionCallbackInfo<Value>& args);
+  static void Close(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   // Releases ownership of the FD.
-  static void ReleaseFD(const FunctionCallbackInfo<Value>& args);
+  static void ReleaseFD(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   // StreamBase interface:
   int ReadStart() override;
@@ -386,13 +229,9 @@ class FileHandle : public AsyncWrap, public StreamBase {
   int DoWrite(WriteWrap* w,
               uv_buf_t* bufs,
               size_t count,
-              uv_stream_t* send_handle) override {
-    return UV_ENOSYS;  // Not implemented (yet).
-  }
+              uv_stream_t* send_handle) override;
 
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackField("current_read", current_read_);
-  }
+  void MemoryInfo(MemoryTracker* tracker) const override;
 
   SET_MEMORY_INFO_NAME(FileHandle)
   SET_SELF_SIZE(FileHandle)
@@ -409,36 +248,24 @@ class FileHandle : public AsyncWrap, public StreamBase {
   void Close();
   void AfterClose();
 
-  class CloseReq : public ReqWrap<uv_fs_t> {
+  class CloseReq final : public ReqWrap<uv_fs_t> {
    public:
     CloseReq(Environment* env,
-             Local<Object> obj,
-             Local<Promise> promise,
-             Local<Value> ref)
-        : ReqWrap(env, obj, AsyncWrap::PROVIDER_FILEHANDLECLOSEREQ) {
-      promise_.Reset(env->isolate(), promise);
-      ref_.Reset(env->isolate(), ref);
-    }
-
-    ~CloseReq() override {
-      uv_fs_req_cleanup(req());
-      promise_.Reset();
-      ref_.Reset();
-    }
+             v8::Local<v8::Object> obj,
+             v8::Local<v8::Promise> promise,
+             v8::Local<v8::Value> ref);
+    ~CloseReq() override;
 
     FileHandle* file_handle();
 
-    void MemoryInfo(MemoryTracker* tracker) const override {
-      tracker->TrackField("promise", promise_);
-      tracker->TrackField("ref", ref_);
-    }
+    void MemoryInfo(MemoryTracker* tracker) const override;
 
     SET_MEMORY_INFO_NAME(CloseReq)
     SET_SELF_SIZE(CloseReq)
 
     void Resolve();
 
-    void Reject(Local<Value> reason);
+    void Reject(v8::Local<v8::Value> reason);
 
     static CloseReq* from_req(uv_fs_t* req) {
       return static_cast<CloseReq*>(ReqWrap::from_req(req));
@@ -450,12 +277,12 @@ class FileHandle : public AsyncWrap, public StreamBase {
     CloseReq& operator=(const CloseReq&&) = delete;
 
    private:
-    Persistent<Promise> promise_{};
-    Persistent<Value> ref_{};
+    v8::Global<v8::Promise> promise_{};
+    v8::Global<v8::Value> ref_{};
   };
 
   // Asynchronous close
-  inline MaybeLocal<Promise> ClosePromise();
+  v8::MaybeLocal<v8::Promise> ClosePromise();
 
   int fd_;
   bool closing_ = false;
@@ -466,6 +293,53 @@ class FileHandle : public AsyncWrap, public StreamBase {
   bool reading_ = false;
   std::unique_ptr<FileHandleReadWrap> current_read_ = nullptr;
 };
+
+int MKDirpSync(uv_loop_t* loop,
+               uv_fs_t* req,
+               const std::string& path,
+               int mode,
+               uv_fs_cb cb = nullptr);
+
+class FSReqWrapSync {
+ public:
+  FSReqWrapSync() = default;
+  ~FSReqWrapSync() { uv_fs_req_cleanup(&req); }
+  uv_fs_t req;
+
+  FSReqWrapSync(const FSReqWrapSync&) = delete;
+  FSReqWrapSync& operator=(const FSReqWrapSync&) = delete;
+};
+
+// TODO(addaleax): Currently, callers check the return value and assume
+// that nullptr indicates a synchronous call, rather than a failure.
+// Failure conditions should be disambiguated and handled appropriately.
+inline FSReqBase* GetReqWrap(Environment* env, v8::Local<v8::Value> value,
+                             bool use_bigint = false);
+
+// Returns nullptr if the operation fails from the start.
+template <typename Func, typename... Args>
+inline FSReqBase* AsyncDestCall(Environment* env, FSReqBase* req_wrap,
+                                const v8::FunctionCallbackInfo<v8::Value>& args,
+                                const char* syscall, const char* dest,
+                                size_t len, enum encoding enc, uv_fs_cb after,
+                                Func fn, Args... fn_args);
+
+// Returns nullptr if the operation fails from the start.
+template <typename Func, typename... Args>
+inline FSReqBase* AsyncCall(Environment* env,
+                            FSReqBase* req_wrap,
+                            const v8::FunctionCallbackInfo<v8::Value>& args,
+                            const char* syscall, enum encoding enc,
+                            uv_fs_cb after, Func fn, Args... fn_args);
+
+// Template counterpart of SYNC_CALL, except that it only puts
+// the error number and the syscall in the context instead of
+// creating an error in the C++ land.
+// ctx must be checked using value->IsObject() before being passed.
+template <typename Func, typename... Args>
+inline int SyncCall(Environment* env, v8::Local<v8::Value> ctx,
+                    FSReqWrapSync* req_wrap, const char* syscall,
+                    Func fn, Args... args);
 
 }  // namespace fs
 

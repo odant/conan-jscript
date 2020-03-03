@@ -1,6 +1,13 @@
 'use strict';
 
 const {
+  ArrayIsArray,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
+
+const {
   errnoException,
   codes: {
     ERR_INVALID_ARG_TYPE,
@@ -18,7 +25,6 @@ const { validateString } = require('internal/validators');
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
-const util = require('util');
 const inspect = require('internal/util/inspect').inspect;
 const assert = require('internal/assert');
 
@@ -54,14 +60,13 @@ const {
 
 const { SocketListSend, SocketListReceive } = SocketList;
 
-// Lazy loaded for startup performance.
-let StringDecoder;
 // Lazy loaded for startup performance and to allow monkey patching of
 // internalBinding('http_parser').HTTPParser.
 let freeParser;
 let HTTPParser;
 
 const MAX_HANDLE_RETRANSMISSIONS = 3;
+const kIsUsedAsStdio = Symbol('kIsUsedAsStdio');
 
 // This object contain function to convert TCP objects to native handle objects
 // and back again.
@@ -86,7 +91,7 @@ const handleConversion = {
     },
 
     got(message, handle, emit) {
-      var server = new net.Server();
+      const server = new net.Server();
       server.listen(handle, () => {
         emit(server);
       });
@@ -103,8 +108,8 @@ const handleConversion = {
         // The worker should keep track of the socket
         message.key = socket.server._connectionKey;
 
-        var firstTime = !this.channel.sockets.send[message.key];
-        var socketList = getSocketList('send', this, message.key);
+        const firstTime = !this.channel.sockets.send[message.key];
+        const socketList = getSocketList('send', this, message.key);
 
         // The server should no longer expose a .connection property
         // and when asked to close it should query the socket status from
@@ -116,7 +121,7 @@ const handleConversion = {
           socket.server._connections--;
       }
 
-      var handle = socket._handle;
+      const handle = socket._handle;
 
       // Remove handle from socket object, it will be closed when the socket
       // will be sent
@@ -161,7 +166,7 @@ const handleConversion = {
     },
 
     got(message, handle, emit) {
-      var socket = new net.Socket({
+      const socket = new net.Socket({
         handle: handle,
         readable: true,
         writable: true
@@ -171,7 +176,7 @@ const handleConversion = {
       if (message.key) {
 
         // Add socket to connections list
-        var socketList = getSocketList('got', this, message.key);
+        const socketList = getSocketList('got', this, message.key);
         socketList.add({
           socket: socket
         });
@@ -203,7 +208,7 @@ const handleConversion = {
     },
 
     got(message, handle, emit) {
-      var socket = new dgram.Socket(message.dgramType);
+      const socket = new dgram.Socket(message.dgramType);
 
       socket.bind(handle, () => {
         emit(socket);
@@ -212,6 +217,21 @@ const handleConversion = {
   }
 };
 
+function stdioStringToArray(stdio, channel) {
+  const options = [];
+
+  switch (stdio) {
+    case 'ignore':
+    case 'pipe': options.push(stdio, stdio, stdio); break;
+    case 'inherit': options.push(0, 1, 2); break;
+    default:
+      throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
+  }
+
+  if (channel) options.push(channel);
+
+  return options;
+}
 
 function ChildProcess() {
   EventEmitter.call(this);
@@ -243,7 +263,7 @@ function ChildProcess() {
     this._handle = null;
 
     if (exitCode < 0) {
-      var syscall = this.spawnfile ? 'spawn ' + this.spawnfile : 'spawn';
+      const syscall = this.spawnfile ? 'spawn ' + this.spawnfile : 'spawn';
       const err = errnoException(exitCode, syscall);
 
       if (this.spawnfile)
@@ -266,7 +286,8 @@ function ChildProcess() {
     maybeClose(this);
   };
 }
-util.inherits(ChildProcess, EventEmitter);
+ObjectSetPrototypeOf(ChildProcess.prototype, EventEmitter.prototype);
+ObjectSetPrototypeOf(ChildProcess, EventEmitter);
 
 
 function flushStdio(subprocess) {
@@ -274,10 +295,16 @@ function flushStdio(subprocess) {
 
   if (stdio == null) return;
 
-  for (var i = 0; i < stdio.length; i++) {
+  for (let i = 0; i < stdio.length; i++) {
     const stream = stdio[i];
-    if (!stream || !stream.readable || stream._readableState.readableListening)
+    // TODO(addaleax): This doesn't necessarily account for all the ways in
+    // which data can be read from a stream, e.g. being consumed on the
+    // native layer directly as a StreamBase.
+    if (!stream || !stream.readable ||
+        stream._readableState.readableListening ||
+        stream[kIsUsedAsStdio]) {
       continue;
+    }
     stream.resume();
   }
 }
@@ -304,47 +331,55 @@ function closePendingHandle(target) {
 
 
 ChildProcess.prototype.spawn = function(options) {
-  var ipc;
-  var ipcFd;
-  var i;
+  let i = 0;
 
   if (options === null || typeof options !== 'object') {
     throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
   }
 
   // If no `stdio` option was given - use default
-  var stdio = options.stdio || 'pipe';
+  let stdio = options.stdio || 'pipe';
 
-  stdio = _validateStdio(stdio, false);
+  stdio = getValidStdio(stdio, false);
 
-  ipc = stdio.ipc;
-  ipcFd = stdio.ipcFd;
+  const ipc = stdio.ipc;
+  const ipcFd = stdio.ipcFd;
   stdio = options.stdio = stdio.stdio;
+
+  if (options.serialization !== undefined &&
+      options.serialization !== 'json' &&
+      options.serialization !== 'advanced') {
+    throw new ERR_INVALID_OPT_VALUE('options.serialization',
+                                    options.serialization);
+  }
+
+  const serialization = options.serialization || 'json';
 
   if (ipc !== undefined) {
     // Let child process know about opened IPC channel
     if (options.envPairs === undefined)
       options.envPairs = [];
-    else if (!Array.isArray(options.envPairs)) {
+    else if (!ArrayIsArray(options.envPairs)) {
       throw new ERR_INVALID_ARG_TYPE('options.envPairs',
                                      'Array',
                                      options.envPairs);
     }
 
-    options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
+    options.envPairs.push(`NODE_CHANNEL_FD=${ipcFd}`);
+    options.envPairs.push(`NODE_CHANNEL_SERIALIZATION_MODE=${serialization}`);
   }
 
   validateString(options.file, 'options.file');
   this.spawnfile = options.file;
 
-  if (Array.isArray(options.args))
+  if (ArrayIsArray(options.args))
     this.spawnargs = options.args;
   else if (options.args === undefined)
     this.spawnargs = [];
   else
     throw new ERR_INVALID_ARG_TYPE('options.args', 'Array', options.args);
 
-  var err = this._handle.spawn(options);
+  const err = this._handle.spawn(options);
 
   // Run-time errors should emit an error, not throw an exception.
   if (err === UV_EACCES ||
@@ -353,12 +388,11 @@ ChildProcess.prototype.spawn = function(options) {
       err === UV_ENFILE ||
       err === UV_ENOENT) {
     process.nextTick(onErrorNT, this, err);
+
     // There is no point in continuing when we've hit EMFILE or ENFILE
     // because we won't be able to set up the stdio file descriptors.
-    // It's kind of silly that the de facto spec for ENOENT (the test suite)
-    // mandates that stdio _is_ set up, even if there is no process on the
-    // receiving end, but it is what it is.
-    if (err !== UV_ENOENT) return err;
+    if (err === UV_EMFILE || err === UV_ENFILE)
+      return err;
   } else if (err) {
     // Close all opened fds on error
     for (i = 0; i < stdio.length; i++) {
@@ -384,12 +418,16 @@ ChildProcess.prototype.spawn = function(options) {
       continue;
     }
 
-    // The stream is already cloned and piped, thus close it.
+    // The stream is already cloned and piped, thus stop its readable side,
+    // otherwise we might attempt to read from the stream when at the same time
+    // the child process does.
     if (stream.type === 'wrap') {
-      stream.handle.close();
-      if (stream._stdio && stream._stdio instanceof EventEmitter) {
-        stream._stdio.emit('close');
-      }
+      stream.handle.reading = false;
+      stream.handle.readStop();
+      stream._stdio.pause();
+      stream._stdio.readableFlowing = false;
+      stream._stdio._readableState.reading = false;
+      stream._stdio[kIsUsedAsStdio] = true;
       continue;
     }
 
@@ -421,7 +459,7 @@ ChildProcess.prototype.spawn = function(options) {
     this.stdio.push(stdio[i].socket === undefined ? null : stdio[i].socket);
 
   // Add .send() method and start listening for IPC data
-  if (ipc !== undefined) setupChannel(this, ipc);
+  if (ipc !== undefined) setupChannel(this, ipc, serialization);
 
   return err;
 };
@@ -438,7 +476,7 @@ ChildProcess.prototype.kill = function(sig) {
     convertToValidSignal(sig === undefined ? 'SIGTERM' : sig);
 
   if (this._handle) {
-    var err = this._handle.kill(signal);
+    const err = this._handle.kill(signal);
     if (err === 0) {
       /* Success. */
       this.killed = true;
@@ -488,11 +526,12 @@ class Control extends EventEmitter {
   }
 }
 
-function setupChannel(target, channel) {
+let serialization;
+function setupChannel(target, channel, serializationMode) {
   target.channel = channel;
 
   // _channel can be deprecated in version 8
-  Object.defineProperty(target, '_channel', {
+  ObjectDefineProperty(target, '_channel', {
     get() { return target.channel; },
     set(val) { target.channel = val; },
     enumerable: true
@@ -503,12 +542,16 @@ function setupChannel(target, channel) {
 
   const control = new Control(channel);
 
-  if (StringDecoder === undefined)
-    StringDecoder = require('string_decoder').StringDecoder;
-  var decoder = new StringDecoder('utf8');
-  var jsonBuffer = '';
-  var pendingHandle = null;
-  channel.buffering = false;
+  if (serialization === undefined)
+    serialization = require('internal/child_process/serialization');
+  const {
+    initMessageChannel,
+    parseChannelMessages,
+    writeChannelMessage
+  } = serialization[serializationMode];
+
+  let pendingHandle = null;
+  initMessageChannel(channel);
   channel.pendingHandle = null;
   channel.onread = function(arrayBuffer) {
     const recvHandle = channel.pendingHandle;
@@ -520,21 +563,7 @@ function setupChannel(target, channel) {
       if (recvHandle)
         pendingHandle = recvHandle;
 
-      // Linebreak is used as a message end sign
-      var chunks = decoder.write(pool).split('\n');
-      var numCompleteChunks = chunks.length - 1;
-      // Last line does not have trailing linebreak
-      var incompleteChunk = chunks[numCompleteChunks];
-      if (numCompleteChunks === 0) {
-        jsonBuffer += incompleteChunk;
-        this.buffering = jsonBuffer.length !== 0;
-        return;
-      }
-      chunks[0] = jsonBuffer + chunks[0];
-
-      for (var i = 0; i < numCompleteChunks; i++) {
-        var message = JSON.parse(chunks[i]);
-
+      for (const message of parseChannelMessages(channel, pool)) {
         // There will be at most one NODE_HANDLE message in every chunk we
         // read because SCM_RIGHTS messages don't get coalesced. Make sure
         // that we deliver the handle with the right message however.
@@ -549,9 +578,6 @@ function setupChannel(target, channel) {
           handleMessage(message, undefined, false);
         }
       }
-      jsonBuffer = incompleteChunk;
-      this.buffering = jsonBuffer.length !== 0;
-
     } else {
       this.buffering = false;
       target.disconnect();
@@ -565,7 +591,7 @@ function setupChannel(target, channel) {
   // Object where socket lists will live
   channel.sockets = { got: {}, send: {} };
 
-  // handlers will go through this
+  // Handlers will go through this
   target.on('internalMessage', function(message, handle) {
     // Once acknowledged - continue sending handles.
     if (message.cmd === 'NODE_HANDLE_ACK' ||
@@ -582,8 +608,8 @@ function setupChannel(target, channel) {
         }
       }
 
-      assert(Array.isArray(target._handleQueue));
-      var queue = target._handleQueue;
+      assert(ArrayIsArray(target._handleQueue));
+      const queue = target._handleQueue;
       target._handleQueue = null;
 
       if (target._pendingMessage) {
@@ -593,8 +619,8 @@ function setupChannel(target, channel) {
                      target._pendingMessage.callback);
       }
 
-      for (var i = 0; i < queue.length; i++) {
-        var args = queue[i];
+      for (let i = 0; i < queue.length; i++) {
+        const args = queue[i];
         target._send(args.message, args.handle, args.options, args.callback);
       }
 
@@ -619,12 +645,11 @@ function setupChannel(target, channel) {
     // a message.
     target._send({ cmd: 'NODE_HANDLE_ACK' }, null, true);
 
-    var obj = handleConversion[message.type];
+    const obj = handleConversion[message.type];
 
     // Update simultaneous accepts on Windows
     if (process.platform === 'win32') {
-      handle._simultaneousAccepts = false;
-      net._setSimultaneousAccepts(handle);
+      handle.setSimultaneousAccepts(false);
     }
 
     // Convert handle object
@@ -683,6 +708,8 @@ function setupChannel(target, channel) {
       options = { swallowErrors: options };
     }
 
+    let obj;
+
     // Package messages with a handle object
     if (handle) {
       // This message will be handled by an internalMessage event handler
@@ -717,7 +744,7 @@ function setupChannel(target, channel) {
         return this._handleQueue.length === 1;
       }
 
-      var obj = handleConversion[message.type];
+      obj = handleConversion[message.type];
 
       // convert TCP object to native handle object
       handle = handleConversion[message.type].send.call(target,
@@ -731,8 +758,8 @@ function setupChannel(target, channel) {
         message = message.msg;
 
       // Update simultaneous accepts on Windows
-      if (obj.simultaneousAccepts) {
-        net._setSimultaneousAccepts(handle);
+      if (obj.simultaneousAccepts && process.platform === 'win32') {
+        handle.setSimultaneousAccepts(true);
       }
     } else if (this._handleQueue &&
                !(message && (message.cmd === 'NODE_HANDLE_ACK' ||
@@ -747,11 +774,10 @@ function setupChannel(target, channel) {
       return this._handleQueue.length === 1;
     }
 
-    var req = new WriteWrap();
+    const req = new WriteWrap();
 
-    var string = JSON.stringify(message) + '\n';
-    var err = channel.writeUtf8String(req, string, handle);
-    var wasAsyncWrite = streamBaseState[kLastWriteWasAsync];
+    const err = writeChannelMessage(channel, req, message, handle);
+    const wasAsyncWrite = streamBaseState[kLastWriteWasAsync];
 
     if (err === 0) {
       if (handle) {
@@ -826,7 +852,7 @@ function setupChannel(target, channel) {
     if (this._pendingMessage)
       closePendingHandle(this);
 
-    var fired = false;
+    let fired = false;
     function finish() {
       if (fired) return;
       fired = true;
@@ -854,7 +880,7 @@ function setupChannel(target, channel) {
     if (!target.channel)
       return;
 
-    var eventName = (internal ? 'internalMessage' : 'message');
+    const eventName = (internal ? 'internalMessage' : 'message');
 
     process.nextTick(emit, eventName, message, handle);
   }
@@ -874,20 +900,14 @@ function isInternal(message) {
 
 function nop() { }
 
-function _validateStdio(stdio, sync) {
-  var ipc;
-  var ipcFd;
+function getValidStdio(stdio, sync) {
+  let ipc;
+  let ipcFd;
 
   // Replace shortcut with an array
   if (typeof stdio === 'string') {
-    switch (stdio) {
-      case 'ignore': stdio = ['ignore', 'ignore', 'ignore']; break;
-      case 'pipe': stdio = ['pipe', 'pipe', 'pipe']; break;
-      case 'inherit': stdio = [0, 1, 2]; break;
-      default:
-        throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
-    }
-  } else if (!Array.isArray(stdio)) {
+    stdio = stdioStringToArray(stdio);
+  } else if (!ArrayIsArray(stdio)) {
     throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
   }
 
@@ -901,7 +921,7 @@ function _validateStdio(stdio, sync) {
   // (i.e. PipeWraps or fds)
   stdio = stdio.reduce((acc, stdio, i) => {
     function cleanup() {
-      for (var i = 0; i < acc.length; i++) {
+      for (let i = 0; i < acc.length; i++) {
         if ((acc[i].type === 'pipe' || acc[i].type === 'ipc') && acc[i].handle)
           acc[i].handle.close();
       }
@@ -914,8 +934,8 @@ function _validateStdio(stdio, sync) {
 
     if (stdio === 'ignore') {
       acc.push({ type: 'ignore' });
-    } else if (stdio === 'pipe' || typeof stdio === 'number' && stdio < 0) {
-      var a = {
+    } else if (stdio === 'pipe' || (typeof stdio === 'number' && stdio < 0)) {
+      const a = {
         type: 'pipe',
         readable: i === 0,
         writable: i !== 0
@@ -955,7 +975,7 @@ function _validateStdio(stdio, sync) {
       });
     } else if (getHandleWrapType(stdio) || getHandleWrapType(stdio.handle) ||
                getHandleWrapType(stdio._handle)) {
-      var handle = getHandleWrapType(stdio) ?
+      const handle = getHandleWrapType(stdio) ?
         stdio :
         getHandleWrapType(stdio.handle) ? stdio.handle : stdio._handle;
 
@@ -984,10 +1004,10 @@ function _validateStdio(stdio, sync) {
 
 
 function getSocketList(type, worker, key) {
-  var sockets = worker.channel.sockets[type];
-  var socketList = sockets[key];
+  const sockets = worker.channel.sockets[type];
+  let socketList = sockets[key];
   if (!socketList) {
-    var Construct = type === 'send' ? SocketListSend : SocketListReceive;
+    const Construct = type === 'send' ? SocketListSend : SocketListReceive;
     socketList = sockets[key] = new Construct(worker, key);
   }
   return socketList;
@@ -1003,11 +1023,11 @@ function maybeClose(subprocess) {
 }
 
 function spawnSync(opts) {
-  var options = opts.options;
-  var result = spawn_sync.spawn(options);
+  const options = opts.options;
+  const result = spawn_sync.spawn(options);
 
   if (result.output && options.encoding && options.encoding !== 'buffer') {
-    for (var i = 0; i < result.output.length; i++) {
+    for (let i = 0; i < result.output.length; i++) {
       if (!result.output[i])
         continue;
       result.output[i] = result.output[i].toString(options.encoding);
@@ -1029,6 +1049,7 @@ function spawnSync(opts) {
 module.exports = {
   ChildProcess,
   setupChannel,
-  _validateStdio,
+  getValidStdio,
+  stdioStringToArray,
   spawnSync
 };

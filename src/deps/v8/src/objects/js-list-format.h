@@ -9,9 +9,13 @@
 #ifndef V8_OBJECTS_JS_LIST_FORMAT_H_
 #define V8_OBJECTS_JS_LIST_FORMAT_H_
 
+#include <set>
+#include <string>
+
+#include "src/execution/isolate.h"
 #include "src/heap/factory.h"
-#include "src/isolate.h"
-#include "src/objects.h"
+#include "src/objects/managed.h"
+#include "src/objects/objects.h"
 #include "unicode/uversion.h"
 
 // Has to be the last include (doesn't have include guards):
@@ -26,18 +30,14 @@ namespace internal {
 
 class JSListFormat : public JSObject {
  public:
-  // Initializes relative time format object with properties derived from input
+  // Creates relative time format object with properties derived from input
   // locales and options.
-  static MaybeHandle<JSListFormat> InitializeListFormat(
-      Isolate* isolate, Handle<JSListFormat> list_format_holder,
-      Handle<Object> locales, Handle<Object> options);
+  static MaybeHandle<JSListFormat> New(Isolate* isolate, Handle<Map> map,
+                                       Handle<Object> locales,
+                                       Handle<Object> options);
 
   static Handle<JSObject> ResolvedOptions(Isolate* isolate,
                                           Handle<JSListFormat> format_holder);
-
-  // Unpacks formatter object from corresponding JavaScript object.
-  static icu::ListFormatter* UnpackFormatter(
-      Isolate* isolate, Handle<JSListFormat> list_format_holder);
 
   // ecma402 #sec-formatlist
   V8_WARN_UNUSED_RESULT static MaybeHandle<String> FormatList(
@@ -49,6 +49,8 @@ class JSListFormat : public JSObject {
       Isolate* isolate, Handle<JSListFormat> format_holder,
       Handle<JSArray> list);
 
+  V8_EXPORT_PRIVATE static const std::set<std::string>& GetAvailableLocales();
+
   Handle<String> StyleAsString() const;
   Handle<String> TypeAsString() const;
 
@@ -56,16 +58,15 @@ class JSListFormat : public JSObject {
 
   // ListFormat accessors.
   DECL_ACCESSORS(locale, String)
-  DECL_ACCESSORS(formatter, Foreign)
+  DECL_ACCESSORS(icu_formatter, Managed<icu::ListFormatter>)
 
   // Style: identifying the relative time format style used.
   //
   // ecma402/#sec-properties-of-intl-listformat-instances
   enum class Style {
-    LONG,    // Everything spelled out.
-    SHORT,   // Abbreviations used when possible.
-    NARROW,  // Use the shortest possible form.
-    COUNT
+    LONG,   // Everything spelled out.
+    SHORT,  // Abbreviations used when possible.
+    NARROW  // Use the shortest possible form.
   };
   inline void set_style(Style style);
   inline Style style() const;
@@ -76,8 +77,7 @@ class JSListFormat : public JSObject {
   enum class Type {
     CONJUNCTION,  // for "and"-based lists (e.g., "A, B and C")
     DISJUNCTION,  // for "or"-based lists (e.g., "A, B or C"),
-    UNIT,  // for lists of values with units (e.g., "5 pounds, 12 ounces").
-    COUNT
+    UNIT  // for lists of values with units (e.g., "5 pounds, 12 ounces").
   };
   inline void set_type(Type type);
   inline Type type() const;
@@ -103,14 +103,10 @@ class JSListFormat : public JSObject {
   DECL_VERIFIER(JSListFormat)
 
   // Layout description.
-  static const int kJSListFormatOffset = JSObject::kHeaderSize;
-  static const int kLocaleOffset = kJSListFormatOffset + kPointerSize;
-  static const int kFormatterOffset = kLocaleOffset + kPointerSize;
-  static const int kFlagsOffset = kFormatterOffset + kPointerSize;
-  static const int kSize = kFlagsOffset + kPointerSize;
+  DEFINE_FIELD_OFFSET_CONSTANTS(JSObject::kHeaderSize,
+                                TORQUE_GENERATED_JSLIST_FORMAT_FIELDS)
 
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(JSListFormat);
+  OBJECT_CONSTRUCTORS(JSListFormat, JSObject);
 };
 
 }  // namespace internal

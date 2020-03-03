@@ -2,9 +2,9 @@
 
 'use strict';
 
-const { internalBinding } = require('internal/test/binding');
 const common = require('../common');
 const fixtures = require('../common/fixtures');
+const { internalBinding } = require('internal/test/binding');
 const assert = require('assert');
 const v8 = require('v8');
 const os = require('os');
@@ -156,8 +156,10 @@ const deserializerTypeError =
 }
 
 {
-  assert.throws(() => v8.serialize(hostObject),
-                /^Error: Unknown host object type: \[object .*\]$/);
+  assert.throws(() => v8.serialize(hostObject), {
+    constructor: Error,
+    message: 'Unserializable host object: JSStream {}'
+  });
 }
 
 {

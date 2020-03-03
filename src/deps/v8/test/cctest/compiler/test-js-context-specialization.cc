@@ -2,18 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "src/codegen/tick-counter.h"
 #include "src/compiler/compiler-source-position-table.h"
 #include "src/compiler/js-context-specialization.h"
 #include "src/compiler/js-graph.h"
+#include "src/compiler/js-heap-broker.h"
 #include "src/compiler/js-operator.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
+#include "src/compiler/simplified-operator.h"
 #include "src/heap/factory.h"
-#include "src/objects-inl.h"
-#include "src/property.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/property.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/function-tester.h"
-#include "test/cctest/compiler/graph-builder-tester.h"
 
 namespace v8 {
 namespace internal {
@@ -30,8 +32,8 @@ class ContextSpecializationTester : public HandleAndZoneScope {
         simplified_(main_zone()),
         jsgraph_(main_isolate(), graph(), common(), &javascript_, &simplified_,
                  &machine_),
-        reducer_(main_zone(), graph()),
-        js_heap_broker_(main_isolate(), main_zone()),
+        reducer_(main_zone(), graph(), &tick_counter_),
+        js_heap_broker_(main_isolate(), main_zone(), FLAG_trace_heap_broker),
         spec_(&reducer_, jsgraph(), &js_heap_broker_, context,
               MaybeHandle<JSFunction>()) {}
 
@@ -50,7 +52,10 @@ class ContextSpecializationTester : public HandleAndZoneScope {
   void CheckContextInputAndDepthChanges(Node* node, Node* expected_new_context,
                                         size_t expected_new_depth);
 
+  JSHeapBroker* broker() { return &js_heap_broker_; }
+
  private:
+  TickCounter tick_counter_;
   CanonicalHandleScope canonical_;
   Graph* graph_;
   CommonOperatorBuilder common_;
@@ -82,7 +87,7 @@ void ContextSpecializationTester::CheckContextInputAndDepthChanges(
   Node* new_context = NodeProperties::GetContextInput(r.replacement());
   CHECK_EQ(IrOpcode::kHeapConstant, new_context->opcode());
   HeapObjectMatcher match(new_context);
-  CHECK_EQ(*match.Value(), *expected_new_context_object);
+  CHECK_EQ(Context::cast(*match.Value()), *expected_new_context_object);
 
   ContextAccess new_access = ContextAccessOf(r.replacement()->op());
   CHECK_EQ(new_access.depth(), expected_new_depth);
@@ -108,11 +113,6 @@ void ContextSpecializationTester::CheckContextInputAndDepthChanges(
 static const int slot_index = Context::NATIVE_CONTEXT_INDEX;
 
 TEST(ReduceJSLoadContext0) {
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
-
   ContextSpecializationTester t(Nothing<OuterContext>());
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
@@ -128,8 +128,9 @@ TEST(ReduceJSLoadContext0) {
   const int slot = Context::NATIVE_CONTEXT_INDEX;
   native->set(slot, *expected);
 
-  Node* const_context = t.jsgraph()->Constant(native);
-  Node* deep_const_context = t.jsgraph()->Constant(subcontext2);
+  Node* const_context = t.jsgraph()->Constant(ObjectRef(t.broker(), native));
+  Node* deep_const_context =
+      t.jsgraph()->Constant(ObjectRef(t.broker(), subcontext2));
   Node* param_context = t.graph()->NewNode(t.common()->Parameter(0), start);
 
   {
@@ -158,7 +159,7 @@ TEST(ReduceJSLoadContext0) {
     Node* new_context_input = NodeProperties::GetContextInput(r.replacement());
     CHECK_EQ(IrOpcode::kHeapConstant, new_context_input->opcode());
     HeapObjectMatcher match(new_context_input);
-    CHECK_EQ(*native, *match.Value());
+    CHECK_EQ(*native, Context::cast(*match.Value()));
     ContextAccess access = ContextAccessOf(r.replacement()->op());
     CHECK_EQ(Context::GLOBAL_EVAL_FUN_INDEX, static_cast<int>(access.index()));
     CHECK_EQ(0, static_cast<int>(access.depth()));
@@ -177,8 +178,6 @@ TEST(ReduceJSLoadContext0) {
     CHECK(match.HasValue());
     CHECK_EQ(*expected, *match.Value());
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(ReduceJSLoadContext1) {
@@ -256,11 +255,6 @@ TEST(ReduceJSLoadContext2) {
   //   context2 <-- context1 <-- context0 (= HeapConstant(context_object1))
   //   context_object1 <~~ context_object0
 
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
-
   ContextSpecializationTester t(Nothing<OuterContext>());
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
@@ -278,7 +272,8 @@ TEST(ReduceJSLoadContext2) {
   context_object0->set(slot_index, *slot_value0);
   context_object1->set(slot_index, *slot_value1);
 
-  Node* context0 = t.jsgraph()->Constant(context_object1);
+  Node* context0 =
+      t.jsgraph()->Constant(ObjectRef(t.broker(), context_object1));
   Node* context1 =
       t.graph()->NewNode(create_function_context, context0, start, start);
   Node* context2 =
@@ -331,8 +326,6 @@ TEST(ReduceJSLoadContext2) {
         t.javascript()->LoadContext(3, slot_index, true), context2, start);
     t.CheckChangesToValue(load, slot_value0);
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(ReduceJSLoadContext3) {
@@ -341,11 +334,6 @@ TEST(ReduceJSLoadContext3) {
   // context for this parameter as the "specialization context".  We choose
   // context_object2 from ReduceJSLoadContext2 for this, so almost all test
   // expectations are the same as in ReduceJSLoadContext2.
-
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
 
   HandleAndZoneScope handle_zone_scope;
   auto factory = handle_zone_scope.main_isolate()->factory();
@@ -421,16 +409,9 @@ TEST(ReduceJSLoadContext3) {
         t.javascript()->LoadContext(3, slot_index, true), context2, start);
     t.CheckChangesToValue(load, slot_value0);
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(ReduceJSStoreContext0) {
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
-
   ContextSpecializationTester t(Nothing<OuterContext>());
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
@@ -446,8 +427,9 @@ TEST(ReduceJSStoreContext0) {
   const int slot = Context::NATIVE_CONTEXT_INDEX;
   native->set(slot, *expected);
 
-  Node* const_context = t.jsgraph()->Constant(native);
-  Node* deep_const_context = t.jsgraph()->Constant(subcontext2);
+  Node* const_context = t.jsgraph()->Constant(ObjectRef(t.broker(), native));
+  Node* deep_const_context =
+      t.jsgraph()->Constant(ObjectRef(t.broker(), subcontext2));
   Node* param_context = t.graph()->NewNode(t.common()->Parameter(0), start);
 
   {
@@ -484,14 +466,12 @@ TEST(ReduceJSStoreContext0) {
     Node* new_context_input = NodeProperties::GetContextInput(r.replacement());
     CHECK_EQ(IrOpcode::kHeapConstant, new_context_input->opcode());
     HeapObjectMatcher match(new_context_input);
-    CHECK_EQ(*native, *match.Value());
+    CHECK_EQ(*native, Context::cast(*match.Value()));
     ContextAccess access = ContextAccessOf(r.replacement()->op());
     CHECK_EQ(Context::GLOBAL_EVAL_FUN_INDEX, static_cast<int>(access.index()));
     CHECK_EQ(0, static_cast<int>(access.depth()));
     CHECK_EQ(false, access.immutable());
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(ReduceJSStoreContext1) {
@@ -539,11 +519,6 @@ TEST(ReduceJSStoreContext1) {
 }
 
 TEST(ReduceJSStoreContext2) {
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
-
   ContextSpecializationTester t(Nothing<OuterContext>());
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
@@ -561,7 +536,8 @@ TEST(ReduceJSStoreContext2) {
   context_object0->set(slot_index, *slot_value0);
   context_object1->set(slot_index, *slot_value1);
 
-  Node* context0 = t.jsgraph()->Constant(context_object1);
+  Node* context0 =
+      t.jsgraph()->Constant(ObjectRef(t.broker(), context_object1));
   Node* context1 =
       t.graph()->NewNode(create_function_context, context0, start, start);
   Node* context2 =
@@ -594,16 +570,9 @@ TEST(ReduceJSStoreContext2) {
                            context2, context2, start, start);
     t.CheckContextInputAndDepthChanges(store, context_object0, 0);
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(ReduceJSStoreContext3) {
-  // TODO(neis): The native context below does not have all the fields
-  // initialized that the heap broker wants to serialize.
-  bool concurrent_compiler_frontend = FLAG_concurrent_compiler_frontend;
-  FLAG_concurrent_compiler_frontend = false;
-
   HandleAndZoneScope handle_zone_scope;
   auto factory = handle_zone_scope.main_isolate()->factory();
 
@@ -658,8 +627,6 @@ TEST(ReduceJSStoreContext3) {
                            context2, context2, start, start);
     t.CheckContextInputAndDepthChanges(store, context_object0, 0);
   }
-
-  FLAG_concurrent_compiler_frontend = concurrent_compiler_frontend;
 }
 
 TEST(SpecializeJSFunction_ToConstant1) {

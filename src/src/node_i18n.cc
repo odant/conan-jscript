@@ -45,7 +45,6 @@
 #if defined(NODE_HAVE_I18N_SUPPORT)
 
 #include "base_object-inl.h"
-#include "env-inl.h"
 #include "node.h"
 #include "node_buffer.h"
 #include "node_errors.h"
@@ -96,6 +95,7 @@ using v8::NewStringType;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::String;
+using v8::Uint8Array;
 using v8::Value;
 
 namespace i18n {
@@ -152,7 +152,7 @@ class ConverterObject : public BaseObject, Converter {
     CONVERTER_FLAGS_IGNORE_BOM = 0x4
   };
 
-  ~ConverterObject() override {}
+  ~ConverterObject() override = default;
 
   static void Has(const FunctionCallbackInfo<Value>& args) {
     Environment* env = Environment::GetCurrent(args);
@@ -206,19 +206,18 @@ class ConverterObject : public BaseObject, Converter {
 
     ConverterObject* converter;
     ASSIGN_OR_RETURN_UNWRAP(&converter, args[0].As<Object>());
-    SPREAD_BUFFER_ARG(args[1], input_obj);
+    ArrayBufferViewContents<char> input(args[1]);
     int flags = args[2]->Uint32Value(env->context()).ToChecked();
 
     UErrorCode status = U_ZERO_ERROR;
     MaybeStackBuffer<UChar> result;
     MaybeLocal<Object> ret;
-    size_t limit = ucnv_getMinCharSize(converter->conv) *
-                   input_obj_length;
+    size_t limit = ucnv_getMinCharSize(converter->conv) * input.length();
     if (limit > 0)
       result.AllocateSufficientStorage(limit);
 
     UBool flush = (flags & CONVERTER_FLAGS_FLUSH) == CONVERTER_FLAGS_FLUSH;
-    OnScopeLeave cleanup([&]() {
+    auto cleanup = OnScopeLeave([&]() {
       if (flush) {
         // Reset the converter state.
         converter->bomSeen_ = false;
@@ -226,16 +225,8 @@ class ConverterObject : public BaseObject, Converter {
       }
     });
 
-    const char* source = input_obj_data;
-    size_t source_length = input_obj_length;
-
-    if (converter->unicode_ && !converter->ignoreBOM_ && !converter->bomSeen_) {
-      int32_t bomOffset = 0;
-      ucnv_detectUnicodeSignature(source, source_length, &bomOffset, &status);
-      source += bomOffset;
-      source_length -= bomOffset;
-      converter->bomSeen_ = true;
-    }
+    const char* source = input.data();
+    size_t source_length = input.length();
 
     UChar* target = *result;
     ucnv_toUnicode(converter->conv,
@@ -244,10 +235,34 @@ class ConverterObject : public BaseObject, Converter {
                    nullptr, flush, &status);
 
     if (U_SUCCESS(status)) {
-      if (limit > 0)
+      bool omit_initial_bom = false;
+      if (limit > 0) {
         result.SetLength(target - &result[0]);
+        if (result.length() > 0 &&
+            converter->unicode_ &&
+            !converter->ignoreBOM_ &&
+            !converter->bomSeen_) {
+          // If the very first result in the stream is a BOM, and we are not
+          // explicitly told to ignore it, then we mark it for discarding.
+          if (result[0] == 0xFEFF) {
+            omit_initial_bom = true;
+          }
+          converter->bomSeen_ = true;
+        }
+      }
       ret = ToBufferEndian(env, &result);
-      args.GetReturnValue().Set(ret.ToLocalChecked());
+      if (omit_initial_bom && !ret.IsEmpty()) {
+        // Peform `ret = ret.slice(2)`.
+        CHECK(ret.ToLocalChecked()->IsUint8Array());
+        Local<Uint8Array> orig_ret = ret.ToLocalChecked().As<Uint8Array>();
+        ret = Buffer::New(env,
+                          orig_ret->Buffer(),
+                          orig_ret->ByteOffset() + 2,
+                          orig_ret->ByteLength() - 2)
+                              .FromMaybe(Local<Uint8Array>());
+      }
+      if (!ret.IsEmpty())
+        args.GetReturnValue().Set(ret.ToLocalChecked());
       return;
     }
 
@@ -456,8 +471,7 @@ void Transcode(const FunctionCallbackInfo<Value>&args) {
   UErrorCode status = U_ZERO_ERROR;
   MaybeLocal<Object> result;
 
-  CHECK(Buffer::HasInstance(args[0]));
-  SPREAD_BUFFER_ARG(args[0], ts_obj);
+  ArrayBufferViewContents<char> input(args[0]);
   const enum encoding fromEncoding = ParseEncoding(isolate, args[1], BUFFER);
   const enum encoding toEncoding = ParseEncoding(isolate, args[2], BUFFER);
 
@@ -491,7 +505,7 @@ void Transcode(const FunctionCallbackInfo<Value>&args) {
     }
 
     result = tfn(env, EncodingName(fromEncoding), EncodingName(toEncoding),
-                 ts_obj_data, ts_obj_length, &status);
+                 input.data(), input.length(), &status);
   } else {
     status = U_ILLEGAL_ARGUMENT_ERROR;
   }
@@ -658,7 +672,7 @@ static void ToUnicode(const FunctionCallbackInfo<Value>& args) {
   int32_t len = ToUnicode(&buf, *val, val.length());
 
   if (len < 0) {
-    return env->ThrowError("Cannot convert name to Unicode");
+    return THROW_ERR_INVALID_ARG_VALUE(env, "Cannot convert name to Unicode");
   }
 
   args.GetReturnValue().Set(
@@ -674,14 +688,14 @@ static void ToASCII(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[0]->IsString());
   Utf8Value val(env->isolate(), args[0]);
   // optional arg
-  bool lenient = args[1]->BooleanValue(env->context()).FromJust();
+  bool lenient = args[1]->BooleanValue(env->isolate());
   enum idna_mode mode = lenient ? IDNA_LENIENT : IDNA_DEFAULT;
 
   MaybeStackBuffer<char> buf;
   int32_t len = ToASCII(&buf, *val, val.length(), mode);
 
   if (len < 0) {
-    return env->ThrowError("Cannot convert name to ASCII");
+    return THROW_ERR_INVALID_ARG_VALUE(env, "Cannot convert name to ASCII");
   }
 
   args.GetReturnValue().Set(

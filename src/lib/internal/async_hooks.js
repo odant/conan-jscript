@@ -1,13 +1,17 @@
 'use strict';
 
 const {
+  Error,
+  FunctionPrototypeBind,
+  NumberIsSafeInteger,
+  ObjectDefineProperty,
+  Symbol,
+} = primordials;
+
+const {
   ERR_ASYNC_TYPE,
   ERR_INVALID_ASYNC_ID
 } = require('internal/errors').codes;
-
-const { getOptionValue } = require('internal/options');
-const shouldAbortOnUncaughtException =
-  getOptionValue('--abort-on-uncaught-exception');
 
 const async_wrap = internalBinding('async_wrap');
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
@@ -71,6 +75,7 @@ const active_hooks = {
 };
 
 const { registerDestroyHook } = async_wrap;
+const { enqueueMicrotask } = internalBinding('task_queue');
 
 // Each constant tracks how many callbacks there are for any given step of
 // async execution. These are tracked so if the user didn't include callbacks
@@ -99,10 +104,13 @@ function fatalError(e) {
     process._rawDebug(e.stack);
   } else {
     const o = { message: e };
+    // eslint-disable-next-line no-restricted-syntax
     Error.captureStackTrace(o, fatalError);
     process._rawDebug(o.stack);
   }
-  if (shouldAbortOnUncaughtException) {
+
+  const { getOptionValue } = require('internal/options');
+  if (getOptionValue('--abort-on-uncaught-exception')) {
     process.abort();
   }
   process.exit(1);
@@ -113,7 +121,7 @@ function validateAsyncId(asyncId, type) {
   // Skip validation when async_hooks is disabled
   if (async_hook_fields[kCheck] <= 0) return;
 
-  if (!Number.isSafeInteger(asyncId) || asyncId < -1) {
+  if (!NumberIsSafeInteger(asyncId) || asyncId < -1) {
     fatalError(new ERR_INVALID_ASYNC_ID(type, asyncId));
   }
 }
@@ -127,6 +135,8 @@ function emitInitNative(asyncId, type, triggerAsyncId, resource) {
   active_hooks.call_depth += 1;
   // Use a single try/catch for all hooks to avoid setting up one per iteration.
   try {
+    // Using var here instead of let because "for (var ...)" is faster than let.
+    // Refs: https://github.com/nodejs/node/pull/30380#issuecomment-552948364
     for (var i = 0; i < active_hooks.array.length; i++) {
       if (typeof active_hooks.array[i][init_symbol] === 'function') {
         active_hooks.array[i][init_symbol](
@@ -150,39 +160,40 @@ function emitInitNative(asyncId, type, triggerAsyncId, resource) {
   }
 }
 
+// Called from native. The asyncId stack handling is taken care of there
+// before this is called.
+function emitHook(symbol, asyncId) {
+  active_hooks.call_depth += 1;
+  // Use a single try/catch for all hook to avoid setting up one per
+  // iteration.
+  try {
+    // Using var here instead of let because "for (var ...)" is faster than let.
+    // Refs: https://github.com/nodejs/node/pull/30380#issuecomment-552948364
+    for (var i = 0; i < active_hooks.array.length; i++) {
+      if (typeof active_hooks.array[i][symbol] === 'function') {
+        active_hooks.array[i][symbol](asyncId);
+      }
+    }
+  } catch (e) {
+    fatalError(e);
+  } finally {
+    active_hooks.call_depth -= 1;
+  }
+
+  // Hooks can only be restored if there have been no recursive hook calls.
+  // Also the active hooks do not need to be restored if enable()/disable()
+  // weren't called during hook execution, in which case
+  // active_hooks.tmp_array will be null.
+  if (active_hooks.call_depth === 0 && active_hooks.tmp_array !== null) {
+    restoreActiveHooks();
+  }
+}
 
 function emitHookFactory(symbol, name) {
-  // Called from native. The asyncId stack handling is taken care of there
-  // before this is called.
-  // eslint-disable-next-line func-style
-  const fn = function(asyncId) {
-    active_hooks.call_depth += 1;
-    // Use a single try/catch for all hook to avoid setting up one per
-    // iteration.
-    try {
-      for (var i = 0; i < active_hooks.array.length; i++) {
-        if (typeof active_hooks.array[i][symbol] === 'function') {
-          active_hooks.array[i][symbol](asyncId);
-        }
-      }
-    } catch (e) {
-      fatalError(e);
-    } finally {
-      active_hooks.call_depth -= 1;
-    }
+  const fn = FunctionPrototypeBind(emitHook, undefined, symbol);
 
-    // Hooks can only be restored if there have been no recursive hook calls.
-    // Also the active hooks do not need to be restored if enable()/disable()
-    // weren't called during hook execution, in which case
-    // active_hooks.tmp_array will be null.
-    if (active_hooks.call_depth === 0 && active_hooks.tmp_array !== null) {
-      restoreActiveHooks();
-    }
-  };
-
-  // Set the name property of the anonymous function as it looks good in the
-  // stack trace.
-  Object.defineProperty(fn, 'name', {
+  // Set the name property of the function as it looks good in the stack trace.
+  ObjectDefineProperty(fn, 'name', {
     value: name
   });
   return fn;
@@ -231,14 +242,26 @@ function restoreActiveHooks() {
 }
 
 
+let wantPromiseHook = false;
 function enableHooks() {
-  enablePromiseHook();
   async_hook_fields[kCheck] += 1;
+
+  wantPromiseHook = true;
+  enablePromiseHook();
 }
 
 function disableHooks() {
-  disablePromiseHook();
   async_hook_fields[kCheck] -= 1;
+
+  wantPromiseHook = false;
+  // Delay the call to `disablePromiseHook()` because we might currently be
+  // between the `before` and `after` calls of a Promise.
+  enqueueMicrotask(disablePromiseHookIfNecessary);
+}
+
+function disablePromiseHookIfNecessary() {
+  if (!wantPromiseHook)
+    disablePromiseHook();
 }
 
 // Internal Embedder API //
@@ -263,10 +286,10 @@ function getOrSetAsyncId(object) {
 // the user to safeguard this call and make sure it's zero'd out when the
 // constructor is complete.
 function getDefaultTriggerAsyncId() {
-  let defaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
+  const defaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
   // If defaultTriggerAsyncId isn't set, use the executionAsyncId
   if (defaultTriggerAsyncId < 0)
-    defaultTriggerAsyncId = async_id_fields[kExecutionAsyncId];
+    return async_id_fields[kExecutionAsyncId];
   return defaultTriggerAsyncId;
 }
 
@@ -278,20 +301,17 @@ function clearDefaultTriggerAsyncId() {
 
 function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
   if (triggerAsyncId === undefined)
-    return Reflect.apply(block, null, args);
-  // CHECK(Number.isSafeInteger(triggerAsyncId))
+    return block(...args);
+  // CHECK(NumberIsSafeInteger(triggerAsyncId))
   // CHECK(triggerAsyncId > 0)
   const oldDefaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
   async_id_fields[kDefaultTriggerAsyncId] = triggerAsyncId;
 
-  let ret;
   try {
-    ret = Reflect.apply(block, null, args);
+    return block(...args);
   } finally {
     async_id_fields[kDefaultTriggerAsyncId] = oldDefaultTriggerAsyncId;
   }
-
-  return ret;
 }
 
 
@@ -395,8 +415,8 @@ function pushAsyncIds(asyncId, triggerAsyncId) {
 
 // This is the equivalent of the native pop_async_ids() call.
 function popAsyncIds(asyncId) {
-  if (async_hook_fields[kStackLength] === 0) return false;
   const stackLength = async_hook_fields[kStackLength];
+  if (stackLength === 0) return false;
 
   if (async_hook_fields[kCheck] > 0 &&
       async_id_fields[kExecutionAsyncId] !== asyncId) {

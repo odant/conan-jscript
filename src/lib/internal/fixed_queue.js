@@ -1,5 +1,9 @@
 'use strict';
 
+const {
+  Array,
+} = primordials;
+
 // Currently optimal queue size, tested on V8 6.0 - 6.6. Must be power of two.
 const kSize = 2048;
 const kMask = kSize - 1;
@@ -102,7 +106,7 @@ module.exports = class FixedQueue {
   }
 
   shift() {
-    const { tail } = this;
+    const tail = this.tail;
     const next = tail.shift();
     if (tail.isEmpty() && tail.next !== null) {
       // If there is another queue, it forms the new tail.

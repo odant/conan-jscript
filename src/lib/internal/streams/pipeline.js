@@ -3,6 +3,10 @@
 
 'use strict';
 
+const {
+  ArrayIsArray,
+} = primordials;
+
 let eos;
 
 const { once } = require('internal/util');
@@ -58,14 +62,14 @@ function popCallback(streams) {
   // a single stream. Therefore optimize for the average case instead of
   // checking for length === 0 as well.
   if (typeof streams[streams.length - 1] !== 'function')
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(streams[streams.length - 1]);
   return streams.pop();
 }
 
 function pipeline(...streams) {
   const callback = popCallback(streams);
 
-  if (Array.isArray(streams[0])) streams = streams[0];
+  if (ArrayIsArray(streams[0])) streams = streams[0];
 
   if (streams.length < 2) {
     throw new ERR_MISSING_ARGS('streams');

@@ -4,17 +4,18 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "async_wrap.h"
-#include "env.h"
 #include "util.h"
 #include "v8.h"
 
 namespace node {
 
+class Environment;
+
 class ReqWrapBase {
  public:
   explicit inline ReqWrapBase(Environment* env);
 
-  virtual ~ReqWrapBase() {}
+  virtual ~ReqWrapBase() = default;
 
   virtual void Cancel() = 0;
   virtual AsyncWrap* GetAsyncWrap() = 0;
@@ -49,9 +50,10 @@ class ReqWrap : public AsyncWrap, public ReqWrapBase {
 
  private:
   friend int GenDebugSymbols();
-  template <typename ReqT, typename U>
-  friend struct MakeLibuvRequestCallback;
 
+  // Adding `friend struct MakeLibuvRequestCallback` is not enough anymore
+  // for some reason. Consider this private.
+ public:
   typedef void (*callback_t)();
   callback_t original_callback_ = nullptr;
 

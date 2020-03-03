@@ -21,9 +21,15 @@
 
 'use strict';
 
+const {
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+} = primordials;
+
 const cares = internalBinding('cares_wrap');
 const { toASCII } = require('internal/idna');
-const { isIP, isIPv4, isLegalPort } = require('internal/net');
+const { isIP, isLegalPort } = require('internal/net');
 const { customPromisifyArgs } = require('internal/util');
 const errors = require('internal/errors');
 const {
@@ -60,7 +66,7 @@ function onlookup(err, addresses) {
   if (this.family) {
     this.callback(null, addresses[0], this.family);
   } else {
-    this.callback(null, addresses[0], isIPv4(addresses[0]) ? 4 : 6);
+    this.callback(null, addresses[0], isIP(addresses[0]));
   }
 }
 
@@ -70,12 +76,12 @@ function onlookupall(err, addresses) {
     return this.callback(dnsException(err, 'getaddrinfo', this.hostname));
   }
 
-  var family = this.family;
-  for (var i = 0; i < addresses.length; i++) {
+  const family = this.family;
+  for (let i = 0; i < addresses.length; i++) {
     const addr = addresses[i];
     addresses[i] = {
       address: addr,
-      family: family || (isIPv4(addr) ? 4 : 6)
+      family: family || isIP(addr)
     };
   }
 
@@ -86,10 +92,10 @@ function onlookupall(err, addresses) {
 // Easy DNS A/AAAA look up
 // lookup(hostname, [options,] callback)
 function lookup(hostname, options, callback) {
-  var hints = 0;
-  var family = -1;
-  var all = false;
-  var verbatim = false;
+  let hints = 0;
+  let family = -1;
+  let all = false;
+  let verbatim = false;
 
   // Parse arguments
   if (hostname && typeof hostname !== 'string') {
@@ -98,7 +104,7 @@ function lookup(hostname, options, callback) {
     callback = options;
     family = 0;
   } else if (typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(callback);
   } else if (options !== null && typeof options === 'object') {
     hints = options.hints >>> 0;
     family = options.family >>> 0;
@@ -123,7 +129,7 @@ function lookup(hostname, options, callback) {
     return {};
   }
 
-  var matchedFamily = isIP(hostname);
+  const matchedFamily = isIP(hostname);
   if (matchedFamily) {
     if (all) {
       process.nextTick(
@@ -134,13 +140,15 @@ function lookup(hostname, options, callback) {
     return {};
   }
 
-  var req = new GetAddrInfoReqWrap();
+  const req = new GetAddrInfoReqWrap();
   req.callback = callback;
   req.family = family;
   req.hostname = hostname;
   req.oncomplete = all ? onlookupall : onlookup;
 
-  var err = cares.getaddrinfo(req, toASCII(hostname), family, hints, verbatim);
+  const err = cares.getaddrinfo(
+    req, toASCII(hostname), family, hints, verbatim
+  );
   if (err) {
     process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
     return {};
@@ -148,8 +156,8 @@ function lookup(hostname, options, callback) {
   return req;
 }
 
-Object.defineProperty(lookup, customPromisifyArgs,
-                      { value: ['address', 'family'], enumerable: false });
+ObjectDefineProperty(lookup, customPromisifyArgs,
+                     { value: ['address', 'family'], enumerable: false });
 
 
 function onlookupservice(err, hostname, service) {
@@ -160,35 +168,34 @@ function onlookupservice(err, hostname, service) {
 }
 
 
-// lookupService(address, port, callback)
-function lookupService(hostname, port, callback) {
+function lookupService(address, port, callback) {
   if (arguments.length !== 3)
-    throw new ERR_MISSING_ARGS('hostname', 'port', 'callback');
+    throw new ERR_MISSING_ARGS('address', 'port', 'callback');
 
-  if (isIP(hostname) === 0)
-    throw new ERR_INVALID_OPT_VALUE('hostname', hostname);
+  if (isIP(address) === 0)
+    throw new ERR_INVALID_OPT_VALUE('address', address);
 
   if (!isLegalPort(port))
     throw new ERR_SOCKET_BAD_PORT(port);
 
   if (typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(callback);
 
   port = +port;
 
-  var req = new GetNameInfoReqWrap();
+  const req = new GetNameInfoReqWrap();
   req.callback = callback;
-  req.hostname = hostname;
+  req.hostname = address;
   req.port = port;
   req.oncomplete = onlookupservice;
 
-  var err = cares.getnameinfo(req, hostname, port);
-  if (err) throw dnsException(err, 'getnameinfo', hostname);
+  const err = cares.getnameinfo(req, address, port);
+  if (err) throw dnsException(err, 'getnameinfo', address);
   return req;
 }
 
-Object.defineProperty(lookupService, customPromisifyArgs,
-                      { value: ['hostname', 'service'], enumerable: false });
+ObjectDefineProperty(lookupService, customPromisifyArgs,
+                     { value: ['hostname', 'service'], enumerable: false });
 
 
 function onresolve(err, result, ttls) {
@@ -203,7 +210,7 @@ function onresolve(err, result, ttls) {
 
 function resolver(bindingName) {
   function query(name, /* options, */ callback) {
-    var options;
+    let options;
     if (arguments.length > 2) {
       options = callback;
       callback = arguments[2];
@@ -211,24 +218,24 @@ function resolver(bindingName) {
 
     validateString(name, 'name');
     if (typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK();
+      throw new ERR_INVALID_CALLBACK(callback);
     }
 
-    var req = new QueryReqWrap();
+    const req = new QueryReqWrap();
     req.bindingName = bindingName;
     req.callback = callback;
     req.hostname = name;
     req.oncomplete = onresolve;
     req.ttl = !!(options && options.ttl);
-    var err = this._handle[bindingName](req, toASCII(name));
+    const err = this._handle[bindingName](req, toASCII(name));
     if (err) throw dnsException(err, bindingName, name);
     return req;
   }
-  Object.defineProperty(query, 'name', { value: bindingName });
+  ObjectDefineProperty(query, 'name', { value: bindingName });
   return query;
 }
 
-var resolveMap = Object.create(null);
+const resolveMap = ObjectCreate(null);
 Resolver.prototype.resolveAny = resolveMap.ANY = resolver('queryAny');
 Resolver.prototype.resolve4 = resolveMap.A = resolver('queryA');
 Resolver.prototype.resolve6 = resolveMap.AAAA = resolver('queryAaaa');
@@ -245,7 +252,7 @@ Resolver.prototype.reverse = resolver('getHostByAddr');
 Resolver.prototype.resolve = resolve;
 
 function resolve(hostname, rrtype, callback) {
-  var resolver;
+  let resolver;
   if (typeof rrtype === 'string') {
     resolver = resolveMap[rrtype];
   } else if (typeof rrtype === 'function') {
@@ -313,16 +320,14 @@ module.exports = {
 
 bindDefaultResolver(module.exports, getDefaultResolver());
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   promises: {
     configurable: true,
-    enumerable: false,
+    enumerable: true,
     get() {
       if (promises === null) {
         promises = require('internal/dns/promises');
         promises.setServers = defaultResolverSetServers;
-        process.emitWarning('The dns.promises API is experimental',
-                            'ExperimentalWarning');
       }
       return promises;
     }

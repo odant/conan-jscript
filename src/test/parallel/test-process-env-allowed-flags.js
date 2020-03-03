@@ -1,7 +1,7 @@
 'use strict';
 
-const assert = require('assert');
 require('../common');
+const assert = require('assert');
 
 // Assert legit flags are allowed, and bogus flags are disallowed
 {
@@ -51,7 +51,8 @@ require('../common');
 // Assert all "canonical" flags begin with dash(es)
 {
   process.allowedNodeEnvironmentFlags.forEach((flag) => {
-    assert(/^--?[a-z8_-]+$/.test(flag), `Unexpected format for flag ${flag}`);
+    assert(/^--?[a-z0-9._-]+$/.test(flag),
+           `Unexpected format for flag ${flag}`);
   });
 }
 

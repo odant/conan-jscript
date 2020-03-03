@@ -21,7 +21,8 @@ server.on('stream', common.mustCall((stream) => {
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
       message:
-        'The "msecs" argument must be of type number. Received type string'
+        'The "msecs" argument must be of type number. Received type string' +
+        " ('100')"
     }
   );
   common.expectsError(
@@ -29,7 +30,7 @@ server.on('stream', common.mustCall((stream) => {
     {
       code: 'ERR_INVALID_CALLBACK',
       type: TypeError,
-      message: 'Callback must be a function'
+      message: 'Callback must be a function. Received Symbol(test)'
     }
   );
   common.expectsError(
@@ -37,7 +38,7 @@ server.on('stream', common.mustCall((stream) => {
     {
       code: 'ERR_INVALID_CALLBACK',
       type: TypeError,
-      message: 'Callback must be a function'
+      message: 'Callback must be a function. Received {}'
     }
   );
 }));

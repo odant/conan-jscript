@@ -5,7 +5,6 @@
 
 #include "node.h"
 #include "node_perf_common.h"
-#include "env.h"
 #include "base_object-inl.h"
 #include "histogram-inl.h"
 
@@ -15,6 +14,9 @@
 #include <string>
 
 namespace node {
+
+class Environment;
+
 namespace performance {
 
 using v8::FunctionCallbackInfo;
@@ -24,8 +26,6 @@ using v8::Object;
 using v8::Value;
 
 extern const uint64_t timeOrigin;
-
-double GetCurrentTimeInMicroseconds();
 
 static inline const char* GetPerformanceMilestoneName(
     enum PerformanceMilestone milestone) {
@@ -73,7 +73,7 @@ class PerformanceEntry {
                                        startTime_(startTime),
                                        endTime_(endTime) { }
 
-  virtual ~PerformanceEntry() { }
+  virtual ~PerformanceEntry() = default;
 
   virtual v8::MaybeLocal<Object> ToObject() const;
 
@@ -125,13 +125,11 @@ class GCPerformanceEntry : public PerformanceEntry {
   PerformanceGCKind gckind_;
 };
 
-class ELDHistogram : public BaseObject, public Histogram {
+class ELDHistogram : public HandleWrap, public Histogram {
  public:
   ELDHistogram(Environment* env,
                Local<Object> wrap,
                int32_t resolution);
-
-  ~ELDHistogram() override;
 
   bool RecordDelta();
   bool Enable();
@@ -151,13 +149,13 @@ class ELDHistogram : public BaseObject, public Histogram {
   SET_SELF_SIZE(ELDHistogram)
 
  private:
-  void CloseTimer();
+  static void DelayIntervalCallback(uv_timer_t* req);
 
   bool enabled_ = false;
   int32_t resolution_ = 0;
   int64_t exceeds_ = 0;
   uint64_t prev_ = 0;
-  uv_timer_t* timer_;
+  uv_timer_t timer_;
 };
 
 }  // namespace performance

@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/assembler-inl.h"
-#include "src/code-stub-assembler.h"
+#include "src/codegen/assembler-inl.h"
+#include "src/codegen/code-stub-assembler.h"
+#include "src/codegen/macro-assembler.h"
 
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/code-assembler-tester.h"
@@ -26,7 +27,8 @@ Handle<Code> BuildCallee(Isolate* isolate, CallDescriptor* call_descriptor) {
   int param_count = static_cast<int>(call_descriptor->StackParameterCount());
   Node* sum = __ IntPtrConstant(0);
   for (int i = 0; i < param_count; ++i) {
-    Node* product = __ IntPtrMul(__ Parameter(i), __ IntPtrConstant(i + 1));
+    TNode<IntPtrT> product =
+        __ Signed(__ IntPtrMul(__ Parameter(i), __ IntPtrConstant(i + 1)));
     sum = __ IntPtrAdd(sum, product);
   }
   __ Return(sum);

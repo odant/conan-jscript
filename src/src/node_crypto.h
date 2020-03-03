@@ -24,34 +24,21 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "node.h"
 // ClientHelloParser
 #include "node_crypto_clienthello.h"
 
-#include "node_buffer.h"
-
 #include "env.h"
-#include "async_wrap-inl.h"
-#include "base_object-inl.h"
+#include "base_object.h"
+#include "util.h"
 
 #include "v8.h"
 
-#include <openssl/ssl.h>
-#include <openssl/ec.h>
-#include <openssl/ecdh.h>
-#ifndef OPENSSL_NO_ENGINE
-# include <openssl/engine.h>
-#endif  // !OPENSSL_NO_ENGINE
 #include <openssl/err.h>
-#include <openssl/evp.h>
-// TODO(shigeki) Remove this after upgrading to 1.1.1
-#include <openssl/obj_mac.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/pkcs12.h>
+#include <openssl/ssl.h>
+#include <openssl/bn.h>
+#include <openssl/dh.h>
+#include <openssl/ec.h>
+#include <openssl/rsa.h>
 
 namespace node {
 namespace crypto {
@@ -89,6 +76,7 @@ using ECGroupPointer = DeleteFnPtr<EC_GROUP, EC_GROUP_free>;
 using ECPointPointer = DeleteFnPtr<EC_POINT, EC_POINT_free>;
 using ECKeyPointer = DeleteFnPtr<EC_KEY, EC_KEY_free>;
 using DHPointer = DeleteFnPtr<DH, DH_free>;
+using ECDSASigPointer = DeleteFnPtr<ECDSA_SIG, ECDSA_SIG_free>;
 
 extern int VerifyCallback(int preverify_ok, X509_STORE_CTX* ctx);
 
@@ -114,6 +102,7 @@ class SecureContext : public BaseObject {
   X509Pointer issuer_;
 #ifndef OPENSSL_NO_ENGINE
   bool client_cert_engine_provided_ = false;
+  std::unique_ptr<ENGINE, std::function<void(ENGINE*)>> private_key_engine_;
 #endif  // !OPENSSL_NO_ENGINE
 
   static const int kMaxSessionSize = 10 * 1024;
@@ -125,29 +114,27 @@ class SecureContext : public BaseObject {
   static const int kTicketKeyNameIndex = 3;
   static const int kTicketKeyIVIndex = 4;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   unsigned char ticket_key_name_[16];
   unsigned char ticket_key_aes_[16];
   unsigned char ticket_key_hmac_[16];
-#endif
 
  protected:
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  static const int64_t kExternalSize = sizeof(SSL_CTX);
-#else
-  // OpenSSL 1.1.0 has opaque structures. This is an estimate based on the size
-  // as of OpenSSL 1.1.0f.
-  static const int64_t kExternalSize = 872;
-#endif
+  // OpenSSL structures are opaque. This is sizeof(SSL_CTX) for OpenSSL 1.1.1b:
+  static const int64_t kExternalSize = 1024;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Init(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetKey(const v8::FunctionCallbackInfo<v8::Value>& args);
+#ifndef OPENSSL_NO_ENGINE
+  static void SetEngineKey(const v8::FunctionCallbackInfo<v8::Value>& args);
+#endif  // !OPENSSL_NO_ENGINE
   static void SetCert(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void AddCACert(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void AddCRL(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void AddRootCerts(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SetCipherSuites(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetCiphers(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SetSigalgs(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetECDHCurve(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetDHParam(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetOptions(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -155,6 +142,10 @@ class SecureContext : public BaseObject {
       const v8::FunctionCallbackInfo<v8::Value>& args);
   static void SetSessionTimeout(
       const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SetMinProto(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SetMaxProto(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void GetMinProto(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void GetMaxProto(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Close(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void LoadPKCS12(const v8::FunctionCallbackInfo<v8::Value>& args);
 #ifndef OPENSSL_NO_ENGINE
@@ -179,14 +170,12 @@ class SecureContext : public BaseObject {
                                HMAC_CTX* hctx,
                                int enc);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   static int TicketCompatibilityCallback(SSL* ssl,
                                          unsigned char* name,
                                          unsigned char* iv,
                                          EVP_CIPHER_CTX* ectx,
                                          HMAC_CTX* hctx,
                                          int enc);
-#endif
 
   SecureContext(Environment* env, v8::Local<v8::Object> wrap)
       : BaseObject(env, wrap) {
@@ -241,33 +230,22 @@ class SSLWrap {
  protected:
   typedef void (*CertCb)(void* arg);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  // Size allocated by OpenSSL: one for SSL structure, one for SSL3_STATE and
-  // some for buffers.
+  // OpenSSL structures are opaque. Estimate SSL memory size for OpenSSL 1.1.1b:
+  //   SSL: 6224
+  //   SSL->SSL3_STATE: 1040
+  //   ...some buffers: 42 * 1024
   // NOTE: Actually it is much more than this
-  static const int64_t kExternalSize =
-      sizeof(SSL) + sizeof(SSL3_STATE) + 42 * 1024;
-#else
-  // OpenSSL 1.1.0 has opaque structures. This is an estimate based on the size
-  // as of OpenSSL 1.1.0f.
-  static const int64_t kExternalSize = 4448 + 1024 + 42 * 1024;
-#endif
+  static const int64_t kExternalSize = 6224 + 1040 + 42 * 1024;
 
   static void ConfigureSecureContext(SecureContext* sc);
   static void AddMethods(Environment* env, v8::Local<v8::FunctionTemplate> t);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  static SSL_SESSION* GetSessionCallback(SSL* s,
-                                         unsigned char* key,
-                                         int len,
-                                         int* copy);
-#else
   static SSL_SESSION* GetSessionCallback(SSL* s,
                                          const unsigned char* key,
                                          int len,
                                          int* copy);
-#endif
   static int NewSessionCallback(SSL* s, SSL_SESSION* sess);
+  static void KeylogCallback(const SSL* s, const char* line);
   static void OnClientHello(void* arg,
                             const ClientHelloParser::ClientHello& hello);
 
@@ -281,7 +259,8 @@ class SSLWrap {
   static void LoadSession(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void IsSessionReused(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void VerifyError(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void GetCurrentCipher(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void GetCipher(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void GetSharedSigalgs(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void EndParser(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void CertCbDone(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Renegotiate(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -333,8 +312,8 @@ class SSLWrap {
 
   ClientHelloParser hello_parser_;
 
-  Persistent<v8::ArrayBufferView> ocsp_response_;
-  Persistent<v8::Value> sni_context_;
+  v8::Global<v8::ArrayBufferView> ocsp_response_;
+  v8::Global<v8::Value> sni_context_;
 
   friend class SecureContext;
 };
@@ -351,6 +330,13 @@ class ByteSource {
 
   const char* get() const;
   size_t size() const;
+
+  inline operator bool() const {
+    return data_ != nullptr;
+  }
+
+  static ByteSource Allocated(char* data, size_t size);
+  static ByteSource Foreign(const char* data, size_t size);
 
   static ByteSource FromStringOrBuffer(Environment* env,
                                        v8::Local<v8::Value> value);
@@ -376,9 +362,6 @@ class ByteSource {
   size_t size_ = 0;
 
   ByteSource(const char* data, char* allocated_data, size_t size);
-
-  static ByteSource Allocated(char* data, size_t size);
-  static ByteSource Foreign(const char* data, size_t size);
 };
 
 enum PKEncodingType {
@@ -465,7 +448,7 @@ class KeyObject : public BaseObject {
 
   static void GetAsymmetricKeyType(
       const v8::FunctionCallbackInfo<v8::Value>& args);
-  v8::Local<v8::String> GetAsymmetricKeyType() const;
+  v8::Local<v8::Value> GetAsymmetricKeyType() const;
 
   static void GetSymmetricKeySize(
       const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -617,7 +600,7 @@ class Hash : public BaseObject {
   SET_MEMORY_INFO_NAME(Hash)
   SET_SELF_SIZE(Hash)
 
-  bool HashInit(const char* hash_type);
+  bool HashInit(const EVP_MD* md, v8::Maybe<unsigned int> xof_md_len);
   bool HashUpdate(const char* data, int len);
 
  protected:
@@ -627,12 +610,22 @@ class Hash : public BaseObject {
 
   Hash(Environment* env, v8::Local<v8::Object> wrap)
       : BaseObject(env, wrap),
-        mdctx_(nullptr) {
+        mdctx_(nullptr),
+        has_md_(false),
+        md_value_(nullptr) {
     MakeWeak();
+  }
+
+  ~Hash() override {
+    if (md_value_ != nullptr)
+      OPENSSL_clear_free(md_value_, md_len_);
   }
 
  private:
   EVPMDPointer mdctx_;
+  bool has_md_;
+  unsigned int md_len_;
+  unsigned char* md_value_;
 };
 
 class SignBase : public BaseObject {
@@ -644,7 +637,8 @@ class SignBase : public BaseObject {
     kSignNotInitialised,
     kSignUpdate,
     kSignPrivateKey,
-    kSignPublicKey
+    kSignPublicKey,
+    kSignMalformedSignature
   } Error;
 
   SignBase(Environment* env, v8::Local<v8::Object> wrap)
@@ -665,6 +659,10 @@ class SignBase : public BaseObject {
   EVPMDPointer mdctx_;
 };
 
+enum DSASigEnc {
+  kSigEncDER, kSigEncP1363
+};
+
 class Sign : public SignBase {
  public:
   static void Initialize(Environment* env, v8::Local<v8::Object> target);
@@ -682,7 +680,8 @@ class Sign : public SignBase {
   SignResult SignFinal(
       const ManagedEVPPKey& pkey,
       int padding,
-      int saltlen);
+      const v8::Maybe<int>& saltlen,
+      DSASigEnc dsa_sig_enc);
 
  protected:
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -703,7 +702,7 @@ class Verify : public SignBase {
                     const char* sig,
                     int siglen,
                     int padding,
-                    int saltlen,
+                    const v8::Maybe<int>& saltlen,
                     bool* verify_result);
 
  protected:
@@ -735,6 +734,9 @@ class PublicKeyCipher {
   static bool Cipher(Environment* env,
                      const ManagedEVPPKey& pkey,
                      int padding,
+                     const EVP_MD* digest,
+                     const void* oaep_label,
+                     size_t oaep_label_size,
                      const unsigned char* data,
                      int len,
                      AllocatedBuffer* out);

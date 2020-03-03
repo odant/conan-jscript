@@ -1,4 +1,4 @@
-// throughput benchmark
+// Throughput benchmark
 // creates a single hasher, then pushes a bunch of data through it
 'use strict';
 const common = require('../common.js');
@@ -19,8 +19,8 @@ function main({ api, type, len, algo, writes }) {
     api = 'legacy';
   }
 
-  var message;
-  var encoding;
+  let message;
+  let encoding;
   switch (type) {
     case 'asc':
       message = 'a'.repeat(len);

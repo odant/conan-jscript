@@ -24,6 +24,16 @@
 
 'use strict';
 
+const {
+  Map,
+  MathMax,
+  NumberIsSafeInteger,
+  ObjectCreate,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  Promise,
+} = primordials;
+
 const { fs: constants } = internalBinding('constants');
 const {
   S_IFIFO,
@@ -43,13 +53,15 @@ const pathModule = require('path');
 const { isArrayBufferView } = require('internal/util/types');
 const binding = internalBinding('fs');
 const { Buffer, kMaxLength } = require('buffer');
-const errors = require('internal/errors');
 const {
-  ERR_FS_FILE_TOO_LARGE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_CALLBACK
-} = errors.codes;
+  codes: {
+    ERR_FS_FILE_TOO_LARGE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_CALLBACK
+  },
+  uvException
+} = require('internal/errors');
 
 const { FSReqCallback, statValues } = binding;
 const { toPathIfFileURL } = require('internal/url');
@@ -59,6 +71,8 @@ const {
   Dirent,
   getDirents,
   getOptions,
+  getValidatedPath,
+  handleErrorFromBinding,
   nullCheck,
   preprocessSymlinkDestination,
   Stats,
@@ -67,18 +81,26 @@ const {
   stringToFlags,
   stringToSymlinkType,
   toUnixTimestamp,
-  validateBuffer,
+  validateBufferArray,
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
-  validatePath
+  validatePath,
+  validateRmdirOptions,
+  warnOnNonPortableTemplate
 } = require('internal/fs/utils');
+const {
+  Dir,
+  opendir,
+  opendirSync
+} = require('internal/fs/dir');
 const {
   CHAR_FORWARD_SLASH,
   CHAR_BACKWARD_SLASH,
 } = require('internal/constants');
 const {
   isUint32,
-  validateMode,
+  parseMode,
+  validateBuffer,
   validateInteger,
   validateInt32,
   validateUint32
@@ -93,6 +115,8 @@ let watchers;
 let ReadFileContext;
 let ReadStream;
 let WriteStream;
+let rimraf;
+let rimrafSync;
 
 // These have to be separate because of how graceful-fs happens to do it's
 // monkeypatching.
@@ -112,25 +136,11 @@ function showTruncateDeprecation() {
   }
 }
 
-function handleErrorFromBinding(ctx) {
-  if (ctx.errno !== undefined) {  // libuv error numbers
-    const err = errors.uvException(ctx);
-    Error.captureStackTrace(err, handleErrorFromBinding);
-    throw err;
-  } else if (ctx.error !== undefined) {  // errors created in C++ land.
-    // TODO(joyeecheung): currently, ctx.error are encoding errors
-    // usually caused by memory problems. We need to figure out proper error
-    // code(s) for this.
-    Error.captureStackTrace(ctx.error, handleErrorFromBinding);
-    throw ctx.error;
-  }
-}
-
 function maybeCallback(cb) {
   if (typeof cb === 'function')
     return cb;
 
-  throw new ERR_INVALID_CALLBACK();
+  throw new ERR_INVALID_CALLBACK(cb);
 }
 
 // Ensure that callbacks run in the global context. Only use this function
@@ -138,12 +148,10 @@ function maybeCallback(cb) {
 // invoked from JS already run in the proper scope.
 function makeCallback(cb) {
   if (typeof cb !== 'function') {
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(cb);
   }
 
-  return (...args) => {
-    return Reflect.apply(cb, undefined, args);
-  };
+  return (...args) => cb(...args);
 }
 
 // Special case of `makeCallback()` that is specific to async `*stat()` calls as
@@ -151,7 +159,7 @@ function makeCallback(cb) {
 // transformed anyway.
 function makeStatsCallback(cb) {
   if (typeof cb !== 'function') {
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(cb);
   }
 
   return (err, stats) => {
@@ -174,8 +182,7 @@ function access(path, mode, callback) {
     mode = F_OK;
   }
 
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
 
   mode = mode | 0;
   const req = new FSReqCallback();
@@ -184,8 +191,7 @@ function access(path, mode, callback) {
 }
 
 function accessSync(path, mode) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
 
   if (mode === undefined)
     mode = F_OK;
@@ -211,7 +217,7 @@ function exists(path, callback) {
   }
 }
 
-Object.defineProperty(exists, internalUtil.promisify.custom, {
+ObjectDefineProperty(exists, internalUtil.promisify.custom, {
   value: (path) => {
     return new Promise((resolve) => fs.exists(path, resolve));
   }
@@ -225,13 +231,21 @@ Object.defineProperty(exists, internalUtil.promisify.custom, {
 // TODO(joyeecheung): deprecate the never-throw-on-invalid-arguments behavior
 function existsSync(path) {
   try {
-    path = toPathIfFileURL(path);
-    validatePath(path);
+    path = getValidatedPath(path);
   } catch {
     return false;
   }
   const ctx = { path };
-  binding.access(pathModule.toNamespacedPath(path), F_OK, undefined, ctx);
+  const nPath = pathModule.toNamespacedPath(path);
+  binding.access(nPath, F_OK, undefined, ctx);
+
+  // In case of an invalid symlink, `binding.access()` on win32
+  // will **not** return an error and is therefore not enough.
+  // Double check with `binding.stat()`.
+  if (isWindows && ctx.errno === undefined) {
+    binding.stat(nPath, false, undefined, ctx);
+  }
+
   return ctx.errno === undefined;
 }
 
@@ -259,19 +273,17 @@ function readFileAfterStat(err, stats) {
 
   const size = context.size = isFileType(stats, S_IFREG) ? stats[8] : 0;
 
-  if (size === 0) {
-    context.buffers = [];
-    context.read();
-    return;
-  }
-
   if (size > kMaxLength) {
     err = new ERR_FS_FILE_TOO_LARGE(size);
     return context.close(err);
   }
 
   try {
-    context.buffer = Buffer.allocUnsafeSlow(size);
+    if (size === 0) {
+      context.buffers = [];
+    } else {
+      context.buffer = Buffer.allocUnsafeSlow(size);
+    }
   } catch (err) {
     return context.close(err);
   }
@@ -284,7 +296,7 @@ function readFile(path, options, callback) {
   if (!ReadFileContext)
     ReadFileContext = require('internal/fs/read_file_context');
   const context = new ReadFileContext(callback, options.encoding);
-  context.isUserFd = isFd(path); // file descriptor ownership
+  context.isUserFd = isFd(path); // File descriptor ownership
 
   const req = new FSReqCallback();
   req.context = context;
@@ -297,8 +309,7 @@ function readFile(path, options, callback) {
     return;
   }
 
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   binding.open(pathModule.toNamespacedPath(path),
                stringToFlags(options.flag || 'r'),
                0o666,
@@ -310,7 +321,7 @@ function tryStatSync(fd, isUserFd) {
   const stats = binding.fstat(fd, false, undefined, ctx);
   if (ctx.errno !== undefined && !isUserFd) {
     fs.closeSync(fd);
-    throw errors.uvException(ctx);
+    throw uvException(ctx);
   }
   return stats;
 }
@@ -344,14 +355,14 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
 
 function readFileSync(path, options) {
   options = getOptions(options, { flag: 'r' });
-  const isUserFd = isFd(path); // file descriptor ownership
+  const isUserFd = isFd(path); // File descriptor ownership
   const fd = isUserFd ? path : fs.openSync(path, options.flag, 0o666);
 
   const stats = tryStatSync(fd, isUserFd);
   const size = isFileType(stats, S_IFREG) ? stats[8] : 0;
   let pos = 0;
-  let buffer; // single buffer with file data
-  let buffers; // list for when size is unknown
+  let buffer; // Single buffer with file data
+  let buffers; // List for when size is unknown
 
   if (size === 0) {
     buffers = [];
@@ -394,14 +405,14 @@ function readFileSync(path, options) {
 }
 
 function close(fd, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.close(fd, req);
 }
 
 function closeSync(fd) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
 
   const ctx = {};
   binding.close(fd, undefined, ctx);
@@ -409,8 +420,7 @@ function closeSync(fd) {
 }
 
 function open(path, flags, mode, callback) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   if (arguments.length < 3) {
     callback = flags;
     flags = 'r';
@@ -421,7 +431,7 @@ function open(path, flags, mode, callback) {
   }
   const flagsNumber = stringToFlags(flags);
   if (arguments.length >= 4) {
-    mode = validateMode(mode, 'mode', 0o666);
+    mode = parseMode(mode, 'mode', 0o666);
   }
   callback = makeCallback(callback);
 
@@ -436,10 +446,9 @@ function open(path, flags, mode, callback) {
 
 
 function openSync(path, flags, mode) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const flagsNumber = stringToFlags(flags || 'r');
-  mode = validateMode(mode, 'mode', 0o666);
+  mode = parseMode(mode, 'mode', 0o666);
 
   const ctx = { path };
   const result = binding.open(pathModule.toNamespacedPath(path),
@@ -450,7 +459,7 @@ function openSync(path, flags, mode) {
 }
 
 function read(fd, buffer, offset, length, position, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateBuffer(buffer);
   callback = maybeCallback(callback);
 
@@ -470,7 +479,7 @@ function read(fd, buffer, offset, length, position, callback) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!Number.isSafeInteger(position))
+  if (!NumberIsSafeInteger(position))
     position = -1;
 
   function wrapper(err, bytesRead) {
@@ -484,11 +493,11 @@ function read(fd, buffer, offset, length, position, callback) {
   binding.read(fd, buffer, offset, length, position, req);
 }
 
-Object.defineProperty(read, internalUtil.customPromisifyArgs,
-                      { value: ['bytesRead', 'buffer'], enumerable: false });
+ObjectDefineProperty(read, internalUtil.customPromisifyArgs,
+                     { value: ['bytesRead', 'buffer'], enumerable: false });
 
 function readSync(fd, buffer, offset, length, position) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateBuffer(buffer);
 
   offset |= 0;
@@ -505,7 +514,7 @@ function readSync(fd, buffer, offset, length, position) {
 
   validateOffsetLengthRead(offset, length, buffer.byteLength);
 
-  if (!Number.isSafeInteger(position))
+  if (!NumberIsSafeInteger(position))
     position = -1;
 
   const ctx = {};
@@ -525,7 +534,7 @@ function write(fd, buffer, offset, length, position, callback) {
     callback(err, written || 0, buffer);
   }
 
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
 
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
@@ -557,15 +566,15 @@ function write(fd, buffer, offset, length, position, callback) {
   return binding.writeString(fd, buffer, offset, length, req);
 }
 
-Object.defineProperty(write, internalUtil.customPromisifyArgs,
-                      { value: ['bytesWritten', 'buffer'], enumerable: false });
+ObjectDefineProperty(write, internalUtil.customPromisifyArgs,
+                     { value: ['bytesWritten', 'buffer'], enumerable: false });
 
-// usage:
+// Usage:
 //  fs.writeSync(fd, buffer[, offset[, length[, position]]]);
 // OR
 //  fs.writeSync(fd, string[, position[, encoding]]);
 function writeSync(fd, buffer, offset, length, position) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const ctx = {};
   let result;
   if (isArrayBufferView(buffer)) {
@@ -590,12 +599,51 @@ function writeSync(fd, buffer, offset, length, position) {
   return result;
 }
 
+// usage:
+// fs.writev(fd, buffers[, position], callback);
+function writev(fd, buffers, position, callback) {
+  function wrapper(err, written) {
+    callback(err, written || 0, buffers);
+  }
+
+  validateInt32(fd, 'fd', 0);
+  validateBufferArray(buffers);
+
+  const req = new FSReqCallback();
+  req.oncomplete = wrapper;
+
+  callback = maybeCallback(callback || position);
+
+  if (typeof position !== 'number')
+    position = null;
+
+  return binding.writeBuffers(fd, buffers, position, req);
+}
+
+ObjectDefineProperty(writev, internalUtil.customPromisifyArgs, {
+  value: ['bytesWritten', 'buffer'],
+  enumerable: false
+});
+
+function writevSync(fd, buffers, position) {
+  validateInt32(fd, 'fd', 0);
+  validateBufferArray(buffers);
+
+  const ctx = {};
+
+  if (typeof position !== 'number')
+    position = null;
+
+  const result = binding.writeBuffers(fd, buffers, position, undefined, ctx);
+
+  handleErrorFromBinding(ctx);
+  return result;
+}
+
 function rename(oldPath, newPath, callback) {
   callback = makeCallback(callback);
-  oldPath = toPathIfFileURL(oldPath);
-  validatePath(oldPath, 'oldPath');
-  newPath = toPathIfFileURL(newPath);
-  validatePath(newPath, 'newPath');
+  oldPath = getValidatedPath(oldPath, 'oldPath');
+  newPath = getValidatedPath(newPath, 'newPath');
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.rename(pathModule.toNamespacedPath(oldPath),
@@ -604,10 +652,8 @@ function rename(oldPath, newPath, callback) {
 }
 
 function renameSync(oldPath, newPath) {
-  oldPath = toPathIfFileURL(oldPath);
-  validatePath(oldPath, 'oldPath');
-  newPath = toPathIfFileURL(newPath);
-  validatePath(newPath, 'newPath');
+  oldPath = getValidatedPath(oldPath, 'oldPath');
+  newPath = getValidatedPath(newPath, 'newPath');
   const ctx = { path: oldPath, dest: newPath };
   binding.rename(pathModule.toNamespacedPath(oldPath),
                  pathModule.toNamespacedPath(newPath), undefined, ctx);
@@ -666,63 +712,86 @@ function ftruncate(fd, len = 0, callback) {
     callback = len;
     len = 0;
   }
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateInteger(len, 'len');
-  len = Math.max(0, len);
+  len = MathMax(0, len);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.ftruncate(fd, len, req);
 }
 
 function ftruncateSync(fd, len = 0) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateInteger(len, 'len');
-  len = Math.max(0, len);
+  len = MathMax(0, len);
   const ctx = {};
   binding.ftruncate(fd, len, undefined, ctx);
   handleErrorFromBinding(ctx);
 }
 
-function rmdir(path, callback) {
-  callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
-  const req = new FSReqCallback();
-  req.oncomplete = callback;
-  binding.rmdir(pathModule.toNamespacedPath(path), req);
+
+function lazyLoadRimraf() {
+  if (rimraf === undefined)
+    ({ rimraf, rimrafSync } = require('internal/fs/rimraf'));
 }
 
-function rmdirSync(path) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+function rmdir(path, options, callback) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = undefined;
+  }
+
+  callback = makeCallback(callback);
+  path = pathModule.toNamespacedPath(getValidatedPath(path));
+  options = validateRmdirOptions(options);
+
+  if (options.recursive) {
+    lazyLoadRimraf();
+    return rimraf(path, options, callback);
+  }
+
+  const req = new FSReqCallback();
+  req.oncomplete = callback;
+  binding.rmdir(path, req);
+}
+
+function rmdirSync(path, options) {
+  path = getValidatedPath(path);
+  options = validateRmdirOptions(options);
+
+  if (options.recursive) {
+    lazyLoadRimraf();
+    return rimrafSync(pathModule.toNamespacedPath(path), options);
+  }
+
   const ctx = { path };
   binding.rmdir(pathModule.toNamespacedPath(path), undefined, ctx);
   handleErrorFromBinding(ctx);
 }
 
 function fdatasync(fd, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.fdatasync(fd, req);
 }
 
 function fdatasyncSync(fd) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const ctx = {};
   binding.fdatasync(fd, undefined, ctx);
   handleErrorFromBinding(ctx);
 }
 
 function fsync(fd, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.fsync(fd, req);
 }
 
 function fsyncSync(fd) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const ctx = {};
   binding.fsync(fd, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -740,35 +809,33 @@ function mkdir(path, options, callback) {
     mode = 0o777
   } = options || {};
   callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
+  path = getValidatedPath(path);
 
-  validatePath(path);
   if (typeof recursive !== 'boolean')
     throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', recursive);
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.mkdir(pathModule.toNamespacedPath(path),
-                validateMode(mode, 'mode', 0o777), recursive, req);
+                parseMode(mode, 'mode', 0o777), recursive, req);
 }
 
 function mkdirSync(path, options) {
   if (typeof options === 'number' || typeof options === 'string') {
     options = { mode: options };
   }
-  path = toPathIfFileURL(path);
   const {
     recursive = false,
     mode = 0o777
   } = options || {};
 
-  validatePath(path);
+  path = getValidatedPath(path);
   if (typeof recursive !== 'boolean')
     throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', recursive);
 
   const ctx = { path };
   binding.mkdir(pathModule.toNamespacedPath(path),
-                validateMode(mode, 'mode', 0o777), recursive, undefined,
+                parseMode(mode, 'mode', 0o777), recursive, undefined,
                 ctx);
   handleErrorFromBinding(ctx);
 }
@@ -776,8 +843,7 @@ function mkdirSync(path, options) {
 function readdir(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
 
   const req = new FSReqCallback();
   if (!options.withFileTypes) {
@@ -797,8 +863,7 @@ function readdir(path, options, callback) {
 
 function readdirSync(path, options) {
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const ctx = { path };
   const result = binding.readdir(pathModule.toNamespacedPath(path),
                                  options.encoding, !!options.withFileTypes,
@@ -807,54 +872,51 @@ function readdirSync(path, options) {
   return options.withFileTypes ? getDirents(path, result) : result;
 }
 
-function fstat(fd, options, callback) {
+function fstat(fd, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
     options = {};
   }
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = makeStatsCallback(callback);
   binding.fstat(fd, options.bigint, req);
 }
 
-function lstat(path, options, callback) {
+function lstat(path, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
     options = {};
   }
   callback = makeStatsCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = callback;
   binding.lstat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
-function stat(path, options, callback) {
+function stat(path, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
     options = {};
   }
   callback = makeStatsCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = callback;
   binding.stat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
-function fstatSync(fd, options = {}) {
-  validateUint32(fd, 'fd');
+function fstatSync(fd, options = { bigint: false }) {
+  validateInt32(fd, 'fd', 0);
   const ctx = { fd };
   const stats = binding.fstat(fd, options.bigint, undefined, ctx);
   handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
 }
 
-function lstatSync(path, options = {}) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+function lstatSync(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.lstat(pathModule.toNamespacedPath(path),
                               options.bigint, undefined, ctx);
@@ -862,9 +924,8 @@ function lstatSync(path, options = {}) {
   return getStatsFromBinding(stats);
 }
 
-function statSync(path, options = {}) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+function statSync(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.stat(pathModule.toNamespacedPath(path),
                              options.bigint, undefined, ctx);
@@ -875,8 +936,7 @@ function statSync(path, options = {}) {
 function readlink(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path, 'oldPath');
+  path = getValidatedPath(path, 'oldPath');
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.readlink(pathModule.toNamespacedPath(path), options.encoding, req);
@@ -884,8 +944,7 @@ function readlink(path, options, callback) {
 
 function readlinkSync(path, options) {
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path, 'oldPath');
+  path = getValidatedPath(path, 'oldPath');
   const ctx = { path };
   const result = binding.readlink(pathModule.toNamespacedPath(path),
                                   options.encoding, undefined, ctx);
@@ -897,25 +956,52 @@ function symlink(target, path, type_, callback_) {
   const type = (typeof type_ === 'string' ? type_ : null);
   const callback = makeCallback(arguments[arguments.length - 1]);
 
-  target = toPathIfFileURL(target);
-  path = toPathIfFileURL(path);
-  validatePath(target, 'target');
-  validatePath(path);
+  target = getValidatedPath(target, 'target');
+  path = getValidatedPath(path);
 
-  const flags = stringToSymlinkType(type);
   const req = new FSReqCallback();
   req.oncomplete = callback;
 
+  if (isWindows && type === null) {
+    let absoluteTarget;
+    try {
+      // Symlinks targets can be relative to the newly created path.
+      // Calculate absolute file name of the symlink target, and check
+      // if it is a directory. Ignore resolve error to keep symlink
+      // errors consistent between platforms if invalid path is
+      // provided.
+      absoluteTarget = pathModule.resolve(path, '..', target);
+    } catch { }
+    if (absoluteTarget !== undefined) {
+      stat(absoluteTarget, (err, stat) => {
+        const resolvedType = !err && stat.isDirectory() ? 'dir' : 'file';
+        const resolvedFlags = stringToSymlinkType(resolvedType);
+        binding.symlink(preprocessSymlinkDestination(target,
+                                                     resolvedType,
+                                                     path),
+                        pathModule.toNamespacedPath(path), resolvedFlags, req);
+      });
+      return;
+    }
+  }
+
+  const flags = stringToSymlinkType(type);
   binding.symlink(preprocessSymlinkDestination(target, type, path),
                   pathModule.toNamespacedPath(path), flags, req);
 }
 
 function symlinkSync(target, path, type) {
   type = (typeof type === 'string' ? type : null);
-  target = toPathIfFileURL(target);
-  path = toPathIfFileURL(path);
-  validatePath(target, 'target');
-  validatePath(path);
+  if (isWindows && type === null) {
+    try {
+      const absoluteTarget = pathModule.resolve(path, '..', target);
+      if (statSync(absoluteTarget).isDirectory()) {
+        type = 'dir';
+      }
+    } catch { }
+  }
+  target = getValidatedPath(target, 'target');
+  path = getValidatedPath(path);
   const flags = stringToSymlinkType(type);
 
   const ctx = { path: target, dest: path };
@@ -928,10 +1014,8 @@ function symlinkSync(target, path, type) {
 function link(existingPath, newPath, callback) {
   callback = makeCallback(callback);
 
-  existingPath = toPathIfFileURL(existingPath);
-  newPath = toPathIfFileURL(newPath);
-  validatePath(existingPath, 'existingPath');
-  validatePath(newPath, 'newPath');
+  existingPath = getValidatedPath(existingPath, 'existingPath');
+  newPath = getValidatedPath(newPath, 'newPath');
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -942,10 +1026,8 @@ function link(existingPath, newPath, callback) {
 }
 
 function linkSync(existingPath, newPath) {
-  existingPath = toPathIfFileURL(existingPath);
-  newPath = toPathIfFileURL(newPath);
-  validatePath(existingPath, 'existingPath');
-  validatePath(newPath, 'newPath');
+  existingPath = getValidatedPath(existingPath, 'existingPath');
+  newPath = getValidatedPath(newPath, 'newPath');
 
   const ctx = { path: existingPath, dest: newPath };
   const result = binding.link(pathModule.toNamespacedPath(existingPath),
@@ -957,16 +1039,14 @@ function linkSync(existingPath, newPath) {
 
 function unlink(path, callback) {
   callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.unlink(pathModule.toNamespacedPath(path), req);
 }
 
 function unlinkSync(path) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const ctx = { path };
   binding.unlink(pathModule.toNamespacedPath(path), undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -974,7 +1054,7 @@ function unlinkSync(path) {
 
 function fchmod(fd, mode, callback) {
   validateInt32(fd, 'fd', 0);
-  mode = validateMode(mode, 'mode');
+  mode = parseMode(mode, 'mode');
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -984,7 +1064,7 @@ function fchmod(fd, mode, callback) {
 
 function fchmodSync(fd, mode) {
   validateInt32(fd, 'fd', 0);
-  mode = validateMode(mode, 'mode');
+  mode = parseMode(mode, 'mode');
   const ctx = {};
   binding.fchmod(fd, mode, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -1023,9 +1103,8 @@ function lchmodSync(path, mode) {
 
 
 function chmod(path, mode, callback) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
-  mode = validateMode(mode, 'mode');
+  path = getValidatedPath(path);
+  mode = parseMode(mode, 'mode');
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -1034,9 +1113,8 @@ function chmod(path, mode, callback) {
 }
 
 function chmodSync(path, mode) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
-  mode = validateMode(mode, 'mode');
+  path = getValidatedPath(path);
+  mode = parseMode(mode, 'mode');
 
   const ctx = { path };
   binding.chmod(pathModule.toNamespacedPath(path), mode, undefined, ctx);
@@ -1045,8 +1123,7 @@ function chmodSync(path, mode) {
 
 function lchown(path, uid, gid, callback) {
   callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
   const req = new FSReqCallback();
@@ -1055,8 +1132,7 @@ function lchown(path, uid, gid, callback) {
 }
 
 function lchownSync(path, uid, gid) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
   const ctx = { path };
@@ -1065,7 +1141,7 @@ function lchownSync(path, uid, gid) {
 }
 
 function fchown(fd, uid, gid, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
 
@@ -1075,7 +1151,7 @@ function fchown(fd, uid, gid, callback) {
 }
 
 function fchownSync(fd, uid, gid) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
 
@@ -1086,8 +1162,7 @@ function fchownSync(fd, uid, gid) {
 
 function chown(path, uid, gid, callback) {
   callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
 
@@ -1097,8 +1172,7 @@ function chown(path, uid, gid, callback) {
 }
 
 function chownSync(path, uid, gid) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   validateUint32(uid, 'uid');
   validateUint32(gid, 'gid');
   const ctx = { path };
@@ -1108,8 +1182,7 @@ function chownSync(path, uid, gid) {
 
 function utimes(path, atime, mtime, callback) {
   callback = makeCallback(callback);
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -1120,8 +1193,7 @@ function utimes(path, atime, mtime, callback) {
 }
 
 function utimesSync(path, atime, mtime) {
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const ctx = { path };
   binding.utimes(pathModule.toNamespacedPath(path),
                  toUnixTimestamp(atime), toUnixTimestamp(mtime),
@@ -1130,7 +1202,7 @@ function utimesSync(path, atime, mtime) {
 }
 
 function futimes(fd, atime, mtime, callback) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   atime = toUnixTimestamp(atime, 'atime');
   mtime = toUnixTimestamp(mtime, 'mtime');
   const req = new FSReqCallback();
@@ -1139,7 +1211,7 @@ function futimes(fd, atime, mtime, callback) {
 }
 
 function futimesSync(fd, atime, mtime) {
-  validateUint32(fd, 'fd');
+  validateInt32(fd, 'fd', 0);
   atime = toUnixTimestamp(atime, 'atime');
   mtime = toUnixTimestamp(mtime, 'mtime');
   const ctx = {};
@@ -1196,7 +1268,7 @@ function writeFile(path, data, options, callback) {
   function writeFd(fd, isUserFd) {
     const buffer = isArrayBufferView(data) ?
       data : Buffer.from('' + data, options.encoding || 'utf8');
-    const position = /a/.test(flag) ? null : 0;
+    const position = (/a/.test(flag) || isUserFd) ? null : 0;
 
     writeAll(fd, isUserFd, buffer, 0, buffer.byteLength, position, callback);
   }
@@ -1206,7 +1278,7 @@ function writeFileSync(path, data, options) {
   options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'w' });
   const flag = options.flag || 'w';
 
-  const isUserFd = isFd(path); // file descriptor ownership
+  const isUserFd = isFd(path); // File descriptor ownership
   const fd = isUserFd ? path : fs.openSync(path, flag, options.mode);
 
   if (!isArrayBufferView(data)) {
@@ -1214,7 +1286,7 @@ function writeFileSync(path, data, options) {
   }
   let offset = 0;
   let length = data.byteLength;
-  let position = /a/.test(flag) ? null : 0;
+  let position = (/a/.test(flag) || isUserFd) ? null : 0;
   try {
     while (length > 0) {
       const written = fs.writeSync(fd, data, offset, length, position);
@@ -1287,8 +1359,7 @@ function watch(filename, options, listener) {
 const statWatchers = new Map();
 
 function watchFile(filename, options, listener) {
-  filename = toPathIfFileURL(filename);
-  validatePath(filename);
+  filename = getValidatedPath(filename);
   filename = pathModule.resolve(filename);
   let stat;
 
@@ -1325,8 +1396,7 @@ function watchFile(filename, options, listener) {
 }
 
 function unwatchFile(filename, listener) {
-  filename = toPathIfFileURL(filename);
-  validatePath(filename);
+  filename = getValidatedPath(filename);
   filename = pathModule.resolve(filename);
   const stat = statWatchers.get(filename);
 
@@ -1355,7 +1425,7 @@ if (isWindows) {
   };
 } else {
   splitRoot = function splitRoot(str) {
-    for (var i = 0; i < str.length; ++i) {
+    for (let i = 0; i < str.length; ++i) {
       if (str.charCodeAt(i) !== CHAR_FORWARD_SLASH)
         return str.slice(0, i);
     }
@@ -1391,7 +1461,7 @@ if (isWindows) {
   nextPart = function nextPart(p, i) { return p.indexOf('/', i); };
 }
 
-const emptyObj = Object.create(null);
+const emptyObj = ObjectCreate(null);
 function realpathSync(p, options) {
   if (!options)
     options = emptyObj;
@@ -1410,8 +1480,8 @@ function realpathSync(p, options) {
     return maybeCachedResult;
   }
 
-  const seenLinks = Object.create(null);
-  const knownHard = Object.create(null);
+  const seenLinks = ObjectCreate(null);
+  const knownHard = ObjectCreate(null);
   const original = p;
 
   // Current character position in p
@@ -1529,8 +1599,7 @@ function realpathSync(p, options) {
 
 realpathSync.native = (path, options) => {
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const ctx = { path };
   const result = binding.realpath(path, options.encoding, undefined, ctx);
   handleErrorFromBinding(ctx);
@@ -1540,19 +1609,17 @@ realpathSync.native = (path, options) => {
 
 function realpath(p, options, callback) {
   callback = typeof options === 'function' ? options : maybeCallback(callback);
-  if (!options)
-    options = emptyObj;
-  else
-    options = getOptions(options, emptyObj);
+  options = getOptions(options, {});
   p = toPathIfFileURL(p);
+
   if (typeof p !== 'string') {
     p += '';
   }
   validatePath(p);
   p = pathModule.resolve(p);
 
-  const seenLinks = Object.create(null);
-  const knownHard = Object.create(null);
+  const seenLinks = ObjectCreate(null);
+  const knownHard = ObjectCreate(null);
 
   // Current character position in p
   let pos;
@@ -1671,8 +1738,7 @@ function realpath(p, options, callback) {
 realpath.native = (path, options, callback) => {
   callback = makeCallback(callback || options);
   options = getOptions(options, {});
-  path = toPathIfFileURL(path);
-  validatePath(path);
+  path = getValidatedPath(path);
   const req = new FSReqCallback();
   req.oncomplete = callback;
   return binding.realpath(path, options.encoding, req);
@@ -1685,6 +1751,7 @@ function mkdtemp(prefix, options, callback) {
     throw new ERR_INVALID_ARG_TYPE('prefix', 'string', prefix);
   }
   nullCheck(prefix, 'prefix');
+  warnOnNonPortableTemplate(prefix);
   const req = new FSReqCallback();
   req.oncomplete = callback;
   binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, req);
@@ -1697,6 +1764,7 @@ function mkdtempSync(prefix, options) {
     throw new ERR_INVALID_ARG_TYPE('prefix', 'string', prefix);
   }
   nullCheck(prefix, 'prefix');
+  warnOnNonPortableTemplate(prefix);
   const path = `${prefix}XXXXXX`;
   const ctx = { path };
   const result = binding.mkdtemp(path, options.encoding,
@@ -1711,13 +1779,11 @@ function copyFile(src, dest, flags, callback) {
     callback = flags;
     flags = 0;
   } else if (typeof callback !== 'function') {
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(callback);
   }
 
-  src = toPathIfFileURL(src);
-  dest = toPathIfFileURL(dest);
-  validatePath(src, 'src');
-  validatePath(dest, 'dest');
+  src = getValidatedPath(src, 'src');
+  dest = getValidatedPath(dest, 'dest');
 
   src = pathModule._makeLong(src);
   dest = pathModule._makeLong(dest);
@@ -1729,10 +1795,8 @@ function copyFile(src, dest, flags, callback) {
 
 
 function copyFileSync(src, dest, flags) {
-  src = toPathIfFileURL(src);
-  dest = toPathIfFileURL(dest);
-  validatePath(src, 'src');
-  validatePath(dest, 'dest');
+  src = getValidatedPath(src, 'src');
+  dest = getValidatedPath(dest, 'dest');
 
   const ctx = { path: src, dest };  // non-prefixed
 
@@ -1759,7 +1823,6 @@ function createWriteStream(path, options) {
   lazyLoadStreams();
   return new WriteStream(path, options);
 }
-
 
 module.exports = fs = {
   appendFile,
@@ -1806,6 +1869,8 @@ module.exports = fs = {
   mkdtempSync,
   open,
   openSync,
+  opendir,
+  opendirSync,
   readdir,
   readdirSync,
   read,
@@ -1837,6 +1902,9 @@ module.exports = fs = {
   writeFileSync,
   write,
   writeSync,
+  writev,
+  writevSync,
+  Dir,
   Dirent,
   Stats,
 
@@ -1882,7 +1950,7 @@ module.exports = fs = {
   _toUnixTimestamp: toUnixTimestamp
 };
 
-Object.defineProperties(fs, {
+ObjectDefineProperties(fs, {
   F_OK: { enumerable: true, value: F_OK || 0 },
   R_OK: { enumerable: true, value: R_OK || 0 },
   W_OK: { enumerable: true, value: W_OK || 0 },
@@ -1894,13 +1962,10 @@ Object.defineProperties(fs, {
   },
   promises: {
     configurable: true,
-    enumerable: false,
+    enumerable: true,
     get() {
-      if (promises === null) {
-        promises = require('internal/fs/promises');
-        process.emitWarning('The fs.promises API is experimental',
-                            'ExperimentalWarning');
-      }
+      if (promises === null)
+        promises = require('internal/fs/promises').exports;
       return promises;
     }
   }

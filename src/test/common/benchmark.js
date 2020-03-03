@@ -1,4 +1,4 @@
-/* eslint-disable node-core/required-modules */
+/* eslint-disable node-core/require-common-first, node-core/required-modules */
 
 'use strict';
 
@@ -18,7 +18,7 @@ function runBenchmark(name, args, env) {
 
   argv.push(name);
 
-  const mergedEnv = Object.assign({}, process.env, env);
+  const mergedEnv = { ...process.env, ...env };
 
   const child = fork(runjs, argv, {
     env: mergedEnv,

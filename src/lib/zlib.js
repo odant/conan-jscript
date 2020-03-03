@@ -22,21 +22,37 @@
 'use strict';
 
 const {
-  ERR_BROTLI_INVALID_PARAM,
-  ERR_BUFFER_TOO_LARGE,
-  ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE,
-  ERR_ZLIB_INITIALIZATION_FAILED,
-} = require('internal/errors').codes;
+  Error,
+  MathMax,
+  NumberIsFinite,
+  NumberIsNaN,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectFreeze,
+  ObjectGetPrototypeOf,
+  ObjectKeys,
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
+
+const {
+  codes: {
+    ERR_BROTLI_INVALID_PARAM,
+    ERR_BUFFER_TOO_LARGE,
+    ERR_INVALID_ARG_TYPE,
+    ERR_OUT_OF_RANGE,
+    ERR_ZLIB_INITIALIZATION_FAILED,
+  },
+  hideStackFrames
+} = require('internal/errors');
 const Transform = require('_stream_transform');
 const {
-  deprecate,
-  inherits,
-  types: {
-    isAnyArrayBuffer,
-    isArrayBufferView
-  }
-} = require('util');
+  deprecate
+} = require('internal/util');
+const {
+  isArrayBufferView,
+  isAnyArrayBuffer
+} = require('internal/util/types');
 const binding = internalBinding('zlib');
 const assert = require('internal/assert');
 const {
@@ -44,6 +60,8 @@ const {
   kMaxLength
 } = require('buffer');
 const { owner_symbol } = require('internal/async_hooks').symbols;
+
+const kFlushFlag = Symbol('kFlushFlag');
 
 const constants = internalBinding('constants').zlib;
 const {
@@ -74,17 +92,17 @@ const codes = {
   Z_VERSION_ERROR: constants.Z_VERSION_ERROR
 };
 
-const ckeys = Object.keys(codes);
-for (var ck = 0; ck < ckeys.length; ck++) {
-  var ckey = ckeys[ck];
+for (const ckey of ObjectKeys(codes)) {
   codes[codes[ckey]] = ckey;
 }
 
 function zlibBuffer(engine, buffer, callback) {
+  if (typeof callback !== 'function')
+    throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
   // Streams do not support non-Buffer ArrayBufferViews yet. Convert it to a
   // Buffer without copying.
   if (isArrayBufferView(buffer) &&
-      Object.getPrototypeOf(buffer) !== Buffer.prototype) {
+      ObjectGetPrototypeOf(buffer) !== Buffer.prototype) {
     buffer = Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   } else if (isAnyArrayBuffer(buffer)) {
     buffer = Buffer.from(buffer);
@@ -112,14 +130,14 @@ function zlibBufferOnError(err) {
 }
 
 function zlibBufferOnEnd() {
-  var buf;
-  var err;
+  let buf;
+  let err;
   if (this.nread >= kMaxLength) {
     err = new ERR_BUFFER_TOO_LARGE();
   } else if (this.nread === 0) {
     buf = Buffer.alloc(0);
   } else {
-    var bufs = this.buffers;
+    const bufs = this.buffers;
     buf = (bufs.length === 1 ? bufs[0] : Buffer.concat(bufs, this.nread));
   }
   this.close();
@@ -152,7 +170,7 @@ function zlibBufferSync(engine, buffer) {
 }
 
 function zlibOnError(message, errno, code) {
-  var self = this[owner_symbol];
+  const self = this[owner_symbol];
   // There is no way to cleanly recover.
   // Continuing only obscures problems.
   _close(self);
@@ -169,53 +187,49 @@ function zlibOnError(message, errno, code) {
 // 2. Returns true for finite numbers
 // 3. Throws ERR_INVALID_ARG_TYPE for non-numbers
 // 4. Throws ERR_OUT_OF_RANGE for infinite numbers
-function checkFiniteNumber(number, name) {
+const checkFiniteNumber = hideStackFrames((number, name) => {
   // Common case
   if (number === undefined) {
     return false;
   }
 
-  if (Number.isFinite(number)) {
+  if (NumberIsFinite(number)) {
     return true; // Is a valid number
   }
 
-  if (Number.isNaN(number)) {
+  if (NumberIsNaN(number)) {
     return false;
   }
 
   // Other non-numbers
   if (typeof number !== 'number') {
-    const err = new ERR_INVALID_ARG_TYPE(name, 'number', number);
-    Error.captureStackTrace(err, checkFiniteNumber);
-    throw err;
+    throw new ERR_INVALID_ARG_TYPE(name, 'number', number);
   }
 
   // Infinite numbers
-  const err = new ERR_OUT_OF_RANGE(name, 'a finite number', number);
-  Error.captureStackTrace(err, checkFiniteNumber);
-  throw err;
-}
+  throw new ERR_OUT_OF_RANGE(name, 'a finite number', number);
+});
 
 // 1. Returns def for number when it's undefined or NaN
 // 2. Returns number for finite numbers >= lower and <= upper
 // 3. Throws ERR_INVALID_ARG_TYPE for non-numbers
 // 4. Throws ERR_OUT_OF_RANGE for infinite numbers or numbers > upper or < lower
-function checkRangesOrGetDefault(number, name, lower, upper, def) {
-  if (!checkFiniteNumber(number, name)) {
-    return def;
+const checkRangesOrGetDefault = hideStackFrames(
+  (number, name, lower, upper, def) => {
+    if (!checkFiniteNumber(number, name)) {
+      return def;
+    }
+    if (number < lower || number > upper) {
+      throw new ERR_OUT_OF_RANGE(name,
+                                 `>= ${lower} and <= ${upper}`, number);
+    }
+    return number;
   }
-  if (number < lower || number > upper) {
-    const err = new ERR_OUT_OF_RANGE(name,
-                                     `>= ${lower} and <= ${upper}`, number);
-    Error.captureStackTrace(err, checkRangesOrGetDefault);
-    throw err;
-  }
-  return number;
-}
+);
 
 // The base class for all Zlib-style streams.
 function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
-  var chunkSize = Z_DEFAULT_CHUNK;
+  let chunkSize = Z_DEFAULT_CHUNK;
   // The ZlibBase class is not exported to user land, the mode should only be
   // passed in by us.
   assert(typeof mode === 'number');
@@ -259,15 +273,14 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   this._chunkSize = chunkSize;
   this._defaultFlushFlag = flush;
   this._finishFlushFlag = finishFlush;
-  this._nextFlush = -1;
   this._defaultFullFlushFlag = fullFlush;
-  this.once('end', this.close);
+  this.once('end', _close.bind(null, this));
   this._info = opts && opts.info;
 }
+ObjectSetPrototypeOf(ZlibBase.prototype, Transform.prototype);
+ObjectSetPrototypeOf(ZlibBase, Transform);
 
-inherits(ZlibBase, Transform);
-
-Object.defineProperty(ZlibBase.prototype, '_closed', {
+ObjectDefineProperty(ZlibBase.prototype, '_closed', {
   configurable: true,
   enumerable: true,
   get() {
@@ -279,7 +292,7 @@ Object.defineProperty(ZlibBase.prototype, '_closed', {
 // perspective, but it is inconsistent with all other streams exposed by Node.js
 // that have this concept, where it stands for the number of bytes read
 // *from* the stream (that is, net.Socket/tls.Socket & file system streams).
-Object.defineProperty(ZlibBase.prototype, 'bytesRead', {
+ObjectDefineProperty(ZlibBase.prototype, 'bytesRead', {
   configurable: true,
   enumerable: true,
   get: deprecate(function() {
@@ -306,13 +319,16 @@ ZlibBase.prototype._flush = function(callback) {
 
 // If a flush is scheduled while another flush is still pending, a way to figure
 // out which one is the "stronger" flush is needed.
+// This is currently only used to figure out which flush flag to use for the
+// last chunk.
 // Roughly, the following holds:
 // Z_NO_FLUSH (< Z_TREES) < Z_BLOCK < Z_PARTIAL_FLUSH <
 //     Z_SYNC_FLUSH < Z_FULL_FLUSH < Z_FINISH
 const flushiness = [];
 let i = 0;
-for (const flushFlag of [Z_NO_FLUSH, Z_BLOCK, Z_PARTIAL_FLUSH,
-                         Z_SYNC_FLUSH, Z_FULL_FLUSH, Z_FINISH]) {
+const kFlushFlagList = [Z_NO_FLUSH, Z_BLOCK, Z_PARTIAL_FLUSH,
+                        Z_SYNC_FLUSH, Z_FULL_FLUSH, Z_FINISH];
+for (const flushFlag of kFlushFlagList) {
   flushiness[flushFlag] = i++;
 }
 
@@ -320,9 +336,20 @@ function maxFlush(a, b) {
   return flushiness[a] > flushiness[b] ? a : b;
 }
 
-const flushBuffer = Buffer.alloc(0);
+// Set up a list of 'special' buffers that can be written using .write()
+// from the .flush() code as a way of introducing flushing operations into the
+// write sequence.
+const kFlushBuffers = [];
+{
+  const dummyArrayBuffer = new ArrayBuffer();
+  for (const flushFlag of kFlushFlagList) {
+    kFlushBuffers[flushFlag] = Buffer.from(dummyArrayBuffer);
+    kFlushBuffers[flushFlag][kFlushFlag] = flushFlag;
+  }
+}
+
 ZlibBase.prototype.flush = function(kind, callback) {
-  var ws = this._writableState;
+  const ws = this._writableState;
 
   if (typeof kind === 'function' || (kind === undefined && !callback)) {
     callback = kind;
@@ -335,13 +362,8 @@ ZlibBase.prototype.flush = function(kind, callback) {
   } else if (ws.ending) {
     if (callback)
       this.once('end', callback);
-  } else if (this._nextFlush !== -1) {
-    // This means that there is a flush currently in the write queue.
-    // We currently coalesce this flush into the pending one.
-    this._nextFlush = maxFlush(this._nextFlush, kind);
   } else {
-    this._nextFlush = kind;
-    this.write(flushBuffer, '', callback);
+    this.write(kFlushBuffers[kind], '', callback);
   }
 };
 
@@ -356,16 +378,15 @@ ZlibBase.prototype._destroy = function(err, callback) {
 };
 
 ZlibBase.prototype._transform = function(chunk, encoding, cb) {
-  var flushFlag = this._defaultFlushFlag;
+  let flushFlag = this._defaultFlushFlag;
   // We use a 'fake' zero-length chunk to carry information about flushes from
   // the public API to the actual stream implementation.
-  if (chunk === flushBuffer) {
-    flushFlag = this._nextFlush;
-    this._nextFlush = -1;
+  if (typeof chunk[kFlushFlag] === 'number') {
+    flushFlag = chunk[kFlushFlag];
   }
 
   // For the last chunk, also apply `_finishFlushFlag`.
-  var ws = this._writableState;
+  const ws = this._writableState;
   if ((ws.ending || ws.ended) && ws.length === chunk.byteLength) {
     flushFlag = maxFlush(flushFlag, this._finishFlushFlag);
   }
@@ -381,22 +402,22 @@ ZlibBase.prototype._processChunk = function(chunk, flushFlag, cb) {
 };
 
 function processChunkSync(self, chunk, flushFlag) {
-  var availInBefore = chunk.byteLength;
-  var availOutBefore = self._chunkSize - self._outOffset;
-  var inOff = 0;
-  var availOutAfter;
-  var availInAfter;
+  let availInBefore = chunk.byteLength;
+  let availOutBefore = self._chunkSize - self._outOffset;
+  let inOff = 0;
+  let availOutAfter;
+  let availInAfter;
 
-  var buffers = null;
-  var nread = 0;
-  var inputRead = 0;
-  var state = self._writeState;
-  var handle = self._handle;
-  var buffer = self._outBuffer;
-  var offset = self._outOffset;
-  var chunkSize = self._chunkSize;
+  let buffers = null;
+  let nread = 0;
+  let inputRead = 0;
+  const state = self._writeState;
+  const handle = self._handle;
+  let buffer = self._outBuffer;
+  let offset = self._outOffset;
+  const chunkSize = self._chunkSize;
 
-  var error;
+  let error;
   self.on('error', function onError(er) {
     error = er;
   });
@@ -415,12 +436,12 @@ function processChunkSync(self, chunk, flushFlag) {
     availOutAfter = state[0];
     availInAfter = state[1];
 
-    var inDelta = (availInBefore - availInAfter);
+    const inDelta = (availInBefore - availInAfter);
     inputRead += inDelta;
 
-    var have = availOutBefore - availOutAfter;
+    const have = availOutBefore - availOutAfter;
     if (have > 0) {
-      var out = buffer.slice(offset, offset + have);
+      const out = buffer.slice(offset, offset + have);
       offset += have;
       if (!buffers)
         buffers = [out];
@@ -464,8 +485,8 @@ function processChunkSync(self, chunk, flushFlag) {
 }
 
 function processChunk(self, chunk, flushFlag, cb) {
-  var handle = self._handle;
-  assert(handle, 'zlib binding closed');
+  const handle = self._handle;
+  if (!handle) return process.nextTick(cb);
 
   handle.buffer = chunk;
   handle.cb = cb;
@@ -487,29 +508,25 @@ function processCallback() {
   // This callback's context (`this`) is the `_handle` (ZCtx) object. It is
   // important to null out the values once they are no longer needed since
   // `_handle` can stay in memory long after the buffer is needed.
-  var handle = this;
-  var self = this[owner_symbol];
-  var state = self._writeState;
+  const handle = this;
+  const self = this[owner_symbol];
+  const state = self._writeState;
 
-  if (self._hadError) {
+  if (self._hadError || self.destroyed) {
     this.buffer = null;
+    this.cb();
     return;
   }
 
-  if (self.destroyed) {
-    this.buffer = null;
-    return;
-  }
-
-  var availOutAfter = state[0];
-  var availInAfter = state[1];
+  const availOutAfter = state[0];
+  const availInAfter = state[1];
 
   const inDelta = handle.availInBefore - availInAfter;
   self.bytesWritten += inDelta;
 
-  var have = handle.availOutBefore - availOutAfter;
+  const have = handle.availOutBefore - availOutAfter;
   if (have > 0) {
-    var out = self._outBuffer.slice(self._outOffset, self._outOffset + have);
+    const out = self._outBuffer.slice(self._outOffset, self._outOffset + have);
     self._outOffset += have;
     self.push(out);
   } else {
@@ -517,6 +534,7 @@ function processCallback() {
   }
 
   if (self.destroyed) {
+    this.cb();
     return;
   }
 
@@ -555,7 +573,7 @@ function processCallback() {
     self.push(null);
   }
 
-  // finished with the chunk.
+  // Finished with the chunk.
   this.buffer = null;
   this.cb();
 }
@@ -580,11 +598,11 @@ const zlibDefaultOpts = {
 // Base class for all streams actually backed by zlib and using zlib-specific
 // parameters.
 function Zlib(opts, mode) {
-  var windowBits = Z_DEFAULT_WINDOWBITS;
-  var level = Z_DEFAULT_COMPRESSION;
-  var memLevel = Z_DEFAULT_MEMLEVEL;
-  var strategy = Z_DEFAULT_STRATEGY;
-  var dictionary;
+  let windowBits = Z_DEFAULT_WINDOWBITS;
+  let level = Z_DEFAULT_COMPRESSION;
+  let memLevel = Z_DEFAULT_MEMLEVEL;
+  let strategy = Z_DEFAULT_STRATEGY;
+  let dictionary;
 
   if (opts) {
     // windowBits is special. On the compression side, 0 is an invalid value.
@@ -650,7 +668,8 @@ function Zlib(opts, mode) {
   this._level = level;
   this._strategy = strategy;
 }
-inherits(Zlib, ZlibBase);
+ObjectSetPrototypeOf(Zlib.prototype, ZlibBase.prototype);
+ObjectSetPrototypeOf(Zlib, ZlibBase);
 
 // This callback is used by `.params()` to wait until a full flush happened
 // before adjusting the parameters. In particular, the call to the native
@@ -685,28 +704,32 @@ function Deflate(opts) {
     return new Deflate(opts);
   Zlib.call(this, opts, DEFLATE);
 }
-inherits(Deflate, Zlib);
+ObjectSetPrototypeOf(Deflate.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Deflate, Zlib);
 
 function Inflate(opts) {
   if (!(this instanceof Inflate))
     return new Inflate(opts);
   Zlib.call(this, opts, INFLATE);
 }
-inherits(Inflate, Zlib);
+ObjectSetPrototypeOf(Inflate.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Inflate, Zlib);
 
 function Gzip(opts) {
   if (!(this instanceof Gzip))
     return new Gzip(opts);
   Zlib.call(this, opts, GZIP);
 }
-inherits(Gzip, Zlib);
+ObjectSetPrototypeOf(Gzip.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Gzip, Zlib);
 
 function Gunzip(opts) {
   if (!(this instanceof Gunzip))
     return new Gunzip(opts);
   Zlib.call(this, opts, GUNZIP);
 }
-inherits(Gunzip, Zlib);
+ObjectSetPrototypeOf(Gunzip.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Gunzip, Zlib);
 
 function DeflateRaw(opts) {
   if (opts && opts.windowBits === 8) opts.windowBits = 9;
@@ -714,21 +737,24 @@ function DeflateRaw(opts) {
     return new DeflateRaw(opts);
   Zlib.call(this, opts, DEFLATERAW);
 }
-inherits(DeflateRaw, Zlib);
+ObjectSetPrototypeOf(DeflateRaw.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(DeflateRaw, Zlib);
 
 function InflateRaw(opts) {
   if (!(this instanceof InflateRaw))
     return new InflateRaw(opts);
   Zlib.call(this, opts, INFLATERAW);
 }
-inherits(InflateRaw, Zlib);
+ObjectSetPrototypeOf(InflateRaw.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(InflateRaw, Zlib);
 
 function Unzip(opts) {
   if (!(this instanceof Unzip))
     return new Unzip(opts);
   Zlib.call(this, opts, UNZIP);
 }
-inherits(Unzip, Zlib);
+ObjectSetPrototypeOf(Unzip.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Unzip, Zlib);
 
 function createConvenienceMethod(ctor, sync) {
   if (sync) {
@@ -746,7 +772,7 @@ function createConvenienceMethod(ctor, sync) {
   }
 }
 
-const kMaxBrotliParam = Math.max(...Object.keys(constants).map((key) => {
+const kMaxBrotliParam = MathMax(...ObjectKeys(constants).map((key) => {
   return key.startsWith('BROTLI_PARAM_') ? constants[key] : 0;
 }));
 
@@ -762,9 +788,9 @@ function Brotli(opts, mode) {
 
   brotliInitParamsArray.fill(-1);
   if (opts && opts.params) {
-    for (const origKey of Object.keys(opts.params)) {
+    for (const origKey of ObjectKeys(opts.params)) {
       const key = +origKey;
-      if (Number.isNaN(key) || key < 0 || key > kMaxBrotliParam ||
+      if (NumberIsNaN(key) || key < 0 || key > kMaxBrotliParam ||
           (brotliInitParamsArray[key] | 0) !== -1) {
         throw new ERR_BROTLI_INVALID_PARAM(origKey);
       }
@@ -790,24 +816,24 @@ function Brotli(opts, mode) {
 
   ZlibBase.call(this, opts, mode, handle, brotliDefaultOpts);
 }
-Object.setPrototypeOf(Brotli.prototype, Zlib.prototype);
-Object.setPrototypeOf(Brotli, Zlib);
+ObjectSetPrototypeOf(Brotli.prototype, Zlib.prototype);
+ObjectSetPrototypeOf(Brotli, Zlib);
 
 function BrotliCompress(opts) {
   if (!(this instanceof BrotliCompress))
     return new BrotliCompress(opts);
   Brotli.call(this, opts, BROTLI_ENCODE);
 }
-Object.setPrototypeOf(BrotliCompress.prototype, Brotli.prototype);
-Object.setPrototypeOf(BrotliCompress, Brotli);
+ObjectSetPrototypeOf(BrotliCompress.prototype, Brotli.prototype);
+ObjectSetPrototypeOf(BrotliCompress, Brotli);
 
 function BrotliDecompress(opts) {
   if (!(this instanceof BrotliDecompress))
     return new BrotliDecompress(opts);
   Brotli.call(this, opts, BROTLI_DECODE);
 }
-Object.setPrototypeOf(BrotliDecompress.prototype, Brotli.prototype);
-Object.setPrototypeOf(BrotliDecompress, Brotli);
+ObjectSetPrototypeOf(BrotliDecompress.prototype, Brotli.prototype);
+ObjectSetPrototypeOf(BrotliDecompress, Brotli);
 
 
 function createProperty(ctor) {
@@ -822,7 +848,7 @@ function createProperty(ctor) {
 
 // Legacy alias on the C++ wrapper object. This is not public API, so we may
 // want to runtime-deprecate it at some point. There's no hurry, though.
-Object.defineProperty(binding.Zlib.prototype, 'jsref', {
+ObjectDefineProperty(binding.Zlib.prototype, 'jsref', {
   get() { return this[owner_symbol]; },
   set(v) { return this[owner_symbol] = v; }
 });
@@ -860,7 +886,7 @@ module.exports = {
   brotliDecompressSync: createConvenienceMethod(BrotliDecompress, true),
 };
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   createDeflate: createProperty(Deflate),
   createInflate: createProperty(Inflate),
   createDeflateRaw: createProperty(DeflateRaw),
@@ -878,17 +904,15 @@ Object.defineProperties(module.exports, {
   codes: {
     enumerable: true,
     writable: false,
-    value: Object.freeze(codes)
+    value: ObjectFreeze(codes)
   }
 });
 
 // These should be considered deprecated
 // expose all the zlib constants
-const bkeys = Object.keys(constants);
-for (var bk = 0; bk < bkeys.length; bk++) {
-  var bkey = bkeys[bk];
+for (const bkey of ObjectKeys(constants)) {
   if (bkey.startsWith('BROTLI')) continue;
-  Object.defineProperty(module.exports, bkey, {
-    enumerable: true, value: constants[bkey], writable: false
+  ObjectDefineProperty(module.exports, bkey, {
+    enumerable: false, value: constants[bkey], writable: false
   });
 }

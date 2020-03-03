@@ -3,7 +3,6 @@
 
 #include "libplatform/v8-tracing.h"
 #include "uv.h"
-#include "v8.h"
 #include "util.h"
 #include "node_mutex.h"
 
@@ -11,6 +10,11 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+
+namespace v8 {
+class ConvertableToTraceFormat;
+class TracingController;
+}  // namespace v8
 
 namespace node {
 namespace tracing {
@@ -22,7 +26,7 @@ class Agent;
 
 class AsyncTraceWriter {
  public:
-  virtual ~AsyncTraceWriter() {}
+  virtual ~AsyncTraceWriter() = default;
   virtual void AppendTraceEvent(TraceObject* trace_event) = 0;
   virtual void Flush(bool blocking) = 0;
   virtual void InitializeOnThread(uv_loop_t* loop) {}
@@ -48,7 +52,7 @@ class TracingController : public v8::platform::tracing::TracingController {
 
 class AgentWriterHandle {
  public:
-  inline AgentWriterHandle() {}
+  inline AgentWriterHandle() = default;
   inline ~AgentWriterHandle() { reset(); }
 
   inline AgentWriterHandle(AgentWriterHandle&& other);

@@ -13,26 +13,32 @@
 // in the global console prototype chain anymore.
 
 const {
+  ObjectCreate,
+  ReflectDefineProperty,
+  ReflectGetOwnPropertyDescriptor,
+  ReflectOwnKeys,
+} = primordials;
+
+const {
   Console,
   kBindStreamsLazy,
   kBindProperties
 } = require('internal/console/constructor');
 
-// This is only here for v11.x conflict resolution.
-const globalConsole = Object.create(Console.prototype);
+const globalConsole = ObjectCreate({});
 
 // Since Console is not on the prototype chain of the global console,
 // the symbol properties on Console.prototype have to be looked up from
 // the global console itself. In addition, we need to make the global
 // console a namespace by binding the console methods directly onto
 // the global console with the receiver fixed.
-for (const prop of Reflect.ownKeys(Console.prototype)) {
+for (const prop of ReflectOwnKeys(Console.prototype)) {
   if (prop === 'constructor') { continue; }
-  const desc = Reflect.getOwnPropertyDescriptor(Console.prototype, prop);
+  const desc = ReflectGetOwnPropertyDescriptor(Console.prototype, prop);
   if (typeof desc.value === 'function') { // fix the receiver
     desc.value = desc.value.bind(globalConsole);
   }
-  Reflect.defineProperty(globalConsole, prop, desc);
+  ReflectDefineProperty(globalConsole, prop, desc);
 }
 
 globalConsole[kBindStreamsLazy](process);

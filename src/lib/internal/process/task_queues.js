@@ -1,15 +1,23 @@
 'use strict';
 
 const {
+  Array,
+  FunctionPrototypeBind,
+} = primordials;
+
+const {
   // For easy access to the nextTick state in the C++ land,
   // and to avoid unnecessary calls into JS land.
   tickInfo,
   // Used to run V8's micro task queue.
   runMicrotasks,
   setTickCallback,
-  enqueueMicrotask,
-  triggerFatalException
+  enqueueMicrotask
 } = internalBinding('task_queue');
+
+const {
+  triggerUncaughtException
+} = internalBinding('errors');
 
 const {
   setHasRejectionToWarn,
@@ -41,12 +49,14 @@ const kHasTickScheduled = 0;
 function hasTickScheduled() {
   return tickInfo[kHasTickScheduled] === 1;
 }
+
 function setHasTickScheduled(value) {
   tickInfo[kHasTickScheduled] = value ? 1 : 0;
 }
 
 const queue = new FixedQueue();
 
+// Should be in sync with RunNextTicksNative in node_task_queue.cc
 function runNextTicks() {
   if (!hasTickScheduled() && !hasRejectionToWarn())
     runMicrotasks();
@@ -62,63 +72,44 @@ function processTicksAndRejections() {
     while (tock = queue.shift()) {
       const asyncId = tock[async_id_symbol];
       emitBefore(asyncId, tock[trigger_async_id_symbol]);
-      // emitDestroy() places the async_id_symbol into an asynchronous queue
-      // that calls the destroy callback in the future. It's called before
-      // calling tock.callback so destroy will be called even if the callback
-      // throws an exception that is handled by 'uncaughtException' or a
-      // domain.
-      // TODO(trevnorris): This is a bit of a hack. It relies on the fact
-      // that nextTick() doesn't allow the event loop to proceed, but if
-      // any async hooks are enabled during the callback's execution then
-      // this tock's after hook will be called, but not its destroy hook.
-      if (destroyHooksExist())
-        emitDestroy(asyncId);
 
-      const callback = tock.callback;
-      if (tock.args === undefined)
-        callback();
-      else
-        Reflect.apply(callback, undefined, tock.args);
+      try {
+        const callback = tock.callback;
+        if (tock.args === undefined) {
+          callback();
+        } else {
+          const args = tock.args;
+          switch (args.length) {
+            case 1: callback(args[0]); break;
+            case 2: callback(args[0], args[1]); break;
+            case 3: callback(args[0], args[1], args[2]); break;
+            case 4: callback(args[0], args[1], args[2], args[3]); break;
+            default: callback(...args);
+          }
+        }
+      } finally {
+        if (destroyHooksExist())
+          emitDestroy(asyncId);
+      }
 
       emitAfter(asyncId);
     }
-    setHasTickScheduled(false);
     runMicrotasks();
   } while (!queue.isEmpty() || processPromiseRejections());
+  setHasTickScheduled(false);
   setHasRejectionToWarn(false);
-}
-
-class TickObject {
-  constructor(callback, args, triggerAsyncId) {
-    // This must be set to null first to avoid function tracking
-    // on the hidden class, revisit in V8 versions after 6.2
-    this.callback = null;
-    this.callback = callback;
-    this.args = args;
-
-    const asyncId = newAsyncId();
-    this[async_id_symbol] = asyncId;
-    this[trigger_async_id_symbol] = triggerAsyncId;
-
-    if (initHooksExist()) {
-      emitInit(asyncId,
-               'TickObject',
-               triggerAsyncId,
-               this);
-    }
-  }
 }
 
 // `nextTick()` will not enqueue any callback when the process is about to
 // exit since the callback would not have a chance to be executed.
 function nextTick(callback) {
   if (typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK();
+    throw new ERR_INVALID_CALLBACK(callback);
 
   if (process._exiting)
     return;
 
-  var args;
+  let args;
   switch (arguments.length) {
     case 1: break;
     case 2: args = [arguments[1]]; break;
@@ -126,24 +117,47 @@ function nextTick(callback) {
     case 4: args = [arguments[1], arguments[2], arguments[3]]; break;
     default:
       args = new Array(arguments.length - 1);
-      for (var i = 1; i < arguments.length; i++)
+      for (let i = 1; i < arguments.length; i++)
         args[i - 1] = arguments[i];
   }
 
   if (queue.isEmpty())
     setHasTickScheduled(true);
-  queue.push(new TickObject(callback, args, getDefaultTriggerAsyncId()));
+  const asyncId = newAsyncId();
+  const triggerAsyncId = getDefaultTriggerAsyncId();
+  const tickObject = {
+    [async_id_symbol]: asyncId,
+    [trigger_async_id_symbol]: triggerAsyncId,
+    callback,
+    args
+  };
+  if (initHooksExist())
+    emitInit(asyncId, 'TickObject', triggerAsyncId, tickObject);
+  queue.push(tickObject);
 }
 
 let AsyncResource;
+const defaultMicrotaskResourceOpts = { requireManualDestroy: true };
 function createMicrotaskResource() {
   // Lazy load the async_hooks module
-  if (!AsyncResource) {
+  if (AsyncResource === undefined) {
     AsyncResource = require('async_hooks').AsyncResource;
   }
-  return new AsyncResource('Microtask', {
-    triggerAsyncId: getDefaultTriggerAsyncId(),
-    requireManualDestroy: true,
+  return new AsyncResource('Microtask', defaultMicrotaskResourceOpts);
+}
+
+function runMicrotask() {
+  this.runInAsyncScope(() => {
+    const callback = this.callback;
+    try {
+      callback();
+    } catch (error) {
+      // runInAsyncScope() swallows the error so we need to catch
+      // it and handle it here.
+      triggerUncaughtException(error, false /* fromPromise */);
+    } finally {
+      this.emitDestroy();
+    }
   });
 }
 
@@ -153,22 +167,9 @@ function queueMicrotask(callback) {
   }
 
   const asyncResource = createMicrotaskResource();
+  asyncResource.callback = callback;
 
-  enqueueMicrotask(() => {
-    asyncResource.runInAsyncScope(() => {
-      try {
-        callback();
-      } catch (error) {
-        // TODO(devsnek) remove this if
-        // https://bugs.chromium.org/p/v8/issues/detail?id=8326
-        // is resolved such that V8 triggers the fatal exception
-        // handler for microtasks
-        triggerFatalException(error);
-      } finally {
-        asyncResource.emitDestroy();
-      }
-    });
-  });
+  enqueueMicrotask(FunctionPrototypeBind(runMicrotask, asyncResource));
 }
 
 module.exports = {

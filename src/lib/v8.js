@@ -14,6 +14,24 @@
 
 'use strict';
 
+const {
+  Array,
+  ArrayBuffer,
+  Error,
+  Float32Array,
+  Float64Array,
+  Int16Array,
+  Int32Array,
+  Int8Array,
+  Map,
+  ObjectPrototypeToString,
+  Symbol,
+  Uint16Array,
+  Uint32Array,
+  Uint8Array,
+  Uint8ClampedArray,
+} = primordials;
+
 const { Buffer } = require('buffer');
 const { validateString } = require('internal/validators');
 const {
@@ -22,10 +40,9 @@ const {
 } = internalBinding('serdes');
 const assert = require('internal/assert');
 const { copy } = internalBinding('buffer');
-const { objectToString } = require('internal/util');
+const { inspect } = require('internal/util/inspect');
 const { FastBuffer } = require('internal/buffer');
-const { toPathIfFileURL } = require('internal/url');
-const { validatePath } = require('internal/fs/utils');
+const { getValidatedPath } = require('internal/fs/utils');
 const { toNamespacedPath } = require('path');
 const {
   createHeapSnapshotStream,
@@ -42,8 +59,7 @@ const kHandle = Symbol('kHandle');
 
 function writeHeapSnapshot(filename) {
   if (filename !== undefined) {
-    filename = toPathIfFileURL(filename);
-    validatePath(filename);
+    filename = getValidatedPath(filename);
     filename = toNamespacedPath(filename);
   }
   return triggerHeapSnapshot(filename);
@@ -92,10 +108,12 @@ const {
   setFlagsFromString: _setFlagsFromString,
   heapStatisticsArrayBuffer,
   heapSpaceStatisticsArrayBuffer,
+  heapCodeStatisticsArrayBuffer,
   updateHeapStatisticsArrayBuffer,
   updateHeapSpaceStatisticsArrayBuffer,
+  updateHeapCodeStatisticsArrayBuffer,
 
-  // Properties for heap and heap space statistics buffer extraction.
+  // Properties for heap statistics buffer extraction.
   kTotalHeapSizeIndex,
   kTotalHeapSizeExecutableIndex,
   kTotalPhysicalSizeIndex,
@@ -105,12 +123,21 @@ const {
   kDoesZapGarbageIndex,
   kMallocedMemoryIndex,
   kPeakMallocedMemoryIndex,
+  kNumberOfNativeContextsIndex,
+  kNumberOfDetachedContextsIndex,
+
+  // Properties for heap spaces statistics buffer extraction.
   kHeapSpaces,
   kHeapSpaceStatisticsPropertiesCount,
   kSpaceSizeIndex,
   kSpaceUsedSizeIndex,
   kSpaceAvailableSizeIndex,
-  kPhysicalSpaceSizeIndex
+  kPhysicalSpaceSizeIndex,
+
+  // Properties for heap code statistics buffer extraction.
+  kCodeAndMetadataSizeIndex,
+  kBytecodeAndMetadataSizeIndex,
+  kExternalScriptSourceSizeIndex
 } = internalBinding('v8');
 
 const kNumberOfHeapSpaces = kHeapSpaces.length;
@@ -120,6 +147,9 @@ const heapStatisticsBuffer =
 
 const heapSpaceStatisticsBuffer =
     new Float64Array(heapSpaceStatisticsArrayBuffer);
+
+const heapCodeStatisticsBuffer =
+    new Float64Array(heapCodeStatisticsArrayBuffer);
 
 function setFlagsFromString(flags) {
   validateString(flags, 'flags');
@@ -140,7 +170,9 @@ function getHeapStatistics() {
     'heap_size_limit': buffer[kHeapSizeLimitIndex],
     'malloced_memory': buffer[kMallocedMemoryIndex],
     'peak_malloced_memory': buffer[kPeakMallocedMemoryIndex],
-    'does_zap_garbage': buffer[kDoesZapGarbageIndex]
+    'does_zap_garbage': buffer[kDoesZapGarbageIndex],
+    'number_of_native_contexts': buffer[kNumberOfNativeContextsIndex],
+    'number_of_detached_contexts': buffer[kNumberOfDetachedContextsIndex]
   };
 }
 
@@ -149,7 +181,7 @@ function getHeapSpaceStatistics() {
   const buffer = heapSpaceStatisticsBuffer;
   updateHeapSpaceStatisticsArrayBuffer();
 
-  for (var i = 0; i < kNumberOfHeapSpaces; i++) {
+  for (let i = 0; i < kNumberOfHeapSpaces; i++) {
     const propertyOffset = i * kHeapSpaceStatisticsPropertiesCount;
     heapSpaceStatistics[i] = {
       space_name: kHeapSpaces[i],
@@ -161,6 +193,17 @@ function getHeapSpaceStatistics() {
   }
 
   return heapSpaceStatistics;
+}
+
+function getHeapCodeStatistics() {
+  const buffer = heapCodeStatisticsBuffer;
+
+  updateHeapCodeStatisticsArrayBuffer();
+  return {
+    'code_and_metadata_size': buffer[kCodeAndMetadataSizeIndex],
+    'bytecode_and_metadata_size': buffer[kBytecodeAndMetadataSizeIndex],
+    'external_script_source_size': buffer[kExternalScriptSourceSizeIndex]
+  };
 }
 
 /* V8 serialization API */
@@ -193,7 +236,7 @@ const arrayBufferViewTypeToIndex = new Map();
 {
   const dummy = new ArrayBuffer();
   for (const [i, ctor] of arrayBufferViewTypes.entries()) {
-    const tag = objectToString(new ctor(dummy));
+    const tag = ObjectPrototypeToString(new ctor(dummy));
     arrayBufferViewTypeToIndex.set(tag, i);
   }
 }
@@ -212,11 +255,12 @@ class DefaultSerializer extends Serializer {
     if (abView.constructor === Buffer) {
       i = bufferConstructorIndex;
     } else {
-      const tag = objectToString(abView);
+      const tag = ObjectPrototypeToString(abView);
       i = arrayBufferViewTypeToIndex.get(tag);
 
       if (i === undefined) {
-        throw new this._getDataCloneError(`Unknown host object type: ${tag}`);
+        throw new this._getDataCloneError(
+          `Unserializable host object: ${inspect(abView)}`);
       }
     }
     this.writeUint32(i);
@@ -269,6 +313,7 @@ module.exports = {
   getHeapSnapshot,
   getHeapStatistics,
   getHeapSpaceStatistics,
+  getHeapCodeStatistics,
   setFlagsFromString,
   Serializer,
   Deserializer,

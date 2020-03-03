@@ -8,7 +8,7 @@ Terminate first evaluation (it forces injected-script-source compilation)
 {
     error : {
         code : -32000
-        message : Cannot access specified execution context
+        message : Execution was terminated
     }
     id : <messageId>
 }
@@ -62,5 +62,11 @@ Pause inside microtask and terminate execution
         result : {
             type : undefined
         }
+    }
+}
+Terminate execution with pending microtasks
+{
+    id : <messageId>
+    result : {
     }
 }

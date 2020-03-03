@@ -1,5 +1,8 @@
+#include "diagnosticfilename-inl.h"
 #include "env-inl.h"
+#include "memory_tracker-inl.h"
 #include "stream_base-inl.h"
+#include "util-inl.h"
 
 using v8::Array;
 using v8::Boolean;
@@ -8,6 +11,7 @@ using v8::EmbedderGraph;
 using v8::EscapableHandleScope;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
+using v8::Global;
 using v8::HandleScope;
 using v8::HeapSnapshot;
 using v8::Isolate;
@@ -56,7 +60,7 @@ class JSGraphJSNode : public EmbedderGraph::Node {
   };
 
  private:
-  Persistent<Value> persistent_;
+  Global<Value> persistent_;
 };
 
 class JSGraph : public EmbedderGraph {
@@ -85,14 +89,15 @@ class JSGraph : public EmbedderGraph {
   MaybeLocal<Array> CreateObject() const {
     EscapableHandleScope handle_scope(isolate_);
     Local<Context> context = isolate_->GetCurrentContext();
+    Environment* env = Environment::GetCurrent(context);
 
     std::unordered_map<Node*, Local<Object>> info_objects;
     Local<Array> nodes = Array::New(isolate_, nodes_.size());
     Local<String> edges_string = FIXED_ONE_BYTE_STRING(isolate_, "edges");
     Local<String> is_root_string = FIXED_ONE_BYTE_STRING(isolate_, "isRoot");
-    Local<String> name_string = FIXED_ONE_BYTE_STRING(isolate_, "name");
-    Local<String> size_string = FIXED_ONE_BYTE_STRING(isolate_, "size");
-    Local<String> value_string = FIXED_ONE_BYTE_STRING(isolate_, "value");
+    Local<String> name_string = env->name_string();
+    Local<String> size_string = env->size_string();
+    Local<String> value_string = env->value_string();
     Local<String> wraps_string = FIXED_ONE_BYTE_STRING(isolate_, "wraps");
     Local<String> to_string = FIXED_ONE_BYTE_STRING(isolate_, "to");
 
@@ -280,7 +285,6 @@ class HeapSnapshotStream : public AsyncWrap,
 
   int DoShutdown(ShutdownWrap* req_wrap) override {
     UNREACHABLE();
-    return 0;
   }
 
   int DoWrite(WriteWrap* w,
@@ -288,7 +292,6 @@ class HeapSnapshotStream : public AsyncWrap,
               size_t count,
               uv_stream_t* send_handle) override {
     UNREACHABLE();
-    return 0;
   }
 
   bool IsAlive() override { return snapshot_ != nullptr; }

@@ -5,6 +5,7 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const { Session } = require('inspector');
+const { inspect } = require('util');
 
 const session = new Session();
 
@@ -27,8 +28,8 @@ session.post('Runtime.evaluate', { expression: '2 + 2' });
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
       message:
-        'The "method" argument must be of type string. ' +
-        `Received type ${typeof i}`
+        'The "method" argument must be of type string.' +
+        common.invalidArgTypeHelper(i)
     }
   );
 });
@@ -40,8 +41,8 @@ session.post('Runtime.evaluate', { expression: '2 + 2' });
       code: 'ERR_INVALID_ARG_TYPE',
       type: TypeError,
       message:
-        'The "params" argument must be of type Object. ' +
-        `Received type ${typeof i}`
+        'The "params" argument must be of type object.' +
+        common.invalidArgTypeHelper(i)
     }
   );
 });
@@ -52,7 +53,7 @@ session.post('Runtime.evaluate', { expression: '2 + 2' });
     {
       code: 'ERR_INVALID_CALLBACK',
       type: TypeError,
-      message: 'Callback must be a function'
+      message: `Callback must be a function. Received ${inspect(i)}`
     }
   );
 });

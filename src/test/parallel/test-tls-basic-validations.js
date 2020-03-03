@@ -12,7 +12,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'Ciphers must be a string'
+    message: 'The "options.ciphers" property must be of type string.' +
+      ' Received type number (1)'
   });
 
 common.expectsError(
@@ -20,7 +21,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'Ciphers must be a string'
+    message: 'The "options.ciphers" property must be of type string.' +
+      ' Received type number (1)'
   });
 
 common.expectsError(
@@ -52,8 +54,8 @@ common.expectsError(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     type: TypeError,
-    message: 'The "options.handshakeTimeout" property must ' +
-              'be of type number. Received type string'
+    message: 'The "options.handshakeTimeout" property must be of type number.' +
+              " Received type string ('abcd')"
   }
 );
 
@@ -76,11 +78,12 @@ common.expectsError(
 assert.throws(() => tls.createServer({ ticketKeys: Buffer.alloc(0) }),
               /TypeError: Ticket keys length must be 48 bytes/);
 
-common.expectsError(
+assert.throws(
   () => tls.createSecurePair({}),
   {
-    code: 'ERR_ASSERTION',
-    message: 'context.context must be a NativeSecureContext'
+    message: 'context must be a SecureContext',
+    code: 'ERR_TLS_INVALID_CONTEXT',
+    name: 'TypeError',
   }
 );
 
@@ -115,3 +118,15 @@ common.expectsError(
     }
   );
 }
+
+assert.throws(() => { tls.createSecureContext({ minVersion: 'fhqwhgads' }); },
+              {
+                code: 'ERR_TLS_INVALID_PROTOCOL_VERSION',
+                name: 'TypeError'
+              });
+
+assert.throws(() => { tls.createSecureContext({ maxVersion: 'fhqwhgads' }); },
+              {
+                code: 'ERR_TLS_INVALID_PROTOCOL_VERSION',
+                name: 'TypeError'
+              });

@@ -63,6 +63,10 @@
 
 'use strict';
 
+const {
+  ObjectSetPrototypeOf,
+} = primordials;
+
 module.exports = Transform;
 const {
   ERR_METHOD_NOT_IMPLEMENTED,
@@ -71,15 +75,15 @@ const {
   ERR_TRANSFORM_WITH_LENGTH_0
 } = require('internal/errors').codes;
 const Duplex = require('_stream_duplex');
-const util = require('util');
-util.inherits(Transform, Duplex);
+ObjectSetPrototypeOf(Transform.prototype, Duplex.prototype);
+ObjectSetPrototypeOf(Transform, Duplex);
 
 
 function afterTransform(er, data) {
-  var ts = this._transformState;
+  const ts = this._transformState;
   ts.transforming = false;
 
-  var cb = ts.writecb;
+  const cb = ts.writecb;
 
   if (cb === null) {
     return this.emit('error', new ERR_MULTIPLE_CALLBACK());
@@ -93,7 +97,7 @@ function afterTransform(er, data) {
 
   cb(er);
 
-  var rs = this._readableState;
+  const rs = this._readableState;
   rs.reading = false;
   if (rs.needReadable || rs.length < rs.highWaterMark) {
     this._read(rs.highWaterMark);
@@ -163,7 +167,7 @@ Transform.prototype._transform = function(chunk, encoding, cb) {
 };
 
 Transform.prototype._write = function(chunk, encoding, cb) {
-  var ts = this._transformState;
+  const ts = this._transformState;
   ts.writecb = cb;
   ts.writechunk = chunk;
   ts.writeencoding = encoding;
@@ -180,7 +184,7 @@ Transform.prototype._write = function(chunk, encoding, cb) {
 // _transform does all the work.
 // That we got here means that the readable side wants more data.
 Transform.prototype._read = function(n) {
-  var ts = this._transformState;
+  const ts = this._transformState;
 
   if (ts.writechunk !== null && !ts.transforming) {
     ts.transforming = true;
@@ -207,9 +211,7 @@ function done(stream, er, data) {
   if (data != null) // Single equals check for both `null` and `undefined`
     stream.push(data);
 
-  // TODO(BridgeAR): Write a test for these two error cases
-  // if there's nothing in the write buffer, then that means
-  // that nothing more will ever be provided
+  // These two error cases are coherence checks that can likely not be tested.
   if (stream._writableState.length)
     throw new ERR_TRANSFORM_WITH_LENGTH_0();
 

@@ -1,11 +1,20 @@
 'use strict';
 
 const {
+  JSONParse,
+  JSONStringify,
+  Map,
+  Symbol,
+} = primordials;
+
+const {
   ERR_INSPECTOR_ALREADY_CONNECTED,
   ERR_INSPECTOR_CLOSED,
   ERR_INSPECTOR_COMMAND,
   ERR_INSPECTOR_NOT_AVAILABLE,
   ERR_INSPECTOR_NOT_CONNECTED,
+  ERR_INSPECTOR_NOT_ACTIVE,
+  ERR_INSPECTOR_NOT_WORKER,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_CALLBACK
 } = require('internal/errors').codes;
@@ -15,9 +24,17 @@ if (!hasInspector)
   throw new ERR_INSPECTOR_NOT_AVAILABLE();
 
 const EventEmitter = require('events');
+const { queueMicrotask } = require('internal/process/task_queues');
 const { validateString } = require('internal/validators');
-const util = require('util');
-const { Connection, open, url } = internalBinding('inspector');
+const { isMainThread } = require('worker_threads');
+
+const {
+  Connection,
+  MainThreadConnection,
+  open,
+  url,
+  waitForDebugger
+} = internalBinding('inspector');
 
 const connectionSymbol = Symbol('connectionProperty');
 const messageCallbacksSymbol = Symbol('messageCallbacks');
@@ -35,16 +52,22 @@ class Session extends EventEmitter {
   connect() {
     if (this[connectionSymbol])
       throw new ERR_INSPECTOR_ALREADY_CONNECTED('The inspector session');
-    const connection =
+    this[connectionSymbol] =
       new Connection((message) => this[onMessageSymbol](message));
-    if (connection.sessionAttached) {
-      throw new ERR_INSPECTOR_ALREADY_CONNECTED('Another inspector session');
-    }
-    this[connectionSymbol] = connection;
+  }
+
+  connectToMainThread() {
+    if (isMainThread)
+      throw new ERR_INSPECTOR_NOT_WORKER();
+    if (this[connectionSymbol])
+      throw new ERR_INSPECTOR_ALREADY_CONNECTED('The inspector session');
+    this[connectionSymbol] =
+      new MainThreadConnection(
+        (message) => queueMicrotask(() => this[onMessageSymbol](message)));
   }
 
   [onMessageSymbol](message) {
-    const parsed = JSON.parse(message);
+    const parsed = JSONParse(message);
     try {
       if (parsed.id) {
         const callback = this[messageCallbacksSymbol].get(parsed.id);
@@ -68,7 +91,7 @@ class Session extends EventEmitter {
 
   post(method, params, callback) {
     validateString(method, 'method');
-    if (!callback && util.isFunction(params)) {
+    if (!callback && typeof params === 'function') {
       callback = params;
       params = null;
     }
@@ -76,7 +99,7 @@ class Session extends EventEmitter {
       throw new ERR_INVALID_ARG_TYPE('params', 'Object', params);
     }
     if (callback && typeof callback !== 'function') {
-      throw new ERR_INVALID_CALLBACK();
+      throw new ERR_INVALID_CALLBACK(callback);
     }
 
     if (!this[connectionSymbol]) {
@@ -90,7 +113,7 @@ class Session extends EventEmitter {
     if (callback) {
       this[messageCallbacksSymbol].set(id, callback);
     }
-    this[connectionSymbol].dispatch(JSON.stringify(message));
+    this[connectionSymbol].dispatch(JSONStringify(message));
   }
 
   disconnect() {
@@ -107,10 +130,22 @@ class Session extends EventEmitter {
   }
 }
 
+function inspectorOpen(port, host, wait) {
+  open(port, host);
+  if (wait)
+    waitForDebugger();
+}
+
+function inspectorWaitForDebugger() {
+  if (!waitForDebugger())
+    throw new ERR_INSPECTOR_NOT_ACTIVE();
+}
+
 module.exports = {
-  open: (port, host, wait) => open(port, host, !!wait),
+  open: inspectorOpen,
   close: process._debugEnd,
   url: url,
+  waitForDebugger: inspectorWaitForDebugger,
   // This is dynamically added during bootstrap,
   // where the console from the VM is still available
   console: require('internal/util/inspector').consoleFromVM,

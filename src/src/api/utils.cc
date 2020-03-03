@@ -1,5 +1,4 @@
 #include "node.h"
-#include "node_internals.h"
 
 #include <csignal>
 

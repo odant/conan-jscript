@@ -20,13 +20,27 @@
 
 'use strict';
 
+const {
+  Error,
+  ObjectAssign,
+  ObjectIs,
+  ObjectKeys,
+  ObjectPrototypeIsPrototypeOf,
+  Map,
+  RegExpPrototypeTest,
+} = primordials;
+
 const { Buffer } = require('buffer');
-const { codes: {
-  ERR_AMBIGUOUS_ARGUMENT,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_RETURN_VALUE
-} } = require('internal/errors');
+const {
+  codes: {
+    ERR_AMBIGUOUS_ARGUMENT,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_RETURN_VALUE,
+    ERR_MISSING_ARGS,
+  },
+  overrideStackTrace,
+} = require('internal/errors');
 const AssertionError = require('internal/assert/assertion_error');
 const { openSync, closeSync, readSync } = require('fs');
 const { inspect } = require('internal/util/inspect');
@@ -89,9 +103,10 @@ function innerFail(obj) {
 function fail(actual, expected, message, operator, stackStartFn) {
   const argsLen = arguments.length;
 
-  let internalMessage;
-  if (argsLen === 0) {
-    internalMessage = 'Failed';
+  let internalMessage = false;
+  if (actual == null && argsLen <= 1) {
+    internalMessage = true;
+    message = 'Failed';
   } else if (argsLen === 1) {
     message = actual;
     actual = undefined;
@@ -115,14 +130,11 @@ function fail(actual, expected, message, operator, stackStartFn) {
     actual,
     expected,
     operator: operator === undefined ? 'fail' : operator,
-    stackStartFn: stackStartFn || fail
+    stackStartFn: stackStartFn || fail,
+    message
   };
-  if (message !== undefined) {
-    errArgs.message = message;
-  }
   const err = new AssertionError(errArgs);
   if (internalMessage) {
-    err.message = internalMessage;
     err.generatedMessage = true;
   }
   throw err;
@@ -171,8 +183,8 @@ function getCode(fd, line, column) {
   let lines = 0;
   // Prevent blocking the event loop by limiting the maximum amount of
   // data that may be read.
-  let maxReads = 64; // bytesPerRead * maxReads = 512 kb
-  const bytesPerRead = 8192;
+  let maxReads = 32; // bytesPerRead * maxReads = 512 kb
+  const bytesPerRead = 16384;
   // Use a single buffer up front that is reused until the call site is found.
   let buffer = Buffer.allocUnsafe(bytesPerRead);
   while (maxReads-- !== 0) {
@@ -181,7 +193,7 @@ function getCode(fd, line, column) {
     buffer = lines < line ? buffer : Buffer.allocUnsafe(bytesPerRead);
     bytesRead = readSync(fd, buffer, 0, bytesPerRead);
     // Read the buffer until the required code line is found.
-    for (var i = 0; i < bytesRead; i++) {
+    for (let i = 0; i < bytesRead; i++) {
       if (buffer[i] === 10 && ++lines === line) {
         // If the end of file is reached, directly parse the code and return.
         if (bytesRead < bytesPerRead) {
@@ -200,15 +212,32 @@ function getCode(fd, line, column) {
 function parseCode(code, offset) {
   // Lazy load acorn.
   if (parseExpressionAt === undefined) {
-    ({ parseExpressionAt } = require('internal/deps/acorn/acorn/dist/acorn'));
+    const acorn = require('internal/deps/acorn/acorn/dist/acorn');
+    const privateMethods =
+      require('internal/deps/acorn-plugins/acorn-private-methods/index');
+    const classFields =
+      require('internal/deps/acorn-plugins/acorn-class-fields/index');
+    const numericSeparator =
+      require('internal/deps/acorn-plugins/acorn-numeric-separator/index');
+    const staticClassFeatures =
+      require('internal/deps/acorn-plugins/acorn-static-class-features/index');
+
     ({ findNodeAround } = require('internal/deps/acorn/acorn-walk/dist/walk'));
+
+    const Parser = acorn.Parser.extend(
+      privateMethods,
+      classFields,
+      numericSeparator,
+      staticClassFeatures
+    );
+    parseExpressionAt = Parser.parseExpressionAt.bind(Parser);
   }
   let node;
   let start = 0;
   // Parse the read code until the correct expression is found.
   do {
     try {
-      node = parseExpressionAt(code, start);
+      node = parseExpressionAt(code, start, { ecmaVersion: 11 });
       start = node.end + 1 || start;
       // Find the CallExpression in the tree.
       node = findNodeAround(node, offset, 'CallExpression');
@@ -239,33 +268,42 @@ function getErrMessage(message, fn) {
   // We only need the stack trace. To minimize the overhead use an object
   // instead of an error.
   const err = {};
+  // eslint-disable-next-line no-restricted-syntax
   Error.captureStackTrace(err, fn);
   Error.stackTraceLimit = tmpLimit;
 
-  const tmpPrepare = Error.prepareStackTrace;
-  Error.prepareStackTrace = (_, stack) => stack;
+  overrideStackTrace.set(err, (_, stack) => stack);
   const call = err.stack[0];
-  Error.prepareStackTrace = tmpPrepare;
 
   const filename = call.getFileName();
-
-  if (!filename) {
-    return message;
-  }
-
-  const line = call.getLineNumber() - 1;
+  let line = call.getLineNumber() - 1;
   let column = call.getColumnNumber() - 1;
+  let identifier;
+  let code;
 
-  const identifier = `${filename}${line}${column}`;
+  if (filename) {
+    identifier = `${filename}${line}${column}`;
+
+    // Skip Node.js modules!
+    if (filename.endsWith('.js') &&
+        NativeModule.exists(filename.slice(0, -3))) {
+      errorCache.set(identifier, undefined);
+      return;
+    }
+  } else {
+    const fn = call.getFunction();
+    if (!fn) {
+      return message;
+    }
+    code = String(fn);
+    // For functions created with the Function constructor, V8 does not count
+    // the lines containing the function header.
+    line += 2;
+    identifier = `${code}${line}${column}`;
+  }
 
   if (errorCache.has(identifier)) {
     return errorCache.get(identifier);
-  }
-
-  // Skip Node.js modules!
-  if (filename.endsWith('.js') && NativeModule.exists(filename.slice(0, -3))) {
-    errorCache.set(identifier, undefined);
-    return;
   }
 
   let fd;
@@ -274,16 +312,22 @@ function getErrMessage(message, fn) {
     // errors are handled faster.
     Error.stackTraceLimit = 0;
 
-    if (decoder === undefined) {
-      const { StringDecoder } = require('string_decoder');
-      decoder = new StringDecoder('utf8');
+    if (filename) {
+      if (decoder === undefined) {
+        const { StringDecoder } = require('string_decoder');
+        decoder = new StringDecoder('utf8');
+      }
+      fd = openSync(filename, 'r', 0o666);
+      // Reset column and message.
+      [column, message] = getCode(fd, line, column);
+      // Flush unfinished multi byte characters.
+      decoder.end();
+    } else {
+      for (let i = 0; i < line; i++) {
+        code = code.slice(code.indexOf('\n') + 1);
+      }
+      [column, message] = parseCode(code, column);
     }
-
-    fd = openSync(filename, 'r', 0o666);
-    // Reset column and message.
-    [column, message] = getCode(fd, line, column);
-    // Flush unfinished multi byte characters.
-    decoder.end();
     // Always normalize indentation, otherwise the message could look weird.
     if (message.includes('\n')) {
       if (EOL === '\r\n') {
@@ -352,6 +396,9 @@ assert.ok = ok;
 // The equality assertion tests shallow, coercive equality with ==.
 /* eslint-disable no-restricted-properties */
 assert.equal = function equal(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   // eslint-disable-next-line eqeqeq
   if (actual != expected) {
     innerFail({
@@ -367,6 +414,9 @@ assert.equal = function equal(actual, expected, message) {
 // The non-equality assertion tests for whether two objects are not
 // equal with !=.
 assert.notEqual = function notEqual(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   // eslint-disable-next-line eqeqeq
   if (actual == expected) {
     innerFail({
@@ -381,6 +431,9 @@ assert.notEqual = function notEqual(actual, expected, message) {
 
 // The equivalence assertion tests a deep equality relation.
 assert.deepEqual = function deepEqual(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   if (isDeepEqual === undefined) lazyLoadComparison();
   if (!isDeepEqual(actual, expected)) {
     innerFail({
@@ -395,6 +448,9 @@ assert.deepEqual = function deepEqual(actual, expected, message) {
 
 // The non-equivalence assertion tests for any deep inequality.
 assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   if (isDeepEqual === undefined) lazyLoadComparison();
   if (isDeepEqual(actual, expected)) {
     innerFail({
@@ -409,6 +465,9 @@ assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
 /* eslint-enable */
 
 assert.deepStrictEqual = function deepStrictEqual(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   if (isDeepEqual === undefined) lazyLoadComparison();
   if (!isDeepStrictEqual(actual, expected)) {
     innerFail({
@@ -423,6 +482,9 @@ assert.deepStrictEqual = function deepStrictEqual(actual, expected, message) {
 
 assert.notDeepStrictEqual = notDeepStrictEqual;
 function notDeepStrictEqual(actual, expected, message) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
   if (isDeepEqual === undefined) lazyLoadComparison();
   if (isDeepStrictEqual(actual, expected)) {
     innerFail({
@@ -436,7 +498,10 @@ function notDeepStrictEqual(actual, expected, message) {
 }
 
 assert.strictEqual = function strictEqual(actual, expected, message) {
-  if (!Object.is(actual, expected)) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
+  if (!ObjectIs(actual, expected)) {
     innerFail({
       actual,
       expected,
@@ -448,7 +513,10 @@ assert.strictEqual = function strictEqual(actual, expected, message) {
 };
 
 assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
-  if (Object.is(actual, expected)) {
+  if (arguments.length < 2) {
+    throw new ERR_MISSING_ARGS('actual', 'expected');
+  }
+  if (ObjectIs(actual, expected)) {
     innerFail({
       actual,
       expected,
@@ -466,7 +534,7 @@ class Comparison {
         if (actual !== undefined &&
             typeof actual[key] === 'string' &&
             isRegExp(obj[key]) &&
-            obj[key].test(actual[key])) {
+            RegExpPrototypeTest(obj[key], actual[key])) {
           this[key] = actual[key];
         } else {
           this[key] = obj[key];
@@ -476,7 +544,7 @@ class Comparison {
   }
 }
 
-function compareExceptionKey(actual, expected, key, message, keys) {
+function compareExceptionKey(actual, expected, key, message, keys, fn) {
   if (!(key in actual) || !isDeepStrictEqual(actual[key], expected[key])) {
     if (!message) {
       // Create placeholder objects to create a nice output.
@@ -487,75 +555,98 @@ function compareExceptionKey(actual, expected, key, message, keys) {
         actual: a,
         expected: b,
         operator: 'deepStrictEqual',
-        stackStartFn: assert.throws
+        stackStartFn: fn
       });
       err.actual = actual;
       err.expected = expected;
-      err.operator = 'throws';
+      err.operator = fn.name;
       throw err;
     }
     innerFail({
       actual,
       expected,
       message,
-      operator: 'throws',
-      stackStartFn: assert.throws
+      operator: fn.name,
+      stackStartFn: fn
     });
   }
 }
 
-function expectedException(actual, expected, msg) {
-  if (typeof expected !== 'function') {
-    if (isRegExp(expected))
-      return expected.test(actual);
-    // assert.doesNotThrow does not accept objects.
-    if (arguments.length === 2) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'expected', ['Function', 'RegExp'], expected
-      );
-    }
+function expectedException(actual, expected, message, fn) {
+  let generatedMessage = false;
+  let throwError = false;
 
-    // Handle primitives properly.
-    if (typeof actual !== 'object' || actual === null) {
+  if (typeof expected !== 'function') {
+    // Handle regular expressions.
+    if (isRegExp(expected)) {
+      const str = String(actual);
+      if (RegExpPrototypeTest(expected, str))
+        return;
+
+      if (!message) {
+        generatedMessage = true;
+        message = 'The input did not match the regular expression ' +
+                  `${inspect(expected)}. Input:\n\n${inspect(str)}\n`;
+      }
+      throwError = true;
+      // Handle primitives properly.
+    } else if (typeof actual !== 'object' || actual === null) {
       const err = new AssertionError({
         actual,
         expected,
-        message: msg,
+        message,
         operator: 'deepStrictEqual',
-        stackStartFn: assert.throws
+        stackStartFn: fn
       });
-      err.operator = 'throws';
+      err.operator = fn.name;
       throw err;
-    }
-
-    const keys = Object.keys(expected);
-    // Special handle errors to make sure the name and the message are compared
-    // as well.
-    if (expected instanceof Error) {
-      keys.push('name', 'message');
-    } else if (keys.length === 0) {
-      throw new ERR_INVALID_ARG_VALUE('error',
-                                      expected, 'may not be an empty object');
-    }
-    if (isDeepEqual === undefined) lazyLoadComparison();
-    for (const key of keys) {
-      if (typeof actual[key] === 'string' &&
-          isRegExp(expected[key]) &&
-          expected[key].test(actual[key])) {
-        continue;
+    } else {
+      // Handle validation objects.
+      const keys = ObjectKeys(expected);
+      // Special handle errors to make sure the name and the message are
+      // compared as well.
+      if (expected instanceof Error) {
+        keys.push('name', 'message');
+      } else if (keys.length === 0) {
+        throw new ERR_INVALID_ARG_VALUE('error',
+                                        expected, 'may not be an empty object');
       }
-      compareExceptionKey(actual, expected, key, msg, keys);
+      if (isDeepEqual === undefined) lazyLoadComparison();
+      for (const key of keys) {
+        if (typeof actual[key] === 'string' &&
+            isRegExp(expected[key]) &&
+            RegExpPrototypeTest(expected[key], actual[key])) {
+          continue;
+        }
+        compareExceptionKey(actual, expected, key, message, keys, fn);
+      }
+      return;
     }
-    return true;
-  }
   // Guard instanceof against arrow functions as they don't have a prototype.
-  if (expected.prototype !== undefined && actual instanceof expected) {
-    return true;
+  // Check for matching Error classes.
+  } else if (expected.prototype !== undefined && actual instanceof expected) {
+    return;
+  } else if (ObjectPrototypeIsPrototypeOf(Error, expected)) {
+    throw actual;
+  } else {
+    // Check validation functions return value.
+    const res = expected.call({}, actual);
+    if (res !== true) {
+      throw actual;
+    }
   }
-  if (Error.isPrototypeOf(expected)) {
-    return false;
+
+  if (throwError) {
+    const err = new AssertionError({
+      actual,
+      expected,
+      message,
+      operator: fn.name,
+      stackStartFn: fn
+    });
+    err.generatedMessage = generatedMessage;
+    throw err;
   }
-  return expected.call({}, actual) === true;
 }
 
 function getActual(fn) {
@@ -575,9 +666,9 @@ function checkIsPromise(obj) {
   // way. Do not accept thenables that use a function as `obj` and that have no
   // `catch` handler.
   return isPromise(obj) ||
-    obj !== null && typeof obj === 'object' &&
+    (obj !== null && typeof obj === 'object' &&
     typeof obj.then === 'function' &&
-    typeof obj.catch === 'function';
+    typeof obj.catch === 'function');
 }
 
 async function waitForActual(promiseFn) {
@@ -650,9 +741,31 @@ function expectsError(stackStartFn, actual, error, message) {
       stackStartFn
     });
   }
-  if (error && expectedException(actual, error, message) === false) {
-    throw actual;
+
+  if (!error)
+    return;
+
+  expectedException(actual, error, message, stackStartFn);
+}
+
+function hasMatchingError(actual, expected) {
+  if (typeof expected !== 'function') {
+    if (isRegExp(expected)) {
+      const str = String(actual);
+      return RegExpPrototypeTest(expected, str);
+    }
+    throw new ERR_INVALID_ARG_TYPE(
+      'expected', ['Function', 'RegExp'], expected
+    );
   }
+  // Guard instanceof against arrow functions as they don't have a prototype.
+  if (expected.prototype !== undefined && actual instanceof expected) {
+    return true;
+  }
+  if (Error.isPrototypeOf(expected)) {
+    return false;
+  }
+  return expected.call({}, actual) === true;
 }
 
 function expectsNoError(stackStartFn, actual, error, message) {
@@ -664,7 +777,7 @@ function expectsNoError(stackStartFn, actual, error, message) {
     error = undefined;
   }
 
-  if (!error || expectedException(actual, error)) {
+  if (!error || hasMatchingError(actual, error)) {
     const details = message ? `: ${message}` : '.';
     const fnType = stackStartFn.name === 'doesNotReject' ?
       'rejection' : 'exception';
@@ -728,9 +841,9 @@ assert.ifError = function ifError(err) {
       tmp2.shift();
       // Filter all frames existing in err.stack.
       let tmp1 = newErr.stack.split('\n');
-      for (var i = 0; i < tmp2.length; i++) {
+      for (const errFrame of tmp2) {
         // Find the first occurrence of the frame.
-        const pos = tmp1.indexOf(tmp2[i]);
+        const pos = tmp1.indexOf(errFrame);
         if (pos !== -1) {
           // Only keep new frames.
           tmp1 = tmp1.slice(0, pos);
@@ -744,11 +857,54 @@ assert.ifError = function ifError(err) {
   }
 };
 
+function internalMatch(string, regexp, message, fn) {
+  if (!isRegExp(regexp)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'regexp', 'RegExp', regexp
+    );
+  }
+  const match = fn.name === 'match';
+  if (typeof string !== 'string' ||
+      RegExpPrototypeTest(regexp, string) !== match) {
+    if (message instanceof Error) {
+      throw message;
+    }
+
+    const generatedMessage = !message;
+
+    // 'The input was expected to not match the regular expression ' +
+    message = message || (typeof string !== 'string' ?
+      'The "string" argument must be of type string. Received type ' +
+        `${typeof string} (${inspect(string)})` :
+      (match ?
+        'The input did not match the regular expression ' :
+        'The input was expected to not match the regular expression ') +
+          `${inspect(regexp)}. Input:\n\n${inspect(string)}\n`);
+    const err = new AssertionError({
+      actual: string,
+      expected: regexp,
+      message,
+      operator: fn.name,
+      stackStartFn: fn
+    });
+    err.generatedMessage = generatedMessage;
+    throw err;
+  }
+}
+
+assert.match = function match(string, regexp, message) {
+  internalMatch(string, regexp, message, match);
+};
+
+assert.doesNotMatch = function doesNotMatch(string, regexp, message) {
+  internalMatch(string, regexp, message, doesNotMatch);
+};
+
 // Expose a strict only variant of assert
 function strict(...args) {
   innerOk(strict, args.length, ...args);
 }
-assert.strict = Object.assign(strict, assert, {
+assert.strict = ObjectAssign(strict, assert, {
   equal: assert.strictEqual,
   deepEqual: assert.deepStrictEqual,
   notEqual: assert.notStrictEqual,
