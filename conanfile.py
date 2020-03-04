@@ -59,8 +59,8 @@ class JScriptConan(ConanFile):
         self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
 
     def build_requirements(self):
-        if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
-            self.build_requires("nasm/2.13.01@conan/stable")
+        if tools.os_info.is_windows:
+            self.build_requires("nasm/2.14")
         if self.settings.arch == "x86_64" or self.settings.arch == "x86":
             if self.options.ninja:
                 self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
