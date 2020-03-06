@@ -32,7 +32,7 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=True", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "add_const.patch", "FindJScript.cmake", "add_libatomic.patch"
+    exports_sources = "src/*", "build.patch", "oda.patch", "FindJScript.cmake", "add_libatomic.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -68,6 +68,7 @@ class JScriptConan(ConanFile):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
     def source(self):
+        tools.patch(patch_file="build.patch")
         return
         tools.patch(patch_file="oda.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
