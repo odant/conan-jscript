@@ -69,7 +69,6 @@ class JScriptConan(ConanFile):
 
     def source(self):
         tools.patch(patch_file="build.patch")
-        return
         tools.patch(patch_file="oda.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
             tools.patch(patch_file="add_libatomic.patch")
@@ -93,7 +92,7 @@ class JScriptConan(ConanFile):
                                 "mips": "mipsel",
                                 "armv7": "arm"
                             }.get(str(self.settings.arch)),
-            #"--node_core_target_name=%s" % output_name
+            "--node_core_target_name=%s" % output_name
         ]
         # External OpenSSL
         openssl_includes = self.deps_cpp_info["openssl"].include_paths[0].replace("\\", "/")

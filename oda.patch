@@ -1,34 +1,8 @@
-diff --git a/src/common.gypi b/src/common.gypi
-index 338ed2cbbb9..0a48c05da54 100644
---- a/src/common.gypi
-+++ b/src/common.gypi
-@@ -279,19 +279,11 @@
-         'conditions': [
-           ['target_arch=="ia32"', {
-             'TargetMachine' : 1, # /MACHINE:X86
--            'target_conditions': [
--              ['_type=="executable"', {
--                'AdditionalOptions': [ '/SubSystem:Console,"5.01"' ],
--              }],
--            ],
-+            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
-           }],
-           ['target_arch=="x64"', {
-             'TargetMachine' : 17, # /MACHINE:AMD64
--            'target_conditions': [
--              ['_type=="executable"', {
--                'AdditionalOptions': [ '/SubSystem:Console,"5.02"' ],
--              }],
--            ],
-+            'AdditionalOptions': [ '/SubSystem:Console,"6.01"' ],
-           }],
-           ['target_arch=="arm64"', {
-             'TargetMachine' : 0, # /MACHINE:ARM64 is inferred from the input files.
 diff --git a/src/configure.py b/src/configure.py
-index 8ae56fdeff2..f1302960060 100644
+index 14f5665e0..280615dd3 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -600,6 +600,12 @@ parser.add_option('-C',
+@@ -610,6 +610,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -41,32 +15,32 @@ index 8ae56fdeff2..f1302960060 100644
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1141,6 +1147,9 @@ def configure_node(o):
-   o['variables']['node_experimental_http_parser'] = \
-       b(options.experimental_http_parser)
+@@ -1154,6 +1160,9 @@ def configure_node(o):
+   else:
+     o['variables']['node_target_type'] = 'executable'
  
 +  o['variables']['node_core_target_name'] = options.node_core_target_name
-+  o['variables']['node_lib_target_name'] = options.node_core_target_name + '_lib'
++  o['variables']['node_lib_target_name'] = 'lib' + options.node_core_target_name
 +
- def configure_library(lib, output):
-   shared_lib = 'shared_' + lib
-   output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
+ def configure_napi(output):
+   version = getnapibuildversion.get_napi_version()
+   output['variables']['napi_build_version'] = version
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 9494cc11078..bc650793fc2 100644
+index 80916e524..80bb267c2 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -998,3 +998,5 @@ void Initialize() {}
+@@ -1085,3 +1085,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_errors.cc b/src/src/node_errors.cc
-index 1923cb6a22f..e06b88c2ba5 100644
+index 6d6907511..85faeb6d9 100644
 --- a/src/src/node_errors.cc
 +++ b/src/src/node_errors.cc
-@@ -265,9 +265,10 @@ void ReportException(Environment* env, const v8::TryCatch& try_catch) {
-   ReportException(env, try_catch.Exception(), try_catch.Message());
+@@ -402,9 +402,10 @@ static void ReportFatalException(Environment* env,
+   fflush(stderr);
  }
  
 -void PrintErrorString(const char* format, ...) {
@@ -78,7 +52,7 @@ index 1923cb6a22f..e06b88c2ba5 100644
  #ifdef _WIN32
    HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
  
-@@ -299,6 +300,29 @@ void PrintErrorString(const char* format, ...) {
+@@ -438,6 +439,29 @@ void PrintErrorString(const char* format, ...) {
    va_end(ap);
  }
  
@@ -109,22 +83,22 @@ index 1923cb6a22f..e06b88c2ba5 100644
    OnFatalError(location, message);
    // to suppress compiler warning
 diff --git a/src/src/node_errors.h b/src/src/node_errors.h
-index 2e9fd761a83..a2b015ce94c 100644
+index 74413e745..1acb26a87 100644
 --- a/src/src/node_errors.h
 +++ b/src/src/node_errors.h
-@@ -24,6 +24,7 @@ void AppendExceptionLine(Environment* env,
+@@ -26,6 +26,7 @@ void AppendExceptionLine(Environment* env,
  void OnFatalError(const char* location, const char* message);
  
  void PrintErrorString(const char* format, ...);
 +void SetRedirectPrintErrorString(std::function<void(const std::string&)>);
  
- void ReportException(Environment* env, const v8::TryCatch& try_catch);
- 
+ // Helpers to construct errors similar to the ones provided by
+ // lib/internal/errors.js.
 diff --git a/src/src/node_process_methods.cc b/src/src/node_process_methods.cc
-index 3cf2670a88b..efdbd65fec3 100644
+index e4d767514..5a9236a64 100644
 --- a/src/src/node_process_methods.cc
 +++ b/src/src/node_process_methods.cc
-@@ -205,8 +205,8 @@ void RawDebug(const FunctionCallbackInfo<Value>& args) {
+@@ -209,8 +209,8 @@ void RawDebug(const FunctionCallbackInfo<Value>& args) {
    CHECK(args.Length() == 1 && args[0]->IsString() &&
          "must be called with a single string");
    Utf8Value message(args.GetIsolate(), args[0]);
@@ -136,18 +110,18 @@ index 3cf2670a88b..efdbd65fec3 100644
  
  static void StartProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index cf34694e0..1fb692fc8 100644
+index 88831ab19..abd802147 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 11
- #define NODE_MINOR_VERSION 13
- #define NODE_PATCH_VERSION 0
-+#define NODE_BUILD_VERSION 11
+ #define NODE_MAJOR_VERSION 12
+ #define NODE_MINOR_VERSION 16
+ #define NODE_PATCH_VERSION 1
++#define NODE_BUILD_VERSION 0
  
- #define NODE_VERSION_IS_LTS 0
- #define NODE_VERSION_LTS_CODENAME ""
-@@ -52,16 +53,31 @@
+ #define NODE_VERSION_IS_LTS 1
+ #define NODE_VERSION_LTS_CODENAME "Erbium"
+@@ -52,6 +53,11 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
                            NODE_STRINGIFY(NODE_PATCH_VERSION)     \
                            NODE_STRINGIFY(NODE_TAG)
@@ -159,16 +133,7 @@ index cf34694e0..1fb692fc8 100644
  #endif
  
  # define NODE_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
-                               NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
-                               NODE_STRINGIFY(NODE_PATCH_VERSION)     \
-                               NODE_TAG
-+                              
-+# define NODE_RC_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
-+                                 NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
-+                                 NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
-+                                 NODE_STRINGIFY(NODE_BUILD_VERSION)     \
-+                              
- #ifndef NODE_EXE_VERSION
+@@ -62,6 +68,10 @@
  # define NODE_EXE_VERSION NODE_VERSION_STRING
  #endif
  

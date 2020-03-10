@@ -1,6 +1,7 @@
 #pragma once
 
 #include "jscript.h"
+#include "node_errors.h"
 
 #include <cstring>
 #include <atomic>
@@ -358,7 +359,7 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
     
     v8::Local<v8::Value> function = consoleObj->Get(env->context(), functionName).ToLocalChecked();
     if (function.IsEmpty() || !function->IsFunction()) {
-        Local<Object> global = env->context()->Global();
+        v8::Local<v8::Object> global = env->context()->Global();
         if (global.IsEmpty())
             return;
 
@@ -394,7 +395,7 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
         array->Set(1, instanceExt);
         array->Set(2, typeExt);
 
-        v8::Local<v8::Function> overrideFunction = v8::Function::New(env->isolate(), 
+        v8::MaybeLocal<v8::Function> overrideFunction = v8::Function::New(env->context(),
             []
             (const v8::FunctionCallbackInfo<v8::Value>& args) {
                 v8::Isolate* isolate = args.GetIsolate();
@@ -425,7 +426,7 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
                     info[i] = args[i];
                 }
 
-                globalLogFunc->Call(v8::Null(isolate), args.Length(), info.get());
+                globalLogFunc->Call(isolate->GetCurrentContext(), v8::Null(isolate), args.Length(), info.get());
 
                 v8::Local<v8::External> instanceExt = array->Get(1).As<v8::External>();
                 if (instanceExt.IsEmpty())
@@ -449,11 +450,34 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
             array
         );
 
-        if (!consoleObj->Set(functionName, overrideFunction))
+        if (!consoleObj->Set(functionName, overrideFunction.ToLocalChecked()))
             return;
-        if (!globalConsoleObj->Set(functionName, overrideFunction))
+        if (!globalConsoleObj->Set(functionName, overrideFunction.ToLocalChecked()))
             return;
     }
+}
+
+
+class AsyncCallbackScope
+{
+public:
+
+    AsyncCallbackScope(Environment*);
+    ~AsyncCallbackScope();
+
+private:
+    Environment* _env;
+};
+
+inline AsyncCallbackScope::AsyncCallbackScope(Environment* env)
+    :
+      _env{env}
+{
+    _env->PushAsyncCallbackScope();
+}
+
+inline AsyncCallbackScope::~AsyncCallbackScope() {
+  _env->PopAsyncCallbackScope();
 }
 
 
@@ -467,7 +491,7 @@ void JSInstanceImpl::StartNodeInstance() {
 
     int exit_code;
     {
-        Locker locker(_isolate);
+        v8::Locker locker(_isolate);
         Isolate::Scope isolate_scope(_isolate);
         HandleScope handle_scope(_isolate);
         std::unique_ptr<IsolateData, decltype(&FreeIsolateData)> isolate_data(
@@ -483,17 +507,18 @@ void JSInstanceImpl::StartNodeInstance() {
         }
         
         //HandleScope handle_scope2(_isolate);
-        Local<Context> context = NewContext(_isolate);
-        Context::Scope context_scope(context);
+        v8::Local<v8::Context> context = NewContext(_isolate);
+        v8::Context::Scope context_scope(context);
         int exit_code = 0;
         Environment env(
             isolate_data.get(),
             context,
+            args,
+            exec_args,
             static_cast<Environment::Flags>(Environment::kIsMainThread |
                                             Environment::kOwnsProcessState |
                                             Environment::kOwnsInspector));
         env.InitializeLibuv(per_process::v8_is_profiling);
-        env.ProcessCliArgs(args, exec_args);
         env.thread_stopper()->Uninstall();
         env.thread_stopper()->Install(&env, this, [](uv_async_t* handle) {
             auto instance = static_cast<JSInstanceImpl*>(handle->data);
@@ -530,9 +555,9 @@ void JSInstanceImpl::StartNodeInstance() {
         {
             EscapableHandleScope scope(env.isolate());
             Isolate* isolate = env.isolate();
-            Local<Context> context = env.context();
+            v8::Local<v8::Context> context = env.context();
 
-            Local<Object> global = context->Global();
+            v8::Local<v8::Object> global = context->Global();
             assert(!global.IsEmpty());
             if (!global.IsEmpty()) {
                 v8::Local<v8::String> functionName = v8::String::NewFromUtf8(isolate, "__oda_setRunState");
@@ -540,7 +565,7 @@ void JSInstanceImpl::StartNodeInstance() {
                 v8::Local<v8::Array> array = v8::Array::New(isolate, 1);
                 array->Set(0, instanceExt);
 
-                v8::Local<v8::Function> setRunStateFunction = v8::Function::New(isolate, 
+                v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context,
                     []
                     (const v8::FunctionCallbackInfo<v8::Value>& args) {
                         v8::Isolate* isolate = args.GetIsolate();
@@ -570,7 +595,7 @@ void JSInstanceImpl::StartNodeInstance() {
                     array
                 );
 
-                const bool isFunctionSet = global->Set(functionName, setRunStateFunction);
+                const bool isFunctionSet = global->Set(functionName, setRunStateFunction.ToLocalChecked());
                 assert(isFunctionSet);
             }
         }
@@ -584,7 +609,7 @@ void JSInstanceImpl::StartNodeInstance() {
         }
 
         {
-            SealHandleScope seal(_isolate);
+            v8::SealHandleScope seal(_isolate);
             bool more;
             env.performance_state()->Mark(
                 node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
@@ -597,7 +622,7 @@ void JSInstanceImpl::StartNodeInstance() {
                 if (more)
                     continue;
 
-                RunBeforeExit(&env);
+                EmitBeforeExit(&env);
 
                 // Emit `beforeExit` if the loop became alive either after emitting
                 // event, or after running some callbacks.
@@ -624,7 +649,7 @@ void JSInstanceImpl::StartNodeInstance() {
         RunAtExit(&env);
 
         per_process::v8_platform.DrainVMTasks(_isolate);
-        per_process::v8_platform.CancelVMTasks(_isolate);
+        //per_process::v8_platform.CancelVMTasks(_isolate);
 #if defined(LEAK_SANITIZER)
         __lsan_do_leak_check();
 #endif
@@ -955,7 +980,7 @@ void _async_execute_script(uv_async_t* handle) {
 
             v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
             if (trycatch.HasCaught()) {
-                v8::Handle<v8::Value> exception = trycatch.Exception();
+                v8::Local<v8::Value> exception = trycatch.Exception();
                 v8::String::Utf8Value message(env->isolate(), exception);
                 std::cerr << "exception: " << *message << std::endl;
             }
@@ -966,10 +991,10 @@ void _async_execute_script(uv_async_t* handle) {
                 auto test = compile_result.ToLocalChecked();
 
                 if (!script.IsEmpty()) {
-                    v8::Handle<v8::Value> result = script->Run(context).ToLocalChecked();
+                    v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
 
                     if (trycatch.HasCaught()) {
-                        v8::Handle<v8::Value> exception = trycatch.Exception();
+                        v8::Local<v8::Value> exception = trycatch.Exception();
                         v8::String::Utf8Value message(env->isolate(), exception);
                         std::cerr << "exception: " << *message << std::endl;
                     }
