@@ -1,5 +1,5 @@
 diff --git a/src/configure.py b/src/configure.py
-index 14f5665e0..280615dd3 100755
+index 14f5665e029..280615dd371 100755
 --- a/src/configure.py
 +++ b/src/configure.py
 @@ -610,6 +610,12 @@ parser.add_option('-C',
@@ -26,7 +26,7 @@ index 14f5665e0..280615dd3 100755
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 80916e524..80bb267c2 100644
+index 80916e5244a..80bb267c26c 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
 @@ -1085,3 +1085,5 @@ void Initialize() {}
@@ -36,7 +36,7 @@ index 80916e524..80bb267c2 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_errors.cc b/src/src/node_errors.cc
-index 6d6907511..85faeb6d9 100644
+index 6d69075114a..85faeb6d9ea 100644
 --- a/src/src/node_errors.cc
 +++ b/src/src/node_errors.cc
 @@ -402,9 +402,10 @@ static void ReportFatalException(Environment* env,
@@ -83,7 +83,7 @@ index 6d6907511..85faeb6d9 100644
    OnFatalError(location, message);
    // to suppress compiler warning
 diff --git a/src/src/node_errors.h b/src/src/node_errors.h
-index 74413e745..1acb26a87 100644
+index 74413e7456a..1acb26a8779 100644
 --- a/src/src/node_errors.h
 +++ b/src/src/node_errors.h
 @@ -26,6 +26,7 @@ void AppendExceptionLine(Environment* env,
@@ -95,7 +95,7 @@ index 74413e745..1acb26a87 100644
  // Helpers to construct errors similar to the ones provided by
  // lib/internal/errors.js.
 diff --git a/src/src/node_process_methods.cc b/src/src/node_process_methods.cc
-index e4d767514..5a9236a64 100644
+index e4d76751427..5a9236a6406 100644
 --- a/src/src/node_process_methods.cc
 +++ b/src/src/node_process_methods.cc
 @@ -209,8 +209,8 @@ void RawDebug(const FunctionCallbackInfo<Value>& args) {
@@ -110,7 +110,7 @@ index e4d767514..5a9236a64 100644
  
  static void StartProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 88831ab19..abd802147 100644
+index 88831ab19d7..2d358522858 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
@@ -121,7 +121,7 @@ index 88831ab19..abd802147 100644
  
  #define NODE_VERSION_IS_LTS 1
  #define NODE_VERSION_LTS_CODENAME "Erbium"
-@@ -52,6 +53,11 @@
+@@ -52,16 +53,31 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
                            NODE_STRINGIFY(NODE_PATCH_VERSION)     \
                            NODE_STRINGIFY(NODE_TAG)
@@ -133,7 +133,16 @@ index 88831ab19..abd802147 100644
  #endif
  
  # define NODE_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
-@@ -62,6 +68,10 @@
+                               NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
+                               NODE_STRINGIFY(NODE_PATCH_VERSION)     \
+                               NODE_TAG
++
++# define NODE_RC_VERSION_STRING  NODE_STRINGIFY(NODE_MAJOR_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_PATCH_VERSION) "." \
++                                 NODE_STRINGIFY(NODE_BUILD_VERSION)
++
+ #ifndef NODE_EXE_VERSION
  # define NODE_EXE_VERSION NODE_VERSION_STRING
  #endif
  
@@ -145,7 +154,7 @@ index 88831ab19..abd802147 100644
  
  
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be..d9f1f8b91 100644
+index 9403e68be70..d9f1f8b912f 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
