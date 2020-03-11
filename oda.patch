@@ -25,6 +25,149 @@ index 14f5665e029..280615dd371 100755
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
+diff --git a/src/node.gyp b/src/node.gyp
+index 9806b165ab7..99585d7668c 100644
+--- a/src/node.gyp
++++ b/src/node.gyp
+@@ -316,12 +316,13 @@
+       ],
+ 
+       'includes': [
+-        'node.gypi'
++      #  'node.gypi'
+       ],
+ 
+       'include_dirs': [
+         'src',
+-        'deps/v8/include'
++        'deps/v8/include',
++        'deps/uv/include'
+       ],
+ 
+       'sources': [
+@@ -728,6 +729,13 @@
+         ['node_shared=="true" and OS=="aix"', {
+           'product_name': 'node_base',
+         }],
++        [ 'node_shared=="true" and OS=="win"', {
++          'msvs_settings': {
++            'VCLinkerTool': {
++              'OutputFile': '<(PRODUCT_DIR)/<(node_core_target_name).dll'
++            }
++          }
++        }],
+         [ 'v8_enable_inspector==1', {
+           'includes' : [ 'src/inspector/node_inspector.gypi' ],
+         }, {
+@@ -744,6 +752,7 @@
+           'libraries': [
+             'Dbghelp',
+             'Psapi',
++            'Winmm',
+           ],
+         }],
+         [ 'node_use_etw=="true"', {
+@@ -1180,100 +1189,6 @@
+       ],
+     }, # cctest
+ 
+-    # TODO(joyeecheung): do not depend on node_lib,
+-    # instead create a smaller static library node_lib_base that does
+-    # just enough for node_native_module.cc and the cache builder to
+-    # compile without compiling the generated code cache C++ file.
+-    # So generate_code_cache -> mkcodecache -> node_lib_base,
+-    #    node_lib -> node_lib_base & generate_code_cache
+-    {
+-      'target_name': 'mkcodecache',
+-      'type': 'executable',
+-
+-      'dependencies': [
+-        '<(node_lib_target_name)',
+-        'deps/histogram/histogram.gyp:histogram',
+-        'deps/uvwasi/uvwasi.gyp:uvwasi',
+-      ],
+-
+-      'includes': [
+-        'node.gypi'
+-      ],
+-
+-      'include_dirs': [
+-        'src',
+-        'tools/msvs/genfiles',
+-        'deps/v8/include',
+-        'deps/cares/include',
+-        'deps/uv/include',
+-        'deps/uvwasi/include',
+-      ],
+-
+-      'defines': [
+-        'NODE_WANT_INTERNALS=1'
+-      ],
+-      'sources': [
+-        'src/node_snapshot_stub.cc',
+-        'src/node_code_cache_stub.cc',
+-        'tools/code_cache/mkcodecache.cc',
+-        'tools/code_cache/cache_builder.cc',
+-        'tools/code_cache/cache_builder.h',
+-      ],
+-
+-      'conditions': [
+-        ['OS=="win"', {
+-          'libraries': [
+-            'dbghelp.lib',
+-            'PsApi.lib',
+-            'winmm.lib',
+-            'Ws2_32.lib',
+-          ],
+-        }],
+-      ],
+-    }, # mkcodecache
+-    {
+-      'target_name': 'node_mksnapshot',
+-      'type': 'executable',
+-
+-      'dependencies': [
+-        '<(node_lib_target_name)',
+-        'deps/histogram/histogram.gyp:histogram',
+-        'deps/uvwasi/uvwasi.gyp:uvwasi',
+-      ],
+-
+-      'includes': [
+-        'node.gypi'
+-      ],
+-
+-      'include_dirs': [
+-        'src',
+-        'tools/msvs/genfiles',
+-        'deps/v8/include',
+-        'deps/cares/include',
+-        'deps/uv/include',
+-        'deps/uvwasi/include',
+-      ],
+-
+-      'defines': [ 'NODE_WANT_INTERNALS=1' ],
+-
+-      'sources': [
+-        'src/node_snapshot_stub.cc',
+-        'src/node_code_cache_stub.cc',
+-        'tools/snapshot/node_mksnapshot.cc',
+-        'tools/snapshot/snapshot_builder.cc',
+-        'tools/snapshot/snapshot_builder.h',
+-      ],
+-
+-      'conditions': [
+-        ['OS=="win"', {
+-          'libraries': [
+-            'Dbghelp.lib',
+-            'winmm.lib',
+-            'Ws2_32.lib',
+-          ],
+-        }],
+-      ],
+-    }, # node_mksnapshot
+   ], # end targets
+ 
+   'conditions': [
 diff --git a/src/src/node.cc b/src/src/node.cc
 index 80916e5244a..80bb267c26c 100644
 --- a/src/src/node.cc
