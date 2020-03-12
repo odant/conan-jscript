@@ -124,11 +124,11 @@ class JScriptConan(ConanFile):
             # Explicit use external Ninja
             if self.options.ninja:
                 ninja_binpath = self.deps_cpp_info["ninja_installer"].bin_paths[0].replace("\\", "/")
-                env["PATH"].insert(0, ninja_binpath)
+                env["Path"].insert(0, ninja_binpath)
             # OpenSSL DLL in PATH for run tests
             if self.options.with_unit_tests:
                 openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
-                env["PATH"].insert(0, openssl_binpath)
+                env["Path"].insert(0, openssl_binpath)
         if self.settings.compiler == "gcc":
             env["CFLAGS"] = "-Wno-unused-but-set-parameter"
             env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
