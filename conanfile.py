@@ -31,7 +31,7 @@ class JScriptConan(ConanFile):
         "ninja": [False, True],
         "with_unit_tests": [False, True]
     }
-    default_options = "dll_sign=True", "ninja=True", "with_unit_tests=False"
+    default_options = "dll_sign=True", "ninja=False", "with_unit_tests=False"
     exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "add_libatomic.patch"
     no_copy_source = False
     build_policy = "missing"
