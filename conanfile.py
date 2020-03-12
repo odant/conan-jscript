@@ -163,22 +163,19 @@ class JScriptConan(ConanFile):
         self.copy("node_version.h", dst="include/oda", src="src/src", keep_path=False)
         self.copy("*.h", dst="include/oda", src="src/deps/v8/include", keep_path=True)
         # Libraries
-        output_folder = "src"
-        if self.options.ninja:
-            output_folder += "/out"
-        output_folder += "/%s" % str(self.settings.build_type)
+        output_folder = "src/out/%s" % str(self.settings.build_type)
         if self.settings.os == "Windows":
             self.copy("jscript.dll.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("libjscript.lib", dst="lib", src=output_folder, keep_path=False)
             self.copy("jscript.dll", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscriptd.lib", dst="lib", src=output_folder, keep_path=False)
+            self.copy("libjscriptd.lib", dst="lib", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll.lib", dst="lib", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll", dst="bin", src=output_folder, keep_path=False)
             # PDB
             self.copy("jscript.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscript.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("libjscript.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
+            self.copy("libjscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
             output_folder += "/lib"
             self.copy("libjscript.so.*", dst="lib", src=output_folder, keep_path=False, excludes="*.TOC")

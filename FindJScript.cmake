@@ -11,7 +11,7 @@ find_path(JScript_INCLUDE_DIR
 
 # Find library
 find_library(JScript_LIBRARY
-    NAMES jscript jscript.dll jscriptd.dll jscript64.dll jscript64d.dll jscriptd jscript64 jscript64d
+    NAMES jscript jscript.dll jscriptd.dll jscript64.dll jscript64d.dll libjscript libjscriptd libjscript64 libjscript64d
     PATHS ${CONAN_LIB_DIRS_JSCRIPT}
     NO_DEFAULT_PATH
 )
