@@ -177,8 +177,8 @@ class JScriptConan(ConanFile):
             self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("libjscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
-            output_folder += "/lib"
-            self.copy("libjscript.so.*", dst="lib", src=output_folder, keep_path=False, excludes="*.TOC")
+            self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib", keep_path=False, excludes="*.TOC")
+            self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib.target", keep_path=False, excludes="*.TOC")
             # Symlink
             lib_folder = os.path.join(self.package_folder, "lib")
             if not os.path.isdir(lib_folder):

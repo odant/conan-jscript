@@ -2,6 +2,7 @@
 
 #include "jscript.h"
 #include "node_errors.h"
+#include "node_internals.h"
 
 #include <cstring>
 #include <atomic>
@@ -483,176 +484,185 @@ inline AsyncCallbackScope::~AsyncCallbackScope() {
 
 void JSInstanceImpl::StartNodeInstance() {
     AutoResetState<state_t::STOP> autoResetState(this);
-    std::unique_ptr<ArrayBufferAllocator, decltype(&FreeArrayBufferAllocator)>
-        allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
-    _isolate = NewIsolate(allocator.get(), event_loop());
-    if (_isolate == nullptr)
-        return;  // Signal internal error.
 
-    int exit_code;
+    v8::Isolate::CreateParams params;
+
+    auto allocator = ArrayBufferAllocator::Create();
+    params.array_buffer_allocator = allocator.get();
+    SetIsolateCreateParamsForNode(&params);
+
+    _isolate = v8::Isolate::Allocate();
+    CHECK_NOT_NULL(_isolate);
+
+    MultiIsolatePlatform* platform = per_process::v8_platform.Platform();
+    platform->RegisterIsolate(_isolate, event_loop());
+    v8::Isolate::Initialize(_isolate, params);
+
+    auto isolate_data = std::make_unique<IsolateData>(
+                _isolate,
+                event_loop(),
+                platform,
+                allocator.get()
+    );
+
+    IsolateSettings s;
+    SetIsolateMiscHandlers(_isolate, s);
+    SetIsolateErrorHandlers(_isolate, s);
+
     {
         v8::Locker locker(_isolate);
-        Isolate::Scope isolate_scope(_isolate);
-        HandleScope handle_scope(_isolate);
-        std::unique_ptr<IsolateData, decltype(&FreeIsolateData)> isolate_data(
-            CreateIsolateData(_isolate,
-                event_loop(),
-                per_process::v8_platform.Platform(),
-                allocator.get()),
-            &FreeIsolateData);
-        // TODO(addaleax): This should load a real per-Isolate option, currently
-        // this is still effectively per-process.
-        if (isolate_data->options()->track_heap_objects) {
-            _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
-        }
-        
-        //HandleScope handle_scope2(_isolate);
-        v8::Local<v8::Context> context = NewContext(_isolate);
-        v8::Context::Scope context_scope(context);
+        v8::Isolate::Scope isolate_scope(_isolate);
+        v8::HandleScope handle_scope(_isolate);
+
         int exit_code = 0;
-        Environment env(
-            isolate_data.get(),
-            context,
-            args,
-            exec_args,
-            static_cast<Environment::Flags>(Environment::kIsMainThread |
-                                            Environment::kOwnsProcessState |
-                                            Environment::kOwnsInspector));
-        env.InitializeLibuv(per_process::v8_is_profiling);
-        env.thread_stopper()->Uninstall();
-        env.thread_stopper()->Install(&env, this, [](uv_async_t* handle) {
-            auto instance = static_cast<JSInstanceImpl*>(handle->data);
-            uv_stop(instance->event_loop());
-            instance->setState(JSInstanceImpl::STOPPING);
-            auto isolate = instance->_isolate;
-            isolate->TerminateExecution();
-        });
-        env.thread_stopper()->set_stopped(false);
-        uv_unref(reinterpret_cast<uv_handle_t*>(env.thread_stopper()->GetHandle()));
-        _env = &env;
 
-/*
-#if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
-        CHECK(!env.inspector_agent()->IsListening());
-        // Inspector agent can't fail to start, but if it was configured to listen
-        // right away on the websocket port and fails to bind/etc, this will return
-        // false.
-        env.inspector_agent()->Start(args.size() > 1 ? args[1].c_str() : "",
-            env.options()->debug_options(),
-            env.inspector_host_port(),
-            true);
-        if (env.options()->debug_options().inspector_enabled &&
-            !env.inspector_agent()->IsListening()) {
-            exit_code = 12;  // Signal internal error.
-            goto exit;
+        v8::Local<v8::Context> context = NewContext(_isolate);
+        CHECK(!context.IsEmpty());
+
+        if (isolate_data->options()->track_heap_objects) {
+          _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
         }
-#else
-        // inspector_enabled can't be true if !HAVE_INSPECTOR or !NODE_USE_V8_PLATFORM
-        // - the option parser should not allow that.
-        CHECK(!env.options()->debug_options().inspector_enabled);
-#endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
-*/
+
+        std::unique_ptr<Environment> env;
         {
-            EscapableHandleScope scope(env.isolate());
-            Isolate* isolate = env.isolate();
-            v8::Local<v8::Context> context = env.context();
+            v8::Context::Scope context_scope(context);
 
-            v8::Local<v8::Object> global = context->Global();
-            assert(!global.IsEmpty());
-            if (!global.IsEmpty()) {
-                v8::Local<v8::String> functionName = v8::String::NewFromUtf8(isolate, "__oda_setRunState");
-                v8::Local<v8::External> instanceExt = v8::External::New(isolate, this);
-                v8::Local<v8::Array> array = v8::Array::New(isolate, 1);
-                array->Set(0, instanceExt);
+            env = std::make_unique<Environment>(
+                isolate_data.get(),
+                context,
+                args,
+                exec_args,
+                static_cast<Environment::Flags>(Environment::kIsMainThread |
+                                                Environment::kOwnsProcessState |
+                                                Environment::kOwnsInspector));
+            env->InitializeLibuv(per_process::v8_is_profiling);
+            env->InitializeDiagnostics();
 
-                v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context,
-                    []
-                    (const v8::FunctionCallbackInfo<v8::Value>& args) {
-                        v8::Isolate* isolate = args.GetIsolate();
-                        HandleScope handle_scope(isolate);
-
-                        v8::Local<v8::Value> data = args.Data();
-                        if (data.IsEmpty() || !data->IsArray())
-                            return;
-
-                        v8::Local<v8::Array> array = data.As<v8::Array>();
-                        if (array.IsEmpty())
-                            return;
-
-                        if (array->Length() < 1)
-                            return;
-
-                        v8::Local<v8::External> instanceExt = array->Get(0).As<v8::External>();
-                        if (instanceExt.IsEmpty())
-                            return;
-
-                        JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-                        if (instance == nullptr)
-                            return;
-
-                        instance->setState(JSInstanceImpl::RUN);
-                    },
-                    array
-                );
-
-                const bool isFunctionSet = global->Set(functionName, setRunStateFunction.ToLocalChecked());
-                assert(isFunctionSet);
+            {
+                env->thread_stopper()->Uninstall();
+                env->thread_stopper()->Install(env.get(), this, [](uv_async_t* handle) {
+                    auto instance = static_cast<JSInstanceImpl*>(handle->data);
+                    uv_stop(instance->event_loop());
+                    instance->setState(JSInstanceImpl::STOPPING);
+                    auto isolate = instance->_isolate;
+                    isolate->TerminateExecution();
+                });
+                env->thread_stopper()->set_stopped(false);
+                uv_unref(reinterpret_cast<uv_handle_t*>(env->thread_stopper()->GetHandle()));
             }
+            {
+                v8::Local<v8::Object> global = context->Global();
+                assert(!global.IsEmpty());
+
+                if (!global.IsEmpty()) {
+                    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, "__oda_setRunState");
+                    v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
+                    v8::Local<v8::Array> array = v8::Array::New(_isolate, 1);
+                    array->Set(0, instanceExt);
+
+                    v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context,
+                        []
+                        (const v8::FunctionCallbackInfo<v8::Value>& args) {
+                            v8::Isolate* isolate = args.GetIsolate();
+                            v8::HandleScope handle_scope(isolate);
+
+                            v8::Local<v8::Value> data = args.Data();
+                            if (data.IsEmpty() || !data->IsArray())
+                                return;
+
+                            v8::Local<v8::Array> array = data.As<v8::Array>();
+                            if (array.IsEmpty())
+                                return;
+
+                            if (array->Length() < 1)
+                                return;
+
+                            v8::Local<v8::External> instanceExt = array->Get(0).As<v8::External>();
+                            if (instanceExt.IsEmpty())
+                                return;
+
+                            JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+                            if (instance == nullptr)
+                                return;
+
+                            instance->setState(JSInstanceImpl::RUN);
+                        },
+                        array
+                    );
+
+                    const bool isFunctionSet = global->Set(functionName, setRunStateFunction.ToLocalChecked());
+                    assert(isFunctionSet);
+                }
+            }
+
+    // TODO(joyeecheung): when we snapshot the bootstrapped context,
+    // the inspector and diagnostics setup should after after deserialization.
+    #if HAVE_INSPECTOR
+            exit_code = env->InitializeInspector({});
+    #endif
+            CHECK(exit_code == 0);
+
+            if (env->RunBootstrapping().IsEmpty()) {
+              exit_code = 1;
+            }
+
+            _env = env.get();
         }
+        CHECK(exit_code == 0);
+
+        v8::Context::Scope context_scope(env->context());
 
         {
-            AsyncCallbackScope callback_scope(&env);
-            env.async_hooks()->push_async_ids(1, 0);
-            LoadEnvironment(&env);
-            this->overrideConsole(&env);
-            env.async_hooks()->pop_async_id(1);
+          InternalCallbackScope callback_scope(
+              env.get(),
+              v8::Local<v8::Object>(),
+              { 1, 0 },
+              InternalCallbackScope::kAllowEmptyResource |
+                  InternalCallbackScope::kSkipAsyncHooks);
+          LoadEnvironment(env.get());
+          this->overrideConsole(env.get());
         }
+
+        env->set_trace_sync_io(env->options()->trace_sync_io);
+
 
         {
-            v8::SealHandleScope seal(_isolate);
-            bool more;
-            env.performance_state()->Mark(
-                node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
-            do {
-                uv_run(env.event_loop(), UV_RUN_DEFAULT);
+          v8::SealHandleScope seal(_isolate);
+          bool more;
+          env->performance_state()->Mark(
+              node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
+          do {
+            uv_run(env->event_loop(), UV_RUN_DEFAULT);
 
-                per_process::v8_platform.DrainVMTasks(_isolate);
+            per_process::v8_platform.DrainVMTasks(_isolate);
 
-                more = uv_loop_alive(env.event_loop()) && !_env->is_stopping();
-                if (more)
-                    continue;
+            more = uv_loop_alive(env->event_loop());
+            if (more && !env->is_stopping()) continue;
 
-                EmitBeforeExit(&env);
+            if (!uv_loop_alive(env->event_loop())) {
+              EmitBeforeExit(env.get());
+            }
 
-                // Emit `beforeExit` if the loop became alive either after emitting
-                // event, or after running some callbacks.
-                more = uv_loop_alive(env.event_loop()) && !_env->is_stopping();
-            } while (more == true);
-            env.performance_state()->Mark(
-                node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-            setState(JSInstanceImpl::STOP);
+            // Emit `beforeExit` if the loop became alive either after emitting
+            // event, or after running some callbacks.
+            more = uv_loop_alive(env->event_loop());
+          } while (more == true && !env->is_stopping());
+          env->performance_state()->Mark(
+              node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+          setState(JSInstanceImpl::STOP);
         }
 
-        env.set_trace_sync_io(false);
+        env->set_trace_sync_io(false);
+        exit_code = EmitExit(env.get());
 
-        exit_code = EmitExit(&env);
+        env->set_can_call_into_js(false);
+        env->stop_sub_worker_contexts();
+        ResetStdio();
+        env->RunCleanup();
 
-/*
-        WaitForInspectorDisconnect(&env);
-*/
-
-    exit:
-        env.set_can_call_into_js(false);
-        env.stop_sub_worker_contexts();
-        uv_tty_reset_mode();
-        env.RunCleanup();
-        RunAtExit(&env);
+        RunAtExit(env.get());
 
         per_process::v8_platform.DrainVMTasks(_isolate);
-        //per_process::v8_platform.CancelVMTasks(_isolate);
-#if defined(LEAK_SANITIZER)
-        __lsan_do_leak_check();
-#endif
 
         set_exit_code(exit_code);
         _env = nullptr;
