@@ -37,7 +37,7 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.1d+0"
+    _openssl_version = "1.1.1d+1"
     _openssl_channel = "stable"
 
     def configure(self):
