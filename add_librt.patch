@@ -1,0 +1,13 @@
+diff --git a/src/node.gypi b/src/node.gypi
+index 144544214..f3983639f 100644
+--- a/src/node.gypi
++++ b/src/node.gypi
+@@ -299,7 +299,7 @@
+       'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
+     }],
+     [ 'OS=="linux"', {
+-      'libraries!': [
++      'libraries': [
+         '-lrt'
+       ],
+     }],

@@ -32,7 +32,7 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=False", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "add_libatomic.patch"
+    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "add_libatomic.patch", "add_librt.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -69,6 +69,8 @@ class JScriptConan(ConanFile):
         tools.patch(patch_file="oda.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
             tools.patch(patch_file="add_libatomic.patch")
+        if self.settings.os == "Linux":
+            tools.patch(patch_file="add_librt.patch")
 
     def build(self):
         output_name = "jscript"
