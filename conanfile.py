@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.16.1.0"
+    version = "12.16.1.1"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -138,7 +138,7 @@ class JScriptConan(ConanFile):
         with tools.chdir("src"), tools.environment_append(env):
             self.run("python --version")
             #
-            self.run("python configure %s" % " ".join(flags))
+            self.run("python configure.py %s" % " ".join(flags))
             if self.options.ninja:
                 self.run("ninja --version")
                 self.run("ninja -C out/%s" % str(self.settings.build_type))
