@@ -1,5 +1,5 @@
 # jscript Conan package
-# Dmitriy Vetutnev, Odant, 2018-2019
+# Dmitriy Vetutnev, Odant, 2018-2020
 
 
 from conans import ConanFile, tools, MSBuild
@@ -16,7 +16,7 @@ def get_safe(options, name):
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "11.13.0.11+0"
+    version = "11.13.0.12"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
