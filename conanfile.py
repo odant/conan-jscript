@@ -3,15 +3,7 @@
 
 
 from conans import ConanFile, tools, MSBuild
-from conans.errors import ConanException
 import os, glob
-
-
-def get_safe(options, name):
-    try:
-        return getattr(options, name, None)
-    except ConanException:
-        return None
 
 
 class JScriptConan(ConanFile):
@@ -61,7 +53,7 @@ class JScriptConan(ConanFile):
         if self.settings.arch == "x86_64" or self.settings.arch == "x86":
             if self.options.ninja:
                 self.build_requires("ninja_installer/1.9.0@bincrafters/stable")
-        if get_safe(self.options, "dll_sign"):
+        if self.options.get_safe("dll_sign"):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
     def source(self):
@@ -198,7 +190,7 @@ class JScriptConan(ConanFile):
         if not self.in_local_cache:
             self.copy("conanfile.py", dst=".", keep_path=False)
         # Sign DLL
-        if get_safe(self.options, "dll_sign"):
+        if self.options.get_safe("dll_sign"):
             import windows_signtool
             pattern = os.path.join(self.package_folder, "bin", "*.dll")
             for fpath in glob.glob(pattern):
