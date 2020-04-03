@@ -31,6 +31,8 @@ class JScriptConan(ConanFile):
     #
     _openssl_version = "1.1.1d+1"
     _openssl_channel = "stable"
+    _zlib_version = "1.2.11"
+    _zlib_channel = "stable"
 
     def configure(self):
         if self.settings.os == "Windows":
@@ -49,6 +51,7 @@ class JScriptConan(ConanFile):
 
     def requirements(self):
         self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
+        self.requires("zlib/%s@%s/%s" % (self._zlib_version, self.user, self._zlib_channel))
 
     def build_requirements(self):
         if self.settings.arch == "x86_64" or self.settings.arch == "x86":
@@ -95,6 +98,17 @@ class JScriptConan(ConanFile):
         ])
         if self.settings.os == "Windows":
             flags.append("--shared-openssl-libname=libcrypto.lib,libssl.lib")
+        # External zlib
+        zlib_includes = self.deps_cpp_info["zlib"].include_paths[0].replace("\\", "/")
+        zlib_libpath = self.deps_cpp_info["zlib"].lib_paths[0].replace("\\", "/")
+        flags.extend([
+            "--shared-zlib",
+            "--shared-zlib-includes=%s" % zlib_includes,
+            "--shared-zlib-libpath=%s" % zlib_libpath
+        ])
+        if self.settings.os == "Windows":
+            zlib_libname = "zlibstatic.lib" if self.settings.build_type == "Release" else "zlibstaticd.lib"
+            flags.append("--shared-zlib-libname=%s" % zlib_libname)
         # Build type, debug/release
         if self.settings.build_type == "Debug":
             flags.append("--debug")
