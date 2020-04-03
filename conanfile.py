@@ -29,7 +29,8 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.0l+2"
+    _openssl_version = "1.1.1f+0"
+    _openssl_channel = "stable"
 
     def configure(self):
         if self.settings.os == "Windows":
@@ -47,7 +48,7 @@ class JScriptConan(ConanFile):
             del self.options.dll_sign
 
     def requirements(self):
-        self.requires("openssl/%s@%s/stable" % (self._openssl_version, self.user))
+        self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
 
     def build_requirements(self):
         if self.settings.arch == "x86_64" or self.settings.arch == "x86":
