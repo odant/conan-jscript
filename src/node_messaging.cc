@@ -1,7 +1,7 @@
 #include "node_messaging.h"
 
 #include "async_wrap-inl.h"
-#include "debug_utils.h"
+#include "debug_utils-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_contextify.h"
 #include "node_buffer.h"
@@ -925,6 +925,10 @@ void MessagePort::Entangle(MessagePort* a, MessagePort* b) {
 
 void MessagePort::Entangle(MessagePort* a, MessagePortData* b) {
   MessagePortData::Entangle(a->data_.get(), b);
+}
+
+void MessagePort::MemoryInfo(MemoryTracker* tracker) const {
+  tracker->TrackField("data", data_);
 }
 
 Local<FunctionTemplate> GetMessagePortConstructorTemplate(Environment* env) {

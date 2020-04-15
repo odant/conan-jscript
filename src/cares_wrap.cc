@@ -575,10 +575,6 @@ class QueryWrap : public AsyncWrap {
       : AsyncWrap(channel->env(), req_wrap_obj, AsyncWrap::PROVIDER_QUERYWRAP),
         channel_(channel),
         trace_name_(name) {
-    // Make sure the channel object stays alive during the query lifetime.
-    req_wrap_obj->Set(env()->context(),
-                      env()->channel_string(),
-                      channel->object()).Check();
   }
 
   ~QueryWrap() override {
@@ -631,8 +627,6 @@ class QueryWrap : public AsyncWrap {
     } else {
       Parse(response_data_->host.get());
     }
-
-    delete this;
   }
 
   void* MakeCallbackPointer() {
@@ -690,9 +684,13 @@ class QueryWrap : public AsyncWrap {
   }
 
   void QueueResponseCallback(int status) {
-    env()->SetImmediate([this](Environment*) {
+    BaseObjectPtr<QueryWrap> strong_ref{this};
+    env()->SetImmediate([this, strong_ref](Environment*) {
       AfterResponse();
-    }, object());
+
+      // Delete once strong_ref goes out of scope.
+      Detach();
+    });
 
     channel_->set_query_last_ok(status != ARES_ECONNREFUSED);
     channel_->ModifyActivityQueryCount(-1);
@@ -735,7 +733,7 @@ class QueryWrap : public AsyncWrap {
     UNREACHABLE();
   }
 
-  ChannelWrap* channel_;
+  BaseObjectPtr<ChannelWrap> channel_;
 
  private:
   std::unique_ptr<ResponseData> response_data_;
@@ -751,16 +749,12 @@ Local<Array> AddrTTLToArray(Environment* env,
                             const T* addrttls,
                             size_t naddrttls) {
   auto isolate = env->isolate();
-  EscapableHandleScope escapable_handle_scope(isolate);
-  auto context = env->context();
 
-  Local<Array> ttls = Array::New(isolate, naddrttls);
-  for (size_t i = 0; i < naddrttls; i++) {
-    auto value = Integer::NewFromUnsigned(isolate, addrttls[i].ttl);
-    ttls->Set(context, i, value).Check();
-  }
+  MaybeStackBuffer<Local<Value>, 8> ttls(naddrttls);
+  for (size_t i = 0; i < naddrttls; i++)
+    ttls[i] = Integer::NewFromUnsigned(isolate, addrttls[i].ttl);
 
-  return escapable_handle_scope.Escape(ttls);
+  return Array::New(isolate, ttls.out(), naddrttls);
 }
 
 
@@ -2041,6 +2035,7 @@ void GetServers(const FunctionCallbackInfo<Value>& args) {
 
   int r = ares_get_servers_ports(channel->cares_channel(), &servers);
   CHECK_EQ(r, ARES_SUCCESS);
+  auto cleanup = OnScopeLeave([&]() { ares_free_data(servers); });
 
   ares_addr_port_node* cur = servers;
 
@@ -2051,16 +2046,17 @@ void GetServers(const FunctionCallbackInfo<Value>& args) {
     int err = uv_inet_ntop(cur->family, caddr, ip, sizeof(ip));
     CHECK_EQ(err, 0);
 
-    Local<Array> ret = Array::New(env->isolate(), 2);
-    ret->Set(env->context(), 0, OneByteString(env->isolate(), ip)).Check();
-    ret->Set(env->context(),
-             1,
-             Integer::New(env->isolate(), cur->udp_port)).Check();
+    Local<Value> ret[] = {
+      OneByteString(env->isolate(), ip),
+      Integer::New(env->isolate(), cur->udp_port)
+    };
 
-    server_array->Set(env->context(), i, ret).Check();
+    if (server_array->Set(env->context(), i,
+                          Array::New(env->isolate(), ret, arraysize(ret)))
+          .IsNothing()) {
+      return;
+    }
   }
-
-  ares_free_data(servers);
 
   args.GetReturnValue().Set(server_array);
 }
