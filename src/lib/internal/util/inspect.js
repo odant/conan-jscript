@@ -3,12 +3,15 @@
 const {
   Array,
   ArrayIsArray,
+  BigInt64Array,
   BigIntPrototypeValueOf,
+  BigUint64Array,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
   DatePrototypeToISOString,
   DatePrototypeToString,
   ErrorPrototypeToString,
+  Float32Array,
   JSONStringify,
   Map,
   MapPrototype,
@@ -33,6 +36,7 @@ const {
   ObjectPrototypeHasOwnProperty,
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
+  RegExp,
   RegExpPrototypeToString,
   Set,
   SetPrototype,
@@ -42,6 +46,7 @@ const {
   SymbolPrototypeValueOf,
   SymbolIterator,
   SymbolToStringTag,
+  Uint16Array,
   uncurryThis,
 } = primordials;
 
@@ -808,7 +813,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
         return `${braces[0]}]`;
       // Special handle the value. The original value is required below. The
       // bound function is required to reconstruct missing information.
-      formatter = formatTypedArray.bind(null, bound);
+      formatter = formatTypedArray.bind(null, bound, size);
       extrasType = kArrayExtrasType;
     } else if (isMapIterator(value)) {
       keys = getKeys(value, ctx.showHidden);
@@ -1384,8 +1389,8 @@ function formatArray(ctx, value, recurseTimes) {
   return output;
 }
 
-function formatTypedArray(value, ctx, ignored, recurseTimes) {
-  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), value.length);
+function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
+  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), length);
   const remaining = value.length - maxLength;
   const output = new Array(maxLength);
   const elementFormatter = value.length > 0 && typeof value[0] === 'number' ?

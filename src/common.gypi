@@ -38,7 +38,7 @@
 
     # Reset this number to 0 on major V8 upgrades.
     # Increment by one for each non-official patch applied to deps/v8.
-    'v8_embedder_string': '-node.31',
+    'v8_embedder_string': '-node.34',
 
     ##### V8 defaults for Node.js #####
 
@@ -135,6 +135,9 @@
       }],
       ['OS=="mac"', {
         'clang%': 1,
+      }],
+      ['target_arch in "ppc64 s390x"', {
+        'v8_enable_backtrace': 1,
       }],
     ],
   },
