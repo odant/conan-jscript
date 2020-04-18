@@ -8,7 +8,7 @@ import os, glob
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.16.1.2"
+    version = "12.16.2.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -24,7 +24,7 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=False", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "add_libatomic.patch", "add_librt.patch"
+    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "add_libatomic.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -64,8 +64,6 @@ class JScriptConan(ConanFile):
         tools.patch(patch_file="oda.patch")
         if self.settings.arch == "mips" or self.settings.arch == "armv7":
             tools.patch(patch_file="add_libatomic.patch")
-        if self.settings.os == "Linux":
-            tools.patch(patch_file="add_librt.patch")
 
     def build(self):
         output_name = "jscript"

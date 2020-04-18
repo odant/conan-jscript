@@ -277,11 +277,13 @@ public:
     std::thread  _thread;
 
     bool isStopping() const {
-        return _state == STOPPING;
+        const bool envStopped = !(_env && _env->is_stopping());
+        return _state == STOPPING || envStopped;
     }
 
     bool isRun() const {
-        return _state == RUN;
+        const bool envNotStopped = _env && !(_env->is_stopping());
+        return _state == RUN && envNotStopped;
     }
 
     bool isInitialize() const {
@@ -539,18 +541,6 @@ void JSInstanceImpl::StartNodeInstance() {
             env->InitializeDiagnostics();
 
             {
-                env->thread_stopper()->Uninstall();
-                env->thread_stopper()->Install(env.get(), this, [](uv_async_t* handle) {
-                    auto instance = static_cast<JSInstanceImpl*>(handle->data);
-                    uv_stop(instance->event_loop());
-                    instance->setState(JSInstanceImpl::STOPPING);
-                    auto isolate = instance->_isolate;
-                    isolate->TerminateExecution();
-                });
-                env->thread_stopper()->set_stopped(false);
-                uv_unref(reinterpret_cast<uv_handle_t*>(env->thread_stopper()->GetHandle()));
-            }
-            {
                 v8::Local<v8::Object> global = context->Global();
                 assert(!global.IsEmpty());
 
@@ -722,11 +712,6 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
             return; //return exit_code;
     }
 
-    if (per_process::cli_options->print_version) {
-        printf("%s\n", NODE_VERSION);
-        return;
-    }
-
     if (per_process::cli_options->print_v8_help) {
         V8::SetFlagsFromString("--help", 6);  // Doesn't return.
         UNREACHABLE();
@@ -748,7 +733,8 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
     V8::SetEntropySource(crypto::EntropySource);
 #endif  // HAVE_OPENSSL
 
-    InitializeV8Platform(per_process::cli_options->v8_thread_pool_size);
+    per_process::v8_platform.Initialize(
+        per_process::cli_options->v8_thread_pool_size);
     V8::Initialize();
     performance::performance_v8_start = PERFORMANCE_NOW();
     per_process::v8_initialized = true;
@@ -840,7 +826,7 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     argv[argc++] = instanceScript.c_str();
 
     Initialize(argc, argv.data());
-    SetRedirectPrintErrorString(std::move(logCallback));
+    SetRedirectFPrintF(std::move(logCallback));
 }
 
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,

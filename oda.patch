@@ -1,8 +1,8 @@
 diff --git a/src/configure.py b/src/configure.py
-index 14f5665e029..280615dd371 100755
+index 5c1360615de..ca9a4375f2e 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -610,6 +610,12 @@ parser.add_option('-C',
+@@ -636,6 +636,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -15,7 +15,7 @@ index 14f5665e029..280615dd371 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1154,6 +1160,9 @@ def configure_node(o):
+@@ -1185,6 +1191,9 @@ def configure_node(o):
    else:
      o['variables']['node_target_type'] = 'executable'
  
@@ -26,240 +26,100 @@ index 14f5665e029..280615dd371 100755
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
 diff --git a/src/node.gyp b/src/node.gyp
-index 9806b165ab7..99585d7668c 100644
+index ee99fbe7c52..975ca917014 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -316,12 +316,13 @@
-       ],
- 
-       'includes': [
--        'node.gypi'
-+      #  'node.gypi'
-       ],
- 
-       'include_dirs': [
-         'src',
--        'deps/v8/include'
-+        'deps/v8/include',
-+        'deps/uv/include'
-       ],
- 
-       'sources': [
-@@ -728,6 +729,13 @@
+@@ -729,7 +729,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
+-        [ 'v8_enable_inspector==1', {
 +        [ 'node_shared=="true" and OS=="win"', {
 +          'msvs_settings': {
 +            'VCLinkerTool': {
 +              'OutputFile': '<(PRODUCT_DIR)/<(node_core_target_name).dll'
 +            }
 +          }
-+        }],
-         [ 'v8_enable_inspector==1', {
++        }],        [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -744,6 +752,7 @@
-           'libraries': [
-             'Dbghelp',
-             'Psapi',
-+            'Winmm',
-           ],
-         }],
-         [ 'node_use_etw=="true"', {
-@@ -1180,100 +1189,6 @@
-       ],
-     }, # cctest
+           'defines': [ 'HAVE_INSPECTOR=0' ]
+diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
+index ae2d2046486..4146f9454de 100644
+--- a/src/src/debug_utils-inl.h
++++ b/src/src/debug_utils-inl.h
+@@ -86,9 +86,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
+   return SPrintFImpl(format, std::forward<Args>(args)...);
+ }
  
--    # TODO(joyeecheung): do not depend on node_lib,
--    # instead create a smaller static library node_lib_base that does
--    # just enough for node_native_module.cc and the cache builder to
--    # compile without compiling the generated code cache C++ file.
--    # So generate_code_cache -> mkcodecache -> node_lib_base,
--    #    node_lib -> node_lib_base & generate_code_cache
--    {
--      'target_name': 'mkcodecache',
--      'type': 'executable',
--
--      'dependencies': [
--        '<(node_lib_target_name)',
--        'deps/histogram/histogram.gyp:histogram',
--        'deps/uvwasi/uvwasi.gyp:uvwasi',
--      ],
--
--      'includes': [
--        'node.gypi'
--      ],
--
--      'include_dirs': [
--        'src',
--        'tools/msvs/genfiles',
--        'deps/v8/include',
--        'deps/cares/include',
--        'deps/uv/include',
--        'deps/uvwasi/include',
--      ],
--
--      'defines': [
--        'NODE_WANT_INTERNALS=1'
--      ],
--      'sources': [
--        'src/node_snapshot_stub.cc',
--        'src/node_code_cache_stub.cc',
--        'tools/code_cache/mkcodecache.cc',
--        'tools/code_cache/cache_builder.cc',
--        'tools/code_cache/cache_builder.h',
--      ],
--
--      'conditions': [
--        ['OS=="win"', {
--          'libraries': [
--            'dbghelp.lib',
--            'PsApi.lib',
--            'winmm.lib',
--            'Ws2_32.lib',
--          ],
--        }],
--      ],
--    }, # mkcodecache
--    {
--      'target_name': 'node_mksnapshot',
--      'type': 'executable',
--
--      'dependencies': [
--        '<(node_lib_target_name)',
--        'deps/histogram/histogram.gyp:histogram',
--        'deps/uvwasi/uvwasi.gyp:uvwasi',
--      ],
--
--      'includes': [
--        'node.gypi'
--      ],
--
--      'include_dirs': [
--        'src',
--        'tools/msvs/genfiles',
--        'deps/v8/include',
--        'deps/cares/include',
--        'deps/uv/include',
--        'deps/uvwasi/include',
--      ],
--
--      'defines': [ 'NODE_WANT_INTERNALS=1' ],
--
--      'sources': [
--        'src/node_snapshot_stub.cc',
--        'src/node_code_cache_stub.cc',
--        'tools/snapshot/node_mksnapshot.cc',
--        'tools/snapshot/snapshot_builder.cc',
--        'tools/snapshot/snapshot_builder.h',
--      ],
--
--      'conditions': [
--        ['OS=="win"', {
--          'libraries': [
--            'Dbghelp.lib',
--            'winmm.lib',
--            'Ws2_32.lib',
--          ],
--        }],
--      ],
--    }, # node_mksnapshot
-   ], # end targets
++extern std::function<void(const std::string&)> cbRedirectFPrintF;
++
+ template <typename... Args>
+ void COLD_NOINLINE FPrintF(FILE* file, const char* format, Args&&... args) {
+-  FWrite(file, SPrintF(format, std::forward<Args>(args)...));
++  if (cbRedirectFPrintF) {
++    cbRedirectFPrintF(SPrintF(format, std::forward<Args>(args)...));
++  } else {
++    FWrite(file, SPrintF(format, std::forward<Args>(args)...));
++  }
+ }
  
-   'conditions': [
+ template <typename... Args>
+diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
+index a601c5ecf40..bd792ac3963 100644
+--- a/src/src/debug_utils.cc
++++ b/src/src/debug_utils.cc
+@@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
+   simple_fwrite();
+ }
+ 
++std::function<void(const std::string&)> cbRedirectFPrintF = nullptr;
++
++void SetRedirectFPrintF(std::function<void(const std::string&)> cb) {
++  cbRedirectFPrintF = std::move(cb);
++}
++
+ }  // namespace node
+ 
+ extern "C" void __DumpBacktrace(FILE* fp) {
+diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
+index b654159ac2a..655a52b53c3 100644
+--- a/src/src/debug_utils.h
++++ b/src/src/debug_utils.h
+@@ -7,6 +7,7 @@
+ 
+ #include <sstream>
+ #include <string>
++#include <functional>
+ 
+ // Use FORCE_INLINE on functions that have a debug-category-enabled check first
+ // and then ideally only a single function call following it, to maintain
+@@ -35,6 +36,7 @@ inline std::string SPrintF(const char* format, Args&&... args);
+ template <typename... Args>
+ inline void FPrintF(FILE* file, const char* format, Args&&... args);
+ void FWrite(FILE* file, const std::string& str);
++void SetRedirectFPrintF(std::function<void(const std::string&)>);
+ 
+ // Listing the AsyncWrap provider types first enables us to cast directly
+ // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 80916e5244a..80bb267c26c 100644
+index fee485f86e1..906e5c80527 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1085,3 +1085,5 @@ void Initialize() {}
+@@ -1003,3 +1003,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
-diff --git a/src/src/node_errors.cc b/src/src/node_errors.cc
-index 6d69075114a..85faeb6d9ea 100644
---- a/src/src/node_errors.cc
-+++ b/src/src/node_errors.cc
-@@ -402,9 +402,10 @@ static void ReportFatalException(Environment* env,
-   fflush(stderr);
- }
- 
--void PrintErrorString(const char* format, ...) {
-+struct OriginalPrintErrorString {};
-+void PrintErrorString(OriginalPrintErrorString, const char* format, va_list _ap) {
-   va_list ap;
--  va_start(ap, format);
-+  va_copy(ap, _ap);
- #ifdef _WIN32
-   HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
- 
-@@ -438,6 +439,29 @@ void PrintErrorString(const char* format, ...) {
-   va_end(ap);
- }
- 
-+std::function<void(const std::string&)> redirectPrintErrorString;
-+void SetRedirectPrintErrorString(std::function<void(const std::string&)> redirectFunction){
-+  redirectPrintErrorString = std::move(redirectFunction);
-+}
-+
-+void PrintErrorString(const char* format, ...) {
-+  va_list ap;
-+  va_start(ap, format);
-+
-+  if (redirectPrintErrorString) {
-+    const int length = ::vsnprintf(nullptr, 0, format, ap);
-+    if (length > 0) {
-+        std::string data(length-1, '\0');
-+        ::vsnprintf(&data[0], length, format, ap);
-+        redirectPrintErrorString(data);
-+    }
-+  } else {
-+    PrintErrorString(OriginalPrintErrorString{}, format, ap);
-+  }
-+
-+  va_end(ap);
-+}
-+
- [[noreturn]] void FatalError(const char* location, const char* message) {
-   OnFatalError(location, message);
-   // to suppress compiler warning
-diff --git a/src/src/node_errors.h b/src/src/node_errors.h
-index 74413e7456a..1acb26a8779 100644
---- a/src/src/node_errors.h
-+++ b/src/src/node_errors.h
-@@ -26,6 +26,7 @@ void AppendExceptionLine(Environment* env,
- void OnFatalError(const char* location, const char* message);
- 
- void PrintErrorString(const char* format, ...);
-+void SetRedirectPrintErrorString(std::function<void(const std::string&)>);
- 
- // Helpers to construct errors similar to the ones provided by
- // lib/internal/errors.js.
-diff --git a/src/src/node_process_methods.cc b/src/src/node_process_methods.cc
-index e4d76751427..5a9236a6406 100644
---- a/src/src/node_process_methods.cc
-+++ b/src/src/node_process_methods.cc
-@@ -209,8 +209,8 @@ void RawDebug(const FunctionCallbackInfo<Value>& args) {
-   CHECK(args.Length() == 1 && args[0]->IsString() &&
-         "must be called with a single string");
-   Utf8Value message(args.GetIsolate(), args[0]);
--  PrintErrorString("%s\n", *message);
--  fflush(stderr);
-+  PrintErrorString("%s", *message);
-+  //fflush(stderr);
- }
- 
- static void StartProfilerIdleNotifier(const FunctionCallbackInfo<Value>& args) {
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 88831ab19d7..2d358522858 100644
+index 8a4192dcc74..00942ea2678 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 12
  #define NODE_MINOR_VERSION 16
- #define NODE_PATCH_VERSION 1
+ #define NODE_PATCH_VERSION 2
 +#define NODE_BUILD_VERSION 2
  
  #define NODE_VERSION_IS_LTS 1
