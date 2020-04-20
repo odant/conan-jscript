@@ -1,5 +1,5 @@
 diff --git a/src/configure.py b/src/configure.py
-index 5c1360615de..ca9a4375f2e 100755
+index 5c1360615d..ca9a4375f2 100755
 --- a/src/configure.py
 +++ b/src/configure.py
 @@ -636,6 +636,12 @@ parser.add_option('-C',
@@ -26,26 +26,207 @@ index 5c1360615de..ca9a4375f2e 100755
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
 diff --git a/src/node.gyp b/src/node.gyp
-index ee99fbe7c52..975ca917014 100644
+index ee99fbe7c5..9e6a5a0538 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -729,7 +729,13 @@
+@@ -315,13 +315,10 @@
+         'NODE_WANT_INTERNALS=1',
+       ],
+ 
+-      'includes': [
+-        'node.gypi'
+-      ],
+-
+       'include_dirs': [
+         'src',
+-        'deps/v8/include'
++        'deps/v8/include',
++        'deps/uv/include'
+       ],
+ 
+       'sources': [
+@@ -492,6 +489,36 @@
+             'src/node_snapshot_stub.cc'
+           ],
+         }],
++        [ 'node_shared=="true"', {
++          'defines': [
++            'NODE_SHARED_MODE',
++          ],
++        }],
++        [ 'OS=="win"', {
++          'defines!': [
++            'NODE_PLATFORM="win"',
++          ],
++          'defines': [
++            'FD_SETSIZE=1024',
++            # we need to use node's preferred "win32" rather than gyp's preferred "win"
++            'NODE_PLATFORM="win32"',
++            # Stop <windows.h> from defining macros that conflict with
++            # std::min() and std::max().  We don't use <windows.h> (much)
++            # but we still inherit it from uv.h.
++            'NOMINMAX',
++            '_UNICODE=1',
++          ],
++          'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
++          'msvs_precompiled_source': 'tools/msvs/pch/node_pch.cc',
++          'sources': [
++            '<(_msvs_precompiled_header)',
++            '<(_msvs_precompiled_source)',
++          ],
++        }, { # POSIX
++          'defines': [
++            '__POSIX__'
++          ],
++        }],
+       ],
+     }, # node_core_target_name
+     {
+@@ -729,6 +756,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
--        [ 'v8_enable_inspector==1', {
 +        [ 'node_shared=="true" and OS=="win"', {
 +          'msvs_settings': {
 +            'VCLinkerTool': {
 +              'OutputFile': '<(PRODUCT_DIR)/<(node_core_target_name).dll'
 +            }
 +          }
-+        }],        [ 'v8_enable_inspector==1', {
++        }],
+         [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-           'defines': [ 'HAVE_INSPECTOR=0' ]
+@@ -745,6 +779,7 @@
+           'libraries': [
+             'Dbghelp',
+             'Psapi',
++            'Winmm'
+           ],
+         }],
+         [ 'node_use_etw=="true"', {
+@@ -1184,120 +1219,6 @@
+       ],
+     }, # cctest
+ 
+-    # TODO(joyeecheung): do not depend on node_lib,
+-    # instead create a smaller static library node_lib_base that does
+-    # just enough for node_native_module.cc and the cache builder to
+-    # compile without compiling the generated code cache C++ file.
+-    # So generate_code_cache -> mkcodecache -> node_lib_base,
+-    #    node_lib -> node_lib_base & generate_code_cache
+-    {
+-      'target_name': 'mkcodecache',
+-      'type': 'executable',
+-
+-      'dependencies': [
+-        '<(node_lib_target_name)',
+-        'deps/histogram/histogram.gyp:histogram',
+-        'deps/uvwasi/uvwasi.gyp:uvwasi',
+-      ],
+-
+-      'includes': [
+-        'node.gypi'
+-      ],
+-
+-      'include_dirs': [
+-        'src',
+-        'tools/msvs/genfiles',
+-        'deps/v8/include',
+-        'deps/cares/include',
+-        'deps/uv/include',
+-        'deps/uvwasi/include',
+-      ],
+-
+-      'defines': [
+-        'NODE_WANT_INTERNALS=1'
+-      ],
+-      'sources': [
+-        'src/node_snapshot_stub.cc',
+-        'src/node_code_cache_stub.cc',
+-        'tools/code_cache/mkcodecache.cc',
+-        'tools/code_cache/cache_builder.cc',
+-        'tools/code_cache/cache_builder.h',
+-      ],
+-
+-      'conditions': [
+-        [ 'node_use_openssl=="true"', {
+-          'defines': [
+-            'HAVE_OPENSSL=1',
+-          ],
+-        }],
+-        ['v8_enable_inspector==1', {
+-          'defines': [
+-            'HAVE_INSPECTOR=1',
+-          ],
+-        }],
+-        ['OS=="win"', {
+-          'libraries': [
+-            'dbghelp.lib',
+-            'PsApi.lib',
+-            'winmm.lib',
+-            'Ws2_32.lib',
+-          ],
+-        }],
+-      ],
+-    }, # mkcodecache
+-    {
+-      'target_name': 'node_mksnapshot',
+-      'type': 'executable',
+-
+-      'dependencies': [
+-        '<(node_lib_target_name)',
+-        'deps/histogram/histogram.gyp:histogram',
+-        'deps/uvwasi/uvwasi.gyp:uvwasi',
+-      ],
+-
+-      'includes': [
+-        'node.gypi'
+-      ],
+-
+-      'include_dirs': [
+-        'src',
+-        'tools/msvs/genfiles',
+-        'deps/v8/include',
+-        'deps/cares/include',
+-        'deps/uv/include',
+-        'deps/uvwasi/include',
+-      ],
+-
+-      'defines': [ 'NODE_WANT_INTERNALS=1' ],
+-
+-      'sources': [
+-        'src/node_snapshot_stub.cc',
+-        'src/node_code_cache_stub.cc',
+-        'tools/snapshot/node_mksnapshot.cc',
+-        'tools/snapshot/snapshot_builder.cc',
+-        'tools/snapshot/snapshot_builder.h',
+-      ],
+-
+-      'conditions': [
+-        [ 'node_use_openssl=="true"', {
+-          'defines': [
+-            'HAVE_OPENSSL=1',
+-          ],
+-        }],
+-        ['v8_enable_inspector==1', {
+-          'defines': [
+-            'HAVE_INSPECTOR=1',
+-          ],
+-        }],
+-        ['OS=="win"', {
+-          'libraries': [
+-            'Dbghelp.lib',
+-            'winmm.lib',
+-            'Ws2_32.lib',
+-          ],
+-        }],
+-      ],
+-    }, # node_mksnapshot
+   ], # end targets
+ 
+   'conditions': [
 diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
-index ae2d2046486..4146f9454de 100644
+index ae2d204648..4146f9454d 100644
 --- a/src/src/debug_utils-inl.h
 +++ b/src/src/debug_utils-inl.h
 @@ -86,9 +86,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
@@ -66,7 +247,7 @@ index ae2d2046486..4146f9454de 100644
  
  template <typename... Args>
 diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
-index a601c5ecf40..bd792ac3963 100644
+index a601c5ecf4..bd792ac396 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
 @@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
@@ -83,7 +264,7 @@ index a601c5ecf40..bd792ac3963 100644
  
  extern "C" void __DumpBacktrace(FILE* fp) {
 diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
-index b654159ac2a..655a52b53c3 100644
+index b654159ac2..655a52b53c 100644
 --- a/src/src/debug_utils.h
 +++ b/src/src/debug_utils.h
 @@ -7,6 +7,7 @@
@@ -103,7 +284,7 @@ index b654159ac2a..655a52b53c3 100644
  // Listing the AsyncWrap provider types first enables us to cast directly
  // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index fee485f86e1..906e5c80527 100644
+index fee485f86e..906e5c8052 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
 @@ -1003,3 +1003,5 @@ void Initialize() {}
@@ -113,14 +294,14 @@ index fee485f86e1..906e5c80527 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 8a4192dcc74..00942ea2678 100644
+index 8a4192dcc7..3c3b75d593 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 12
  #define NODE_MINOR_VERSION 16
  #define NODE_PATCH_VERSION 2
-+#define NODE_BUILD_VERSION 2
++#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
  #define NODE_VERSION_LTS_CODENAME "Erbium"
@@ -157,7 +338,7 @@ index 8a4192dcc74..00942ea2678 100644
  
  
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be70..d9f1f8b912f 100644
+index 9403e68be7..d9f1f8b912 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
