@@ -963,10 +963,8 @@ void _async_execute_script(uv_async_t* handle) {
                 v8::Local<v8::Script> script;
                 compile_result.ToLocal(&script);
 
-                auto test = compile_result.ToLocalChecked();
-
                 if (!script.IsEmpty()) {
-                    v8::Handle<v8::Value> result = script->Run(context).ToLocalChecked();
+                    v8::MaybeLocal<v8::Value> result = script->Run(context);
 
                     if (trycatch.HasCaught()) {
                         v8::Handle<v8::Value> exception = trycatch.Exception();
