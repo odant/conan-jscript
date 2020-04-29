@@ -8,7 +8,7 @@ environment:
 
   CONAN_DISABLE_DLL_SIGN: 1
 
-  CONAN_REFERENCE: jscript/11.13.0.11+0
+  CONAN_REFERENCE: jscript/11.13.0.13
   CONAN_USERNAME: odant
   CONAN_CHANNEL: testing
   CONAN_STABLE_CHANNEL: stable
