@@ -127,7 +127,7 @@ class JScriptConan(ConanFile):
                 env["PLATFORM_TOOLSET"] = "v141"
             # Explicit use external Ninja
             if self.options.ninja:
-                ninja_binpath = self.deps_cpp_info["ninja_installer"].bin_paths[0].replace("\\", "/")
+                ninja_binpath = self.deps_cpp_info["ninja"].bin_paths[0].replace("\\", "/")
                 env["Path"].insert(0, ninja_binpath)
             # OpenSSL DLL in PATH for run tests
             if self.options.with_unit_tests:
