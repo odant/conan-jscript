@@ -1,5 +1,5 @@
 diff --git a/src/configure.py b/src/configure.py
-index 5c1360615d..ca9a4375f2 100755
+index af20d6108e4..acf0ecb5ea1 100755
 --- a/src/configure.py
 +++ b/src/configure.py
 @@ -636,6 +636,12 @@ parser.add_option('-C',
@@ -15,7 +15,7 @@ index 5c1360615d..ca9a4375f2 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1185,6 +1191,9 @@ def configure_node(o):
+@@ -1191,6 +1197,9 @@ def configure_node(o):
    else:
      o['variables']['node_target_type'] = 'executable'
  
@@ -25,11 +25,29 @@ index 5c1360615d..ca9a4375f2 100755
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
+diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
+index fa0a001527d..a958e608401 100644
+--- a/src/deps/uv/uv.gyp
++++ b/src/deps/uv/uv.gyp
+@@ -250,6 +250,13 @@
+           'link_settings': {
+             'libraries': [ '-ldl', '-lrt' ],
+           },
++          'conditions': [
++            ['target_arch=="arm"', {
++              'link_settings': {
++                'libraries': [ '-latomic' ],
++              },
++            }],
++          ],
+         }],
+         [ 'OS=="android"', {
+           'sources': [
 diff --git a/src/node.gyp b/src/node.gyp
-index ee99fbe7c5..9e6a5a0538 100644
+index 784ce677c3d..dd1f6b4c151 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -315,13 +315,10 @@
+@@ -317,13 +317,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -45,7 +63,7 @@ index ee99fbe7c5..9e6a5a0538 100644
        ],
  
        'sources': [
-@@ -492,6 +489,36 @@
+@@ -494,6 +491,36 @@
              'src/node_snapshot_stub.cc'
            ],
          }],
@@ -82,7 +100,7 @@ index ee99fbe7c5..9e6a5a0538 100644
        ],
      }, # node_core_target_name
      {
-@@ -729,6 +756,13 @@
+@@ -731,6 +758,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -96,7 +114,7 @@ index ee99fbe7c5..9e6a5a0538 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -745,6 +779,7 @@
+@@ -747,6 +781,7 @@
            'libraries': [
              'Dbghelp',
              'Psapi',
@@ -104,7 +122,7 @@ index ee99fbe7c5..9e6a5a0538 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1184,120 +1219,6 @@
+@@ -1186,120 +1221,6 @@
        ],
      }, # cctest
  
@@ -226,10 +244,10 @@ index ee99fbe7c5..9e6a5a0538 100644
  
    'conditions': [
 diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
-index ae2d204648..4146f9454d 100644
+index d87dd62c895..1b48b6b466b 100644
 --- a/src/src/debug_utils-inl.h
 +++ b/src/src/debug_utils-inl.h
-@@ -86,9 +86,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
+@@ -124,9 +124,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
    return SPrintFImpl(format, std::forward<Args>(args)...);
  }
  
@@ -247,7 +265,7 @@ index ae2d204648..4146f9454d 100644
  
  template <typename... Args>
 diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
-index a601c5ecf4..bd792ac396 100644
+index a601c5ecf40..bd792ac3963 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
 @@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
@@ -264,18 +282,18 @@ index a601c5ecf4..bd792ac396 100644
  
  extern "C" void __DumpBacktrace(FILE* fp) {
 diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
-index b654159ac2..655a52b53c 100644
+index 3ecbdea90e2..0e90acdde93 100644
 --- a/src/src/debug_utils.h
 +++ b/src/src/debug_utils.h
-@@ -7,6 +7,7 @@
- 
+@@ -8,6 +8,7 @@
+ #include <algorithm>
  #include <sstream>
  #include <string>
 +#include <functional>
  
  // Use FORCE_INLINE on functions that have a debug-category-enabled check first
  // and then ideally only a single function call following it, to maintain
-@@ -35,6 +36,7 @@ inline std::string SPrintF(const char* format, Args&&... args);
+@@ -36,6 +37,7 @@ inline std::string SPrintF(const char* format, Args&&... args);
  template <typename... Args>
  inline void FPrintF(FILE* file, const char* format, Args&&... args);
  void FWrite(FILE* file, const std::string& str);
@@ -284,7 +302,7 @@ index b654159ac2..655a52b53c 100644
  // Listing the AsyncWrap provider types first enables us to cast directly
  // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index fee485f86e..906e5c8052 100644
+index fee485f86e1..906e5c80527 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
 @@ -1003,3 +1003,5 @@ void Initialize() {}
@@ -294,13 +312,13 @@ index fee485f86e..906e5c8052 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 8a4192dcc7..3c3b75d593 100644
+index 958519fbe4a..c20548c945d 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 12
  #define NODE_MINOR_VERSION 16
- #define NODE_PATCH_VERSION 2
+ #define NODE_PATCH_VERSION 3
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
@@ -338,7 +356,7 @@ index 8a4192dcc7..3c3b75d593 100644
  
  
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be7..d9f1f8b912 100644
+index 9403e68be70..d9f1f8b912f 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
@@ -375,3 +393,21 @@ index 9403e68be7..d9f1f8b912 100644
          END
      END
      BLOCK "VarFileInfo"
+diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
+index 26b8e56e834..c090fa9fefe 100644
+--- a/src/tools/v8_gypfiles/v8.gyp
++++ b/src/tools/v8_gypfiles/v8.gyp
+@@ -933,6 +933,13 @@
+               '-lrt'
+             ],
+           },
++          'conditions': [
++            ['target_arch=="arm"', {
++              'link_settings': {
++                'libraries': [ '-latomic' ],
++              },
++            }],
++          ],
+         }],
+         ['OS=="aix"', {
+           'variables': {
