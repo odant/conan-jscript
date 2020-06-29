@@ -323,7 +323,7 @@ void JSInstanceImpl::overrideConsole(Environment* env) {
 }
 
 void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const JSLogType type) {
-    HandleScope handle_scope(env->isolate());
+    v8::HandleScope handle_scope(env->isolate());
     v8::TryCatch try_catch(env->isolate());
     try_catch.SetVerbose(true);
     Local<Object> global = env->context()->Global();
@@ -402,7 +402,7 @@ void JSInstanceImpl::overrideConsole(Environment* env, const char* name, const J
             []
             (const v8::FunctionCallbackInfo<v8::Value>& args) {
                 v8::Isolate* isolate = args.GetIsolate();
-                HandleScope handle_scope(isolate);
+                v8::HandleScope handle_scope(isolate);
 
                 v8::Local<v8::Value> data = args.Data();
                 if (data.IsEmpty() || !data->IsArray())
@@ -607,8 +607,7 @@ void JSInstanceImpl::StartNodeInstance() {
               env.get(),
               v8::Local<v8::Object>(),
               { 1, 0 },
-              InternalCallbackScope::kAllowEmptyResource |
-                  InternalCallbackScope::kSkipAsyncHooks);
+              InternalCallbackScope::kSkipAsyncHooks);
           LoadEnvironment(env.get());
           this->overrideConsole(env.get());
         }
