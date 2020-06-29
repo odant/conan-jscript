@@ -665,37 +665,18 @@ void JSInstanceImpl::StartNodeInstance() {
 }
 
 
-JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
+JSCRIPT_EXTERN void Initialize(int argc, char** argv) {
     if (is_initilized.exchange(true))
         return;
     
-    atexit([]() { uv_tty_reset_mode(); });
+    // Initialized the enabled list for Debug() calls with system
+    // environment variables.
+    per_process::enabled_debug_list.Parse(nullptr);
+
+    atexit(ResetStdio);
     PlatformInit();
-    per_process::node_start_time = uv_hrtime();
 
     CHECK_GT(argc, 0);
-
-#ifdef NODE_ENABLE_LARGE_CODE_PAGES
-    if (node::IsLargePagesEnabled()) {
-        if (node::MapStaticCodeToLargePages() != 0) {
-            fprintf(stderr, "Reverting to default page size\n");
-        }
-    }
-#endif
-
-    // Copy args, use continuous memory
-    // See deps/uv/src/unix/proctitle.c:53: uv_setup_args: Assertion `process_title.len + 1 == size' failed.
-    std::size_t args_len = 0;
-    for (int i = 0; i < argc; i++) {
-        args_len += std::strlen(argv_[i]) + 1;
-    }
-    char** argv = new char*[argc];
-    char* args_ptr = new char[args_len];
-    for (int i = 0; i < argc; i++) {
-        argv[i] = args_ptr;
-        std::strcpy(argv[i], argv_[i]);
-        args_ptr += std::strlen(argv_[i]) + 1; // +1 for null-terminate
-    }
 
     // Hack around with the argv pointer. Used for process.title = "blah".
     argv = uv_setup_args(argc, argv);
@@ -708,12 +689,15 @@ JSCRIPT_EXTERN void Initialize(int argc, const char* const argv_[]) {
         for (const std::string& error : errors)
             fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
         if (exit_code != 0)
-            return; //return exit_code;
+            std::abort(); //return exit_code;
     }
 
-    if (per_process::cli_options->print_v8_help) {
-        V8::SetFlagsFromString("--help", 6);  // Doesn't return.
-        UNREACHABLE();
+    if (per_process::cli_options->use_largepages == "on" ||
+        per_process::cli_options->use_largepages == "silent") {
+        int result = node::MapStaticCodeToLargePages();
+        if (per_process::cli_options->use_largepages == "on" && result != 0) {
+            fprintf(stderr, "%s\n", node::LargePagesError(result));
+        }
     }
 
 #if HAVE_OPENSSL
