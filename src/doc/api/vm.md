@@ -85,8 +85,8 @@ changes:
   * `importModuleDynamically` {Function} Called during evaluation of this module
     when `import()` is called. If this option is not specified, calls to
     `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
-    This option is part of the experimental API for the `--experimental-modules`
-    flag, and should not be considered stable.
+    This option is part of the experimental modules API, and should not be
+    considered stable.
     * `specifier` {string} specifier passed to `import()`
     * `module` {vm.Module}
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
@@ -160,7 +160,6 @@ the value of another global variable, then execute the code multiple times.
 The globals are contained in the `context` object.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const context = {
@@ -235,7 +234,6 @@ the code multiple times in different contexts. The globals are set on and
 contained within each individual `context`.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const script = new vm.Script('globalVar = "set"');
@@ -563,6 +561,10 @@ defined in the ECMAScript specification.
   * `identifier` {string} String used in stack traces.
     **Default:** `'vm:module(i)'` where `i` is a context-specific ascending
     index.
+  * `cachedData` {Buffer|TypedArray|DataView} Provides an optional `Buffer` or
+    `TypedArray`, or `DataView` with V8's code cache data for the supplied
+     source. The `code` must be the same as the module from which this
+     `cachedData` was created.
   * `context` {Object} The [contextified][] object as returned by the
     `vm.createContext()` method, to compile and evaluate this `Module` in.
   * `lineOffset` {integer} Specifies the line number offset that is displayed
@@ -616,6 +618,28 @@ const contextifiedObject = vm.createContext({ secret: 42 });
   // above with
   //     meta.prop = vm.runInContext('{}', contextifiedObject);
 })();
+```
+
+### `sourceTextModule.createCachedData()`
+<!-- YAML
+added: v12.17.0
+-->
+
+* Returns: {Buffer}
+
+Creates a code cache that can be used with the SourceTextModule constructor's
+`cachedData` option. Returns a Buffer. This method may be called any number
+of times before the module has been evaluated.
+
+```js
+// Create an initial module
+const module = new vm.SourceTextModule('const a = 1;');
+
+// Create cached data from this module
+const cachedData = module.createCachedData();
+
+// Create a new module using the cached data. The code must be the same.
+const module2 = new vm.SourceTextModule('const a = 1;', { cachedData });
 ```
 
 ## Class: `vm.SyntheticModule`
@@ -765,7 +789,6 @@ properties but also having the built-in objects and functions any standard
 will remain unchanged.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 global.globalVar = 3;
@@ -850,8 +873,8 @@ changes:
   * `importModuleDynamically` {Function} Called during evaluation of this module
     when `import()` is called. If this option is not specified, calls to
     `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
-    This option is part of the experimental API for the `--experimental-modules`
-    flag, and should not be considered stable.
+    This option is part of the experimental modules API, and should not be
+    considered stable.
     * `specifier` {string} specifier passed to `import()`
     * `module` {vm.Module}
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
@@ -870,7 +893,6 @@ The following example compiles and executes different scripts using a single
 [contextified][] object:
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const contextObject = { globalVar: 1 };
@@ -946,8 +968,8 @@ changes:
   * `importModuleDynamically` {Function} Called during evaluation of this module
     when `import()` is called. If this option is not specified, calls to
     `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
-    This option is part of the experimental API for the `--experimental-modules`
-    flag, and should not be considered stable.
+    This option is part of the experimental modules API, and should not be
+    considered stable.
     * `specifier` {string} specifier passed to `import()`
     * `module` {vm.Module}
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
@@ -966,7 +988,6 @@ The following example compiles and executes code that increments a global
 variable and sets a new one. These globals are contained in the `contextObject`.
 
 ```js
-const util = require('util');
 const vm = require('vm');
 
 const contextObject = {
@@ -1022,8 +1043,8 @@ changes:
   * `importModuleDynamically` {Function} Called during evaluation of this module
     when `import()` is called. If this option is not specified, calls to
     `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
-    This option is part of the experimental API for the `--experimental-modules`
-    flag, and should not be considered stable.
+    This option is part of the experimental modules API, and should not be
+    considered stable.
     * `specifier` {string} specifier passed to `import()`
     * `module` {vm.Module}
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is

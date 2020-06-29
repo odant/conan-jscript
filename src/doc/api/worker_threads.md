@@ -393,6 +393,51 @@ posting without having side effects.
 For more information on the serialization and deserialization mechanisms
 behind this API, see the [serialization API of the `v8` module][v8.serdes].
 
+#### Considerations when transferring TypedArrays and Buffers
+
+All `TypedArray` and `Buffer` instances are views over an underlying
+`ArrayBuffer`. That is, it is the `ArrayBuffer` that actually stores
+the raw data while the `TypedArray` and `Buffer` objects provide a
+way of viewing and manipulating the data. It is possible and common
+for multiple views to be created over the same `ArrayBuffer` instance.
+Great care must be taken when using a transfer list to transfer an
+`ArrayBuffer` as doing so will cause all `TypedArray` and `Buffer`
+instances that share that same `ArrayBuffer` to become unusable.
+
+```js
+const ab = new ArrayBuffer(10);
+
+const u1 = new Uint8Array(ab);
+const u2 = new Uint16Array(ab);
+
+console.log(u2.length);  // prints 5
+
+port.postMessage(u1, [u1.buffer]);
+
+console.log(u2.length);  // prints 0
+```
+
+For `Buffer` instances, specifically, whether the underlying
+`ArrayBuffer` can be transferred or cloned depends entirely on how
+instances were created, which often cannot be reliably determined.
+
+Depending on how a `Buffer` instance was created, it may or may
+not own its underlying `ArrayBuffer`. An `ArrayBuffer` must not
+be transferred unless it is known that the `Buffer` instance
+owns it. In particular, for `Buffer`s created from the internal
+`Buffer` pool (using, for instance `Buffer.from()` or `Buffer.alloc()`),
+transferring them is not possible and they will always be cloned,
+which sends a copy of the entire `Buffer` pool.
+This behavior may come with unintended higher memory
+usage and possible security concerns.
+
+See [`Buffer.allocUnsafe()`][] for more details on `Buffer` pooling.
+
+The `ArrayBuffer`s for `Buffer` instances created using
+`Buffer.alloc()` or `Buffer.allocUnsafeSlow()` can always be
+transferred but doing so will render all other existing views of
+those `ArrayBuffer`s unusable.
+
 ### `port.ref()`
 <!-- YAML
 added: v10.5.0
@@ -513,6 +558,13 @@ if (isMainThread) {
 <!-- YAML
 added: v10.5.0
 changes:
+  - version: v12.17.0
+    pr-url: https://github.com/nodejs/node/pull/32278
+    description: The `transferList` option was introduced.
+  - version: v12.17.0
+    pr-url: https://github.com/nodejs/node/pull/31664
+    description: The `filename` parameter can be a WHATWG `URL` object using
+                 `file:` protocol.
   - version: v12.16.0
     pr-url: https://github.com/nodejs/node/pull/26628
     description: The `resourceLimits` option was introduced.
@@ -521,9 +573,10 @@ changes:
     description: The `argv` option was introduced.
 -->
 
-* `filename` {string} The path to the Worker’s main script. Must be
-  either an absolute path or a relative path (i.e. relative to the
-  current working directory) starting with `./` or `../`.
+* `filename` {string|URL} The path to the Worker’s main script or module. Must
+  be either an absolute path or a relative path (i.e. relative to the
+  current working directory) starting with `./` or `../`, or a WHATWG `URL`
+  object using `file:` protocol.
   If `options.eval` is `true`, this is a string containing JavaScript code
   rather than a path.
 * `options` {Object}
@@ -536,8 +589,9 @@ changes:
     to specify that the parent thread and the child thread should share their
     environment variables; in that case, changes to one thread’s `process.env`
     object will affect the other thread as well. **Default:** `process.env`.
-  * `eval` {boolean} If `true`, interpret the first argument to the constructor
-    as a script that is executed once the worker is online.
+  * `eval` {boolean} If `true` and the first argument is a `string`, interpret
+    the first argument to the constructor as a script that is executed once the
+    worker is online.
   * `execArgv` {string[]} List of node CLI options passed to the worker.
     V8 options (such as `--max-old-space-size`) and options that affect the
     process (such as `--title`) are not supported. If set, this will be provided
@@ -555,6 +609,10 @@ changes:
     occur as described in the [HTML structured clone algorithm][], and an error
     will be thrown if the object cannot be cloned (e.g. because it contains
     `function`s).
+  * `transferList` {Object[]} If one or more `MessagePort`-like objects
+    are passed in `workerData`, a `transferList` is required for those
+    items or [`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`][] will be thrown.
+    See [`port.postMessage()`][] for more information.
   * `resourceLimits` {Object} An optional set of resource limits for the new
     JS engine instance. Reaching these limits will lead to termination of the
     `Worker` instance. These limits only affect the JS engine, and no external
@@ -611,6 +669,21 @@ added: v10.5.0
 
 The `'online'` event is emitted when the worker thread has started executing
 JavaScript code.
+
+### `worker.getHeapSnapshot()`
+<!-- YAML
+added: v12.17.0
+-->
+
+* Returns: {Promise} A promise for a Readable Stream containing
+  a V8 heap snapshot
+
+Returns a readable stream for a V8 snapshot of the current state of the Worker.
+See [`v8.getHeapSnapshot()`][] for more details.
+
+If the Worker thread is no longer running, which may occur before the
+[`'exit'` event][] is emitted, the returned `Promise` will be rejected
+immediately with an [`ERR_WORKER_NOT_RUNNING`][] error.
 
 ### `worker.postMessage(value[, transferList])`
 <!-- YAML
@@ -726,6 +799,9 @@ active handle in the event system. If the worker is already `unref()`ed calling
 [`'exit'` event]: #worker_threads_event_exit
 [`AsyncResource`]: async_hooks.html#async_hooks_class_asyncresource
 [`Buffer`]: buffer.html
+[`Buffer.allocUnsafe()`]: buffer.html#buffer_class_method_buffer_allocunsafe_size
+[`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`]: errors.html#errors_err_missing_message_port_in_transfer_list
+[`ERR_WORKER_NOT_RUNNING`]: errors.html#ERR_WORKER_NOT_RUNNING
 [`EventEmitter`]: events.html
 [`EventTarget`]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
 [`MessagePort`]: #worker_threads_class_messageport
@@ -753,6 +829,7 @@ active handle in the event system. If the worker is already `unref()`ed calling
 [`require('worker_threads').threadId`]: #worker_threads_worker_threadid
 [`require('worker_threads').workerData`]: #worker_threads_worker_workerdata
 [`trace_events`]: tracing.html
+[`v8.getHeapSnapshot()`]: v8.html#v8_v8_getheapsnapshot
 [`vm`]: vm.html
 [`Worker constructor options`]: #worker_threads_new_worker_filename_options
 [`worker.on('message')`]: #worker_threads_event_message_1

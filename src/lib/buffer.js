@@ -59,11 +59,13 @@ const {
   zeroFill: bindingZeroFill
 } = internalBinding('buffer');
 const {
+  arraybuffer_untransferable_private_symbol,
   getOwnNonIndexProperties,
   propertyFilter: {
     ALL_PROPERTIES,
     ONLY_ENUMERABLE
-  }
+  },
+  setHiddenValue,
 } = internalBinding('util');
 const {
   customInspectSymbol,
@@ -95,6 +97,7 @@ const {
   hideStackFrames
 } = require('internal/errors');
 const {
+  validateBuffer,
   validateInt32,
   validateString
 } = require('internal/validators');
@@ -153,6 +156,7 @@ function createUnsafeBuffer(size) {
 function createPool() {
   poolSize = Buffer.poolSize;
   allocPool = createUnsafeBuffer(poolSize).buffer;
+  setHiddenValue(allocPool, arraybuffer_untransferable_private_symbol, true);
   poolOffset = 0;
 }
 createPool();
@@ -253,7 +257,7 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
   if (nb > sourceLen)
     nb = sourceLen;
 
-  if (sourceStart !== 0 || sourceEnd !== source.length)
+  if (sourceStart !== 0 || sourceEnd < source.length)
     source = new Uint8Array(source.buffer, source.byteOffset + sourceStart, nb);
 
   target.set(source, targetStart);
@@ -899,6 +903,8 @@ Buffer.prototype.compare = function compare(target,
 // - encoding - an optional encoding, relevant if val is a string
 // - dir - true for indexOf, false for lastIndexOf
 function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
+  validateBuffer(buffer);
+
   if (typeof byteOffset === 'string') {
     encoding = byteOffset;
     byteOffset = undefined;
@@ -911,7 +917,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   byteOffset = +byteOffset;
   // If the offset is undefined, "foo", {}, coerces to NaN, search whole buffer.
   if (NumberIsNaN(byteOffset)) {
-    byteOffset = dir ? 0 : buffer.length;
+    byteOffset = dir ? 0 : (buffer.length || buffer.byteLength);
   }
   dir = !!dir;  // Cast to bool.
 

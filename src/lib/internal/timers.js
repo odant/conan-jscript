@@ -96,7 +96,7 @@ const {
   emitInit,
   emitBefore,
   emitAfter,
-  emitDestroy
+  emitDestroy,
 } = require('internal/async_hooks');
 
 // Symbols for storing async id state.
@@ -338,7 +338,7 @@ function insertGuarded(item, refed, start) {
 }
 
 function insert(item, msecs, start = getLibuvNow()) {
-  // Truncate so that accuracy of sub-milisecond timers is not assumed.
+  // Truncate so that accuracy of sub-millisecond timers is not assumed.
   msecs = MathTrunc(msecs);
   item._idleStart = start;
 
@@ -448,7 +448,7 @@ function getTimerCallbacks(runNextTicks) {
       prevImmediate = immediate;
 
       const asyncId = immediate[async_id_symbol];
-      emitBefore(asyncId, immediate[trigger_async_id_symbol]);
+      emitBefore(asyncId, immediate[trigger_async_id_symbol], immediate);
 
       try {
         const argv = immediate._argv;
@@ -537,7 +537,7 @@ function getTimerCallbacks(runNextTicks) {
         continue;
       }
 
-      emitBefore(asyncId, timer[trigger_async_id_symbol]);
+      emitBefore(asyncId, timer[trigger_async_id_symbol], timer);
 
       let start;
       if (timer._repeat)

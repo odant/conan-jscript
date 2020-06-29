@@ -111,7 +111,12 @@ enum node_zlib_mode {
 
 struct CompressionError {
   CompressionError(const char* message, const char* code, int err)
-    : message(message), code(code), err(err) {}
+      : message(message),
+        code(code),
+        err(err) {
+    CHECK_NOT_NULL(message);
+  }
+
   CompressionError() = default;
 
   const char* message = nullptr;
@@ -996,7 +1001,7 @@ CompressionError ZlibContext::Init(
   if (err_ != Z_OK) {
     dictionary_.clear();
     mode_ = NONE;
-    return ErrorForMessage(nullptr);
+    return ErrorForMessage("zlib error");
   }
 
   return SetDictionary();
@@ -1215,7 +1220,8 @@ struct MakeClass {
   static void Make(Environment* env, Local<Object> target, const char* name) {
     Local<FunctionTemplate> z = env->NewFunctionTemplate(Stream::New);
 
-    z->InstanceTemplate()->SetInternalFieldCount(1);
+    z->InstanceTemplate()->SetInternalFieldCount(
+        Stream::kInternalFieldCount);
     z->Inherit(AsyncWrap::GetConstructorTemplate(env));
 
     env->SetProtoMethod(z, "write", Stream::template Write<true>);
