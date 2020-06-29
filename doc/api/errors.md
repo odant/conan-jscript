@@ -774,6 +774,11 @@ be called no more than one time per instance of a `Hash` object.
 
 [`hash.update()`][] failed for any reason. This should rarely, if ever, happen.
 
+<a id="ERR_CRYPTO_INCOMPATIBLE_KEY"></a>
+### `ERR_CRYPTO_INCOMPATIBLE_KEY`
+
+The given crypto keys are incompatible with the attempted operation.
+
 <a id="ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS"></a>
 ### `ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS`
 
@@ -824,10 +829,30 @@ A signing `key` was not provided to the [`sign.sign()`][] method.
 [`crypto.timingSafeEqual()`][] was called with `Buffer`, `TypedArray`, or
 `DataView` arguments of different lengths.
 
+<a id="ERR_CRYPTO_UNKNOWN_CIPHER"></a>
+### `ERR_CRYPTO_UNKNOWN_CIPHER`
+
+An unknown cipher was specified.
+
+<a id="ERR_CRYPTO_UNKNOWN_DH_GROUP"></a>
+### `ERR_CRYPTO_UNKNOWN_DH_GROUP`
+
+An unknown Diffie-Hellman group name was given. See
+[`crypto.getDiffieHellman()`][] for a list of valid group names.
+
 <a id="ERR_DIR_CLOSED"></a>
 ### `ERR_DIR_CLOSED`
 
 The [`fs.Dir`][] was previously closed.
+
+<a id="ERR_DIR_CONCURRENT_OPERATION"></a>
+### `ERR_DIR_CONCURRENT_OPERATION`
+<!-- YAML
+added: v12.18.1
+-->
+
+A synchronous read or close call was attempted on an [`fs.Dir`][] which has
+ongoing asynchronous operations.
 
 <a id="ERR_DNS_SET_SERVERS_FAILED"></a>
 ### `ERR_DNS_SET_SERVERS_FAILED`
@@ -862,6 +887,13 @@ provided.
 
 Encoding provided to `TextDecoder()` API was not one of the
 [WHATWG Supported Encodings][].
+
+<a id="ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE"></a>
+### `ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE`
+
+The JS execution context is not associated with a Node.js environment.
+This may occur when Node.js is used as an embedded library and some hooks
+for the JS engine are not set up properly.
 
 <a id="ERR_FALSY_VALUE_REJECTION"></a>
 ### `ERR_FALSY_VALUE_REJECTION`
@@ -1161,7 +1193,7 @@ is set for the `Http2Stream`.
 ### `ERR_INTERNAL_ASSERTION`
 
 There was a bug in Node.js or incorrect usage of Node.js internals.
-To fix the error, open an issue at https://github.com/nodejs/node/issues.
+To fix the error, open an issue at <https://github.com/nodejs/node/issues>.
 
 <a id="ERR_INCOMPATIBLE_OPTION_PAIR"></a>
 ### `ERR_INCOMPATIBLE_OPTION_PAIR`
@@ -1524,6 +1556,12 @@ strict compliance with the API specification (which in some cases may accept
 An [ES Module][] loader hook specified `format: 'dynamic'` but did not provide
 a `dynamicInstantiate` hook.
 
+<a id="ERR_MISSING_OPTION"></a>
+### `ERR_MISSING_OPTION`
+
+For APIs that accept options objects, some options might be mandatory. This code
+is thrown if a required option is missing.
+
 <a id="ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST"></a>
 ### `ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`
 
@@ -1634,6 +1672,14 @@ A given value is out of the accepted range.
 The `package.json` [exports][] field does not export the requested subpath.
 Because exports are encapsulated, private internal modules that are not exported
 cannot be imported through the package resolution, unless using an absolute URL.
+
+<a id="ERR_PROTO_ACCESS"></a>
+### `ERR_PROTO_ACCESS`
+
+Accessing `Object.prototype.__proto__` has been forbidden using
+[`--disable-proto=throw`][]. [`Object.getPrototypeOf`][] and
+[`Object.setPrototypeOf`][] should be used to get and set the prototype of an
+object.
 
 <a id="ERR_REQUIRE_ESM"></a>
 ### `ERR_REQUIRE_ESM`
@@ -1828,6 +1874,15 @@ added: v12.16.0
 
 The context must be a `SecureContext`.
 
+<a id="ERR_TLS_INVALID_STATE"></a>
+### `ERR_TLS_INVALID_STATE`
+<!-- YAML
+added: v12.17.0
+-->
+
+The TLS socket must be connected and securily established. Ensure the 'secure'
+event is emitted before continuing.
+
 <a id="ERR_TLS_INVALID_PROTOCOL_METHOD"></a>
 ### `ERR_TLS_INVALID_PROTOCOL_METHOD`
 
@@ -1968,6 +2023,20 @@ An attempt was made to load a module with an unknown or unsupported format.
 An invalid or unknown process signal was passed to an API expecting a valid
 signal (such as [`subprocess.kill()`][]).
 
+<a id="ERR_UNSUPPORTED_DIR_IMPORT"></a>
+### `ERR_UNSUPPORTED_DIR_IMPORT`
+
+`import` a directory URL is unsupported. Instead, you can
+[self-reference a package using its name][] and [define a custom subpath][] in
+the `"exports"` field of the `package.json` file.
+
+<!-- eslint-skip -->
+```js
+import './'; // unsupported
+import './index.js'; // supported
+import 'package-name'; // supported
+```
+
 <a id="ERR_UNSUPPORTED_ESM_URL_SCHEME"></a>
 ### `ERR_UNSUPPORTED_ESM_URL_SCHEME`
 
@@ -1999,6 +2068,16 @@ the following reasons:
 * It is being linked (`linkingStatus` is `'linking'`)
 * Linking has failed for this module (`linkingStatus` is `'errored'`)
 
+<a id="ERR_VM_MODULE_CACHED_DATA_REJECTED"></a>
+### `ERR_VM_MODULE_CACHED_DATA_REJECTED`
+
+The `cachedData` option passed to a module constructor is invalid.
+
+<a id="ERR_VM_MODULE_CANNOT_CREATE_CACHED_DATA"></a>
+### `ERR_VM_MODULE_CANNOT_CREATE_CACHED_DATA`
+
+Cached data cannot be created for modules which have already been evaluated.
+
 <a id="ERR_VM_MODULE_DIFFERENT_CONTEXT"></a>
 ### `ERR_VM_MODULE_DIFFERENT_CONTEXT`
 
@@ -2026,6 +2105,11 @@ meaning of the error depends on the specific function.
 
 The WASI instance has already started.
 
+<a id="ERR_WASI_NOT_STARTED"></a>
+### `ERR_WASI_NOT_STARTED`
+
+The WASI instance has not been started.
+
 <a id="ERR_WORKER_INIT_FAILED"></a>
 ### `ERR_WORKER_INIT_FAILED`
 
@@ -2036,6 +2120,11 @@ The `Worker` initialization failed.
 
 The `execArgv` option passed to the `Worker` constructor contains
 invalid flags.
+
+<a id="ERR_WORKER_NOT_RUNNING"></a>
+### `ERR_WORKER_NOT_RUNNING`
+
+An operation failed because the `Worker` instance is not currently running.
 
 <a id="ERR_WORKER_OUT_OF_MEMORY"></a>
 ### `ERR_WORKER_OUT_OF_MEMORY`
@@ -2421,14 +2510,18 @@ This `Error` is thrown when a read is attempted on a TTY `WriteStream`,
 such as `process.stdout.on('data')`.
 
 [`'uncaughtException'`]: process.html#process_event_uncaughtexception
+[`--disable-proto=throw`]: cli.html#cli_disable_proto_mode
 [`--force-fips`]: cli.html#cli_force_fips
 [`Class: assert.AssertionError`]: assert.html#assert_class_assert_assertionerror
 [`ERR_INVALID_ARG_TYPE`]: #ERR_INVALID_ARG_TYPE
 [`EventEmitter`]: events.html#events_class_eventemitter
+[`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
+[`Object.setPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/setPrototypeOf
 [`REPL`]: repl.html
 [`Writable`]: stream.html#stream_class_stream_writable
 [`child_process`]: child_process.html
 [`cipher.getAuthTag()`]: crypto.html#crypto_cipher_getauthtag
+[`crypto.getDiffieHellman()`]: crypto.html#crypto_crypto_getdiffiehellman_groupname
 [`crypto.scrypt()`]: crypto.html#crypto_crypto_scrypt_password_salt_keylen_options_callback
 [`crypto.scryptSync()`]: crypto.html#crypto_crypto_scryptsync_password_salt_keylen_options
 [`crypto.timingSafeEqual()`]: crypto.html#crypto_crypto_timingsafeequal_a_b
@@ -2484,3 +2577,5 @@ such as `process.stdout.on('data')`.
 [Subresource Integrity specification]: https://www.w3.org/TR/SRI/#the-integrity-attribute
 [try-catch]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
 [vm]: vm.html
+[self-reference a package using its name]: esm.html#esm_self_referencing_a_package_using_its_name
+[define a custom subpath]: esm.html#esm_subpath_exports

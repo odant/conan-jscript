@@ -36,7 +36,7 @@ CallbackScope::~CallbackScope() {
 
 InternalCallbackScope::InternalCallbackScope(AsyncWrap* async_wrap, int flags)
     : InternalCallbackScope(async_wrap->env(),
-                            async_wrap->object(),
+                            async_wrap->GetResource(),
                             { async_wrap->get_async_id(),
                               async_wrap->get_trigger_async_id() },
                             flags) {}
@@ -50,7 +50,6 @@ InternalCallbackScope::InternalCallbackScope(Environment* env,
     object_(object),
     skip_hooks_(flags & kSkipAsyncHooks),
     skip_task_queues_(flags & kSkipTaskQueues) {
-  CHECK_IMPLIES(!(flags & kAllowEmptyResource), !object.IsEmpty());
   CHECK_NOT_NULL(env);
   env->PushAsyncCallbackScope();
 
@@ -63,15 +62,16 @@ InternalCallbackScope::InternalCallbackScope(Environment* env,
   // If you hit this assertion, you forgot to enter the v8::Context first.
   CHECK_EQ(Environment::GetCurrent(env->isolate()), env);
 
+  env->async_hooks()->push_async_context(
+    async_context_.async_id, async_context_.trigger_async_id, object);
+
+  pushed_ids_ = true;
+
   if (asyncContext.async_id != 0 && !skip_hooks_) {
     // No need to check a return value because the application will exit if
     // an exception occurs.
     AsyncWrap::EmitBefore(env, asyncContext.async_id);
   }
-
-  env->async_hooks()->push_async_ids(async_context_.async_id,
-                               async_context_.trigger_async_id);
-  pushed_ids_ = true;
 }
 
 InternalCallbackScope::~InternalCallbackScope() {
@@ -84,18 +84,22 @@ void InternalCallbackScope::Close() {
   closed_ = true;
 
   if (!env_->can_call_into_js()) return;
-  if (failed_ && !env_->is_main_thread() && env_->is_stopping()) {
-    env_->async_hooks()->clear_async_id_stack();
+  auto perform_stopping_check = [&]() {
+    if (env_->is_stopping()) {
+      MarkAsFailed();
+      env_->async_hooks()->clear_async_id_stack();
+    }
+  };
+  perform_stopping_check();
+
+  if (!failed_ && async_context_.async_id != 0 && !skip_hooks_) {
+    AsyncWrap::EmitAfter(env_, async_context_.async_id);
   }
 
   if (pushed_ids_)
-    env_->async_hooks()->pop_async_id(async_context_.async_id);
+    env_->async_hooks()->pop_async_context(async_context_.async_id);
 
   if (failed_) return;
-
-  if (async_context_.async_id != 0 && !skip_hooks_) {
-    AsyncWrap::EmitAfter(env_, async_context_.async_id);
-  }
 
   if (env_->async_callback_scope_depth() > 1 || skip_task_queues_) {
     return;
@@ -109,6 +113,8 @@ void InternalCallbackScope::Close() {
 
   if (!tick_info->has_tick_scheduled()) {
     MicrotasksScope::PerformCheckpoint(env_->isolate());
+
+    perform_stopping_check();
   }
 
   // Make sure the stack unwound properly. If there are nested MakeCallback's
@@ -136,9 +142,11 @@ void InternalCallbackScope::Close() {
   if (tick_callback->Call(env_->context(), process, 0, nullptr).IsEmpty()) {
     failed_ = true;
   }
+  perform_stopping_check();
 }
 
 MaybeLocal<Value> InternalMakeCallback(Environment* env,
+                                       Local<Object> resource,
                                        Local<Object> recv,
                                        const Local<Function> callback,
                                        int argc,
@@ -150,7 +158,7 @@ MaybeLocal<Value> InternalMakeCallback(Environment* env,
     CHECK(!argv[i].IsEmpty());
 #endif
 
-  InternalCallbackScope scope(env, recv, asyncContext);
+  InternalCallbackScope scope(env, resource, asyncContext);
   if (scope.Failed()) {
     return MaybeLocal<Value>();
   }
@@ -224,7 +232,7 @@ MaybeLocal<Value> MakeCallback(Isolate* isolate,
   CHECK_NOT_NULL(env);
   Context::Scope context_scope(env->context());
   MaybeLocal<Value> ret =
-      InternalMakeCallback(env, recv, callback, argc, argv, asyncContext);
+      InternalMakeCallback(env, recv, recv, callback, argc, argv, asyncContext);
   if (ret.IsEmpty() && env->async_callback_scope_depth() == 0) {
     // This is only for legacy compatibility and we may want to look into
     // removing/adjusting it.

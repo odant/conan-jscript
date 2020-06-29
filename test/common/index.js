@@ -112,6 +112,8 @@ const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
 
+const isDumbTerminal = process.env.TERM === 'dumb';
+
 const rootDir = isWindows ? 'c:\\' : '/';
 
 const buildType = process.config.target_defaults ?
@@ -139,19 +141,22 @@ if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
       process._rawDebug();
       throw new Error(`same id added to destroy list twice (${id})`);
     }
-    destroyListList[id] = new Error().stack;
+    destroyListList[id] = util.inspect(new Error());
     _queueDestroyAsyncId(id);
   };
 
   require('async_hooks').createHook({
-    init(id, ty, tr, r) {
+    init(id, ty, tr, resource) {
       if (initHandles[id]) {
         process._rawDebug(
-          `Is same resource: ${r === initHandles[id].resource}`);
+          `Is same resource: ${resource === initHandles[id].resource}`);
         process._rawDebug(`Previous stack:\n${initHandles[id].stack}\n`);
         throw new Error(`init called twice for same id (${id})`);
       }
-      initHandles[id] = { resource: r, stack: new Error().stack.substr(6) };
+      initHandles[id] = {
+        resource,
+        stack: util.inspect(new Error()).substr(6)
+      };
     },
     before() { },
     after() { },
@@ -161,7 +166,7 @@ if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
         process._rawDebug();
         throw new Error(`destroy called for same id (${id})`);
       }
-      destroydIdsList[id] = new Error().stack;
+      destroydIdsList[id] = util.inspect(new Error());
     },
   }).enable();
 }
@@ -345,7 +350,7 @@ function _mustCallInner(fn, criteria = 1, field) {
   const context = {
     [field]: criteria,
     actual: 0,
-    stack: (new Error()).stack,
+    stack: util.inspect(new Error()),
     name: fn.name || '<anonymous>'
   };
 
@@ -530,7 +535,7 @@ function expectWarning(nameOrMap, expected, code) {
 function expectsError(validator, exact) {
   return mustCall((...args) => {
     if (args.length !== 1) {
-      // Do not use `assert.strictEqual()` to prevent `util.inspect` from
+      // Do not use `assert.strictEqual()` to prevent `inspect` from
       // always being called.
       assert.fail(`Expected one argument, got ${util.inspect(args)}`);
     }
@@ -560,12 +565,6 @@ function expectsInternalAssertion(fn, message) {
 function skipIfInspectorDisabled() {
   if (!process.features.inspector) {
     skip('V8 inspector is disabled');
-  }
-}
-
-function skipIfReportDisabled() {
-  if (!process.config.variables.node_report) {
-    skip('Diagnostic reporting is disabled');
   }
 }
 
@@ -669,6 +668,12 @@ function invalidArgTypeHelper(input) {
   return ` Received type ${typeof input} (${inspected})`;
 }
 
+function skipIfDumbTerminal() {
+  if (isDumbTerminal) {
+    skip('skipping - dumb terminal');
+  }
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -689,6 +694,7 @@ const common = {
   invalidArgTypeHelper,
   isAIX,
   isAlive,
+  isDumbTerminal,
   isFreeBSD,
   isLinux,
   isMainThread,
@@ -709,9 +715,9 @@ const common = {
   runWithInvalidFD,
   skip,
   skipIf32Bits,
+  skipIfDumbTerminal,
   skipIfEslintMissing,
   skipIfInspectorDisabled,
-  skipIfReportDisabled,
   skipIfWorker,
 
   get enoughTestCpu() {

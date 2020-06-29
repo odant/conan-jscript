@@ -1,4 +1,3 @@
-// Flags: --experimental-modules
 /* eslint-disable node-core/require-common-first, node-core/required-modules */
 
 import { createRequire } from 'module';
@@ -13,6 +12,7 @@ const {
   isIBMi,
   isLinuxPPCBE,
   isSunOS,
+  isDumbTerminal,
   isFreeBSD,
   isOpenBSD,
   isLinux,
@@ -32,6 +32,7 @@ const {
   mustCall,
   mustCallAtLeast,
   hasMultiLocalhost,
+  skipIfDumbTerminal,
   skipIfEslintMissing,
   canCreateSymLink,
   getCallSite,
@@ -58,6 +59,7 @@ export {
   isIBMi,
   isLinuxPPCBE,
   isSunOS,
+  isDumbTerminal,
   isFreeBSD,
   isOpenBSD,
   isLinux,
@@ -77,6 +79,7 @@ export {
   mustCall,
   mustCallAtLeast,
   hasMultiLocalhost,
+  skipIfDumbTerminal,
   skipIfEslintMissing,
   canCreateSymLink,
   getCallSite,

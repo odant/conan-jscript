@@ -202,7 +202,7 @@ For use of AVX2,
 * nasm version 2.10 or higher in Windows
 
 Please refer to
- https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_ia32cap.html for details.
+ <https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_ia32cap.html> for details.
 
  If compiling without one of the above, use `configure` with the
 `--openssl-no-asm` flag. Otherwise, `configure` will fail.
@@ -226,7 +226,7 @@ The Node.js project uses Python as part of its build process and has
 historically only been Python 2 compatible.
 
 Python 2 will reach its _end-of-life_ at the end of 2019 at which point the
-interpreter will cease receiving updates. See https://python3statement.org/
+interpreter will cease receiving updates. See <https://python3statement.org/>
 for more information.
 
 The Node.js project is in the process of transitioning its Python code to
@@ -254,6 +254,8 @@ Installation via Linux package manager can be achieved with:
 * Arch Linux, Manjaro: `sudo pacman -S python gcc make`
 
 FreeBSD and OpenBSD users may also need to install `libexecinfo`.
+
+Python 3 users may also need to install `python3-distutils`.
 
 #### macOS prerequisites
 
@@ -283,7 +285,7 @@ $ make -j4
 If you run into a `No module named 'distutils.spawn'` error when executing
 `./configure`, please try `python3 -m pip install --upgrade setuptools` or
 `sudo apt install python3-distutils -y`.
-For more information, see https://github.com/nodejs/node/issues/30189.
+For more information, see <https://github.com/nodejs/node/issues/30189>.
 
 The `-j4` option will cause `make` to run 4 simultaneous compilation jobs which
 may reduce build time. For more information, see the
