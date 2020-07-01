@@ -665,7 +665,7 @@ void JSInstanceImpl::StartNodeInstance() {
 }
 
 
-JSCRIPT_EXTERN void Initialize(int argc, char** argv) {
+JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
     if (is_initilized.exchange(true))
         return;
     
@@ -679,7 +679,7 @@ JSCRIPT_EXTERN void Initialize(int argc, char** argv) {
     CHECK_GT(argc, 0);
 
     // Hack around with the argv pointer. Used for process.title = "blah".
-    argv = uv_setup_args(argc, argv);
+    //argv = uv_setup_args(argc, argv);
 
     args = std::vector<std::string>(argv, argv + argc);
 
