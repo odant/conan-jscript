@@ -288,15 +288,15 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   try_catch.SetVerbose(true);
   Local<Object> global = env->context()->Global();
   if (global.IsEmpty()) return;
-  v8::Local<v8::String> odantFrameworkName =
-      v8::String::NewFromUtf8(env->isolate(), u8"odantFramework");
+  v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(
+      env->isolate(), u8"odantFramework", v8::NewStringType::kNormal).ToLocalChecked();
   v8::Local<v8::Value> odantFramework =
       global->Get(env->context(), odantFrameworkName).ToLocalChecked();
   if (odantFramework.IsEmpty() || !odantFramework->IsObject()) return;
   v8::Local<v8::Object> odantFrameworkObj = odantFramework.As<v8::Object>();
   if (odantFrameworkObj.IsEmpty()) return;
-  v8::Local<v8::String> consoleName =
-      v8::String::NewFromUtf8(env->isolate(), u8"console");
+  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(
+      env->isolate(), u8"console", v8::NewStringType::kNormal).ToLocalChecked();
   if (consoleName.IsEmpty()) return;
   v8::Local<v8::Value> console =
       odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
@@ -313,7 +313,7 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   if (consoleObj.IsEmpty()) return;
 
   v8::Local<v8::String> functionName =
-      v8::String::NewFromUtf8(env->isolate(), name);
+      v8::String::NewFromUtf8(env->isolate(), name, v8::NewStringType::kNormal).ToLocalChecked();
   if (functionName.IsEmpty()) return;
 
   v8::Local<v8::Value> function =
@@ -578,7 +578,7 @@ void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
     v8::Local<v8::Object> global = context->Global();
     CHECK(!global.IsEmpty());
 
-    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, "__oda_setRunState");
+    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, "__oda_setRunState", v8::NewStringType::kNormal).ToLocalChecked();
 
     const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
           v8::Isolate* isolate = args.GetIsolate();
