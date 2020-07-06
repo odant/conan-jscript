@@ -413,23 +413,6 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   }
 }
 
-class AsyncCallbackScope {
- public:
-  AsyncCallbackScope(Environment*);
-  ~AsyncCallbackScope();
-
- private:
-  Environment* _env;
-};
-
-inline AsyncCallbackScope::AsyncCallbackScope(Environment* env) : _env{env} {
-  _env->PushAsyncCallbackScope();
-}
-
-inline AsyncCallbackScope::~AsyncCallbackScope() {
-  _env->PopAsyncCallbackScope();
-}
-
 void JSInstanceImpl::StartNodeInstance() {
   AutoResetState<state_t::STOP> autoResetState(this);
 
