@@ -350,9 +350,9 @@ void JSInstanceImpl::overrideConsole(Environment* env,
     v8::Local<v8::Array> array = v8::Array::New(env->isolate(), 3);
     if (array.IsEmpty()) return;
 
-    array->Set(0, globalFunction);
-    array->Set(1, instanceExt);
-    array->Set(2, typeExt);
+    array->Set(env->context(), 0, globalFunction).Check();
+    array->Set(env->context(), 1, instanceExt).Check();
+    array->Set(env->context(), 2, typeExt).Check();
 
     v8::MaybeLocal<v8::Function> overrideFunction = v8::Function::New(
         env->context(),
@@ -406,10 +406,15 @@ void JSInstanceImpl::overrideConsole(Environment* env,
         },
         array);
 
-    if (!consoleObj->Set(functionName, overrideFunction.ToLocalChecked()))
-      return;
-    if (!globalConsoleObj->Set(functionName, overrideFunction.ToLocalChecked()))
-      return;
+    consoleObj->Set(env->context(),
+                    functionName,
+                    overrideFunction.ToLocalChecked()
+    ).Check();
+
+    globalConsoleObj->Set(env->context(),
+                          functionName,
+                          overrideFunction.ToLocalChecked()
+    ).Check();
   }
 }
 
@@ -613,11 +618,10 @@ void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
 
     v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
     v8::Local<v8::Array> array = v8::Array::New(_isolate, 1);
-    array->Set(0, instanceExt);
+    array->Set(context, 0, instanceExt).Check();
 
     v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
-    const bool isFunctionSet = global->Set(functionName, setRunStateFunction.ToLocalChecked());
-    CHECK(isFunctionSet);
+    global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
 }
 
 JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
@@ -925,7 +929,7 @@ void _async_execute_script(uv_async_t* handle) {
         function->SetName(name);
 
         v8::Local<v8::Object> global = context->Global();
-        global->Set(name, function);
+        global->Set(context, name, function).Check();
       }
 
       v8::MaybeLocal<v8::Script> compile_result =
