@@ -467,73 +467,74 @@ void JSInstanceImpl::StartNodeInstance() {
 
   // Following code from NodeMainInstance::Run
 
-  v8::Locker locker(_isolate);
-  v8::Isolate::Scope isolate_scope(_isolate);
-  v8::HandleScope handle_scope(_isolate);
-
   int exit_code = 0;
-  auto env = this->CreateEnvironment(&exit_code);
-  _env = env.get();
+  {
+    v8::Locker locker(_isolate);
+    v8::Isolate::Scope isolate_scope(_isolate);
+    v8::HandleScope handle_scope(_isolate);
 
-  CHECK_NOT_NULL(env);
-  v8::Context::Scope context_scope(env->context());
-  if (exit_code == 0) {
+    auto env = this->CreateEnvironment(&exit_code);
+    _env = env.get();
+
+    CHECK_NOT_NULL(env);
+    v8::Context::Scope context_scope(env->context());
+    if (exit_code == 0) {
       LoadEnvironment(env.get());
       this->overrideConsole(env.get());
 
       env->set_trace_sync_io(env->options()->trace_sync_io);
 
       {
-          v8::SealHandleScope seal(_isolate);
-          bool more;
-          env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
+        v8::SealHandleScope seal(_isolate);
+        bool more;
+        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
 
-          do {
-              uv_run(env->event_loop(), UV_RUN_DEFAULT);
+        do {
+          uv_run(env->event_loop(), UV_RUN_DEFAULT);
 
-              per_process::v8_platform.DrainVMTasks(_isolate);
+          per_process::v8_platform.DrainVMTasks(_isolate);
 
 
-              more = uv_loop_alive(env->event_loop());
-              if (more && !env->is_stopping()) {
-                  continue;
-              }
+          more = uv_loop_alive(env->event_loop());
+          if (more && !env->is_stopping()) {
+            continue;
+          }
 
-              if (!uv_loop_alive(env->event_loop())) {
-                  EmitBeforeExit(env.get());
-              }
+          if (!uv_loop_alive(env->event_loop())) {
+            EmitBeforeExit(env.get());
+          }
 
-              // Emit `beforeExit` if the loop became alive either after emitting
-              // event, or after running some callbacks.
-              more = uv_loop_alive(env->event_loop());
-          } while (more == true && !env->is_stopping());
+          // Emit `beforeExit` if the loop became alive either after emitting
+          // event, or after running some callbacks.
+          more = uv_loop_alive(env->event_loop());
+        } while (more == true && !env->is_stopping());
 
-          env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-          setState(JSInstanceImpl::STOP);
+        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+        setState(JSInstanceImpl::STOP);
       }
 
       env->set_trace_sync_io(false);
       exit_code = EmitExit(env.get());
-  }
+    }
 
-  env->set_can_call_into_js(false);
-  env->stop_sub_worker_contexts();
-  ResetStdio();
-  env->RunCleanup();
+    env->set_can_call_into_js(false);
+    env->stop_sub_worker_contexts();
+    ResetStdio();
+    env->RunCleanup();
 
-  RunAtExit(env.get());
+    RunAtExit(env.get());
 
-  per_process::v8_platform.DrainVMTasks(_isolate);
+    per_process::v8_platform.DrainVMTasks(_isolate);
 
 #if defined(LEAK_SANITIZER)
-  __lsan_do_leak_check();
+    __lsan_do_leak_check();
 #endif
-
+  }
   set_exit_code(exit_code);
   _env = nullptr;
 
   per_process::v8_platform.Platform()->UnregisterIsolate(_isolate);
-  //_isolate->Dispose();
+  _isolate->Dispose();
 
   _isolate = nullptr;
   close_loop();
