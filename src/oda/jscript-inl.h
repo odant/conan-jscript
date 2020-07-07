@@ -190,6 +190,12 @@ class NodeInstanceData : public RefCounter {
 
   void set_exit_code(int exit_code) { exit_code_ = exit_code; }
 
+ protected:
+
+  std::unique_ptr<IsolateData> isolate_data_;
+  const bool deserialize_mode_ = false;
+
+
  private:
   uv_loop_t event_loop_;
   bool event_loop_init_;
@@ -201,21 +207,10 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
   struct _constructor_tag {};
 
  public:
-  typedef RefCounter::Ptr<JSInstanceImpl> Ptr;
+  using Ptr = RefCounter::Ptr<JSInstanceImpl>;
   enum state_t { CREATE, RUN, STOPPING, STOP };
-
-  template <state_t State = state_t::STOP>
-  class AutoResetState {
-   public:
-    AutoResetState(JSInstanceImpl::Ptr const& p) : _instance(p) {}
-    AutoResetState(JSInstanceImpl::Ptr&& p) : _instance(std::move(p)) {}
-    ~AutoResetState() {
-      if (_instance) _instance->setState(State);
-    }
-
-   private:
-    JSInstanceImpl::Ptr _instance;
-  };
+  using AutoResetState = std::unique_ptr<void, std::function<void(void*)>>;
+  AutoResetState createAutoReset(state_t);
 
   JSInstanceImpl(_constructor_tag) : NodeInstanceData() {}
 
@@ -265,9 +260,6 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
   std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
   JSLogCallback _logCallback;
-
-  std::unique_ptr<IsolateData> isolate_data_;
-  const bool deserialize_mode_ = false;
 };
 
 void JSInstanceImpl::SetLogCallback(JSLogCallback& cb) {
@@ -433,8 +425,16 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   }
 }
 
+JSInstanceImpl::AutoResetState JSInstanceImpl::createAutoReset(state_t state) {
+  const auto deleter = [that = JSInstanceImpl::Ptr{ this }, state](void*) {
+    that->setState(state);
+  };
+
+  return AutoResetState{ this, deleter };
+}
+
 void JSInstanceImpl::StartNodeInstance() {
-  AutoResetState<state_t::STOP> autoResetState(this);
+  auto autoResetState = createAutoReset(state_t::STOP);
 
   v8::Isolate::CreateParams params;
   auto allocator = ArrayBufferAllocator::Create();
