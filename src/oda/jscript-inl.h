@@ -454,8 +454,12 @@ void JSInstanceImpl::StartNodeInstance() {
   // deserialize_mode_ = per_isolate_data_indexes != nullptr;
   // If the indexes are not nullptr, we are not deserializing
   //CHECK_IMPLIES(deserialize_mode_, params.external_references != nullptr);
-  isolate_data_ = std::make_unique<IsolateData>(
+  {
+    // ctor IsolateData call Isolate::GetCurrent, need enter
+    v8::Locker locker{ _isolate };
+    isolate_data_ = std::make_unique<IsolateData>(
       _isolate, event_loop(), platform, allocator.get());
+  }
 
   IsolateSettings s;
   SetIsolateMiscHandlers(_isolate, s);
@@ -582,7 +586,7 @@ void JSInstanceImpl::StartNodeInstance() {
     // TODO(joyeecheung): when we snapshot the bootstrapped context,
     // the inspector and diagnostics setup should after after deserialization.
 #if HAVE_INSPECTOR
-    *exit_code = env->InitializeInspector({});
+    //*exit_code = env->InitializeInspector({});
 #endif
     if (*exit_code != 0) {
       return env;
