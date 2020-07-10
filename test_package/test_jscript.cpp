@@ -1,33 +1,16 @@
 // Test for jscript Conan package manager
-// Dmitriy Vetutnev, Odant, 2018
+// Dmitriy Vetutnev, Odant, 2018 - 2020
 
 
 #include <oda/jscript.h>
-
+#include "get_cwd.h"
 
 #include <iostream>
 #include <cstdlib>
 #include <string>
-#include <memory>
-#include <algorithm>
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
-
-
-// For GetCwd
-#include <cstdio>
-#ifdef _WIN32
-    #include <direct.h>
-    #define _GetCwd _getcwd
-    #include "Windows.h"
-#else
-    #include <unistd.h>
-    #define _GetCwd getcwd
-#endif
-
-
-std::string GetCwd();
 
 
 static std::atomic_bool script_done{false};
@@ -145,18 +128,3 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-
-std::string GetCwd() {
-
-    auto buffer = std::make_unique<char[]>(FILENAME_MAX);
-
-    if ( !_GetCwd(buffer.get(), FILENAME_MAX) ) {
-        std::cout << "Error. Can`t get current directory" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    
-    std::string ret{buffer.get()};
-    std::replace(std::begin(ret), std::end(ret), '\\', '/');
-
-    return std::move(ret);
-}
