@@ -243,6 +243,19 @@ index ad572f89728..2bb531a64ec 100644
    ], # end targets
  
    'conditions': [
+diff --git a/src/node.gypi b/src/node.gypi
+index 116c1c71494..093ba2237b5 100644
+--- a/src/node.gypi
++++ b/src/node.gypi
+@@ -309,7 +309,7 @@
+       'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
+     }],
+     [ 'OS=="linux"', {
+-      'libraries!': [
++      'libraries': [
+         '-lrt'
+       ],
+     }],
 diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
 index d87dd62c895..1b48b6b466b 100644
 --- a/src/src/debug_utils-inl.h
@@ -312,7 +325,7 @@ index 4ff7824b001..b169b42937f 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 3d9276b8c92..48f68e9c726 100644
+index a43e451ab0c..4b7ba6f3d22 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
