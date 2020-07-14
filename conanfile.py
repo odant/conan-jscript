@@ -8,7 +8,7 @@ import os, glob
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.18.2.1"
+    version = "12.18.2.2"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -146,7 +146,7 @@ class JScriptConan(ConanFile):
                 self.run("ninja -C out/%s" % str(self.settings.build_type))
             elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 msbuild = MSBuild(self)
-                msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False)
+                msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"})
             else:
                 self.run("make -j %s" % tools.cpu_count())
             # Tests
