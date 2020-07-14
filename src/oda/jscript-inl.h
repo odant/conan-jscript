@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <cstdio>
 
 // For setenv
 #ifndef _WIN32
@@ -747,8 +748,20 @@ JSCRIPT_EXTERN void Initialize(
   argv[argc++] = executeFile.c_str();
   CHECK_LT(argc, argv.size());
 
+  // Path to modules-loader.js
+  static const std::string modulesLoader = coreFolder + "/web/modules-loader.js";
+  FILE* modulesLoaderFileHandle = fopen(modulesLoader.c_str(), "r");
+  if (modulesLoaderFileHandle != nullptr) {
+      fclose(modulesLoaderFileHandle);
+      argv[argc++] = "--experimental-loader";
+      CHECK_LT(argc, argv.size());
+      argv[argc++] = modulesLoader.c_str();
+      CHECK_LT(argc, argv.size());
+  }
+
   // Add main script JSInstance
   argv[argc++] = "-e";
+  CHECK_LT(argc, argv.size());
 
   // Path to odant.js
   const std::string coreScript = coreFolder + "/web/core/odant.js";
