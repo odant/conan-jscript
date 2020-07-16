@@ -1,0 +1,13 @@
+diff --git a/src/src/node_contextify.cc b/src/src/node_contextify.cc
+index 3072dc8a7..23e4b745f 100644
+--- a/src/src/node_contextify.cc
++++ b/src/src/node_contextify.cc
+@@ -977,7 +977,7 @@ bool ContextifyScript::EvalMachine(Environment* env,
+ ContextifyScript::ContextifyScript(Environment* env, Local<Object> object)
+     : BaseObject(env, object),
+       id_(env->get_next_script_id()) {
+-  MakeWeak();
++  // MakeWeak(); Hold to exclude deletion from id_to_script_map
+   env->id_to_script_map.emplace(id_, this);
+ }
+ 

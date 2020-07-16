@@ -24,7 +24,7 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=False", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake"
+    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -62,6 +62,7 @@ class JScriptConan(ConanFile):
 
     def source(self):
         tools.patch(patch_file="oda.patch")
+        tools.patch(patch_file="experimental.patch")
 
     def build(self):
         output_name = "jscript"
