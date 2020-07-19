@@ -3,12 +3,12 @@
 
 
 from conans import ConanFile, tools, MSBuild
-import os, glob
+import os, glob, re
 
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.18.2.4"
+    version = "12.18.2.5"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -61,8 +61,16 @@ class JScriptConan(ConanFile):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
     def source(self):
+        self.patch_version();
         tools.patch(patch_file="oda.patch")
         tools.patch(patch_file="experimental.patch")
+
+    def patch_version(self):
+        build_version = self.version.split(".")[3]
+        content = tools.load("oda.patch")
+        r = re.compile("\+#define NODE_BUILD_VERSION \d")
+        content = r.sub("+#define NODE_BUILD_VERSION %s" % build_version, content);
+        tools.save("oda.patch", content);
 
     def build(self):
         output_name = "jscript"
