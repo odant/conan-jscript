@@ -2,7 +2,7 @@
 // Dmitriy Vetutnev, Odant, 2018 - 2020
 
 
-#include <oda/jscript.h>
+#include <jscript.h>
 #include "get_cwd.h"
 
 #include <iostream>

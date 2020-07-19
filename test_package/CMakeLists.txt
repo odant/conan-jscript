@@ -62,3 +62,16 @@ add_test(
     COMMAND test_jscript_several_instance
 )
 
+add_executable(test_headers test_headers.cpp)
+target_link_libraries(test_headers JScript::JScript)
+set_target_properties(test_headers
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_headers
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_headers
+)
+

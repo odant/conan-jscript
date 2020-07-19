@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.18.2.5"
+    version = "12.18.2.6"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -24,7 +24,7 @@ class JScriptConan(ConanFile):
         "with_unit_tests": [False, True]
     }
     default_options = "dll_sign=True", "ninja=False", "with_unit_tests=False"
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch"
+    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch", "win_delay_load_hook.cc"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -68,7 +68,7 @@ class JScriptConan(ConanFile):
     def patch_version(self):
         build_version = self.version.split(".")[3]
         content = tools.load("oda.patch")
-        r = re.compile("\+#define NODE_BUILD_VERSION \d")
+        r = re.compile("\+#define NODE_BUILD_VERSION \d+")
         content = r.sub("+#define NODE_BUILD_VERSION %s" % build_version, content);
         tools.save("oda.patch", content);
 
@@ -171,10 +171,18 @@ class JScriptConan(ConanFile):
         # CMake script
         self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
         # Headers
-        self.copy("jscript.h", dst="include/oda", src="src/oda", keep_path=False)
-        self.copy("node.h", dst="include/oda", src="src/src", keep_path=False)
-        self.copy("node_version.h", dst="include/oda", src="src/src", keep_path=False)
-        self.copy("*.h", dst="include/oda", src="src/deps/v8/include", keep_path=True)
+        self.copy("jscript.h", dst="include", src="src/oda", keep_path=False)
+        self.copy("node.h", dst="include", src="src/src", keep_path=False)
+        self.copy("node_buffer.h", dst="include", src="src/src", keep_path=False)
+        self.copy("node_version.h", dst="include", src="src/src", keep_path=False)
+        self.copy("node_object_wrap.h", dst="include", src="src/src", keep_path=False)
+        self.copy("node_api.h", dst="include", src="src/src", keep_path=False)
+        self.copy("js_native_api.h", dst="include", src="src/src", keep_path=False)
+        self.copy("js_native_api_types.h", dst="include", src="src/src", keep_path=False)
+        self.copy("node_api_types.h", dst="include", src="src/src", keep_path=False)
+        self.copy("*.h", dst="include", src="src/deps/v8/include", keep_path=True)
+        self.copy("*.h", dst="include", src="src/deps/uv/include", keep_path=True)
+        self.copy("win_delay_load_hook.cc", dst="include", src=".", keep_path=False)
         # Libraries
         output_folder = "src/out/%s" % str(self.settings.build_type)
         if self.settings.os == "Windows":
