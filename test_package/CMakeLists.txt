@@ -10,6 +10,21 @@ include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
 
+if(UNIX)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+else()
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+endif()
+
+
 # Copy fake Odant framework and node module
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/web ${CMAKE_BINARY_DIR}/bin/web)
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules ${CMAKE_BINARY_DIR}/bin/node_modules)
@@ -76,10 +91,24 @@ add_test(
 )
 
 
-add_library(n-api_addon SHARED
-	n-api_addon.cpp
+add_library(napi_addon SHARED
+	napi_addon.cpp
 	#${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
 )
-set_target_properties(n-api_addon PROPERTIES PREFIX "" SUFFIX ".node")
-target_compile_definitions(n-api_addon PRIVATE BUILDING_NODE_EXTENSION)
-target_link_libraries(n-api_addon JScript::JScript)
+set_target_properties(napi_addon PROPERTIES PREFIX "" SUFFIX ".node")
+target_compile_definitions(napi_addon PRIVATE BUILDING_NODE_EXTENSION)
+target_link_libraries(napi_addon JScript::JScript)
+
+add_executable(test_napi_addon test_napi_addon.cpp)
+target_link_libraries(test_napi_addon JScript::JScript)
+set_target_properties(test_napi_addon
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_napi_addon
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_napi_addon
+)
+add_dependencies(test_napi_addon napi_addon)
