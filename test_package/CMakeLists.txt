@@ -75,3 +75,11 @@ add_test(
     COMMAND test_headers
 )
 
+
+add_library(n-api_addon SHARED
+	n-api_addon.cpp
+	#${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
+)
+set_target_properties(n-api_addon PROPERTIES PREFIX "" SUFFIX ".node")
+target_compile_definitions(n-api_addon PRIVATE BUILDING_NODE_EXTENSION)
+target_link_libraries(n-api_addon JScript::JScript)
