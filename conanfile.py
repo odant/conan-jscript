@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.18.2.6"
+    version = "12.18.2.7"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -197,6 +197,9 @@ class JScriptConan(ConanFile):
             self.copy("libjscript.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
             self.copy("libjscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
+            # interpreter
+            self.copy("jscript.exe", dst="bin", src=output_folder, keep_path=False)
+            self.copy("jscriptd.exe", dst="bin", src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
             self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib", keep_path=False, excludes="*.TOC")
             self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib.target", keep_path=False, excludes="*.TOC")
@@ -209,6 +212,7 @@ class JScriptConan(ConanFile):
                     extension = ".so"
                     symlink = fname[0:fname.rfind(extension) + len(extension)]
                     self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
+            self.copy("jscript", dst="bin", src=output_folder, keep_path=False)
         # Local build
         if not self.in_local_cache:
             self.copy("conanfile.py", dst=".", keep_path=False)
