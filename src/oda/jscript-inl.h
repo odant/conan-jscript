@@ -731,14 +731,12 @@ JSCRIPT_EXTERN void Initialize(
                         nodeFolder.length(),
                         nodeFolderW.get(),
                         nodeFolderW_len);
-  BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
+  const BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
   CHECK_NE(res, 0);
-#else
-  if (setenv("NODE_PATH", nodeFolder.c_str(), 1) != 0) {
-    std::cerr << "Set NODE_PATH failed, errno: " << errno << ", exit."
-              << std::endl;
-    exit(EXIT_FAILURE);
-  }
+#endif
+#ifdef __unix__
+  const int res = ::setenv("NODE_PATH", nodeFolder.c_str(), 1);
+  CHECK_EQ(res, 0);
 #endif
 
   int argc = 0;
