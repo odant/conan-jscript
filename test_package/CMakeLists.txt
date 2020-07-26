@@ -112,3 +112,14 @@ add_test(
     COMMAND test_napi_addon
 )
 add_dependencies(test_napi_addon napi_addon)
+
+
+add_test(
+    NAME test_compile_failed_interpreter
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND jscript -e "compile failed zzzzzzzzz"
+)
+if(UNIX)
+    set_property(TEST test_compile_failed_interpreter PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/bin)
+    set_property(TEST test_compile_failed_interpreter PROPERTY WILL_FAIL True)
+endif()
