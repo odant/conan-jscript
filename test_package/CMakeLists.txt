@@ -119,7 +119,20 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND jscript -e "compile failed zzzzzzzzz"
 )
+set_property(TEST test_compile_failed_interpreter PROPERTY WILL_FAIL True)
 if(UNIX)
     set_property(TEST test_compile_failed_interpreter PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/bin)
-    set_property(TEST test_compile_failed_interpreter PROPERTY WILL_FAIL True)
 endif()
+
+add_executable(test_compile_failed test_compile_failed.cpp)
+target_link_libraries(test_compile_failed JScript::JScript)
+set_target_properties(test_compile_failed
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_compile_failed
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_compile_failed
+)
