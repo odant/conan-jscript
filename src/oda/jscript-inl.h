@@ -968,7 +968,7 @@ void _async_execute_script(uv_async_t* handle) {
       if (trycatch.HasCaught()) {
         v8::Local<v8::Value> exception = trycatch.Exception();
         v8::String::Utf8Value message(env->isolate(), exception);
-        std::cerr << "exception: " << *message << std::endl;
+        node::Debug(env, node::DebugCategory::NONE, *message);
       } else if (!compile_result.IsEmpty()) {
         v8::Local<v8::Script> script;
         compile_result.ToLocal(&script);
@@ -976,12 +976,15 @@ void _async_execute_script(uv_async_t* handle) {
         auto test = compile_result.ToLocalChecked();
 
         if (!script.IsEmpty()) {
-          v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
+          v8::MaybeLocal<v8::Value> result = script->Run(context);
+          if (result.IsEmpty()) {
+            node::Debug(env, node::DebugCategory::NONE, "Run script faild");
+          }
 
           if (trycatch.HasCaught()) {
             v8::Local<v8::Value> exception = trycatch.Exception();
             v8::String::Utf8Value message(env->isolate(), exception);
-            std::cerr << "exception: " << *message << std::endl;
+            node::Debug(env, node::DebugCategory::NONE, *message);
           }
         }
       }

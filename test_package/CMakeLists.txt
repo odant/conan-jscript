@@ -114,10 +114,15 @@ add_test(
 add_dependencies(test_napi_addon napi_addon)
 
 
+find_program(JSCRIPT_INTERPRETER
+	NAMES jscript jscriptd
+	PATHS ${CMAKE_CURRENT_BINARY_DIR}/bin
+	NO_DEFAULT_PATH
+)
 add_test(
     NAME test_compile_failed_interpreter
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-    COMMAND jscript -e "compile failed zzzzzzzzz"
+    COMMAND ${JSCRIPT_INTERPRETER} -e "compile failed zzzzzzzzz"
 )
 set_property(TEST test_compile_failed_interpreter PROPERTY WILL_FAIL True)
 if(UNIX)
