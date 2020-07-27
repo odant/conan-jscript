@@ -12,11 +12,6 @@
 #include <thread>
 #include <cstdio>
 
-// For setenv
-#ifndef _WIN32
-#include <errno.h>
-#include <stdlib.h>
-#endif
 
 namespace node {
 namespace jscript {
@@ -719,25 +714,12 @@ JSCRIPT_EXTERN void Initialize(
   _set_FMA3_enable(0);
 #endif
 
-  // Path to node modules
-#ifdef _WIN32
-  const int nodeFolderW_len = ::MultiByteToWideChar(
-      CP_UTF8, NULL, nodeFolder.c_str(), nodeFolder.length(), NULL, 0);
-  auto nodeFolderW = std::make_unique<wchar_t[]>(nodeFolderW_len +
-                                                 1);  // +1 for null-terminate
-  ::MultiByteToWideChar(CP_UTF8,
-                        NULL,
-                        nodeFolder.c_str(),
-                        nodeFolder.length(),
-                        nodeFolderW.get(),
-                        nodeFolderW_len);
-  const BOOL res = ::SetEnvironmentVariableW(L"NODE_PATH", nodeFolderW.get());
-  CHECK_NE(res, 0);
-#endif
-#ifdef __unix__
-  const int res = ::setenv("NODE_PATH", nodeFolder.c_str(), 1);
-  CHECK_EQ(res, 0);
-#endif
+  // Paths to node modules
+  CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
+
+  // categories is ','-separated list of C++ core debug categories that should print debug output
+  // 'none' - category for oda log callback
+  CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
 
   int argc = 0;
   std::array<const char*, 20> argv;
