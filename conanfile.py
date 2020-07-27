@@ -168,6 +168,9 @@ class JScriptConan(ConanFile):
                 self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
 
     def package(self):
+        if not self.in_local_cache:
+            tools.rmdir(self.package_folder)
+            tools.mkdir(self.package_folder)
         # CMake script
         self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
         # Headers
@@ -211,7 +214,7 @@ class JScriptConan(ConanFile):
                 for fname in os.listdir("."):
                     extension = ".so"
                     symlink = fname[0:fname.rfind(extension) + len(extension)]
-                    self.run("ln -s \"%s\" \"%s\"" % (fname, symlink))
+                    self.run("ln --symbolic --force \"%s\" \"%s\"" % (fname, symlink))
             self.copy("jscript", dst="bin", src=output_folder, keep_path=False)
         # Local build
         if not self.in_local_cache:
