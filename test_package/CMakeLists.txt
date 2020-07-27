@@ -136,3 +136,16 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND test_compile_failed
 )
+
+add_executable(test_throw_exception test_throw_exception.cpp)
+target_link_libraries(test_throw_exception JScript::JScript)
+set_target_properties(test_throw_exception
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_throw_exception
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_throw_exception
+)
