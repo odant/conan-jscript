@@ -92,8 +92,8 @@ add_test(
 
 
 add_library(napi_addon SHARED
-	napi_addon.cpp
-	#${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
+    napi_addon.cpp
+    #${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
 )
 set_target_properties(napi_addon PROPERTIES PREFIX "" SUFFIX ".node")
 target_compile_definitions(napi_addon PRIVATE BUILDING_NODE_EXTENSION)
@@ -115,10 +115,11 @@ add_dependencies(test_napi_addon napi_addon)
 
 
 find_program(JSCRIPT_INTERPRETER
-	NAMES jscript jscriptd
-	PATHS ${CMAKE_CURRENT_BINARY_DIR}/bin
-	NO_DEFAULT_PATH
+    NAMES jscript jscriptd
+    PATHS ${CMAKE_CURRENT_BINARY_DIR}/bin
+    NO_DEFAULT_PATH
 )
+
 add_test(
     NAME test_compile_failed_interpreter
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
@@ -141,6 +142,16 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND test_compile_failed
 )
+
+add_test(
+    NAME test_throw_exception_interpreter
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND ${JSCRIPT_INTERPRETER} -e "throw 'Error42'" --trace-uncaught
+)
+set_property(TEST test_throw_exception_interpreter PROPERTY WILL_FAIL True)
+if(UNIX)
+    set_property(TEST test_throw_exception_interpreter PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/bin)
+endif()
 
 add_executable(test_throw_exception test_throw_exception.cpp)
 target_link_libraries(test_throw_exception JScript::JScript)
