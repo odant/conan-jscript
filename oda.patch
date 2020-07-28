@@ -1,8 +1,8 @@
 diff --git a/src/configure.py b/src/configure.py
-index 0e72ed24cce..3d91f2923e6 100755
+index b67ad1f06f4..146244f8d19 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -647,6 +647,12 @@ parser.add_option('-C',
+@@ -660,6 +660,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -15,7 +15,7 @@ index 0e72ed24cce..3d91f2923e6 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1190,6 +1196,9 @@ def configure_node(o):
+@@ -1205,6 +1211,9 @@ def configure_node(o):
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
  
@@ -44,10 +44,10 @@ index 116b7537195..63ff09ee37d 100644
          [ 'OS=="android"', {
            'sources': [
 diff --git a/src/node.gyp b/src/node.gyp
-index ad572f89728..2bb531a64ec 100644
+index b030de8364a..00a563848b0 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -340,13 +340,10 @@
+@@ -341,13 +341,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -63,7 +63,7 @@ index ad572f89728..2bb531a64ec 100644
        ],
  
        'sources': [
-@@ -517,6 +514,36 @@
+@@ -518,6 +515,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -100,7 +100,7 @@ index ad572f89728..2bb531a64ec 100644
        ],
      }, # node_core_target_name
      {
-@@ -770,6 +797,13 @@
+@@ -776,6 +803,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -114,7 +114,7 @@ index ad572f89728..2bb531a64ec 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -787,6 +821,7 @@
+@@ -793,6 +827,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -122,7 +122,7 @@ index ad572f89728..2bb531a64ec 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1196,120 +1231,6 @@
+@@ -1202,120 +1237,6 @@
        ],
      }, # cctest
  
@@ -315,24 +315,24 @@ index ecc53b0c2b0..66932a957ed 100644
  // Listing the AsyncWrap provider types first enables us to cast directly
  // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 4ff7824b001..b169b42937f 100644
+index 728785d5d27..8e04f2a912a 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1008,3 +1008,5 @@ void Initialize() {}
+@@ -1011,3 +1011,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index a43e451ab0c..4b7ba6f3d22 100644
+index 9252d51555f..dc63d787835 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 12
  #define NODE_MINOR_VERSION 18
- #define NODE_PATCH_VERSION 2
-+#define NODE_BUILD_VERSION 4
+ #define NODE_PATCH_VERSION 3
++#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
  #define NODE_VERSION_LTS_CODENAME "Erbium"
