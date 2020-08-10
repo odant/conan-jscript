@@ -55,7 +55,7 @@ class ExecutorCounter {
  private:
   node::Mutex _mutex;
   node::ConditionVariable _cv;
-  volatile std::size_t _count{0};
+  std::atomic_size_t _count{0};
 };
 
 class RefCounter {
