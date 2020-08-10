@@ -6,7 +6,6 @@
 #pragma once
 
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <stdexcept>
@@ -24,15 +23,9 @@
 
 
 inline std::string GetCwd() {
-
     auto buffer = std::make_unique<char[]>(FILENAME_MAX);
-
     if ( !_GetCwd(buffer.get(), FILENAME_MAX) ) {
         throw std::runtime_error{"Error. Can`t get current directory"};
     }
-
-    std::string ret{buffer.get()};
-    std::replace(std::begin(ret), std::end(ret), '\\', '/');
-
-    return ret;
+    return std::string{buffer.get()};
 }
