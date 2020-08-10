@@ -11,6 +11,7 @@
 #include <memory>
 #include <thread>
 #include <cstdio>
+#include <algorithm>
 
 
 namespace node {
@@ -701,9 +702,9 @@ void empty_handler(int param) {}
 JSCRIPT_EXTERN void Initialize(
     const std::string& origin,
     const std::string& externalOrigin,
-    const std::string& executeFile,
-    const std::string& coreFolder,
-    const std::string& nodeFolder,
+    std::string executeFile,
+    std::string coreFolder,
+    std::string nodeFolder,
     std::function<void(const std::string&)> logCallback) {
   auto h1 = signal(SIGKILL, empty_handler);
   auto h2 = signal(SIGABRT, empty_handler);
@@ -713,6 +714,10 @@ JSCRIPT_EXTERN void Initialize(
   // Disable AVX for MSVC 2013
   _set_FMA3_enable(0);
 #endif
+
+  std::replace(std::begin(executeFile), std::end(executeFile), '\\', '/');
+  std::replace(std::begin(nodeFolder), std::end(nodeFolder), '\\', '/');
+  std::replace(std::begin(coreFolder), std::end(coreFolder), '\\', '/');
 
   // Paths to node modules
   CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);

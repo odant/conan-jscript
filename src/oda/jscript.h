@@ -44,7 +44,7 @@ JSCRIPT_EXTERN void Initialize(int argc, const char**);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
+                               std::string executeFile, std::string coreFolder, std::string nodeFolder, // copy, not reference
                                std::function<void(const std::string&)> logCallback);
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb);
