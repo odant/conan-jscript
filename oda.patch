@@ -1,8 +1,20 @@
 diff --git a/src/configure.py b/src/configure.py
-index b67ad1f06f4..146244f8d19 100755
+index b67ad1f06f4..ca46e9a308b 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -660,6 +660,12 @@ parser.add_option('-C',
+@@ -575,6 +575,11 @@ parser.add_option('--ninja',
+     dest='use_ninja',
+     help='generate build files for use with Ninja')
+ 
++parser.add_option('--cmake',
++    action='store_true',
++    dest='use_cmake',
++    help='generate build files for use with CMake')
++
+ parser.add_option('--enable-asan',
+     action='store_true',
+     dest='enable_asan',
+@@ -660,6 +665,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -15,7 +27,7 @@ index b67ad1f06f4..146244f8d19 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1205,6 +1211,9 @@ def configure_node(o):
+@@ -1205,6 +1216,9 @@ def configure_node(o):
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
  
@@ -25,6 +37,25 @@ index b67ad1f06f4..146244f8d19 100755
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
    output['variables']['napi_build_version'] = version
+@@ -1765,6 +1779,9 @@ if options.prefix:
+ if options.use_ninja:
+   config['BUILD_WITH'] = 'ninja'
+ 
++if options.use_cmake:
++  config['BUILD_WITH'] = 'cmake'
++
+ # On Windows there is another find.exe in C:\Windows\System32
+ if sys.platform == 'win32':
+   config['FIND'] = '/usr/bin/find'
+@@ -1787,6 +1804,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+ 
+ if options.use_ninja:
+   gyp_args += ['-f', 'ninja']
++elif options.use_cmake:
++  gyp_args+= ['-f', 'cmake']
+ elif flavor == 'win' and sys.platform != 'msys':
+   gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
+ else:
 diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
 index 116b7537195..63ff09ee37d 100644
 --- a/src/deps/uv/uv.gyp
@@ -406,6 +437,24 @@ index 9403e68be70..d9f1f8b912f 100644
          END
      END
      BLOCK "VarFileInfo"
+diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gyp/generator/cmake.py
+index e966a8f23e1..6160925ec1c 100644
+--- a/src/tools/gyp/pylib/gyp/generator/cmake.py
++++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
+@@ -982,13 +982,6 @@ def WriteTarget(namer, qualified_target, target_dicts, build_dir, config_to_use,
+     if ldflags is not None:
+       SetTargetProperty(output, cmake_target_name, 'LINK_FLAGS', ldflags, ' ')
+ 
+-    # XCode settings
+-    xcode_settings = config.get('xcode_settings', {})
+-    for xcode_setting, xcode_value in xcode_settings.viewitems():
+-      SetTargetProperty(output, cmake_target_name,
+-                        "XCODE_ATTRIBUTE_%s" % xcode_setting, xcode_value,
+-                        '' if isinstance(xcode_value, str) else ' ')
+-
+   # Note on Dependencies and Libraries:
+   # CMake wants to handle link order, resolving the link line up front.
+   # Gyp does not retain or enforce specifying enough information to do so.
 diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
 index 26b8e56e834..c090fa9fefe 100644
 --- a/src/tools/v8_gypfiles/v8.gyp

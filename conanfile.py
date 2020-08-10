@@ -2,7 +2,7 @@
 # Dmitriy Vetutnev, Odant, 2018-2020
 
 
-from conans import ConanFile, tools, MSBuild
+from conans import ConanFile, tools, MSBuild, CMake
 import os, glob, re
 
 
@@ -21,11 +21,13 @@ class JScriptConan(ConanFile):
     options = {
         "dll_sign": [False, True],
         "ninja": [False, True],
+        "cmake": [False, True],
         "with_unit_tests": [False, True]
     }
     default_options = {
         "dll_sign": True,
         "ninja": False,
+        "cmake": False,
         "with_unit_tests": False
     }
     exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch", "win_delay_load_hook.cc"
@@ -126,6 +128,8 @@ class JScriptConan(ConanFile):
         #
         if self.options.ninja:
             flags.append("--ninja")
+        elif self.options.cmake:
+            flags.append("--cmake")
         #
         env = {}
         if self.settings.os == "Linux":
@@ -157,6 +161,14 @@ class JScriptConan(ConanFile):
             if self.options.ninja:
                 self.run("ninja --version")
                 self.run("ninja -C out/%s" % str(self.settings.build_type))
+            elif self.options.cmake:
+                cmake_src_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type))
+                self.patch_cmake_script(os.path.join(cmake_src_folder, "CMakeLists.txt"))
+                #
+                build_type = "RelWithDebInfo" if self.settings.build_type == "Release" else "Debug"
+                cmake = CMake(self, build_type=build_type, msbuild_verbosity='normal')
+                cmake.verbose = True
+                cmake.configure(source_folder=cmake_src_folder)
             elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 msbuild = MSBuild(self)
                 msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"})
@@ -170,6 +182,12 @@ class JScriptConan(ConanFile):
                 if self.settings.os == "Windows":
                     shell += ".exe"
                 self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
+
+    def patch_cmake_script(self, cmake_script_path):
+        content = tools.load(cmake_script_path)
+        content = content.replace("\\", "/")
+        content = content.replace("//", "/")
+        tools.save(cmake_script_path, content);
 
     def package(self):
         if not self.in_local_cache:
@@ -237,6 +255,8 @@ class JScriptConan(ConanFile):
 
     def package_id(self):
         self.info.options.ninja = "any"
+        self.info.options.cmake = "any"
+        self.info.options.with_unit_tests = "any"
 
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
