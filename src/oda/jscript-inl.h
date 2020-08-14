@@ -218,6 +218,9 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
   void StartNodeInstance();
   void SetLogCallback(JSLogCallback& cb);
 
+  static const std::string defaultOrigin;
+  static const std::string externalOrigin;
+
   Mutex _isolate_mutex;
   Isolate* _isolate{nullptr};
   Environment* _env{nullptr};
@@ -249,6 +252,7 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
  private:
   std::unique_ptr<Environment> CreateEnvironment(int*);
   void add__oda_setRunState(v8::Local<v8::Context>);
+  void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
   void overrideConsole(Environment* env);
   void overrideConsole(Environment* env,
                        const char* name,
@@ -258,6 +262,9 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
 
   JSLogCallback _logCallback;
 };
+
+const std::string JSInstanceImpl::defaultOrigin;
+const std::string JSInstanceImpl::externalOrigin;
 
 void JSInstanceImpl::SetLogCallback(JSLogCallback& cb) {
   _logCallback = std::move(cb);
@@ -580,6 +587,12 @@ void JSInstanceImpl::StartNodeInstance() {
 
     add__oda_setRunState(context);
 
+    const std::string defaultOriginName{ "DEFAULTORIGIN" };
+    addGlobalStringValue(context, defaultOriginName, defaultOrigin);
+
+    const std::string externalOriginName{ "EXTERNALORIGIN" };
+    addGlobalStringValue(context, externalOriginName, externalOrigin);
+
     // TODO(joyeecheung): when we snapshot the bootstrapped context,
     // the inspector and diagnostics setup should after after deserialization.
 #if HAVE_INSPECTOR
@@ -639,6 +652,15 @@ void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
 
     v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
     global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
+}
+
+void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value) {
+  v8::Local<v8::Object> global = context->Global();
+  CHECK(!global.IsEmpty());
+
+  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
+  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
+  global->Set(context, stringName, stringValue).Check();
 }
 
 JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
@@ -744,6 +766,9 @@ JSCRIPT_EXTERN void Initialize(
       CHECK_LT(argc, argv.size());
   }
 
+  const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
+  const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
+
   // Add main script JSInstance
   argv[argc++] = "-e";
   CHECK_LT(argc, argv.size());
@@ -763,18 +788,12 @@ JSCRIPT_EXTERN void Initialize(
       "});\n"
       "process.on('unhandledRejection', err => {\n"
       "    console.log(err);\n"
-      "});\n";
-
-  if (!origin.empty())
-    const_cast<std::string&>(instanceScript) +=
-        "global.DEFAULTORIGIN = '" + origin + "';\n";
-
-  if (!externalOrigin.empty())
-    const_cast<std::string&>(instanceScript) +=
-        "global.EXTERNALORIGIN = '" + externalOrigin + "';\n";
-
-  const_cast<std::string&>(instanceScript) +=
+      "});\n"
       "console.log('Start load framework.');\n"
+#ifdef _DEBUG
+      "console.log('global.DEFAULTORIGIN=%s', global.DEFAULTORIGIN);\n"
+      "console.log('global.EXTERNALORIGIN=%s', global.EXTERNALORIGIN);\n"
+#endif
       "global.odantFramework = require('" +
       coreScript +
       "');\n"
@@ -787,7 +806,8 @@ JSCRIPT_EXTERN void Initialize(
       "  infiniteFunction();\n"
       "  console.log('framework loaded!');\n"
 #ifdef _DEBUG
-      "  console.log(core.DEFAULTORIGIN);\n"
+      "  console.log('core.DEFAULTORIGIN=%s', core.DEFAULTORIGIN);\n"
+      "  console.log('core.EXTERNALORIGIN=%s', core.EXTERNALORIGIN);\n"
 #endif
       "  global.__oda_setRunState();"
       "}).catch((error)=>{\n"
