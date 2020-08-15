@@ -756,7 +756,7 @@ JSCRIPT_EXTERN void Initialize(
   CHECK_LT(argc, argv.size());
 
   // Path to modules-loader.js
-  static const std::string modulesLoader = coreFolder + "/web/modules-loader.js";
+  static const std::string modulesLoader = "file:///" + coreFolder + "/web/modules-loader.js";
   FILE* modulesLoaderFileHandle = fopen(modulesLoader.c_str(), "r");
   if (modulesLoaderFileHandle != nullptr) {
       fclose(modulesLoaderFileHandle);
