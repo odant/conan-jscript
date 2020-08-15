@@ -769,13 +769,38 @@ JSCRIPT_EXTERN void Initialize(
   const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
   const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
 
-  // Add main script JSInstance
-  argv[argc++] = "-e";
-  CHECK_LT(argc, argv.size());
+  static const std::string moduleInit {
+      [&coreFolder]()->std::string {
+          const std::string esModuleInit{ coreFolder + "/web/jscript-init.mjs" };
+          FILE* file = fopen(esModuleInit.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return esModuleInit;
+          }
+          const std::string commonModuleInit{coreFolder + "/web/jscript-init.cjs"};
+          file = fopen(commonModuleInit.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return commonModuleInit;
+          }
+          const std::string jsModuleInit{ coreFolder + "/web/jscript-init.js" };
+          file = fopen(jsModuleInit.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return jsModuleInit;
+          }
+          return std::string{};
+      }()
+  };
 
-  // Path to odant.js
-  const std::string coreScript = coreFolder + "/web/core/odant.js";
-  const_cast<std::string&>(instanceScript) =
+  if (moduleInit.empty()) {
+    // Add main script JSInstance
+    argv[argc++] = "-e";
+    CHECK_LT(argc, argv.size());
+
+    // Path to odant.js
+    const std::string coreScript = coreFolder + "/web/core/odant.js";
+    const_cast<std::string&>(instanceScript) =
       "'use strict';\n"
       "process.stdout.write = (msg) => {\n"
       "   process._rawDebug(msg);\n"
@@ -814,7 +839,11 @@ JSCRIPT_EXTERN void Initialize(
       "  console.log(error);\n"
       "});\n";
 
-  argv[argc++] = instanceScript.c_str();
+    argv[argc++] = instanceScript.c_str();
+  }
+  else {
+    argv[argc++] = moduleInit.c_str();
+  }
 
   Initialize(argc, argv.data());
   SetRedirectFPrintF(std::move(logCallback));
