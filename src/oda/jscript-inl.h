@@ -283,148 +283,177 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   v8::TryCatch try_catch(env->isolate());
   try_catch.SetVerbose(true);
   Local<Object> global = env->context()->Global();
-  if (global.IsEmpty()) return;
+  if (global.IsEmpty()) {
+    return;
+  }
+
+  v8::Local<v8::String> consoleName =
+    v8::String::NewFromUtf8(env->isolate(), u8"console", v8::NewStringType::kNormal).ToLocalChecked();
+  if (consoleName.IsEmpty()) {
+    return;
+  }
+  v8::Local<v8::String> functionName =
+    v8::String::NewFromUtf8(env->isolate(), name, v8::NewStringType::kNormal).ToLocalChecked();
+  if (functionName.IsEmpty()) {
+    return;
+  }
+
+  v8::Local<v8::Value> globalConsole =
+    global->Get(env->context(), consoleName).ToLocalChecked();
+  if (globalConsole.IsEmpty() || !globalConsole->IsObject()) {
+    return;
+  }
+  v8::Local<v8::Object> globalConsoleObj = globalConsole.As<v8::Object>();
+  if (globalConsoleObj.IsEmpty()) {
+    return;
+  }
+
+  v8::Local<v8::Value> globalFunctionValue =
+    globalConsoleObj->Get(env->context(), functionName).ToLocalChecked();
+  if (globalFunctionValue.IsEmpty() || !globalFunctionValue->IsFunction()) {
+    return;
+  }
+  v8::Local<v8::Function> globalFunction =
+    globalFunctionValue.As<v8::Function>();
+  if (globalFunction.IsEmpty()) {
+    return;
+  }
+
+  //TODO: add check re-override control
+
+  v8::Local<v8::External> instanceExt =
+    v8::External::New(env->isolate(), this);
+  if (instanceExt.IsEmpty()) {
+    return;
+  }
+
+  v8::Local<v8::External> typeExt =
+    v8::External::New(env->isolate(),
+                      reinterpret_cast<void*>(static_cast<std::size_t>(type)));
+  if (typeExt.IsEmpty()) {
+    return;
+  }
+
+  v8::Local<v8::Array> array = v8::Array::New(env->isolate(), 3);
+  if (array.IsEmpty()) {
+    return;
+  }
+
+  array->Set(env->context(), 0, globalFunction).Check();
+  array->Set(env->context(), 1, instanceExt).Check();
+  array->Set(env->context(), 2, typeExt).Check();
+
+  const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::Isolate* isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
+
+    v8::Local<v8::Value> data = args.Data();
+    if (data.IsEmpty() || !data->IsArray()) {
+      return;
+    }
+    v8::Local<v8::Array> array = data.As<v8::Array>();
+    if (array.IsEmpty()) {
+      return;
+    }
+    if (array->Length() < 3) {
+      return;
+    }
+
+    v8::Local<v8::Context> context = array->CreationContext();
+
+    v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
+    if (globalLogFunc.IsEmpty()) {
+      return;
+    }
+
+    v8::TryCatch trycatch(isolate);
+    trycatch.SetVerbose(true);
+
+    std::unique_ptr<v8::Local<v8::Value>[]> info{
+        new v8::Local<v8::Value>[args.Length()]
+    };
+
+    for (size_t i = 0; i < args.Length(); ++i) {
+      info[i] = args[i];
+    }
+
+    globalLogFunc->Call(isolate->GetCurrentContext(),
+      v8::Null(isolate),
+      args.Length(),
+      info.get());
+
+    v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
+    if (instanceExt.IsEmpty()) {
+      return;
+    }
+    JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+    if (!instance) {
+      return;
+    }
+
+    v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
+    if (typeExt.IsEmpty()) {
+      return;
+    }
+    JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+
+    auto& logCallback = instance->logCallback();
+    if (logCallback) {
+      logCallback(args, type);
+    }
+  };
+
+  v8::Local<v8::Function> overrideFunction =
+    v8::Function::New(env->context(),
+                      callback,
+                      array
+  ).ToLocalChecked();
+
+  globalConsoleObj->Set(
+    env->context(),
+    functionName,
+    overrideFunction
+  ).Check();
+
   v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(
       env->isolate(), u8"odantFramework", v8::NewStringType::kNormal).ToLocalChecked();
   v8::Local<v8::Value> odantFramework =
       global->Get(env->context(), odantFrameworkName).ToLocalChecked();
-  if (odantFramework.IsEmpty() || !odantFramework->IsObject()) return;
+  if (odantFramework.IsEmpty() || !odantFramework->IsObject()) {
+    return;
+  }
   v8::Local<v8::Object> odantFrameworkObj = odantFramework.As<v8::Object>();
-  if (odantFrameworkObj.IsEmpty()) return;
-  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(
-      env->isolate(), u8"console", v8::NewStringType::kNormal).ToLocalChecked();
-  if (consoleName.IsEmpty()) return;
-  v8::Local<v8::Value> console =
+  if (odantFrameworkObj.IsEmpty()) {
+    return;
+  }
+  v8::Local<v8::Value> odantFrameworkConsole =
       odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
-  if (console.IsEmpty() || !console->IsObject()) {
+  if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
     v8::Local<v8::Object> consoleObj = v8::Object::New(env->isolate());
-    if (consoleObj.IsEmpty()) return;
+    if (consoleObj.IsEmpty()) {
+      return;
+    }
     if (!odantFrameworkObj->Set(env->context(), consoleName, consoleObj).ToChecked()) {
       return;
     }
-  }
-  console =
+    odantFrameworkConsole =
       odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
-  if (console.IsEmpty() || !console->IsObject()) return;
+    if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
+      return;
+    }
+  }
 
-  v8::Local<v8::Object> consoleObj = console.As<v8::Object>();
-  if (consoleObj.IsEmpty()) return;
-
-  v8::Local<v8::String> functionName =
-      v8::String::NewFromUtf8(env->isolate(), name, v8::NewStringType::kNormal).ToLocalChecked();
-  if (functionName.IsEmpty()) return;
+  v8::Local<v8::Object> odantFrameworkconsoleObj = odantFrameworkConsole.As<v8::Object>();
+  if (odantFrameworkconsoleObj.IsEmpty()) {
+    return;
+  }
 
   v8::Local<v8::Value> function =
-      consoleObj->Get(env->context(), functionName).ToLocalChecked();
+    odantFrameworkconsoleObj->Get(env->context(), functionName).ToLocalChecked();
   if (function.IsEmpty() || !function->IsFunction()) {
-    v8::Local<v8::Object> global = env->context()->Global();
-    if (global.IsEmpty()) return;
-
-    v8::Local<v8::Value> globalConsole =
-        global->Get(env->context(), consoleName).ToLocalChecked();
-    if (globalConsole.IsEmpty() || !globalConsole->IsObject()) return;
-
-    v8::Local<v8::Object> globalConsoleObj = globalConsole.As<v8::Object>();
-    if (globalConsoleObj.IsEmpty()) return;
-
-    v8::Local<v8::Value> globalFunctionValue =
-        globalConsoleObj->Get(env->context(), functionName).ToLocalChecked();
-    if (globalFunctionValue.IsEmpty() || !globalFunctionValue->IsFunction())
-      return;
-
-    v8::Local<v8::Function> globalFunction =
-        globalFunctionValue.As<v8::Function>();
-    if (globalFunction.IsEmpty()) return;
-
-    v8::Local<v8::External> instanceExt =
-        v8::External::New(env->isolate(), this);
-    if (instanceExt.IsEmpty()) return;
-
-    v8::Local<v8::External> typeExt = v8::External::New(
-        env->isolate(),
-        reinterpret_cast<void*>(static_cast<std::size_t>(type)));
-    if (instanceExt.IsEmpty()) return;
-
-    v8::Local<v8::Array> array = v8::Array::New(env->isolate(), 3);
-    if (array.IsEmpty()) return;
-
-    array->Set(env->context(), 0, globalFunction).Check();
-    array->Set(env->context(), 1, instanceExt).Check();
-    array->Set(env->context(), 2, typeExt).Check();
-
-    const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-      v8::Isolate* isolate = args.GetIsolate();
-      v8::HandleScope handle_scope(isolate);
-
-      v8::Local<v8::Value> data = args.Data();
-      if (data.IsEmpty() || !data->IsArray()) {
-        return;
-      }
-      v8::Local<v8::Array> array = data.As<v8::Array>();
-      if (array.IsEmpty()) {
-        return;
-      }
-      if (array->Length() < 3) {
-        return;
-      }
-
-      v8::Local<v8::Context> context = array->CreationContext();
-
-      v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
-      if (globalLogFunc.IsEmpty()) {
-        return;
-      }
-
-      v8::TryCatch trycatch(isolate);
-      trycatch.SetVerbose(true);
-
-      std::unique_ptr<v8::Local<v8::Value>[]> info{
-          new v8::Local<v8::Value>[args.Length()]
-      };
-
-      for (size_t i = 0; i < args.Length(); ++i) {
-        info[i] = args[i];
-      }
-
-      globalLogFunc->Call(isolate->GetCurrentContext(),
-        v8::Null(isolate),
-        args.Length(),
-        info.get());
-
-      v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
-      if (instanceExt.IsEmpty()) {
-        return;
-      }
-      JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-      if (!instance) {
-        return;
-      }
-
-      v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
-      if (typeExt.IsEmpty()) {
-        return;
-      }
-      JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
-
-      auto& logCallback = instance->logCallback();
-      if (logCallback) {
-        logCallback(args, type);
-      }
-    };
-
-    v8::Local<v8::Function> overrideFunction = v8::Function::New(env->context(),
-                                                                 callback,
-                                                                 array
-    ).ToLocalChecked();
-
-    consoleObj->Set(env->context(),
+    odantFrameworkconsoleObj->Set(env->context(),
                     functionName,
                     overrideFunction
-    ).Check();
-
-    globalConsoleObj->Set(env->context(),
-                          functionName,
-                          overrideFunction
     ).Check();
   }
 }
