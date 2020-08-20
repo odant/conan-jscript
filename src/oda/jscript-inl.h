@@ -784,6 +784,8 @@ JSCRIPT_EXTERN void Initialize(
   argv[argc++] = executeFile.c_str();
   CHECK_LT(argc, argv.size());
 
+  argv[argc++] = "--experimental-vm-modules";
+
   // Path to modules-loader.js
   static const std::string modulesLoader = "file:///" + coreFolder + "/web/modules-loader.js";
   FILE* modulesLoaderFileHandle = fopen(modulesLoader.c_str(), "r");
