@@ -787,16 +787,41 @@ JSCRIPT_EXTERN void Initialize(
   argv[argc++] = "--experimental-vm-modules";
 
   // Path to modules-loader.js
-  static const std::string modulesLoader = "file:///" + coreFolder + "/web/modules-loader.js";
-  FILE* modulesLoaderFileHandle = fopen(modulesLoader.c_str(), "r");
-  if (modulesLoaderFileHandle != nullptr) {
-      fclose(modulesLoaderFileHandle);
+  static const std::string modulesLoader {
+      [&coreFolder]()->std::string {
+#ifdef _WIN32
+          const std::string fileScheme{ "file:///" };
+#else
+          const std::string fileScheme{ "file://" };
+#endif
+          const std::string esModulesLoader{ coreFolder + "/web/modules-loader.mjs" };
+          FILE* file = fopen(esModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return fileScheme + esModulesLoader;
+          }
+          const std::string commonModulesLoader{coreFolder + "/web/modules-loader.cjs"};
+          file = fopen(commonModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return fileScheme + commonModulesLoader;
+          }
+          const std::string jsModulesLoader{ coreFolder + "/web/modules-loader.js" };
+          file = fopen(jsModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              fclose(file);
+              return fileScheme + jsModulesLoader;
+          }
+          return std::string{};
+      }()
+  };
+  if (!modulesLoader.empty()) {
       argv[argc++] = "--experimental-loader";
       CHECK_LT(argc, argv.size());
       argv[argc++] = modulesLoader.c_str();
       CHECK_LT(argc, argv.size());
   }
-
+  
   const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
   const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
 
