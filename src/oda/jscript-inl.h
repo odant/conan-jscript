@@ -256,7 +256,8 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
 
  private:
   std::unique_ptr<Environment> CreateEnvironment(int*);
-  void add__oda_setRunState(v8::Local<v8::Context>);
+  void addSetStates(v8::Local<v8::Context> context);
+  void addSetState(v8::Local<v8::Context> context, const char* name, state_t state);
   void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
   void overrideConsole(Environment* env);
   void overrideConsole(Environment* env,
@@ -619,7 +620,7 @@ void JSInstanceImpl::StartNodeInstance() {
     env->InitializeLibuv(per_process::v8_is_profiling);
     env->InitializeDiagnostics();
 
-    add__oda_setRunState(context);
+    addSetStates(context);
 
     const std::string defaultOriginName{ "DEFAULTORIGIN" };
     addGlobalStringValue(context, defaultOriginName, defaultOrigin);
@@ -643,11 +644,19 @@ void JSInstanceImpl::StartNodeInstance() {
     return env;
   }
 
-void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
+void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context)
+{
+  static const char* __oda_setRunState{ "__oda_setRunState" };
+  addSetState(context, __oda_setRunState, JSInstanceImpl::RUN);
+  static const char* __oda_setErrorState{ "__oda_setErrorState" };
+  addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
+}
+
+void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, state_t state) {
     v8::Local<v8::Object> global = context->Global();
     CHECK(!global.IsEmpty());
 
-    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, "__oda_setRunState", v8::NewStringType::kNormal).ToLocalChecked();
+    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
 
     const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
           v8::Isolate* isolate = args.GetIsolate();
@@ -661,7 +670,7 @@ void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
           if (array.IsEmpty()) {
               return;
           }
-          if (array->Length() < 1) {
+          if (array->Length() < 2) {
               return;
           }
 
@@ -677,12 +686,19 @@ void JSInstanceImpl::add__oda_setRunState(v8::Local<v8::Context> context) {
               return;
           }
 
-          instance->setState(JSInstanceImpl::RUN);
+          v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
+          if (stateCode.IsEmpty()) {
+              return;
+          }
+
+          instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode-> Value()));
     };  // callback
 
     v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-    v8::Local<v8::Array> array = v8::Array::New(_isolate, 1);
+    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(_isolate);
+    v8::Local<v8::Array> array = v8::Array::New(_isolate, 2);
     array->Set(context, 0, instanceExt).Check();
+    array->Set(context, 1, stateCode).Check();
 
     v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
     global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
