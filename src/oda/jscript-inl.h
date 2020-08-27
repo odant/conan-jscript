@@ -13,6 +13,9 @@
 #include <cstdio>
 #include <algorithm>
 
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
 namespace node {
 namespace jscript {
@@ -205,7 +208,10 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
 
  public:
   using Ptr = RefCounter::Ptr<JSInstanceImpl>;
-  enum state_t { CREATE, RUN, STOPPING, STOP };
+#ifdef ERROR
+  #undef ERROR
+#endif
+  enum state_t { CREATE, RUN, STOPPING, STOP, TIMEOUT, ERROR };
   using AutoResetState = std::unique_ptr<void, std::function<void(void*)>>;
   AutoResetState createAutoReset(state_t);
 
@@ -238,13 +244,12 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
 
   bool isInitialize() const { return _state != CREATE; }
 
-  node::Mutex _state_mutex;
-  node::ConditionVariable _state_cv;
+  std::mutex _state_mutex;
+  std::condition_variable _state_cv;
 
   void setState(state_t state) {
     _state = state;
-    node::Mutex::ScopedLock lock(_state_mutex);
-    _state_cv.Broadcast(lock);
+    _state_cv.notify_all();
   }
 
   JSLogCallback& logCallback() { return _logCallback; }
@@ -948,8 +953,13 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
     instance->_thread.detach();
   });
 
-  node::Mutex::ScopedLock lock(instance->_state_mutex);
-  while (!instance->isInitialize()) instance->_state_cv.Wait(lock);
+  const auto timeout = std::chrono::seconds(30);
+  std::unique_lock<std::mutex> lock(instance->_state_mutex);
+  while (!instance->isInitialize()) {
+      if (instance->_state_cv.wait_for(lock, timeout) ==  std::cv_status::timeout) {
+          instance->setState(JSInstanceImpl::TIMEOUT);
+      }
+  }
 
   *outNewInstance = instance.detach();
 
