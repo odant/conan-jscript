@@ -913,6 +913,7 @@ JSCRIPT_EXTERN void Initialize(
 #endif
       "  global.__oda_setRunState();"
       "}).catch((error)=>{\n"
+      "  global.__oda_setErrorState();\n"
       "  console.log(error);\n"
       "});\n";
 
