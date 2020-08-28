@@ -30,7 +30,7 @@ class JScriptConan(ConanFile):
         "cmake": False,
         "with_unit_tests": False
     }
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch", "win_delay_load_hook.cc"
+    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch", "use_nodepath_for_esm.patch", "win_delay_load_hook.cc"
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -70,6 +70,7 @@ class JScriptConan(ConanFile):
         self.patch_version();
         tools.patch(patch_file="oda.patch")
         tools.patch(patch_file="experimental.patch")
+        tools.patch(patch_file="use_nodepath_for_esm.patch")
 
     def patch_version(self):
         build_version = self.version.split(".")[3]

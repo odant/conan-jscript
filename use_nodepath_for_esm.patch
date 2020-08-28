@@ -1,0 +1,44 @@
+--- a/src/lib/internal/modules/esm/resolve.js
++++ b/src/lib/internal/modules/esm/resolve.js
+@@ -589,6 +589,41 @@ function packageResolve(specifier, base, conditions) {
+     // Cross-platform root check.
+   } while (packageJSONPath.length !== lastPath.length);
+ 
++  if (CJSModule && CJSModule.globalPaths && Array.isArray(CJSModule.globalPaths)) {
++    for (const path of CJSModule.globalPaths) {
++      if (!path) {
++          continue;
++      }
++      const baseUrl =
++        path.startsWith('file:') ? path
++                                 : 'file://' + path;
++      let packageJSONUrl =
++        new URL('./node_modules/' + packageName + '/package.json', baseUrl);
++
++      let packageJSONPath = fileURLToPath(packageJSONUrl);
++
++      const stat = tryStatSync(removePackageJsonFromPath(packageJSONPath));
++      if (!stat.isDirectory()) {
++        continue;
++      }
++      
++      // Package match.
++      const packageConfig = getPackageConfig(packageJSONPath, base);
++      if (packageSubpath === './') {
++        return new URL('./', packageJSONUrl);
++      } else if (packageSubpath === '') {
++        return packageMainResolve(packageJSONUrl, packageConfig, base,
++                                  conditions);
++      } else if (packageConfig.exports !== undefined) {
++        return packageExportsResolve(
++          packageJSONUrl, packageSubpath, packageConfig, base, conditions);
++      }
++      return finalizeResolution(
++        new URL(packageSubpath, packageJSONUrl), base);
++          
++    }
++  }
++
+   // eslint can't handle the above code.
+   // eslint-disable-next-line no-unreachable
+   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base));
