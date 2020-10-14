@@ -927,6 +927,28 @@ JSCRIPT_EXTERN void Initialize(
   SetRedirectFPrintF(std::move(logCallback));
 }
 
+JSCRIPT_EXTERN void Initialize(
+    const std::string& origin,
+    const std::string& externalOrigin,
+    std::string executeFile,
+    std::string coreFolder,
+    const std::vector<std::string>& nodeFolders,
+    std::function<void(const std::string&)> logCallback) {
+#ifdef _WIN32
+    const char delimiter = ';';
+#else
+    const char delimiter = ':';
+#endif
+    std::string nodePaths;
+    for (const std::string& folder : nodeFolders) {
+        if (!nodePaths.empty()) {
+            nodePaths += delimiter;
+        }
+        nodePaths += folder;
+    }
+    Initialize(origin, externalOrigin, std::move(executeFile), std::move(coreFolder), std::move(nodePaths));
+}
+
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
   if (!is_initilized) return;
   if (instance == nullptr) return;

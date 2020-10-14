@@ -25,9 +25,10 @@ else()
 endif()
 
 
-# Copy fake Odant framework and node module
+# Copy fake Odant framework and node modules
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/web ${CMAKE_BINARY_DIR}/bin/web)
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules ${CMAKE_BINARY_DIR}/bin/node_modules)
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules2 ${CMAKE_BINARY_DIR}/bin/node_modules2)
 
 
 enable_testing()
@@ -165,3 +166,17 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     COMMAND test_throw_exception
 )
+
+add_executable(test_multiple_paths_node_modules test_multiple_paths_node_modules.cpp)
+target_link_libraries(test_multiple_paths_node_modules JScript::JScript)
+set_target_properties(test_multiple_paths_node_modules
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_multiple_paths_node_modules
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_multiple_paths_node_modules
+)
+

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <functional>
 
 #ifdef _WIN32
@@ -44,6 +45,11 @@ JSCRIPT_EXTERN void Initialize(int argc, const char**);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                std::string executeFile, std::string coreFolder, std::string nodeFolder, // copy, not reference
                                std::function<void(const std::string&)> logCallback = nullptr);
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               std::string executeFile, std::string coreFolder, // copy, not reference
+                               const std::vector<std::string>& nodeFolders,
+                               std::function<void(const std::string&)> logCallback = nullptr);
+
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb);
 
