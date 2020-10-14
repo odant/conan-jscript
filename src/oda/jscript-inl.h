@@ -927,15 +927,6 @@ JSCRIPT_EXTERN void Initialize(
   SetRedirectFPrintF(std::move(logCallback));
 }
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin,
-                               const std::string& externalOrigin,
-                               const std::string& executeFile,
-                               const std::string& coreFolder,
-                               const std::string& nodeFolder) {
-  Initialize(
-      origin, externalOrigin, executeFile, coreFolder, nodeFolder, nullptr);
-}
-
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
   if (!is_initilized) return;
   if (instance == nullptr) return;
