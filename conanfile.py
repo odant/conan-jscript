@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "12.18.4.2"
+    version = "12.18.4.3"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -166,10 +166,13 @@ class JScriptConan(ConanFile):
                 cmake_src_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type))
                 self.patch_cmake_script(os.path.join(cmake_src_folder, "CMakeLists.txt"))
                 #
-                build_type = "RelWithDebInfo" if self.settings.build_type == "Release" else "Debug"
-                cmake = CMake(self, build_type=build_type, msbuild_verbosity='normal')
+                self.output.info("CMakeLists.txt and working folder: %s" % cmake_src_folder)
+                #
+                cmake_build_type = "RelWithDebInfo" if self.settings.build_type == "Release" else "Debug"
+                cmake = CMake(self, build_type=cmake_build_type, msbuild_verbosity='normal')
                 cmake.verbose = True
-                cmake.configure(source_folder=cmake_src_folder)
+                cmake.configure(source_folder=cmake_src_folder, build_folder=cmake_src_folder)
+                cmake.build()
             elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 msbuild = MSBuild(self)
                 msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"})
@@ -186,8 +189,19 @@ class JScriptConan(ConanFile):
 
     def patch_cmake_script(self, cmake_script_path):
         content = tools.load(cmake_script_path)
-        content = content.replace("\\", "/")
-        content = content.replace("//", "/")
+        lines = content.splitlines()
+        def pred(l):
+            return False if "regexp-special-case.h" in l else True
+        lines = filter(pred, lines)
+        def patch(l):
+            if l == "add_library(v8 STATIC)":
+                return "add_library(v8 STATIC IMPORTED)"
+            elif l.startswith("set_target_properties(jscript PROPERTIES LINK_FLAGS"):
+                return "set_target_properties(jscript PROPERTIES LINK_FLAGS \"-pthread -rdynamic -m64\")"
+            else:
+                return l
+        lines = map(patch, lines)
+        content = "\n".join(lines)
         tools.save(cmake_script_path, content);
 
     def package(self):
