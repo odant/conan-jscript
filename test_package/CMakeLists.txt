@@ -65,17 +65,17 @@ add_test(
     COMMAND test_jscript
 )
 
-add_executable(test_jscript_several_instance test_jscript_several_instance.cpp)
-target_link_libraries(test_jscript_several_instance JScript::JScript)
-set_target_properties(test_jscript_several_instance
+add_executable(test_multiple_instances test_multiple_instances.cpp)
+target_link_libraries(test_multiple_instances JScript::JScript)
+set_target_properties(test_multiple_instances
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
     BUILD_WITH_INSTALL_RPATH True
 )
 add_test(
-    NAME test_jscript_several_instance
+    NAME test_multiple_instances
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-    COMMAND test_jscript_several_instance
+    COMMAND test_multiple_instances
 )
 
 add_executable(test_headers test_headers.cpp)

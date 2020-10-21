@@ -57,28 +57,14 @@ int main(int argc, char** argv) {
         "} catch (e) {\n"
         "console.log(e); }\n"
         "\n"
-        "var promise_cb = new Promise((resolve, reject) => {\n"
-        "   setTimeout(() => {\n"
-        "       console.log('JS: Test callback...');\n"
-        "       resolve(42);\n"
-        "   }, 200);\n"
-        "});\n"
-        "promise_cb.then(resolve).catch(reject);\n"
+        "scriptDone();\n"
         "";
 
-    jscript::JSCallbackInfo resolveInfo;
-    resolveInfo.external = reinterpret_cast<void*>(1);
-    resolveInfo.name = "resolve";
-    resolveInfo.function = script_cb;
+    jscript::JSCallbackInfo callbackInfo;
+    callbackInfo.name = "scriptDone";
+    callbackInfo.function = script_cb;
 
-    jscript::JSCallbackInfo rejectInfo;
-    rejectInfo.external = reinterpret_cast<void*>(1);
-    rejectInfo.name = "reject";
-    rejectInfo.function = script_cb;
-
-    jscript::JSCallbackInfo* callbacks[] = { &resolveInfo, &rejectInfo, nullptr };
-
-    res = jscript::RunScriptText(instance, script, callbacks);
+    res = jscript::RunScriptText(instance, script, {std::move(callbackInfo)});
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);

@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance created" << std::endl;
 
-    const char* script = ""
+    const std::string script = ""
         "'use strict';\n"
         "var EventEmitter = require('events');\n"
         "class MyEE extends EventEmitter {\n"

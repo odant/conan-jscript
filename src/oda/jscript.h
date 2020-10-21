@@ -23,7 +23,6 @@ namespace node {
 namespace jscript {
 
 
-typedef void(*JSCallback)(const v8::FunctionCallbackInfo<v8::Value>& args);
 enum JSLogType {
     LOG_TYPE,
     WARN_TYPE, 
@@ -31,13 +30,15 @@ enum JSLogType {
     
     DEFAULT_TYPE = LOG_TYPE
 };
+
 typedef std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>  JSLogCallback;
 
 struct JSCallbackInfo {
-    const char*    name     = nullptr;
-    JSCallback     function = nullptr;
-    void*          external = nullptr;
+    std::string          name;
+    v8::FunctionCallback function = nullptr;
+    void*                external = nullptr;
 };
+
 
 class JSInstance { };
 
@@ -63,11 +64,8 @@ typedef enum {
 JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
 JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
 
-JSCRIPT_EXTERN result_t RunScriptText(const char* script);
-JSCRIPT_EXTERN result_t RunScriptText(const char* script, JSCallbackInfo* callbacks[]);
-
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script);
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const char* script, JSCallbackInfo* callbacks[]);
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script);
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
 
 
 } // namespace jscript

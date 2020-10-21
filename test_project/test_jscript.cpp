@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance created" << std::endl;
 
-    const char* script = ""
+    const std::string script = ""
         "var promise_cb = new Promise((resolve, reject) => {\n"
         "   setTimeout(() => {\n"
         "       console.log('JS: Test callback...');\n"

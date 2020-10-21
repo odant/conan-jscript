@@ -1,12 +1,13 @@
 // Test for jscript Conan package manager
-// Several paths to Node modules
-// Dmitriy Vetutnev, Odant, 2020
+// Load external init script
+// Dmitriy Vetutnev, ODANT, 2020
 
 
 #include <jscript.h>
 #include "get_cwd.h"
 
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <string>
 #include <atomic>
@@ -32,20 +33,30 @@ int main(int argc, char** argv) {
     const std::string cwd = GetCwd();
     std::cout << "Current directory: " << cwd << std::endl;
 
+    std::ofstream externalScript{cwd + "/web/jscript-init.js"};
+    externalScript
+        << "console.log('I`m external script');" << std::endl
+        << "var infiniteFunction = function() {" << std::endl
+        << "    setTimeout(function() {" << std::endl
+        << "        infiniteFunction();" << std::endl
+        << "    }, 1000);" << std::endl
+        << "};" << std::endl
+        << "infiniteFunction()" << std::endl
+        << "global.__oda_setRunState();" << std::endl
+        << "console.log('External script done');" << std::endl
+    ;
+    externalScript.close();
+
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
     const std::string coreFolder = cwd;
-    const std::vector<std::string> nodeFolders = {
-        coreFolder + "/node_modules",
-        coreFolder + "/node_modules2"
-    };
 
     auto logCb = [](const std::string& msg) {
         std::cout << "logCb: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolders, logCb);
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{}, logCb);
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;
@@ -57,12 +68,8 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance created" << std::endl;
 
-    const char* script = ""
-        "var fake_module = require('fake_module');\n"
-        "fake_module.printMessage();\n"
-        "var module2 = require('module2');\n"
-        "var assert = require('assert').strict;\n"
-        "assert.strictEqual(module2.foobar(), 42);\n"
+    const std::string script = ""
+        "console.log('Script from cpp-file');\n"
         "scriptDone();\n"
         "";
 
@@ -70,7 +77,11 @@ int main(int argc, char** argv) {
     callbackInfo.name = "scriptDone";
     callbackInfo.function = script_cb;
 
-    res = jscript::RunScriptText(instance, script, {std::move(callbackInfo)});
+    const std::vector<jscript::JSCallbackInfo> callbacks{
+        std::move(callbackInfo)
+    };
+
+    res = jscript::RunScriptText(instance, script, callbacks);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);

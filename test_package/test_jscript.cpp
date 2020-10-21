@@ -43,20 +43,6 @@ int main(int argc, char** argv) {
 
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, logCb);
     std::cout << "jscript::Initialize() done" << std::endl;
-    {
-#ifndef _WIN32
-        const char* node_path = std::getenv("NODE_PATH");
-        if (node_path != nullptr) {
-            std::cout << "NODE_PATH=" << node_path << std::endl;
-        } else {
-            std::cout << "NODE_PATH not set" << std::endl;
-        }
-#else
-        auto node_path = std::make_unique<wchar_t[]>(32768);
-        auto res = ::GetEnvironmentVariableW(L"NODE_PATH", node_path.get(), 32768);
-        std::wcout << L"NODE_PATH=" << node_path.get() << std::endl;
-#endif
-    }
 
     jscript::result_t res;
     jscript::JSInstance* instance{nullptr};
@@ -67,7 +53,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance created" << std::endl;
 
-    const char* script = ""
+    const std::string script = ""
         "var promise_require = new Promise((resolve, reject) => {\n"
         "   setTimeout(() => {\n"
         "       console.log('JS: Test NODE_PATH...');\n"
@@ -92,16 +78,17 @@ int main(int argc, char** argv) {
         "";
 
     jscript::JSCallbackInfo resolveInfo;
-    resolveInfo.external = reinterpret_cast<void*>(1);
     resolveInfo.name = "resolve";
     resolveInfo.function = script_cb;
 
     jscript::JSCallbackInfo rejectInfo;
-    rejectInfo.external = reinterpret_cast<void*>(1);
     rejectInfo.name = "reject";
     rejectInfo.function = script_cb;
 
-    jscript::JSCallbackInfo* callbacks[] = { &resolveInfo, &rejectInfo, nullptr };
+    const std::vector<jscript::JSCallbackInfo> callbacks{
+        std::move(resolveInfo),
+        std::move(rejectInfo)
+    };
 
     res = jscript::RunScriptText(instance, script, callbacks);
     if (res != jscript::JS_SUCCESS) {
@@ -112,16 +99,16 @@ int main(int argc, char** argv) {
     std::cout << "Script running, waiting..." << std::endl;    
     std::unique_lock<std::mutex> script_lock{script_mutex};
     script_cv.wait(script_lock, [] { return is_script_done(); });
-        
+
     std::cout << "Script done" << std::endl;
-    
+
     res = jscript::StopInstance(instance);
     if (res != jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance stopped" << std::endl;
-        
+
     jscript::Uninitilize();
     std::cout << "jscript::Uninitilize() done" << std::endl;
 

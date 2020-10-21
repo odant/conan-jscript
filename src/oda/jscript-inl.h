@@ -594,17 +594,17 @@ void JSInstanceImpl::StartNodeInstance() {
     }
 
     const size_t kNodeContextIndex = 0;
-    Local<v8::Context> context;
+    v8::Local<v8::Context> context;
     if (deserialize_mode_) {
-      context = v8::Context::FromSnapshot(_isolate, kNodeContextIndex)
-                    .ToLocalChecked();
+      context = v8::Context::FromSnapshot(_isolate, kNodeContextIndex).ToLocalChecked();
       InitializeContextRuntime(context);
       SetIsolateErrorHandlers(_isolate, {});
-    } else {
+    }
+    else {
       context = NewContext(_isolate);
     }
-
     CHECK(!context.IsEmpty());
+
     v8::Context::Scope context_scope(context);
 
     std::unique_ptr<Environment> env = std::make_unique<Environment>(
@@ -987,40 +987,26 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
   return JS_SUCCESS;
 }
 
-JSCRIPT_EXTERN result_t RunScriptText(const char* script) {
-  return RunScriptText(nullptr, script, nullptr);
-}
-JSCRIPT_EXTERN result_t RunScriptText(const char* script,
-                                      JSCallbackInfo* callbacks[]) {
-  return RunScriptText(nullptr, script, callbacks);
-}
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
-                                      const char* script) {
-  return RunScriptText(instance, script, nullptr);
-}
 
-struct JSCallBackInfoInternal {
-  std::unique_ptr<char> name;
-  JSCallback function = nullptr;
-  void* external = nullptr;
-
-  JSCallBackInfoInternal() {}
-  JSCallBackInfoInternal(JSCallBackInfoInternal&& moved)
-      : name(std::move(moved.name)),
-        function(moved.function),
-        external(moved.external) {}
-};
-
-struct JSAsyncInfo {
-  std::unique_ptr<char> script;
-  std::list<JSCallBackInfoInternal> callbacks;
+struct JSAsyncInfo
+{
+  std::string script;
+  std::vector<JSCallbackInfo> callbacks;
   JSInstanceImpl::Ptr instance;
   uv_async_t async_handle;
 
-  static JSAsyncInfo* create() { return new JSAsyncInfo(); }
-
-  void Dispose() { delete this; }
+  static JSAsyncInfo* create();
+  void Dispose();
 };
+
+JSAsyncInfo* JSAsyncInfo::create() {
+    return new JSAsyncInfo;
+}
+
+void JSAsyncInfo::Dispose() {
+    delete this;
+}
+
 
 JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
   if (instance_ == nullptr) return JS_ERROR;
@@ -1038,7 +1024,7 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
 
 namespace {
 
-void createCallbacks(v8::Isolate*, v8::Local<v8::Context>, const JSCallBackInfoInternal&);
+void createCallbacks(v8::Local<v8::Context>, const JSCallbackInfo&);
 
 }
 
@@ -1069,45 +1055,39 @@ void _async_execute_script(uv_async_t* handle) {
   v8::Context::Scope contextScope(context);
 
   v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate,
-                                                         asyncInfo->script.get(),
+                                                         asyncInfo->script.c_str(),
                                                          v8::NewStringType::kNormal)
           .ToLocalChecked();
 
-  if (!source.IsEmpty()) {
-    v8::TryCatch tryCatch{isolate};
-    tryCatch.SetVerbose(false);
+  v8::TryCatch tryCatch{isolate};
+  tryCatch.SetVerbose(false);
 
-    for (const auto& callbackInfo : asyncInfo->callbacks) {
-      createCallbacks(isolate, context, callbackInfo);
-    }
+  for (const auto& callbackInfo : asyncInfo->callbacks) {
+    createCallbacks(context, callbackInfo);
+  }
 
-
-    v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
-    if (tryCatch.HasCaught()) {
+  v8::MaybeLocal<v8::Script> compileResult = v8::Script::Compile(context, source);
+  if (tryCatch.HasCaught()) {
       v8::Local<v8::Value> exception = tryCatch.Exception();
       v8::String::Utf8Value message(isolate, exception);
       node::Debug(env, node::DebugCategory::NONE, *message);
-    }
-    else if (!compile_result.IsEmpty()) {
-      v8::Local<v8::Script> script;
-      compile_result.ToLocal(&script);
+  }
+  else if (!compileResult.IsEmpty()) {
+    v8::Local<v8::Script> script = compileResult.ToLocalChecked();
 
-      auto test = compile_result.ToLocalChecked();
+    if (!script.IsEmpty()) {
+      v8::MaybeLocal<v8::Value> result = script->Run(context);
+      if (result.IsEmpty()) {
+        node::Debug(env, node::DebugCategory::NONE, "Run script faild");
+      }
 
-        if (!script.IsEmpty()) {
-          v8::MaybeLocal<v8::Value> result = script->Run(context);
-          if (result.IsEmpty()) {
-            node::Debug(env, node::DebugCategory::NONE, "Run script faild");
-          }
-
-          if (tryCatch.HasCaught()) {
-            v8::Local<v8::Value> exception = tryCatch.Exception();
-            v8::String::Utf8Value message(isolate, exception);
-            node::Debug(env, node::DebugCategory::NONE, *message);
-          }
-        }
+      if (tryCatch.HasCaught()) {
+        v8::Local<v8::Value> exception = tryCatch.Exception();
+        v8::String::Utf8Value message(isolate, exception);
+        node::Debug(env, node::DebugCategory::NONE, *message);
       }
     }
+  }
 
 
   if (::uv_is_closing(reinterpret_cast<uv_handle_t*>(handle)) == 0) {
@@ -1125,9 +1105,11 @@ void _async_execute_script(uv_async_t* handle) {
 namespace {
 
 
-void createCallbacks(v8::Isolate* isolate, v8::Local<v8::Context> context, const JSCallBackInfoInternal& callbackInfo) {
+void createCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
+  v8::Isolate* isolate = context->GetIsolate();
+
   v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate,
-                                                       callbackInfo.name.get(),
+                                                       callbackInfo.name.c_str(),
                                                        v8::NewStringType::kInternalized).ToLocalChecked();
 
   v8::Local<v8::External> external;
@@ -1151,59 +1133,45 @@ void createCallbacks(v8::Isolate* isolate, v8::Local<v8::Context> context, const
 
 
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
-                                      const char* script,
-                                      JSCallbackInfo* callbacks[]) {
+                                      const std::string& script) {
+    const std::vector<JSCallbackInfo> dummy{};
+    return RunScriptText(instance, script, dummy);
+}
+
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
+                                      const std::string& script,
+                                      const std::vector<JSCallbackInfo>& callbacks) {
   if (instance == nullptr) return JS_ERROR;
-  if (script == nullptr) return JS_ERROR;
+  if (script.empty()) return JS_ERROR;
 
-  std::unique_ptr<JSAsyncInfo> info(JSAsyncInfo::create());
+  std::unique_ptr<JSAsyncInfo> info{JSAsyncInfo::create()};
 
-  // Copy script
-  const std::size_t len = std::strlen(script);
-  info->script.reset(new char[len + 1]);  // +1 for null-terminate
-  std::strcpy(info->script.get(), script);
+  info->script = script;
 
-  if (callbacks != nullptr) {
-    for (JSCallbackInfo** callbackPtr = callbacks; *callbackPtr != nullptr;
-         ++callbackPtr) {
-      JSCallbackInfo* callback = *callbackPtr;
-      if (callback == nullptr) break;
-      if (callback->name == nullptr) break;
-      if (callback->function == nullptr) break;
-
-      JSCallBackInfoInternal callback_info;
-
-      // Copy name
-      const std::size_t len = std::strlen(callback->name);
-      callback_info.name.reset(new char[len + 1]);  // +1 for null-terminate
-      std::strcpy(callback_info.name.get(), callback->name);
-
-      callback_info.external = callback->external;
-      callback_info.function = callback->function;
-      info->callbacks.push_back(std::move(callback_info));
-    }
-  }
+  const auto pred = [](const JSCallbackInfo& cbInfo) -> bool {
+      return (!cbInfo.name.empty()) && (cbInfo.function != nullptr);
+  };
+  std::copy_if(std::cbegin(callbacks), std::cend(callbacks), std::back_inserter(info->callbacks), pred);
 
   info->instance.reset(static_cast<JSInstanceImpl*>(instance));
   if (info->instance->isRun()) {
-    int res_init = uv_async_init(info->instance->event_loop(),
-                                 &info->async_handle,
-                                 _async_execute_script);
-    CHECK_EQ(0, res_init);
+    const int resInit = ::uv_async_init(info->instance->event_loop(),
+                                        &info->async_handle,
+                                        _async_execute_script);
+    CHECK_EQ(resInit, 0);
 
-    if (res_init != 0) return JS_ERROR;
+    ::uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
+    const int resSend = ::uv_async_send(&info->async_handle);
 
-    uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
-    int sendResult = uv_async_send(&info->async_handle);
+    CHECK_EQ(resSend, 0);
+    info.release();
 
-    if (sendResult == 0) {
-      info.release();
-      return JS_SUCCESS;
-    }
+    return JS_SUCCESS;
   }
 
   return JS_ERROR;
 }
+
 
 }  // namespace jscript
 }  // namespace node
