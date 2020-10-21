@@ -180,3 +180,16 @@ add_test(
     COMMAND test_multiple_paths_node_modules
 )
 
+add_executable(test_external_init_script test_external_init_script.cpp)
+target_link_libraries(test_external_init_script JScript::JScript)
+set_target_properties(test_external_init_script
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_external_init_script
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_external_init_script
+)
+

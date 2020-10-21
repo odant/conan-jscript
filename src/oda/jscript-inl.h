@@ -21,8 +21,6 @@ namespace node {
 namespace jscript {
 using namespace ::node;
 
-const std::string instanceScript;
-
 std::atomic<bool> is_initilized{false};
 
 std::vector<std::string> args;
@@ -379,7 +377,7 @@ void JSInstanceImpl::overrideConsole(Environment* env,
         new v8::Local<v8::Value>[args.Length()]
     };
 
-    for (size_t i = 0; i < args.Length(); ++i) {
+    for (int i = 0; i < args.Length(); ++i) {
       info[i] = args[i];
     }
 
@@ -695,7 +693,7 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
     };  // callback
 
     v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(_isolate);
+    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(context).ToLocalChecked();
     v8::Local<v8::Array> array = v8::Array::New(_isolate, 2);
     array->Set(context, 0, instanceExt).Check();
     array->Set(context, 1, stateCode).Check();
@@ -769,7 +767,14 @@ JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
   per_process::v8_initialized = true;
 }
 
-void empty_handler(int param) {}
+
+namespace {
+
+std::string findModule(const std::string& folder, const std::string& name);
+const std::string& getInitScript(const std::string& odaFrameworkPath);
+
+}
+
 
 JSCRIPT_EXTERN void Initialize(
     const std::string& origin,
@@ -778,9 +783,6 @@ JSCRIPT_EXTERN void Initialize(
     std::string coreFolder,
     std::string nodeFolder,
     std::function<void(const std::string&)> logCallback) {
-  auto h1 = signal(SIGKILL, empty_handler);
-  auto h2 = signal(SIGABRT, empty_handler);
-  auto h3 = signal(SIGTERM, empty_handler);
 
 #if defined(_M_X64) && _MSC_VER == 1800
   // Disable AVX for MSVC 2013
@@ -803,129 +805,118 @@ JSCRIPT_EXTERN void Initialize(
 
   // Path to executable file
   argv[argc++] = executeFile.c_str();
-  CHECK_LT(argc, argv.size());
-
-  argv[argc++] = "--experimental-vm-modules";
 
   // Path to modules-loader.js
-  static const std::string modulesLoader {
-      [&coreFolder]()->std::string {
-#ifdef _WIN32
-          const std::string fileScheme{ "file:///" };
-#else
-          const std::string fileScheme{ "file://" };
-#endif
-          const std::string esModulesLoader{ coreFolder + "/web/modules-loader.mjs" };
-          FILE* file = fopen(esModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return fileScheme + esModulesLoader;
-          }
-          const std::string commonModulesLoader{coreFolder + "/web/modules-loader.cjs"};
-          file = fopen(commonModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return fileScheme + commonModulesLoader;
-          }
-          const std::string jsModulesLoader{ coreFolder + "/web/modules-loader.js" };
-          file = fopen(jsModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return fileScheme + jsModulesLoader;
-          }
-          return std::string{};
-      }()
-  };
+  argv[argc++] = "--experimental-vm-modules";
+
+  std::string modulesLoader = findModule(coreFolder + "/web", "modules-loader");
   if (!modulesLoader.empty()) {
       argv[argc++] = "--experimental-loader";
-      CHECK_LT(argc, argv.size());
+#ifdef _WIN32
+          static const std::string fileScheme{ "file:///" };
+#else
+          static const std::string fileScheme{ "file://" };
+#endif
+      modulesLoader = fileScheme + modulesLoader;
       argv[argc++] = modulesLoader.c_str();
-      CHECK_LT(argc, argv.size());
   }
   
   const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
   const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
 
-  static const std::string moduleInit {
-      [&coreFolder]()->std::string {
-          const std::string esModuleInit{ coreFolder + "/web/jscript-init.mjs" };
-          FILE* file = fopen(esModuleInit.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return esModuleInit;
-          }
-          const std::string commonModuleInit{coreFolder + "/web/jscript-init.cjs"};
-          file = fopen(commonModuleInit.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return commonModuleInit;
-          }
-          const std::string jsModuleInit{ coreFolder + "/web/jscript-init.js" };
-          file = fopen(jsModuleInit.c_str(), "r");
-          if (file != nullptr) {
-              fclose(file);
-              return jsModuleInit;
-          }
-          return std::string{};
-      }()
-  };
-
+  const std::string moduleInit = findModule(coreFolder + "/web", "jscript-init");
   if (moduleInit.empty()) {
-    // Add main script JSInstance
     argv[argc++] = "-e";
-    CHECK_LT(argc, argv.size());
-
-    // Path to odant.js
-    const std::string coreScript = coreFolder + "/web/core/odant.js";
-    const_cast<std::string&>(instanceScript) =
-      "'use strict';\n"
-      "process.stdout.write = (msg) => {\n"
-      "   process._rawDebug(msg);\n"
-      "};\n"
-      "process.stderr.write = (msg) => {\n"
-      "   process._rawDebug(msg);\n"
-      "};\n"
-      "process.on('uncaughtException', err => {\n"
-      "    console.log(err);\n"
-      "});\n"
-      "process.on('unhandledRejection', err => {\n"
-      "    console.log(err);\n"
-      "});\n"
-      "console.log('Start load framework.');\n"
-#ifdef _DEBUG
-      "console.log('global.DEFAULTORIGIN=%s', global.DEFAULTORIGIN);\n"
-      "console.log('global.EXTERNALORIGIN=%s', global.EXTERNALORIGIN);\n"
-#endif
-      "global.odantFramework = require('" +
-      coreScript +
-      "');\n"
-      "global.odantFramework.then(core => {\n"
-      "  var infiniteFunction = function() {\n"
-      "    setTimeout(function() {\n"
-      "        infiniteFunction();\n"
-      "    }, 1000);\n"
-      "  };\n"
-      "  infiniteFunction();\n"
-      "  console.log('framework loaded!');\n"
-#ifdef _DEBUG
-      "  console.log('core.DEFAULTORIGIN=%s', core.DEFAULTORIGIN);\n"
-      "  console.log('core.EXTERNALORIGIN=%s', core.EXTERNALORIGIN);\n"
-#endif
-      "  global.__oda_setRunState();"
-      "}).catch((error)=>{\n"
-      "  global.__oda_setErrorState();\n"
-      "  console.log(error);\n"
-      "});\n";
-
-    argv[argc++] = instanceScript.c_str();
+    const std::string& initScript = getInitScript(coreFolder + "/web/core/odant.js");
+    argv[argc++] = initScript.c_str();
   }
   else {
     argv[argc++] = moduleInit.c_str();
   }
 
+  CHECK_LT(static_cast<std::size_t>(argc), argv.size());
+
   Initialize(argc, argv.data());
   SetRedirectFPrintF(std::move(logCallback));
 }
+
+
+namespace {
+
+
+std::string findModule(const std::string& folder, const std::string& name) {
+          FILE* file;
+
+          const std::string esModulesLoader{ folder + '/' + name + ".mjs" };
+          file = ::fopen(esModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              ::fclose(file);
+              return esModulesLoader;
+          }
+
+          const std::string commonModulesLoader{ folder + '/' + name + ".cjs"};
+          file = ::fopen(commonModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              ::fclose(file);
+              return commonModulesLoader;
+          }
+
+          const std::string jsModulesLoader{ folder + '/' + name + ".js" };
+          file = ::fopen(jsModulesLoader.c_str(), "r");
+          if (file != nullptr) {
+              ::fclose(file);
+              return jsModulesLoader;
+          }
+
+          return std::string{};
+}
+
+const std::string& getInitScript(const std::string& odaFrameworkPath) {
+  static const std::string cache =  ""
+    "'use strict';\n"
+    "process.stdout.write = (msg) => {\n"
+    "   process._rawDebug(msg);\n"
+    "};\n"
+    "process.stderr.write = (msg) => {\n"
+    "   process._rawDebug(msg);\n"
+    "};\n"
+    "process.on('uncaughtException', err => {\n"
+    "    console.log(err);\n"
+    "});\n"
+    "process.on('unhandledRejection', err => {\n"
+    "    console.log(err);\n"
+    "});\n"
+    "console.log('Start load framework.');\n"
+#ifdef _DEBUG
+    "console.log('global.DEFAULTORIGIN=%s', global.DEFAULTORIGIN);\n"
+    "console.log('global.EXTERNALORIGIN=%s', global.EXTERNALORIGIN);\n"
+#endif
+    "global.odantFramework = require('" + odaFrameworkPath + "');\n"
+    "global.odantFramework.then(core => {\n"
+    "  var infiniteFunction = function() {\n"
+    "    setTimeout(function() {\n"
+    "        infiniteFunction();\n"
+    "    }, 1000);\n"
+    "  };\n"
+    "  infiniteFunction();\n"
+    "  console.log('framework loaded!');\n"
+#ifdef _DEBUG
+    "  console.log('core.DEFAULTORIGIN=%s', core.DEFAULTORIGIN);\n"
+    "  console.log('core.EXTERNALORIGIN=%s', core.EXTERNALORIGIN);\n"
+#endif
+    "  global.__oda_setRunState();"
+    "}).catch((error)=>{\n"
+    "  global.__oda_setErrorState();\n"
+    "  console.log(error);\n"
+    "});\n"
+  ;
+
+  return cache;
+}
+
+
+} // Anonymouse namespace
+
 
 JSCRIPT_EXTERN void Initialize(
     const std::string& origin,
@@ -1044,68 +1035,64 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
   return JS_SUCCESS;
 }
 
+
+namespace {
+
+void createCallbacks(v8::Isolate*, v8::Local<v8::Context>, const JSCallBackInfoInternal&);
+
+}
+
+
 void _async_execute_script(uv_async_t* handle) {
   static std::atomic<unsigned int> s_async_id{0};
 
-  JSAsyncInfo* async_info = ContainerOf(&JSAsyncInfo::async_handle, handle);
-  assert(async_info != nullptr);
-  if (async_info) {
-    assert(async_info->instance);
+  JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, handle);
+  CHECK_NOT_NULL(asyncInfo);
 
-    node::Mutex::ScopedLock scoped_lock(async_info->instance->_isolate_mutex);
-    node::Environment* env = async_info->instance->_env;
+  JSInstanceImpl::Ptr instance = asyncInfo->instance;
+  CHECK(instance);
 
-    //    v8::Locker locker(async_info->instance->_isolate);
+  node::Mutex::ScopedLock scopedLock{instance->_isolate_mutex};
 
-    v8::Isolate::Scope isolate_scope(env->isolate());
-    v8::HandleScope scope(env->isolate());
+  node::Environment* env = instance->_env;
+  CHECK_NOT_NULL(env);
 
-    v8::Local<v8::Context> context = env->context();
-    v8::Context::Scope context_scope(context);
+  v8::Isolate* isolate = env->isolate();
+  CHECK_NOT_NULL(isolate);
 
-    v8::Local<v8::String> source =
-        v8::String::NewFromUtf8(async_info->instance->_isolate,
-                                async_info->script.get(),
-                                v8::NewStringType::kNormal)
-            .ToLocalChecked();
-    if (!source.IsEmpty()) {
-      v8::TryCatch trycatch(async_info->instance->_isolate);
-      trycatch.SetVerbose(false);
+  //v8::Locker locker(async_info->instance->_isolate);
 
-      for (auto& callbackInfo : async_info->callbacks) {
-        v8::Local<v8::String> name =
-            v8::String::NewFromUtf8(env->isolate(),
-                                    callbackInfo.name.get(),
-                                    v8::NewStringType::kInternalized)
-                .ToLocalChecked();
+  v8::Isolate::Scope isolateScope(isolate);
+  v8::HandleScope scope(isolate);
 
-        v8::Local<v8::External> external;
-        if (callbackInfo.external != nullptr)
-          external = v8::External::New(env->isolate(), callbackInfo.external);
-        v8::Local<v8::FunctionTemplate> functionTemplate =
-            v8::FunctionTemplate::New(env->isolate(),
-                                      callbackInfo.function,
-                                      external /*, signature */);
+  v8::Local<v8::Context> context = env->context();
+  v8::Context::Scope contextScope(context);
 
-        v8::Local<v8::Function> function =
-            functionTemplate->GetFunction(context).ToLocalChecked();
-        function->SetName(name);
+  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate,
+                                                         asyncInfo->script.get(),
+                                                         v8::NewStringType::kNormal)
+          .ToLocalChecked();
 
-        v8::Local<v8::Object> global = context->Global();
-        global->Set(context, name, function).Check();
-      }
+  if (!source.IsEmpty()) {
+    v8::TryCatch tryCatch{isolate};
+    tryCatch.SetVerbose(false);
 
-      v8::MaybeLocal<v8::Script> compile_result =
-          v8::Script::Compile(context, source);
-      if (trycatch.HasCaught()) {
-        v8::Local<v8::Value> exception = trycatch.Exception();
-        v8::String::Utf8Value message(env->isolate(), exception);
-        node::Debug(env, node::DebugCategory::NONE, *message);
-      } else if (!compile_result.IsEmpty()) {
-        v8::Local<v8::Script> script;
-        compile_result.ToLocal(&script);
+    for (const auto& callbackInfo : asyncInfo->callbacks) {
+      createCallbacks(isolate, context, callbackInfo);
+    }
 
-        auto test = compile_result.ToLocalChecked();
+
+    v8::MaybeLocal<v8::Script> compile_result = v8::Script::Compile(context, source);
+    if (tryCatch.HasCaught()) {
+      v8::Local<v8::Value> exception = tryCatch.Exception();
+      v8::String::Utf8Value message(isolate, exception);
+      node::Debug(env, node::DebugCategory::NONE, *message);
+    }
+    else if (!compile_result.IsEmpty()) {
+      v8::Local<v8::Script> script;
+      compile_result.ToLocal(&script);
+
+      auto test = compile_result.ToLocalChecked();
 
         if (!script.IsEmpty()) {
           v8::MaybeLocal<v8::Value> result = script->Run(context);
@@ -1113,45 +1100,55 @@ void _async_execute_script(uv_async_t* handle) {
             node::Debug(env, node::DebugCategory::NONE, "Run script faild");
           }
 
-          if (trycatch.HasCaught()) {
-            v8::Local<v8::Value> exception = trycatch.Exception();
-            v8::String::Utf8Value message(env->isolate(), exception);
+          if (tryCatch.HasCaught()) {
+            v8::Local<v8::Value> exception = tryCatch.Exception();
+            v8::String::Utf8Value message(isolate, exception);
             node::Debug(env, node::DebugCategory::NONE, *message);
           }
         }
       }
     }
+
+
+  if (::uv_is_closing(reinterpret_cast<uv_handle_t*>(handle)) == 0) {
+    const auto cb = [](uv_handle_t* handle) {
+      JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, reinterpret_cast<uv_async_t*>(handle));
+      if (asyncInfo != nullptr) {
+          asyncInfo->Dispose();
+      }
+    };
+    ::uv_close(reinterpret_cast<uv_handle_t*>(handle), cb);
+  }
+}
+
+
+namespace {
+
+
+void createCallbacks(v8::Isolate* isolate, v8::Local<v8::Context> context, const JSCallBackInfoInternal& callbackInfo) {
+  v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate,
+                                                       callbackInfo.name.get(),
+                                                       v8::NewStringType::kInternalized).ToLocalChecked();
+
+  v8::Local<v8::External> external;
+  if (callbackInfo.external) {
+    external = v8::External::New(isolate, callbackInfo.external);
   }
 
-  if (uv_is_closing((uv_handle_t*)handle) == 0)
-    uv_close((uv_handle_t*)handle, [](uv_handle_t* handle) {
-      JSAsyncInfo* async_info =
-          ContainerOf(&JSAsyncInfo::async_handle, (uv_async_t*)handle);
-      if (async_info != nullptr) async_info->Dispose();
-    });
+  v8::Local<v8::FunctionTemplate> functionTemplate = v8::FunctionTemplate::New(isolate,
+                                                                               callbackInfo.function,
+                                                                               external);
 
-  //
-  //        char cpp_cb_name_buf[256];
-  //        sprintf(cpp_cb_name_buf, "cpp_cb_%u", s_async_id.fetch_add(1));
-  //        v8::Local<v8::String> cpp_cb_name = v8::String::NewFromUtf8(isolate,
-  //        cpp_cb_name_buf);
-  //
-  //        v8::Local<v8::FunctionTemplate> functionTemplate =
-  //        env->NewFunctionTemplate(test_cpp_cb); v8::Local<v8::Function>
-  //        function = functionTemplate->GetFunction(context).ToLocalChecked();
-  //        const v8::NewStringType type = v8::NewStringType::kInternalized;
-  //        function->SetName(cpp_cb_name);
-  //        v8::Local<v8::Object> global = context->Global();
-  //
-  //        global->Set(cpp_cb_name, function);
-  //
-  //        v8::Local<v8::Value> require_result = global->Get(context,
-  //        FIXED_ONE_BYTE_STRING(env->isolate(),
-  //        "NativeModule")).ToLocalChecked(); v8::Local<v8::String> typeOf =
-  //        require_result->TypeOf(env->isolate()); v8::String::Utf8Value
-  //        typeOfStr(typeOf); const char* qqq = *typeOfStr;
-  //
+  v8::Local<v8::Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
+  function->SetName(name);
+
+  v8::Local<v8::Object> global = context->Global();
+  global->Set(context, name, function).Check();
 }
+
+
+} // Anonymous namespace
+
 
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
                                       const char* script,
