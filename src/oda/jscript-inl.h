@@ -1024,71 +1024,29 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
 
 namespace {
 
-void createCallbacks(v8::Local<v8::Context>, const JSCallbackInfo&);
+void compileAndRun(node::Environment& env, const std::string&, const std::vector<JSCallbackInfo>&);
 
 }
 
 
 void _async_execute_script(uv_async_t* handle) {
-  static std::atomic<unsigned int> s_async_id{0};
-
   JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, handle);
   CHECK_NOT_NULL(asyncInfo);
 
   JSInstanceImpl::Ptr instance = asyncInfo->instance;
   CHECK(instance);
 
+
   node::Mutex::ScopedLock scopedLock{instance->_isolate_mutex};
+
 
   node::Environment* env = instance->_env;
   CHECK_NOT_NULL(env);
 
-  v8::Isolate* isolate = env->isolate();
-  CHECK_NOT_NULL(isolate);
+  const std::string& text = asyncInfo->script;
+  const auto& callbacks = asyncInfo->callbacks;
 
-  //v8::Locker locker(async_info->instance->_isolate);
-
-  v8::Isolate::Scope isolateScope(isolate);
-  v8::HandleScope scope(isolate);
-
-  v8::Local<v8::Context> context = env->context();
-  v8::Context::Scope contextScope(context);
-
-  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate,
-                                                         asyncInfo->script.c_str(),
-                                                         v8::NewStringType::kNormal)
-          .ToLocalChecked();
-
-  v8::TryCatch tryCatch{isolate};
-  tryCatch.SetVerbose(false);
-
-  for (const auto& callbackInfo : asyncInfo->callbacks) {
-    createCallbacks(context, callbackInfo);
-  }
-
-  v8::MaybeLocal<v8::Script> compileResult = v8::Script::Compile(context, source);
-  if (tryCatch.HasCaught()) {
-      v8::Local<v8::Value> exception = tryCatch.Exception();
-      v8::String::Utf8Value message(isolate, exception);
-      node::Debug(env, node::DebugCategory::NONE, *message);
-  }
-  else if (!compileResult.IsEmpty()) {
-    v8::Local<v8::Script> script = compileResult.ToLocalChecked();
-
-    if (!script.IsEmpty()) {
-      v8::MaybeLocal<v8::Value> result = script->Run(context);
-      if (result.IsEmpty()) {
-        node::Debug(env, node::DebugCategory::NONE, "Run script faild");
-      }
-
-      if (tryCatch.HasCaught()) {
-        v8::Local<v8::Value> exception = tryCatch.Exception();
-        v8::String::Utf8Value message(isolate, exception);
-        node::Debug(env, node::DebugCategory::NONE, *message);
-      }
-    }
-  }
-
+  compileAndRun(*env, text, callbacks);
 
   if (::uv_is_closing(reinterpret_cast<uv_handle_t*>(handle)) == 0) {
     const auto cb = [](uv_handle_t* handle) {
@@ -1097,6 +1055,7 @@ void _async_execute_script(uv_async_t* handle) {
           asyncInfo->Dispose();
       }
     };
+
     ::uv_close(reinterpret_cast<uv_handle_t*>(handle), cb);
   }
 }
@@ -1105,7 +1064,56 @@ void _async_execute_script(uv_async_t* handle) {
 namespace {
 
 
-void createCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
+void insertCallbacks(v8::Local<v8::Context>, const JSCallbackInfo&);
+void processTryCatch(node::Environment&, const v8::TryCatch&);
+
+void compileAndRun(node::Environment& env, const std::string& text, const std::vector<JSCallbackInfo>& callbacks) {
+  v8::Local<v8::Context> context = env.context();
+  CHECK(!context.IsEmpty());
+
+  v8::Isolate* isolate = context->GetIsolate();
+  CHECK_NOT_NULL(isolate);
+
+  v8::Isolate::Scope isolateScope(isolate);
+  v8::HandleScope scope(isolate);
+  v8::Context::Scope contextScope(context);
+
+  for (const auto& cbInfo : callbacks) {
+    insertCallbacks(context, cbInfo);
+  }
+
+  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate,
+                                                         text.c_str(),
+                                                         v8::NewStringType::kNormal)
+          .ToLocalChecked();
+
+  v8::TryCatch tryCatch{isolate};
+#ifdef _DEBUG
+  tryCatch.SetVerbose(true);
+#else
+  tryCatch.SetVerbose(false);
+#endif
+
+  v8::MaybeLocal<v8::Script> compileResult = v8::Script::Compile(context, source);
+
+  if (tryCatch.HasCaught()) {
+    processTryCatch(env, tryCatch);
+  }
+  else if (!compileResult.IsEmpty()) {
+    v8::Local<v8::Script> script = compileResult.ToLocalChecked();
+
+    v8::MaybeLocal<v8::Value> result = script->Run(context);
+    if (result.IsEmpty()) {
+      node::Debug(&env, node::DebugCategory::NONE, "Run script faild");
+    }
+
+    if (tryCatch.HasCaught()) {
+      processTryCatch(env, tryCatch);
+    }
+  }
+}
+
+void insertCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
   v8::Isolate* isolate = context->GetIsolate();
 
   v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate,
@@ -1128,6 +1136,32 @@ void createCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callb
   global->Set(context, name, function).Check();
 }
 
+void processTryCatch(node::Environment& env, const v8::TryCatch& tryCatch) {
+  v8::Local<v8::Context> context = env.context();
+  DCHECK(!context.IsEmpty());
+
+  v8::Isolate* isolate = context->GetIsolate();
+  DCHECK_NOT_NULL(isolate);
+
+  v8::Local<v8::Value> exception = tryCatch.Exception();
+  v8::String::Utf8Value message(isolate, exception);
+  node::Debug(&env, node::DebugCategory::NONE, *message);
+
+#ifdef _DEBUG
+    v8::MaybeLocal<v8::Value> maybeStackTrace = tryCatch.StackTrace(context);
+    if (!maybeStackTrace.IsEmpty()) {
+      v8::Local<v8::Value> stackTrace;
+      DCHECK(maybeStackTrace.ToLocal(&stackTrace));
+      v8::String::Utf8Value messageStackTrace{isolate, stackTrace};
+      node::Debug(&env, node::DebugCategory::NONE, *messageStackTrace);
+    }
+    else {
+        node::Debug(&env, node::DebugCategory::NONE, "tryCatch.StackTrace(context) is empty");
+    }
+#endif
+
+}
+
 
 } // Anonymous namespace
 
@@ -1138,14 +1172,25 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
     return RunScriptText(instance, script, dummy);
 }
 
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
+JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance_,
                                       const std::string& script,
                                       const std::vector<JSCallbackInfo>& callbacks) {
-  if (instance == nullptr) return JS_ERROR;
-  if (script.empty()) return JS_ERROR;
+  if (instance_ == nullptr) {
+    return JS_ERROR;
+  }
+
+  JSInstanceImpl* instance  = static_cast<JSInstanceImpl*>(instance_);
+  if (!instance->isRun()) {
+    return JS_ERROR;
+  }
+
+  if (script.empty()) {
+    return JS_ERROR;
+  }
 
   std::unique_ptr<JSAsyncInfo> info{JSAsyncInfo::create()};
 
+  info->instance.reset(instance);
   info->script = script;
 
   const auto pred = [](const JSCallbackInfo& cbInfo) -> bool {
@@ -1153,23 +1198,18 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
   };
   std::copy_if(std::cbegin(callbacks), std::cend(callbacks), std::back_inserter(info->callbacks), pred);
 
-  info->instance.reset(static_cast<JSInstanceImpl*>(instance));
-  if (info->instance->isRun()) {
-    const int resInit = ::uv_async_init(info->instance->event_loop(),
-                                        &info->async_handle,
-                                        _async_execute_script);
-    CHECK_EQ(resInit, 0);
+  const int resInit = ::uv_async_init(instance->event_loop(),
+                                      &info->async_handle,
+                                      _async_execute_script);
+  CHECK_EQ(resInit, 0);
 
-    ::uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
-    const int resSend = ::uv_async_send(&info->async_handle);
+  ::uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
+  const int resSend = ::uv_async_send(&info->async_handle);
 
-    CHECK_EQ(resSend, 0);
-    info.release();
+  CHECK_EQ(resSend, 0);
+  info.release();
 
-    return JS_SUCCESS;
-  }
-
-  return JS_ERROR;
+  return JS_SUCCESS;
 }
 
 
