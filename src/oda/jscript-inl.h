@@ -1,8 +1,10 @@
 #pragma once
 
 #include "jscript.h"
+
 #include "node_errors.h"
 #include "node_internals.h"
+#include "node_v8_platform-inl.h"
 
 #include <array>
 #include <atomic>
@@ -114,7 +116,7 @@ class RefCounter {
     }
 
     Derived& operator*() const {
-      assert(_p != nullptr);
+      CHECK_NOT_NULL(_p);
       return *_p;
     }
 
@@ -155,7 +157,7 @@ class NodeInstanceData : public RefCounter {
  public:
   NodeInstanceData() : exit_code_(1) {
     event_loop_init_ = uv_loop_init(event_loop()) == 0;
-    assert(event_loop_init_);
+    CHECK(event_loop_init_);
   }
 
   ~NodeInstanceData() { close_loop(); }
@@ -226,7 +228,7 @@ class JSInstanceImpl : public JSInstance, public NodeInstanceData {
   static const std::string externalOrigin;
 
   Mutex _isolate_mutex;
-  Isolate* _isolate{nullptr};
+  v8::Isolate* _isolate{nullptr};
   Environment* _env{nullptr};
   std::thread _thread;
 
@@ -286,7 +288,7 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   v8::HandleScope handle_scope(env->isolate());
   v8::TryCatch try_catch(env->isolate());
   try_catch.SetVerbose(true);
-  Local<Object> global = env->context()->Global();
+  v8::Local<v8::Object> global = env->context()->Global();
   if (global.IsEmpty()) {
     return;
   }
@@ -480,13 +482,13 @@ void JSInstanceImpl::StartNodeInstance() {
   // Following code from NodeMainInstance::NodeMainInstance
 
   params.array_buffer_allocator = allocator.get();
-  _isolate = Isolate::Allocate();
+  _isolate = v8::Isolate::Allocate();
   CHECK_NOT_NULL(_isolate);
   // Register the isolate on the platform before the isolate gets initialized,
   // so that the isolate can access the platform during initialization.
   platform->RegisterIsolate(_isolate, event_loop());
   SetIsolateCreateParamsForNode(&params);
-  Isolate::Initialize(_isolate, params);
+  v8::Isolate::Initialize(_isolate, params);
 
   // deserialize_mode_ = per_isolate_data_indexes != nullptr;
   // If the indexes are not nullptr, we are not deserializing
@@ -1144,7 +1146,7 @@ void processTryCatch(node::Environment& env, const v8::TryCatch& tryCatch) {
   DCHECK_NOT_NULL(isolate);
 
   v8::Local<v8::Value> exception = tryCatch.Exception();
-  v8::String::Utf8Value message(isolate, exception);
+  v8::String::Utf8Value message{isolate, exception};
   node::Debug(&env, node::DebugCategory::NONE, *message);
 
 #ifdef _DEBUG
