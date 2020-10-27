@@ -35,7 +35,20 @@ int main(int argc, char** argv) {
 
     std::ofstream externalScript{cwd + "/web/jscript-init.js"};
     externalScript
-        << "console.log('I`m external script');" << std::endl
+        << "process.stdout.write = (msg) => {" << std::endl
+        << "   process._rawDebug(msg);" << std::endl
+        << "};" << std::endl
+        << "process.stderr.write = (msg) => {" << std::endl
+        << "   process._rawDebug(msg);" << std::endl
+        << "};" << std::endl
+        << "process.on('uncaughtException', err => {" << std::endl
+        << "    console.log(err);" << std::endl
+        << "});" << std::endl
+        <<"process.on('unhandledRejection', err => {" << std::endl
+        <<"    console.log(err);" << std::endl
+        <<"});" << std::endl
+        << std::endl
+        << "console.log('I`m external init script');" << std::endl
         << "var infiniteFunction = function() {" << std::endl
         << "    setTimeout(function() {" << std::endl
         << "        infiniteFunction();" << std::endl
