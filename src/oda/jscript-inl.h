@@ -927,11 +927,13 @@ JSCRIPT_EXTERN void Initialize(
     std::string coreFolder,
     const std::vector<std::string>& nodeFolders,
     std::function<void(const std::string&)> logCallback) {
+
 #ifdef _WIN32
     const char delimiter = ';';
 #else
     const char delimiter = ':';
 #endif
+
     std::string nodePaths;
     for (const std::string& folder : nodeFolders) {
         if (!nodePaths.empty()) {
@@ -939,7 +941,13 @@ JSCRIPT_EXTERN void Initialize(
         }
         nodePaths += folder;
     }
-    Initialize(origin, externalOrigin, std::move(executeFile), std::move(coreFolder), std::move(nodePaths));
+
+    Initialize(origin,
+               externalOrigin,
+               std::move(executeFile),
+               std::move(coreFolder),
+               std::move(nodePaths),
+               std::move(logCallback));
 }
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
