@@ -52,7 +52,13 @@ int main(int argc, char** argv) {
     const std::string executeFile = argv[0];
     const std::string coreFolder = cwd;
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{});
+    bool isLogCbCalled = false;
+    auto logCb = [&isLogCbCalled](const std::string& msg) {
+        isLogCbCalled = true;
+        std::cout << "logCb: " << msg;
+    };
+
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::vector<std::string>{}, logCb);
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;
@@ -95,7 +101,12 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance stopped" << std::endl;
-        
+
+    if (!isLogCbCalled) {
+        std::cout << "Error, logCb not called!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     jscript::Uninitilize();
     std::cout << "jscript::Uninitilize() done" << std::endl;
 
