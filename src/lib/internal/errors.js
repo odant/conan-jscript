@@ -13,6 +13,7 @@
 const {
   ArrayIsArray,
   Error,
+  ErrorPrototypeToString,
   JSONStringify,
   Map,
   MathAbs,
@@ -20,14 +21,18 @@ const {
   NumberIsInteger,
   ObjectDefineProperty,
   ObjectKeys,
-  StringPrototypeSlice,
+  RangeError,
+  String,
   StringPrototypeStartsWith,
   Symbol,
   SymbolFor,
+  SyntaxError,
+  TypeError,
+  URIError,
   WeakMap,
 } = primordials;
 
-const sep = process.platform === 'win32' ? '\\' : '/';
+const isWindows = process.platform === 'win32';
 
 const messages = new Map();
 const codes = {};
@@ -47,10 +52,7 @@ const kTypes = [
   'symbol'
 ];
 
-const { kMaxLength } = internalBinding('buffer');
-
 const MainContextError = Error;
-const ErrorToString = Error.prototype.toString;
 const overrideStackTrace = new WeakMap();
 const kNoOverride = Symbol('kNoOverride');
 const prepareStackTrace = (globalThis, error, trace) => {
@@ -71,7 +73,7 @@ const prepareStackTrace = (globalThis, error, trace) => {
   // Error: Message
   //     at function (file)
   //     at file
-  const errorString = ErrorToString.call(error);
+  const errorString = ErrorPrototypeToString(error);
   if (trace.length === 0) {
     return errorString;
   }
@@ -83,7 +85,7 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
   // https://crbug.com/v8/7848
   // `globalThis` is the global that contains the constructor which
   // created `error`.
-  if (typeof globalThis.Error.prepareStackTrace === 'function') {
+  if (typeof globalThis.Error?.prepareStackTrace === 'function') {
     return globalThis.Error.prepareStackTrace(error, trace);
   }
   // We still have legacy usage that depends on the main context's `Error`
@@ -474,7 +476,7 @@ function uvExceptionWithHostPort(err, syscall, address, port) {
   const ex = new Error(`${message}${details}`);
   Error.stackTraceLimit = tmpLimit;
   ex.code = code;
-  ex.errno = code;
+  ex.errno = err;
   ex.syscall = syscall;
   ex.address = address;
   if (port) {
@@ -506,8 +508,8 @@ function errnoException(err, syscall, original) {
 
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(message);
-  // TODO(joyeecheung): errno is supposed to err, like in uvException
-  ex.code = ex.errno = code;
+  ex.errno = err;
+  ex.code = code;
   ex.syscall = syscall;
 
   // eslint-disable-next-line no-restricted-syntax
@@ -550,9 +552,9 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
   Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(`${syscall} ${code}${details}`);
-  // TODO(joyeecheung): errno is supposed to err, like in uvException
   Error.stackTraceLimit = tmpLimit;
-  ex.code = ex.errno = code;
+  ex.errno = err;
+  ex.code = code;
   ex.syscall = syscall;
   ex.address = address;
   if (port) {
@@ -571,9 +573,16 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
  * @returns {Error}
  */
 function dnsException(code, syscall, hostname) {
+  let errno;
   // If `code` is of type number, it is a libuv error number, else it is a
   // c-ares error code.
+  // TODO(joyeecheung): translate c-ares error codes into numeric ones and
+  // make them available in a property that's not error.errno (since they
+  // can be in conflict with libuv error codes). Also make sure
+  // util.getSystemErrorName() can understand them when an being informed that
+  // the number is a c-ares error code.
   if (typeof code === 'number') {
+    errno = code;
     // ENOTFOUND is not a proper POSIX error, but this error has been in place
     // long enough that it's not practical to remove it.
     if (code === lazyUv().UV_EAI_NODATA || code === lazyUv().UV_EAI_NONAME) {
@@ -590,10 +599,8 @@ function dnsException(code, syscall, hostname) {
   Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(message);
-  // TODO(joyeecheung): errno is supposed to be a number / err, like in
   Error.stackTraceLimit = tmpLimit;
-  // uvException.
-  ex.errno = code;
+  ex.errno = errno;
   ex.code = code;
   ex.syscall = syscall;
   if (hostname) {
@@ -763,7 +770,7 @@ E('ERR_BUFFER_OUT_OF_BOUNDS',
     return 'Attempt to access memory outside buffer bounds';
   }, RangeError);
 E('ERR_BUFFER_TOO_LARGE',
-  `Cannot create a Buffer larger than 0x${kMaxLength.toString(16)} bytes`,
+  'Cannot create a Buffer larger than %s bytes',
   RangeError);
 E('ERR_CANNOT_WATCH_SIGINT', 'Cannot watch for SIGINT signals', Error);
 E('ERR_CHILD_CLOSED_BEFORE_REPLY',
@@ -775,6 +782,7 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
   RangeError);
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
+E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
 E('ERR_CPU_USAGE', 'Unable to obtain cpu usage %s', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
@@ -800,8 +808,6 @@ E('ERR_CRYPTO_SCRYPT_INVALID_PARAMETER', 'Invalid scrypt parameter', Error);
 E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
 E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
-E('ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH',
-  'Input buffers must have the same byte length', RangeError);
 E('ERR_DIR_CLOSED', 'Directory handle was closed', Error);
 E('ERR_DIR_CONCURRENT_OPERATION',
   'Cannot do synchronous work on directory handle with concurrent ' +
@@ -823,13 +829,18 @@ E('ERR_ENCODING_INVALID_ENCODED_DATA', function(encoding, ret) {
 }, TypeError);
 E('ERR_ENCODING_NOT_SUPPORTED', 'The "%s" encoding is not supported',
   RangeError);
+E('ERR_EVAL_ESM_CANNOT_PRINT', '--print cannot be used with ESM input', Error);
+E('ERR_EVENT_RECURSION', 'The event "%s" is already being dispatched', Error);
 E('ERR_FALSY_VALUE_REJECTION', function(reason) {
   this.reason = reason;
   return 'Promise was rejected with falsy value';
 }, Error);
-E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than possible Buffer: ' +
-    `${kMaxLength} bytes`,
-  RangeError);
+E('ERR_FEATURE_UNAVAILABLE_ON_PLATFORM',
+  'The feature %s is unavailable on the current platform' +
+  ', which is being used to run Node.js',
+  TypeError);
+E('ERR_FS_EISDIR', 'Path is a directory', SystemError);
+E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GB', RangeError);
 E('ERR_FS_INVALID_SYMLINK_TYPE',
   'Symlink type must be one of "dir", "file", or "junction". Received "%s"',
   Error); // Switch to TypeError. The current implementation does not seem right
@@ -931,6 +942,7 @@ E('ERR_HTTP_HEADERS_SENT',
 E('ERR_HTTP_INVALID_HEADER_VALUE',
   'Invalid value "%s" for header "%s"', TypeError);
 E('ERR_HTTP_INVALID_STATUS_CODE', 'Invalid status code: %s', RangeError);
+E('ERR_HTTP_REQUEST_TIMEOUT', 'Request timeout', Error);
 E('ERR_HTTP_TRAILER_INVALID',
   'Trailers are invalid with this transfer encoding', Error);
 E('ERR_INCOMPATIBLE_OPTION_PAIR',
@@ -1099,54 +1111,38 @@ E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
-E('ERR_INVALID_MODULE_SPECIFIER', (pkgPath, subpath, base = undefined) => {
-  if (subpath === undefined) {
-    return `Invalid package name '${pkgPath}' imported from ${base}`;
-  } else if (base === undefined) {
-    assert(subpath !== '.');
-    return `Package subpath '${subpath}' is not a valid module request for ` +
-      `the "exports" resolution of ${pkgPath}${sep}package.json`;
-  }
-  return `Package subpath '${subpath}' is not a valid module request for ` +
-      `the "exports" resolution of ${pkgPath} imported from ${base}`;
+E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
+  return `Invalid module "${request}" ${reason}${base ?
+    ` imported from ${base}` : ''}`;
 }, TypeError);
-E('ERR_INVALID_OPT_VALUE', (name, value) =>
-  `The value "${String(value)}" is invalid for option "${name}"`,
-  TypeError,
-  RangeError);
+E('ERR_INVALID_OPT_VALUE', (name, value, reason = '') => {
+  let inspected = typeof value === 'string' ?
+    value : lazyInternalUtilInspect().inspect(value);
+  if (inspected.length > 128) inspected = `${inspected.slice(0, 128)}...`;
+  if (reason) reason = '. ' + reason;
+  return `The value "${inspected}" is invalid for option "${name}"` + reason;
+}, TypeError, RangeError);
 E('ERR_INVALID_OPT_VALUE_ENCODING',
   'The value "%s" is invalid for option "encoding"', TypeError);
-E('ERR_INVALID_PACKAGE_CONFIG', (path, message, hasMessage = true) => {
-  if (hasMessage)
-    return `Invalid package config ${path}${sep}package.json, ${message}`;
-  return `Invalid JSON in ${path} imported from ${message}`;
+E('ERR_INVALID_PACKAGE_CONFIG', (path, base, message) => {
+  return `Invalid package config ${path}${base ? ` while importing ${base}` :
+    ''}${message ? `. ${message}` : ''}`;
 }, Error);
 E('ERR_INVALID_PACKAGE_TARGET',
-  (pkgPath, key, subpath, target, base = undefined) => {
-    const relError = typeof target === 'string' &&
+  (pkgPath, key, target, isImport = false, base = undefined) => {
+    const relError = typeof target === 'string' && !isImport &&
       target.length && !StringPrototypeStartsWith(target, './');
-    if (key === null) {
-      if (subpath !== '') {
-        return `Invalid "exports" target ${JSONStringify(target)} defined ` +
-        `for '${subpath}' in the package config ${pkgPath} imported from ` +
-        `${base}.${relError ? '; targets must start with "./"' : ''}`;
-      }
-      return `Invalid "exports" main target ${target} defined in the ` +
-        `package config ${pkgPath} imported from ${base}${relError ?
-          '; targets must start with "./"' : ''}`;
-    } else if (key === '.') {
+    if (key === '.') {
+      assert(isImport === false);
       return `Invalid "exports" main target ${JSONStringify(target)} defined ` +
-      `in the package config ${pkgPath}${sep}package.json${relError ?
-        '; targets must start with "./"' : ''}`;
-    } else if (relError) {
-      return `Invalid "exports" target ${JSONStringify(target)} defined for '${
-        StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
-        `package config ${pkgPath}${sep}package.json; ` +
-        'targets must start with "./"';
+        `in the package config ${pkgPath}package.json${base ?
+          ` imported from ${base}` : ''}${relError ?
+          '; targets must start with "./"' : ''}`;
     }
-    return `Invalid "exports" target ${JSONStringify(target)} defined for '${
-      StringPrototypeSlice(key, 0, -subpath.length || key.length)}' in the ` +
-    `package config ${pkgPath}${sep}package.json`;
+    return `Invalid "${isImport ? 'imports' : 'exports'}" target ${
+      JSONStringify(target)} defined for '${key}' in the package config ${
+      pkgPath}package.json${base ? ` imported from ${base}` : ''}${relError ?
+      '; targets must start with "./"' : ''}`;
   }, Error);
 E('ERR_INVALID_PERFORMANCE_MARK',
   'The "%s" performance mark has not been set', Error);
@@ -1221,7 +1217,8 @@ E('ERR_MANIFEST_ASSERT_INTEGRITY',
     return msg;
   }, Error);
 E('ERR_MANIFEST_DEPENDENCY_MISSING',
-  'Manifest resource %s does not list %s as a dependency specifier',
+  'Manifest resource %s does not list %s as a dependency specifier for ' +
+  'conditions: %s',
   Error);
 E('ERR_MANIFEST_INTEGRITY_MISMATCH',
   'Manifest resource %s has multiple entries but integrity lists do not match',
@@ -1254,9 +1251,6 @@ E('ERR_MISSING_ARGS',
     }
     return `${msg} must be specified`;
   }, TypeError);
-E('ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK',
-  'The ES Module loader may not return a format of \'dynamic\' when no ' +
-  'dynamicInstantiate function was provided', Error);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
 E('ERR_MODULE_NOT_FOUND', (path, base, type = 'package') => {
   return `Cannot find ${type} '${path}' imported from ${base}`;
@@ -1295,15 +1289,16 @@ E('ERR_OUT_OF_RANGE',
     msg += ` It must be ${range}. Received ${received}`;
     return msg;
   }, RangeError);
+E('ERR_PACKAGE_IMPORT_NOT_DEFINED', (specifier, packagePath, base) => {
+  return `Package import specifier "${specifier}" is not defined${packagePath ?
+    ` in package ${packagePath}package.json` : ''} imported from ${base}`;
+}, TypeError);
 E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
-  if (subpath === '.') {
-    return `No "exports" main resolved in ${pkgPath}${sep}package.json`;
-  } else if (base === undefined) {
-    return `Package subpath '${subpath}' is not defined by "exports" in ${
-      pkgPath}${sep}package.json`;
-  }
+  if (subpath === '.')
+    return `No "exports" main defined in ${pkgPath}package.json${base ?
+      ` imported from ${base}` : ''}`;
   return `Package subpath '${subpath}' is not defined by "exports" in ${
-    pkgPath} imported from ${base}`;
+    pkgPath}package.json${base ? ` imported from ${base}` : ''}`;
 }, Error);
 E('ERR_REQUIRE_ESM',
   (filename, parentPath = null, packageJsonPath = null) => {
@@ -1314,7 +1309,7 @@ E('ERR_REQUIRE_ESM',
         filename : path.basename(filename);
       msg +=
         '\nrequire() of ES modules is not supported.\nrequire() of ' +
-        `${filename} ${parentPath ? `from ${parentPath} ` : ''}` +
+        `${filename} from ${parentPath} ` +
         'is an ES module file as it is a .js file whose nearest parent ' +
         'package.json contains "type": "module" which defines all .js ' +
         'files in that package scope as ES modules.\nInstead rename ' +
@@ -1344,7 +1339,6 @@ E('ERR_SOCKET_BAD_TYPE',
 E('ERR_SOCKET_BUFFER_SIZE',
   'Could not get or set buffer size',
   SystemError);
-E('ERR_SOCKET_CANNOT_SEND', 'Unable to send data', Error);
 E('ERR_SOCKET_CLOSED', 'Socket is closed', Error);
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
@@ -1352,6 +1346,9 @@ E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
 E('ERR_SRI_PARSE',
   'Subresource Integrity string %j had an unexpected %j at position %d',
   SyntaxError);
+E('ERR_STREAM_ALREADY_FINISHED',
+  'Cannot call %s after a stream was finished',
+  Error);
 E('ERR_STREAM_CANNOT_PIPE', 'Cannot pipe, not readable', Error);
 E('ERR_STREAM_DESTROYED', 'Cannot call %s after a stream was destroyed', Error);
 E('ERR_STREAM_NULL_VALUES', 'May not write null values to stream', TypeError);
@@ -1397,6 +1394,8 @@ E('ERR_TRANSFORM_ALREADY_TRANSFORMING',
 E('ERR_TRANSFORM_WITH_LENGTH_0',
   'Calling transform done when writableState.length != 0', Error);
 E('ERR_TTY_INIT_FAILED', 'TTY initialization failed', SystemError);
+E('ERR_UNAVAILABLE_DURING_EXIT', 'Cannot call function in process exit ' +
+  'handler', Error);
 E('ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET',
   '`process.setupUncaughtExceptionCapture()` was called while a capture ' +
     'callback was already active',
@@ -1419,13 +1418,16 @@ E('ERR_UNKNOWN_FILE_EXTENSION',
 E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s', RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
-'resolving ES modules, imported from %s', Error);
-E('ERR_UNSUPPORTED_ESM_URL_SCHEME', 'Only file and data URLs are supported ' +
-  'by the default ESM loader', Error);
-
-E('ERR_V8BREAKITERATOR',
-  'Full ICU data not installed. See https://github.com/nodejs/node/wiki/Intl',
-  Error);
+'resolving ES modules imported from %s', Error);
+E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url) => {
+  let msg = 'Only file and data URLs are supported by the default ESM loader';
+  if (isWindows && url.protocol.length === 2) {
+    msg +=
+      '. On Windows, absolute paths must be valid file:// URLs';
+  }
+  msg += `. Received protocol '${url.protocol}'`;
+  return msg;
+}, Error);
 
 // This should probably be a `TypeError`.
 E('ERR_VALID_PERFORMANCE_ENTRY_TYPE',
@@ -1455,6 +1457,9 @@ E('ERR_WORKER_PATH', (filename) =>
   'relative path starting with \'./\' or \'../\'.' +
   (filename.startsWith('file://') ?
     ' Wrap file:// URLs with `new URL`.' : ''
+  ) +
+  (filename.startsWith('data:text/javascript') ?
+    ' Wrap data: URLs with `new URL`.' : ''
   ) +
   ` Received "${filename}"`,
   TypeError);

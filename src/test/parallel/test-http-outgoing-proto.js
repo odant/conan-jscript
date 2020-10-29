@@ -1,5 +1,5 @@
 'use strict';
-const common = require('../common');
+require('../common');
 const assert = require('assert');
 
 const http = require('http');
@@ -62,13 +62,16 @@ assert.throws(() => {
 {
   const outgoingMessage = new OutgoingMessage();
 
-  outgoingMessage.on('error', common.expectsError({
-    code: 'ERR_METHOD_NOT_IMPLEMENTED',
-    name: 'Error',
-    message: 'The _implicitHeader() method is not implemented'
-  }));
-
-  outgoingMessage.write('');
+  assert.throws(
+    () => {
+      outgoingMessage.write('');
+    },
+    {
+      code: 'ERR_METHOD_NOT_IMPLEMENTED',
+      name: 'Error',
+      message: 'The _implicitHeader() method is not implemented'
+    }
+  );
 }
 
 assert(OutgoingMessage.prototype.write.call({ _header: 'test' }));
@@ -80,7 +83,7 @@ assert.throws(() => {
   code: 'ERR_INVALID_ARG_TYPE',
   name: 'TypeError',
   message: 'The first argument must be of type string or an instance of ' +
-           'Buffer. Received undefined'
+           'Buffer or Uint8Array. Received undefined'
 });
 
 assert.throws(() => {
@@ -90,7 +93,7 @@ assert.throws(() => {
   code: 'ERR_INVALID_ARG_TYPE',
   name: 'TypeError',
   message: 'The first argument must be of type string or an instance of ' +
-           'Buffer. Received type number (1)'
+           'Buffer or Uint8Array. Received type number (1)'
 });
 
 // addTrailers()
@@ -119,3 +122,10 @@ assert.throws(() => {
   name: 'TypeError',
   message: 'Invalid character in trailer content ["404"]'
 });
+
+{
+  const outgoingMessage = new OutgoingMessage();
+  assert.strictEqual(outgoingMessage.destroyed, false);
+  outgoingMessage.destroy();
+  assert.strictEqual(outgoingMessage.destroyed, true);
+}

@@ -52,6 +52,8 @@ const {
   ObjectPrototypeHasOwnProperty,
   ReflectGet,
   SafeSet,
+  String,
+  TypeError,
 } = primordials;
 
 // Set up process.moduleLoadList.
@@ -79,7 +81,6 @@ const internalBindingWhitelist = new SafeSet([
   'fs',
   'fs_event_wrap',
   'http_parser',
-  'http_parser_llhttp',
   'icu',
   'inspector',
   'js_stream',

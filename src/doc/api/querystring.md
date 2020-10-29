@@ -6,6 +6,8 @@
 
 <!--name=querystring-->
 
+<!-- source_link=lib/querystring.js -->
+
 The `querystring` module provides utilities for parsing and formatting URL
 query strings. It can be accessed using:
 
@@ -53,7 +55,9 @@ changes:
   - version: v6.0.0
     pr-url: https://github.com/nodejs/node/pull/6055
     description: The returned object no longer inherits from `Object.prototype`.
-  - version: v6.0.0, v4.2.4
+  - version:
+    - v6.0.0
+    - v4.2.4
     pr-url: https://github.com/nodejs/node/pull/3807
     description: The `eq` parameter may now have a length of more than `1`.
 -->

@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/cluster.js -->
+
 A single instance of Node.js runs in a single thread. To take advantage of
 multi-core systems, the user will sometimes want to launch a cluster of Node.js
 processes to handle the load.
@@ -434,7 +436,7 @@ If the graceful disconnect behavior is not needed, use `worker.process.kill()`.
 
 Causes `.exitedAfterDisconnect` to be set.
 
-This method is aliased as `worker.destroy()` for backwards compatibility.
+This method is aliased as `worker.destroy()` for backward compatibility.
 
 In a worker, `process.kill()` exists, but it is not this function;
 it is [`kill()`][].
@@ -724,7 +726,9 @@ values are `'rr'` and `'none'`.
 <!-- YAML
 added: v0.7.1
 changes:
-  - version: v12.16.0
+  - version:
+     - v13.2.0
+     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/30162
     description: The `serialization` option is supported now.
   - version: v9.5.0
@@ -869,17 +873,17 @@ socket.on('data', (id) => {
 });
 ```
 
+[Advanced serialization for `child_process`]: child_process.md#child_process_advanced_serialization
+[Child Process module]: child_process.md#child_process_child_process_fork_modulepath_args_options
 [`.fork()`]: #cluster_cluster_fork_env
 [`.setupMaster()`]: #cluster_cluster_setupmaster_settings
-[`ChildProcess.send()`]: child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
-[`child_process.fork()`]: child_process.html#child_process_child_process_fork_modulepath_args_options
-[`child_process` event: `'exit'`]: child_process.html#child_process_event_exit
-[`child_process` event: `'message'`]: child_process.html#child_process_event_message
+[`ChildProcess.send()`]: child_process.md#child_process_subprocess_send_message_sendhandle_options_callback
+[`child_process.fork()`]: child_process.md#child_process_child_process_fork_modulepath_args_options
+[`child_process` event: `'exit'`]: child_process.md#child_process_event_exit
+[`child_process` event: `'message'`]: child_process.md#child_process_event_message
 [`cluster.settings`]: #cluster_cluster_settings
-[`disconnect()`]: child_process.html#child_process_subprocess_disconnect
-[`kill()`]: process.html#process_process_kill_pid_signal
-[`process` event: `'message'`]: process.html#process_event_message
-[`server.close()`]: net.html#net_event_close
+[`disconnect()`]: child_process.md#child_process_subprocess_disconnect
+[`kill()`]: process.md#process_process_kill_pid_signal
+[`process` event: `'message'`]: process.md#process_event_message
+[`server.close()`]: net.md#net_event_close
 [`worker.exitedAfterDisconnect`]: #cluster_worker_exitedafterdisconnect
-[Advanced serialization for `child_process`]: child_process.html#child_process_advanced_serialization
-[Child Process module]: child_process.html#child_process_child_process_fork_modulepath_args_options

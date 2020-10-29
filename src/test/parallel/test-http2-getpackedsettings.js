@@ -7,11 +7,11 @@ const assert = require('assert');
 const http2 = require('http2');
 
 const check = Buffer.from([0x00, 0x01, 0x00, 0x00, 0x10, 0x00,
-                           0x00, 0x03, 0xff, 0xff, 0xff, 0xff,
-                           0x00, 0x05, 0x00, 0x00, 0x40, 0x00,
-                           0x00, 0x04, 0x00, 0x00, 0xff, 0xff,
-                           0x00, 0x06, 0x00, 0x00, 0xff, 0xff,
                            0x00, 0x02, 0x00, 0x00, 0x00, 0x01,
+                           0x00, 0x03, 0xff, 0xff, 0xff, 0xff,
+                           0x00, 0x04, 0x00, 0x00, 0xff, 0xff,
+                           0x00, 0x05, 0x00, 0x00, 0x40, 0x00,
+                           0x00, 0x06, 0x00, 0x00, 0xff, 0xff,
                            0x00, 0x08, 0x00, 0x00, 0x00, 0x00]);
 const val = http2.getPackedSettings(http2.getDefaultSettings());
 assert.deepStrictEqual(val, check);
@@ -26,7 +26,9 @@ assert.deepStrictEqual(val, check);
   ['maxConcurrentStreams', 0],
   ['maxConcurrentStreams', 2 ** 31 - 1],
   ['maxHeaderListSize', 0],
-  ['maxHeaderListSize', 2 ** 32 - 1]
+  ['maxHeaderListSize', 2 ** 32 - 1],
+  ['maxHeaderSize', 0],
+  ['maxHeaderSize', 2 ** 32 - 1]
 ].forEach((i) => {
   // Valid options should not throw.
   http2.getPackedSettings({ [i[0]]: i[1] });
@@ -45,7 +47,9 @@ http2.getPackedSettings({ enablePush: false });
   ['maxConcurrentStreams', -1],
   ['maxConcurrentStreams', 2 ** 32],
   ['maxHeaderListSize', -1],
-  ['maxHeaderListSize', 2 ** 32]
+  ['maxHeaderListSize', 2 ** 32],
+  ['maxHeaderSize', -1],
+  ['maxHeaderSize', 2 ** 32]
 ].forEach((i) => {
   assert.throws(() => {
     http2.getPackedSettings({ [i[0]]: i[1] });
@@ -83,12 +87,13 @@ http2.getPackedSettings({ enablePush: false });
 {
   const check = Buffer.from([
     0x00, 0x01, 0x00, 0x00, 0x00, 0x64,
-    0x00, 0x03, 0x00, 0x00, 0x00, 0xc8,
-    0x00, 0x05, 0x00, 0x00, 0x4e, 0x20,
-    0x00, 0x04, 0x00, 0x00, 0x00, 0x64,
-    0x00, 0x06, 0x00, 0x00, 0x00, 0x64,
     0x00, 0x02, 0x00, 0x00, 0x00, 0x01,
-    0x00, 0x08, 0x00, 0x00, 0x00, 0x00]);
+    0x00, 0x03, 0x00, 0x00, 0x00, 0xc8,
+    0x00, 0x04, 0x00, 0x00, 0x00, 0x64,
+    0x00, 0x05, 0x00, 0x00, 0x4e, 0x20,
+    0x00, 0x06, 0x00, 0x00, 0x00, 0x64,
+    0x00, 0x08, 0x00, 0x00, 0x00, 0x00
+  ]);
 
   const packed = http2.getPackedSettings({
     headerTableSize: 100,
@@ -96,6 +101,7 @@ http2.getPackedSettings({ enablePush: false });
     maxFrameSize: 20000,
     maxConcurrentStreams: 200,
     maxHeaderListSize: 100,
+    maxHeaderSize: 100,
     enablePush: true,
     enableConnectProtocol: false,
     foo: 'ignored'
@@ -148,6 +154,7 @@ http2.getPackedSettings({ enablePush: false });
   assert.strictEqual(settings.maxFrameSize, 20000);
   assert.strictEqual(settings.maxConcurrentStreams, 200);
   assert.strictEqual(settings.maxHeaderListSize, 100);
+  assert.strictEqual(settings.maxHeaderSize, 100);
   assert.strictEqual(settings.enablePush, true);
   assert.strictEqual(settings.enableConnectProtocol, false);
 }

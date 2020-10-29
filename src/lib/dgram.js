@@ -41,7 +41,6 @@ const {
   ERR_SOCKET_ALREADY_BOUND,
   ERR_SOCKET_BAD_BUFFER_SIZE,
   ERR_SOCKET_BUFFER_SIZE,
-  ERR_SOCKET_CANNOT_SEND,
   ERR_SOCKET_DGRAM_IS_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_RUNNING,
@@ -55,7 +54,7 @@ const {
 } = require('internal/validators');
 const { Buffer } = require('buffer');
 const { deprecate } = require('internal/util');
-const { isUint8Array } = require('internal/util/types');
+const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
 const {
   defaultTriggerAsyncIdScope,
@@ -456,15 +455,19 @@ Socket.prototype.sendto = function(buffer,
 function sliceBuffer(buffer, offset, length) {
   if (typeof buffer === 'string') {
     buffer = Buffer.from(buffer);
-  } else if (!isUint8Array(buffer)) {
+  } else if (!isArrayBufferView(buffer)) {
     throw new ERR_INVALID_ARG_TYPE('buffer',
-                                   ['Buffer', 'Uint8Array', 'string'], buffer);
+                                   ['Buffer',
+                                    'TypedArray',
+                                    'DataView',
+                                    'string'],
+                                   buffer);
   }
 
   offset = offset >>> 0;
   length = length >>> 0;
 
-  return buffer.slice(offset, offset + length);
+  return Buffer.from(buffer.buffer, buffer.byteOffset + offset, length);
 }
 
 
@@ -475,10 +478,10 @@ function fixBufferList(list) {
     const buf = list[i];
     if (typeof buf === 'string')
       newlist[i] = Buffer.from(buf);
-    else if (!isUint8Array(buf))
+    else if (!isArrayBufferView(buf))
       return null;
     else
-      newlist[i] = buf;
+      newlist[i] = Buffer.from(buf.buffer, buf.byteOffset, buf.byteLength);
   }
 
   return newlist;
@@ -492,7 +495,7 @@ function enqueue(self, toEnqueue) {
   // event handler that flushes the send queue after binding is done.
   if (state.queue === undefined) {
     state.queue = [];
-    self.once('error', onListenError);
+    self.once(EventEmitter.errorMonitor, onListenError);
     self.once('listening', onListenSuccess);
   }
   state.queue.push(toEnqueue);
@@ -500,7 +503,7 @@ function enqueue(self, toEnqueue) {
 
 
 function onListenSuccess() {
-  this.removeListener('error', onListenError);
+  this.removeListener(EventEmitter.errorMonitor, onListenError);
   clearQueue.call(this);
 }
 
@@ -508,7 +511,6 @@ function onListenSuccess() {
 function onListenError(err) {
   this.removeListener('listening', onListenSuccess);
   this[kStateSymbol].queue = undefined;
-  this.emit('error', new ERR_SOCKET_CANNOT_SEND());
 }
 
 
@@ -583,16 +585,23 @@ Socket.prototype.send = function(buffer,
   if (!ArrayIsArray(buffer)) {
     if (typeof buffer === 'string') {
       list = [ Buffer.from(buffer) ];
-    } else if (!isUint8Array(buffer)) {
+    } else if (!isArrayBufferView(buffer)) {
       throw new ERR_INVALID_ARG_TYPE('buffer',
-                                     ['Buffer', 'Uint8Array', 'string'],
+                                     ['Buffer',
+                                      'TypedArray',
+                                      'DataView',
+                                      'string'],
                                      buffer);
     } else {
       list = [ buffer ];
     }
   } else if (!(list = fixBufferList(buffer))) {
     throw new ERR_INVALID_ARG_TYPE('buffer list arguments',
-                                   ['Buffer', 'string'], buffer);
+                                   ['Buffer',
+                                    'TypedArray',
+                                    'DataView',
+                                    'string'],
+                                   buffer);
   }
 
   if (!connected)

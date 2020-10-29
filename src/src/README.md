@@ -89,7 +89,7 @@ In most native Node.js objects, the first internal field is used to store a
 pointer to a [`BaseObject`][] subclass, which then contains all relevant
 information associated with the JavaScript object.
 
-The most typical way of working internal fields are:
+Typical ways of working with internal fields are:
 
 * `obj->InternalFieldCount()` to look up the number of internal fields for an
   object (`0` for regular JavaScript objects).
@@ -146,9 +146,7 @@ v8::Local<v8::Value> GetFoo(v8::Local<v8::Context> context,
   // The 'foo_string' handle cannot be returned from this function because
   // it is not “escaped” with `.Escape()`.
   v8::Local<v8::String> foo_string =
-      v8::String::NewFromUtf8(isolate,
-                              "foo",
-                              v8::NewStringType::kNormal).ToLocalChecked();
+      v8::String::NewFromUtf8(isolate, "foo").ToLocalChecked();
 
   v8::Local<v8::Value> return_value;
   if (obj->Get(context, foo_string).ToLocal(&return_value)) {
@@ -241,7 +239,7 @@ Node.js, and a sufficiently committed person could restructure Node.js to
 provide built-in modules inside of `vm.Context`s.
 
 Often, the `Context` is passed around for [exception handling][].
-Typical ways of accessing the current `Environment` in the Node.js code are:
+Typical ways of accessing the current `Context` in the Node.js code are:
 
 * Given an [`Isolate`][], using `isolate->GetCurrentContext()`.
 * Given an [`Environment`][], using `env->context()` to get the `Environment`’s
@@ -393,6 +391,56 @@ void Initialize(Local<Object> target,
 // Run the `Initialize` function when loading this module through
 // `internalBinding('cares_wrap')` in Node.js’s built-in JavaScript code:
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(cares_wrap, Initialize)
+```
+
+<a id="per-binding-state"></a>
+#### Per-binding state
+
+Some internal bindings, such as the HTTP parser, maintain internal state that
+only affects that particular binding. In that case, one common way to store
+that state is through the use of `Environment::AddBindingData`, which gives
+binding functions access to an object for storing such state.
+That object is always a [`BaseObject`][].
+
+Its class needs to have a static `binding_data_name` field based on a
+constant string, in order to disambiguate it from other classes of this type,
+and which could e.g. match the binding’s name (in the example above, that would
+be `cares_wrap`).
+
+```cpp
+// In the HTTP parser source code file:
+class BindingData : public BaseObject {
+ public:
+  BindingData(Environment* env, Local<Object> obj) : BaseObject(env, obj) {}
+
+  static constexpr FastStringKey binding_data_name { "http_parser" };
+
+  std::vector<char> parser_buffer;
+  bool parser_buffer_in_use = false;
+
+  // ...
+};
+
+// Available for binding functions, e.g. the HTTP Parser constructor:
+static void New(const FunctionCallbackInfo<Value>& args) {
+  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  new Parser(binding_data, args.This());
+}
+
+// ... because the initialization function told the Environment to store the
+// BindingData object:
+void InitializeHttpParser(Local<Object> target,
+                          Local<Value> unused,
+                          Local<Context> context,
+                          void* priv) {
+  Environment* env = Environment::GetCurrent(context);
+  BindingData* const binding_data =
+      env->AddBindingData<BindingData>(context, target);
+  if (binding_data == nullptr) return;
+
+  Local<FunctionTemplate> t = env->NewFunctionTemplate(Parser::New);
+  ...
+}
 ```
 
 <a id="exception-handling"></a>
@@ -881,6 +929,10 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 }
 ```
 
+[C++ coding style]: ../doc/guides/cpp-style-guide.md
+[Callback scopes]: #callback-scopes
+[JavaScript value handles]: #js-handles
+[N-API]: https://nodejs.org/api/n-api.html
 [`BaseObject`]: #baseobject
 [`Context`]: #context
 [`Environment`]: #environment
@@ -903,10 +955,6 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 [`v8.h` in Node.js master]: https://github.com/nodejs/node/blob/master/deps/v8/include/v8.h
 [`v8.h` in V8 master]: https://github.com/v8/v8/blob/master/include/v8.h
 [`vm` module]: https://nodejs.org/api/vm.html
-[C++ coding style]: ../doc/guides/cpp-style-guide.md
-[Callback scopes]: #callback-scopes
-[JavaScript value handles]: #js-handles
-[N-API]: https://nodejs.org/api/n-api.html
 [binding function]: #binding-functions
 [cleanup hooks]: #cleanup-hooks
 [event loop]: #event-loop

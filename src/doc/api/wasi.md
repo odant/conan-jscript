@@ -4,6 +4,8 @@
 
 > Stability: 1 - Experimental
 
+<!-- source_link=lib/wasi.js -->
+
 The WASI API provides an implementation of the [WebAssembly System Interface][]
 specification. WASI gives sandboxed WebAssembly applications access to the
 underlying operating system via a collection of POSIX-like functions.
@@ -73,23 +75,27 @@ CLI arguments are needed for this example to run.
 
 ## Class: `WASI`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 The `WASI` class provides the WASI system call API and additional convenience
 methods for working with WASI-based applications. Each `WASI` instance
 represents a distinct sandbox environment. For security purposes, each `WASI`
-instance must have its command line arguments, environment variables, and
+instance must have its command-line arguments, environment variables, and
 sandbox directory structure configured explicitly.
 
 ### `new WASI([options])`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * `options` {Object}
   * `args` {Array} An array of strings that the WebAssembly application will
-    see as command line arguments. The first argument is the virtual path to the
+    see as command-line arguments. The first argument is the virtual path to the
     WASI command itself. **Default:** `[]`.
   * `env` {Object} An object similar to `process.env` that the WebAssembly
     application will see as its environment. **Default:** `{}`.
@@ -110,7 +116,9 @@ added: v12.16.0
 
 ### `wasi.start(instance)`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * `instance` {WebAssembly.Instance}
@@ -124,9 +132,28 @@ Attempt to begin execution of `instance` as a WASI command by invoking its
 
 If `start()` is called more than once, an exception is thrown.
 
+### `wasi.initialize(instance)`
+<!-- YAML
+added:
+ - v14.6.0
+-->
+
+* `instance` {WebAssembly.Instance}
+
+Attempt to initialize `instance` as a WASI reactor by invoking its
+`_initialize()` export, if it is present. If `instance` contains a `_start()`
+export, then an exception is thrown.
+
+`initialize()` requires that `instance` exports a [`WebAssembly.Memory`][] named
+`memory`. If `instance` does not have a `memory` export an exception is thrown.
+
+If `initialize()` is called more than once, an exception is thrown.
+
 ### `wasi.wasiImport`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * {Object}
@@ -135,6 +162,6 @@ added: v12.16.0
 should be passed as the `wasi_snapshot_preview1` import during the instantiation
 of a [`WebAssembly.Instance`][].
 
+[WebAssembly System Interface]: https://wasi.dev/
 [`WebAssembly.Instance`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Instance
 [`WebAssembly.Memory`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Memory
-[WebAssembly System Interface]: https://wasi.dev/

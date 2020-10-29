@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/tty.js -->
+
 The `tty` module provides the `tty.ReadStream` and `tty.WriteStream` classes.
 In most cases, it will not be necessary or possible to use this module directly.
 However, it can be accessed using:
@@ -209,14 +211,16 @@ added: v0.7.7
 
 * Returns: {number[]}
 
-`writeStream.getWindowSize()` returns the size of the [TTY](tty.html)
+`writeStream.getWindowSize()` returns the size of the [TTY](tty.md)
 corresponding to this `WriteStream`. The array is of the type
 `[numColumns, numRows]` where `numColumns` and `numRows` represent the number
-of columns and rows in the corresponding [TTY](tty.html).
+of columns and rows in the corresponding [TTY](tty.md).
 
 ### `writeStream.hasColors([count][, env])`
 <!-- YAML
-added: v11.13.0
+added:
+ - v11.13.0
+ - v10.16.0
 -->
 
 * `count` {integer} The number of colors that are requested (minimum 2).
@@ -289,7 +293,7 @@ The `tty.isatty()` method returns `true` if the given `fd` is associated with
 a TTY and `false` if it is not, including whenever `fd` is not a non-negative
 integer.
 
-[`process.stderr`]: process.html#process_process_stderr
-[`process.stdin`]: process.html#process_process_stdin
-[`process.stdout`]: process.html#process_process_stdout
+[`process.stderr`]: process.md#process_process_stderr
+[`process.stdin`]: process.md#process_process_stdin
+[`process.stdout`]: process.md#process_process_stdout
 [`writeStream.getColorDepth()`]: #tty_writestream_getcolordepth_env

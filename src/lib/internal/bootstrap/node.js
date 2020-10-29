@@ -40,7 +40,6 @@ setupPrepareStackTrace();
 
 const {
   JSONParse,
-  ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
@@ -59,6 +58,7 @@ process._exiting = false;
 
 // process.config is serialized config.gypi
 process.config = JSONParse(internalBinding('native_module').config);
+require('internal/worker/js_transferable').setup();
 
 // Bootstrappers for all threads, including worker threads and main thread
 const perThreadSetup = require('internal/process/per_thread');
@@ -293,36 +293,6 @@ function setupGlobalProxy() {
     writable: false,
     enumerable: false,
     configurable: true
-  });
-
-  function makeGetter(name) {
-    return deprecate(function() {
-      return this;
-    }, `'${name}' is deprecated, use 'global'`, 'DEP0016');
-  }
-
-  function makeSetter(name) {
-    return deprecate(function(value) {
-      ObjectDefineProperty(this, name, {
-        configurable: true,
-        writable: true,
-        enumerable: true,
-        value: value
-      });
-    }, `'${name}' is deprecated, use 'global'`, 'DEP0016');
-  }
-
-  ObjectDefineProperties(global, {
-    GLOBAL: {
-      configurable: true,
-      get: makeGetter('GLOBAL'),
-      set: makeSetter('GLOBAL')
-    },
-    root: {
-      configurable: true,
-      get: makeGetter('root'),
-      set: makeSetter('root')
-    }
   });
 }
 

@@ -66,7 +66,6 @@ using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -1067,14 +1066,15 @@ int ParseSoaReply(Environment* env,
   // Can't use ares_parse_soa_reply() here which can only parse single record
   const unsigned int ancount = cares_get_16bit(buf + 6);
   unsigned char* ptr = buf + NS_HFIXEDSZ;
-  char* name_temp;
+  char* name_temp = nullptr;
   long temp_len;  // NOLINT(runtime/int)
   int status = ares_expand_name(ptr, buf, len, &name_temp, &temp_len);
-  const ares_unique_ptr name(name_temp);
   if (status != ARES_SUCCESS) {
     // returns EBADRESP in case of invalid input
     return status == ARES_EBADNAME ? ARES_EBADRESP : status;
   }
+
+  const ares_unique_ptr name(name_temp);
 
   if (ptr + temp_len + NS_QFIXEDSZ > buf + len) {
     return ARES_EBADRESP;
@@ -1082,13 +1082,14 @@ int ParseSoaReply(Environment* env,
   ptr += temp_len + NS_QFIXEDSZ;
 
   for (unsigned int i = 0; i < ancount; i++) {
-    char* rr_name_temp;
+    char* rr_name_temp = nullptr;
     long rr_temp_len;  // NOLINT(runtime/int)
     int status2 = ares_expand_name(ptr, buf, len, &rr_name_temp, &rr_temp_len);
-    const ares_unique_ptr rr_name(rr_name_temp);
 
     if (status2 != ARES_SUCCESS)
       return status2 == ARES_EBADNAME ? ARES_EBADRESP : status2;
+
+    const ares_unique_ptr rr_name(rr_name_temp);
 
     ptr += rr_temp_len;
     if (ptr + NS_RRFIXEDSZ > buf + len) {
@@ -1101,27 +1102,27 @@ int ParseSoaReply(Environment* env,
 
     // only need SOA
     if (rr_type == ns_t_soa) {
-      char* nsname_temp;
+      char* nsname_temp = nullptr;
       long nsname_temp_len;  // NOLINT(runtime/int)
 
       int status3 = ares_expand_name(ptr, buf, len,
                                      &nsname_temp,
                                      &nsname_temp_len);
-      const ares_unique_ptr nsname(nsname_temp);
       if (status3 != ARES_SUCCESS) {
         return status3 == ARES_EBADNAME ? ARES_EBADRESP : status3;
       }
+      const ares_unique_ptr nsname(nsname_temp);
       ptr += nsname_temp_len;
 
-      char* hostmaster_temp;
+      char* hostmaster_temp = nullptr;
       long hostmaster_temp_len;  // NOLINT(runtime/int)
       int status4 = ares_expand_name(ptr, buf, len,
                                      &hostmaster_temp,
                                      &hostmaster_temp_len);
-      const ares_unique_ptr hostmaster(hostmaster_temp);
       if (status4 != ARES_SUCCESS) {
         return status4 == ARES_EBADNAME ? ARES_EBADRESP : status4;
       }
+      const ares_unique_ptr hostmaster(hostmaster_temp);
       ptr += hostmaster_temp_len;
 
       if (ptr + 5 * 4 > buf + len) {
@@ -1937,8 +1938,8 @@ void CanonicalizeIP(const FunctionCallbackInfo<Value>& args) {
   char canonical_ip[INET6_ADDRSTRLEN];
   const int af = (rc == 4 ? AF_INET : AF_INET6);
   CHECK_EQ(0, uv_inet_ntop(af, &result, canonical_ip, sizeof(canonical_ip)));
-  Local<String> val = String::NewFromUtf8(isolate, canonical_ip,
-      NewStringType::kNormal).ToLocalChecked();
+  Local<String> val = String::NewFromUtf8(isolate, canonical_ip)
+      .ToLocalChecked();
   args.GetReturnValue().Set(val);
 }
 

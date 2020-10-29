@@ -12,8 +12,12 @@ const {
   DatePrototypeToString,
   ErrorPrototypeToString,
   Float32Array,
+  Float64Array,
+  FunctionPrototypeCall,
   FunctionPrototypeToString,
+  Int8Array,
   Int16Array,
+  Int32Array,
   JSONStringify,
   Map,
   MapPrototype,
@@ -25,7 +29,10 @@ const {
   MathSqrt,
   Number,
   NumberIsNaN,
+  NumberParseFloat,
+  NumberParseInt,
   NumberPrototypeValueOf,
+  Object,
   ObjectAssign,
   ObjectCreate,
   ObjectDefineProperty,
@@ -38,17 +45,23 @@ const {
   ObjectPrototypeHasOwnProperty,
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
+  ObjectSetPrototypeOf,
   RegExp,
   RegExpPrototypeToString,
   Set,
   SetPrototype,
   SetPrototypeValues,
+  String,
   StringPrototypeValueOf,
   SymbolPrototypeToString,
   SymbolPrototypeValueOf,
   SymbolIterator,
   SymbolToStringTag,
   Uint16Array,
+  Uint32Array,
+  Uint8Array,
+  Uint8ArrayPrototype,
+  Uint8ClampedArray,
   uncurryThis,
 } = primordials;
 
@@ -60,6 +73,7 @@ const {
   kRejected,
   previewEntries,
   getConstructorName: internalGetConstructorName,
+  getExternalValue,
   propertyFilter: {
     ALL_PROPERTIES,
     ONLY_ENUMERABLE
@@ -128,7 +142,7 @@ const mapSizeGetter = uncurryThis(
   ObjectGetOwnPropertyDescriptor(MapPrototype, 'size').get);
 const typedArraySizeGetter = uncurryThis(
   ObjectGetOwnPropertyDescriptor(
-    ObjectGetPrototypeOf(Uint8Array.prototype), 'length').get);
+    ObjectGetPrototypeOf(Uint8ArrayPrototype), 'length').get);
 
 let hexSlice;
 
@@ -160,10 +174,10 @@ const kArrayType = 1;
 const kArrayExtrasType = 2;
 
 /* eslint-disable no-control-regex */
-const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c]/;
-const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c]/g;
-const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c]/;
-const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c]/g;
+const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c\x7f-\x9f]/;
+const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c\x7f-\x9f]/g;
+const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c\x7f-\x9f]/;
+const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c\x7f-\x9f]/g;
 /* eslint-enable no-control-regex */
 
 const keyStrRegExp = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
@@ -183,21 +197,23 @@ const kWeak = 0;
 const kIterator = 1;
 const kMapEntries = 2;
 
-// Escaped special characters. Use empty strings to fill up unused entries.
+// Escaped control characters (plus the single quote and the backslash). Use
+// empty strings to fill up unused entries.
 const meta = [
-  '\\u0000', '\\u0001', '\\u0002', '\\u0003', '\\u0004',
-  '\\u0005', '\\u0006', '\\u0007', '\\b', '\\t',
-  '\\n', '\\u000b', '\\f', '\\r', '\\u000e',
-  '\\u000f', '\\u0010', '\\u0011', '\\u0012', '\\u0013',
-  '\\u0014', '\\u0015', '\\u0016', '\\u0017', '\\u0018',
-  '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d',
-  '\\u001e', '\\u001f', '', '', '',
-  '', '', '', '', "\\'", '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '\\\\'
+  '\\x00', '\\x01', '\\x02', '\\x03', '\\x04', '\\x05', '\\x06', '\\x07', // x07
+  '\\b', '\\t', '\\n', '\\x0B', '\\f', '\\r', '\\x0E', '\\x0F',           // x0F
+  '\\x10', '\\x11', '\\x12', '\\x13', '\\x14', '\\x15', '\\x16', '\\x17', // x17
+  '\\x18', '\\x19', '\\x1A', '\\x1B', '\\x1C', '\\x1D', '\\x1E', '\\x1F', // x1F
+  '', '', '', '', '', '', '', "\\'", '', '', '', '', '', '', '', '',      // x2F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x3F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x4F
+  '', '', '', '', '', '', '', '', '', '', '', '', '\\\\', '', '', '',     // x5F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x6F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '\\x7F',    // x7F
+  '\\x80', '\\x81', '\\x82', '\\x83', '\\x84', '\\x85', '\\x86', '\\x87', // x87
+  '\\x88', '\\x89', '\\x8A', '\\x8B', '\\x8C', '\\x8D', '\\x8E', '\\x8F', // x8F
+  '\\x90', '\\x91', '\\x92', '\\x93', '\\x94', '\\x95', '\\x96', '\\x97', // x97
+  '\\x98', '\\x99', '\\x9A', '\\x9B', '\\x9C', '\\x9D', '\\x9E', '\\x9F', // x9F
 ];
 
 // Regex used for ansi escape code splitting
@@ -211,8 +227,8 @@ const ansi = new RegExp(ansiPattern, 'g');
 
 let getStringWidth;
 
-function getUserOptions(ctx) {
-  return {
+function getUserOptions(ctx, isCrossContext) {
+  const ret = {
     stylize: ctx.stylize,
     showHidden: ctx.showHidden,
     depth: ctx.depth,
@@ -227,6 +243,33 @@ function getUserOptions(ctx) {
     getters: ctx.getters,
     ...ctx.userOptions
   };
+
+  // Typically, the target value will be an instance of `Object`. If that is
+  // *not* the case, the object may come from another vm.Context, and we want
+  // to avoid passing it objects from this Context in that case, so we remove
+  // the prototype from the returned object itself + the `stylize()` function,
+  // and remove all other non-primitives, including non-primitive user options.
+  if (isCrossContext) {
+    ObjectSetPrototypeOf(ret, null);
+    for (const key of ObjectKeys(ret)) {
+      if ((typeof ret[key] === 'object' || typeof ret[key] === 'function') &&
+          ret[key] !== null) {
+        delete ret[key];
+      }
+    }
+    ret.stylize = ObjectSetPrototypeOf((value, flavour) => {
+      let stylized;
+      try {
+        stylized = `${ctx.stylize(value, flavour)}`;
+      } catch {}
+
+      if (typeof stylized !== 'string') return value;
+      // `stylized` is a string as it should be, which is safe to pass along.
+      return stylized;
+    }, null);
+  }
+
+  return ret;
 }
 
 /**
@@ -306,7 +349,7 @@ ObjectDefineProperty(inspect, 'defaultOptions', {
   }
 });
 
-// Set Graphics Rendition http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+// Set Graphics Rendition https://en.wikipedia.org/wiki/ANSI_escape_code#graphics
 // Each color consists of an array with the color code as first entry and the
 // reset code as second entry.
 const defaultFG = 39;
@@ -453,7 +496,10 @@ function strEscape(str) {
   const lastIndex = str.length;
   for (let i = 0; i < lastIndex; i++) {
     const point = str.charCodeAt(i);
-    if (point === singleQuote || point === 92 || point < 32) {
+    if (point === singleQuote ||
+        point === 92 ||
+        point < 32 ||
+        (point > 126 && point < 160)) {
       if (last === i) {
         result += meta[point];
       } else {
@@ -495,7 +541,8 @@ function getConstructorName(obj, ctx, recurseTimes, protoProps) {
     const descriptor = ObjectGetOwnPropertyDescriptor(obj, 'constructor');
     if (descriptor !== undefined &&
         typeof descriptor.value === 'function' &&
-        descriptor.value.name !== '') {
+        descriptor.value.name !== '' &&
+        tmp instanceof descriptor.value) {
       if (protoProps !== undefined &&
          (firstProto !== obj ||
          !builtInObjects.has(descriptor.value.name))) {
@@ -722,7 +769,10 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
       // This makes sure the recurseTimes are reported as before while using
       // a counter internally.
       const depth = ctx.depth === null ? null : ctx.depth - recurseTimes;
-      const ret = maybeCustom.call(context, depth, getUserOptions(ctx));
+      const isCrossContext =
+        proxy !== undefined || !(context instanceof Object);
+      const ret = FunctionPrototypeCall(
+        maybeCustom, context, depth, getUserOptions(ctx, isCrossContext));
       // If the custom inspection method returned `this`, don't go into
       // infinite recursion.
       if (ret !== context) {
@@ -747,7 +797,7 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
         ctx.circular.set(value, index);
       }
     }
-    return ctx.stylize('[Circular]', 'special');
+    return ctx.stylize(`[Circular *${index}]`, 'special');
   }
 
   return formatRaw(ctx, value, recurseTimes, typedArray);
@@ -805,21 +855,21 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       formatter = formatArray;
     } else if (isSet(value)) {
       const size = setSizeGetter(value);
-      const prefix = getPrefix(constructor, tag, 'Set');
+      const prefix = getPrefix(constructor, tag, 'Set', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
-        formatSet.bind(null, value, size) :
-        formatSet.bind(null, SetPrototypeValues(value), size);
+        formatSet.bind(null, value) :
+        formatSet.bind(null, SetPrototypeValues(value));
       if (size === 0 && keys.length === 0 && protoProps === undefined)
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
     } else if (isMap(value)) {
       const size = mapSizeGetter(value);
-      const prefix = getPrefix(constructor, tag, 'Map');
+      const prefix = getPrefix(constructor, tag, 'Map', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
-        formatMap.bind(null, value, size) :
-        formatMap.bind(null, MapPrototypeEntries(value), size);
+        formatMap.bind(null, value) :
+        formatMap.bind(null, MapPrototypeEntries(value));
       if (size === 0 && keys.length === 0 && protoProps === undefined)
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
@@ -938,8 +988,10 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       }
     } else {
       if (keys.length === 0 && protoProps === undefined) {
-        if (isExternal(value))
-          return ctx.stylize('[External]', 'special');
+        if (isExternal(value)) {
+          const address = getExternalValue(value).toString(16);
+          return ctx.stylize(`[External: ${address}]`, 'special');
+        }
         return `${getCtxStyle(value, constructor, tag)}{}`;
       }
       braces[0] = `${getCtxStyle(value, constructor, tag)}{`;
@@ -974,11 +1026,12 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   if (ctx.circular !== undefined) {
     const index = ctx.circular.get(value);
     if (index !== undefined) {
+      const reference = ctx.stylize(`<ref *${index}>`, 'special');
       // Add reference always to the very beginning of the output.
       if (ctx.compact !== true) {
-        base = base === '' ? '' : `${base}`;
+        base = base === '' ? reference : `${reference} ${base}`;
       } else {
-        braces[0] = `${braces[0]}`;
+        braces[0] = `${reference} ${braces[0]}`;
       }
     }
   }
@@ -1105,7 +1158,9 @@ function getFunctionBase(value, constructor, tag) {
   if (constructor === null) {
     base += ' (null prototype)';
   }
-  if (value.name !== '') {
+  if (value.name === '') {
+    base += ' (anonymous)';
+  } else {
     base += `: ${value.name}`;
   }
   base += ']';
@@ -1499,22 +1554,17 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
   return output;
 }
 
-function formatSet(value, size, ctx, ignored, recurseTimes) {
+function formatSet(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
   for (const v of value) {
     output.push(formatValue(ctx, v, recurseTimes));
   }
   ctx.indentationLvl -= 2;
-  // With `showHidden`, `length` will display as a hidden property for
-  // arrays. For consistency's sake, do the same for `size`, even though this
-  // property isn't selected by ObjectGetOwnPropertyNames().
-  if (ctx.showHidden)
-    output.push(`[size]: ${ctx.stylize(`${size}`, 'number')}`);
   return output;
 }
 
-function formatMap(value, size, ctx, ignored, recurseTimes) {
+function formatMap(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
   for (const [k, v] of value) {
@@ -1522,9 +1572,6 @@ function formatMap(value, size, ctx, ignored, recurseTimes) {
                 formatValue(ctx, v, recurseTimes));
   }
   ctx.indentationLvl -= 2;
-  // See comment in formatSet
-  if (ctx.showHidden)
-    output.push(`[size]: ${ctx.stylize(`${size}`, 'number')}`);
   return output;
 }
 
@@ -1775,10 +1822,6 @@ function reduceToSingleString(
   return `${braces[0]}${ln}${join(output, `,\n${indentation}  `)} ${braces[1]}`;
 }
 
-function format(...args) {
-  return formatWithOptions(undefined, ...args);
-}
-
 function hasBuiltInToString(value) {
   // Prevent triggering proxy traps.
   const getFullProxy = false;
@@ -1833,7 +1876,19 @@ function tryStringify(arg) {
   }
 }
 
+function format(...args) {
+  return formatWithOptionsInternal(undefined, ...args);
+}
+
 function formatWithOptions(inspectOptions, ...args) {
+  if (typeof inspectOptions !== 'object' || inspectOptions === null) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'inspectOptions', 'object', inspectOptions);
+  }
+  return formatWithOptionsInternal(inspectOptions, ...args);
+}
+
+function formatWithOptionsInternal(inspectOptions, ...args) {
   const first = args[0];
   let a = 0;
   let str = '';
@@ -1901,7 +1956,8 @@ function formatWithOptions(inspectOptions, ...args) {
               } else if (typeof tempInteger === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor, parseInt(tempInteger));
+                tempStr = formatNumber(stylizeNoColor,
+                                       NumberParseInt(tempInteger));
               }
               break;
             case 102: // 'f'
@@ -1909,7 +1965,8 @@ function formatWithOptions(inspectOptions, ...args) {
               if (typeof tempFloat === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor, parseFloat(tempFloat));
+                tempStr = formatNumber(stylizeNoColor,
+                                       NumberParseFloat(tempFloat));
               }
               break;
             case 99: // 'c'
@@ -1953,13 +2010,6 @@ function formatWithOptions(inspectOptions, ...args) {
   return str;
 }
 
-function prepareStringForGetStringWidth(str, removeControlChars) {
-  str = str.normalize('NFC');
-  if (removeControlChars)
-    str = stripVTControlCharacters(str);
-  return str;
-}
-
 if (internalBinding('config').hasIntl) {
   const icu = internalBinding('icu');
   // icu.getStringWidth(string, ambiguousAsFullWidth, expandEmojiSequence)
@@ -1970,13 +2020,14 @@ if (internalBinding('config').hasIntl) {
   getStringWidth = function getStringWidth(str, removeControlChars = true) {
     let width = 0;
 
-    str = prepareStringForGetStringWidth(str, removeControlChars);
+    if (removeControlChars)
+      str = stripVTControlCharacters(str);
     for (let i = 0; i < str.length; i++) {
       // Try to avoid calling into C++ by first handling the ASCII portion of
       // the string. If it is fully ASCII, we skip the C++ part.
       const code = str.charCodeAt(i);
       if (code >= 127) {
-        width += icu.getStringWidth(str.slice(i));
+        width += icu.getStringWidth(str.slice(i).normalize('NFC'));
         break;
       }
       width += code >= 32 ? 1 : 0;
@@ -1990,7 +2041,9 @@ if (internalBinding('config').hasIntl) {
   getStringWidth = function getStringWidth(str, removeControlChars = true) {
     let width = 0;
 
-    str = prepareStringForGetStringWidth(str, removeControlChars);
+    if (removeControlChars)
+      str = stripVTControlCharacters(str);
+    str = str.normalize('NFC');
     for (const char of str) {
       const code = char.codePointAt(0);
       if (isFullWidthCodePoint(code)) {
@@ -2009,7 +2062,7 @@ if (internalBinding('config').hasIntl) {
    */
   const isFullWidthCodePoint = (code) => {
     // Code points are partially derived from:
-    // http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt
+    // https://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt
     return code >= 0x1100 && (
       code <= 0x115f ||  // Hangul Jamo
       code === 0x2329 || // LEFT-POINTING ANGLE BRACKET

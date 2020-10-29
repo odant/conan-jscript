@@ -1,8 +1,9 @@
 {
   'variables': {
     'v8_use_siphash%': 0,
-    'v8_use_snapshot%': 0,
     'v8_trace_maps%': 0,
+    'v8_enable_pointer_compression%': 0,
+    'v8_enable_31bit_smis_on_64bit_arch%': 0,
     'node_use_dtrace%': 'false',
     'node_use_etw%': 'false',
     'node_no_browser_globals%': 'false',
@@ -11,6 +12,7 @@
     'node_use_bundled_v8%': 'true',
     'node_shared%': 'false',
     'force_dynamic_crt%': 0,
+    'ossfuzz' : 'false',
     'node_module_version%': '',
     'node_shared_brotli%': 'false',
     'node_shared_zlib%': 'false',
@@ -50,6 +52,7 @@
       'lib/domain.js',
       'lib/events.js',
       'lib/fs.js',
+      'lib/fs/promises.js',
       'lib/http.js',
       'lib/http2.js',
       'lib/_http_agent.js',
@@ -94,6 +97,7 @@
       'lib/zlib.js',
       'lib/internal/assert.js',
       'lib/internal/assert/assertion_error.js',
+      'lib/internal/assert/calltracker.js',
       'lib/internal/async_hooks.js',
       'lib/internal/buffer.js',
       'lib/internal/cli_table.js',
@@ -125,7 +129,8 @@
       'lib/internal/dtrace.js',
       'lib/internal/encoding.js',
       'lib/internal/errors.js',
-      'lib/internal/error-serdes.js',
+      'lib/internal/error_serdes.js',
+      'lib/internal/event_target.js',
       'lib/internal/fixed_queue.js',
       'lib/internal/freelist.js',
       'lib/internal/freeze_intrinsics.js',
@@ -214,9 +219,9 @@
       'lib/internal/vm/module.js',
       'lib/internal/worker.js',
       'lib/internal/worker/io.js',
+      'lib/internal/worker/js_transferable.js',
       'lib/internal/watchdog.js',
       'lib/internal/streams/lazy_transform.js',
-      'lib/internal/streams/async_iterator.js',
       'lib/internal/streams/buffer_list.js',
       'lib/internal/streams/duplexpair.js',
       'lib/internal/streams/from.js',
@@ -246,6 +251,8 @@
       'deps/acorn-plugins/acorn-private-class-elements/index.js',
       'deps/acorn-plugins/acorn-private-methods/index.js',
       'deps/acorn-plugins/acorn-static-class-features/index.js',
+      'deps/cjs-module-lexer/lexer.js',
+      'deps/cjs-module-lexer/dist/lexer.js',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
     'mkcodecache_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mkcodecache<(EXECUTABLE_SUFFIX)',
@@ -374,6 +381,12 @@
       'msvs_disabled_warnings!': [4244],
 
       'conditions': [
+        [ 'error_on_warn=="true"', {
+          'cflags': ['-Werror'],
+          'xcode_settings': {
+            'WARNING_CFLAGS': [ '-Werror' ],
+          },
+        }],
         [ 'node_intermediate_lib_type=="static_library" and '
             'node_shared=="true" and OS=="aix"', {
           # For AIX, shared lib is linked by static lib and .exp. In the
@@ -561,6 +574,7 @@
         'src/js_native_api_v8_internals.h',
         'src/js_stream.cc',
         'src/json_utils.cc',
+        'src/js_udp_wrap.cc',
         'src/module_wrap.cc',
         'src/node.cc',
         'src/node_api.cc',
@@ -574,8 +588,7 @@
         'src/node_env_var.cc',
         'src/node_errors.cc',
         'src/node_file.cc',
-        'src/node_http_parser_llhttp.cc',
-        'src/node_http_parser_traditional.cc',
+        'src/node_http_parser.cc',
         'src/node_http2.cc',
         'src/node_i18n.cc',
         'src/node_main_instance.cc',
@@ -610,7 +623,6 @@
         'src/node_zlib.cc',
         'src/pipe_wrap.cc',
         'src/process_wrap.cc',
-        'src/sharedarraybuffer_metadata.cc',
         'src/signal_wrap.cc',
         'src/spawn_sync.cc',
         'src/stream_base.cc',
@@ -631,6 +643,10 @@
         'src/uv.cc',
         # headers to make for a more pleasant IDE experience
         'src/aliased_buffer.h',
+        'src/aliased_struct.h',
+        'src/aliased_struct-inl.h',
+        'src/allocated_buffer.h',
+        'src/allocated_buffer-inl.h',
         'src/async_wrap.h',
         'src/async_wrap-inl.h',
         'src/base_object.h',
@@ -647,7 +663,6 @@
         'src/handle_wrap.h',
         'src/histogram.h',
         'src/histogram-inl.h',
-        'src/http_parser_adaptor.h',
         'src/js_stream.h',
         'src/json_utils.h',
         'src/large_pages/node_large_page.cc',
@@ -667,7 +682,8 @@
         'src/node_errors.h',
         'src/node_file.h',
         'src/node_file-inl.h',
-        'src/node_http_parser_impl.h',
+        'src/node_http_common.h',
+        'src/node_http_common-inl.h',
         'src/node_http2.h',
         'src/node_http2_state.h',
         'src/node_i18n.h',
@@ -703,7 +719,6 @@
         'src/pipe_wrap.h',
         'src/req_wrap.h',
         'src/req_wrap-inl.h',
-        'src/sharedarraybuffer_metadata.h',
         'src/spawn_sync.h',
         'src/stream_base.h',
         'src/stream_base-inl.h',
@@ -725,7 +740,6 @@
         'src/util.h',
         'src/util-inl.h',
         # Dependency headers
-        'deps/http_parser/http_parser.h',
         'deps/v8/include/v8.h',
         # javascript files to make for an even more pleasant IDE experience
         '<@(library_files)',
@@ -756,6 +770,12 @@
           'defines': [
             'NODE_OPENSSL_DEFAULT_CIPHER_LIST="<(openssl_default_cipher_list)"'
            ]
+        }],
+        [ 'error_on_warn=="true"', {
+          'cflags': ['-Werror'],
+          'xcode_settings': {
+            'WARNING_CFLAGS': [ '-Werror' ],
+          },
         }],
         [ 'node_builtin_modules_path!=""', {
           'defines': [ 'NODE_BUILTIN_MODULES_PATH="<(node_builtin_modules_path)"' ]
@@ -1106,6 +1126,81 @@
         } ],
       ]
     }, # specialize_node_d
+    { # fuzz_url
+      'target_name': 'fuzz_url',
+      'type': 'executable',
+      'dependencies': [
+        '<(node_lib_target_name)',
+      ],
+      'includes': [
+        'node.gypi'
+      ],
+      'include_dirs': [
+        'src',
+      ],
+      'defines': [
+        'NODE_ARCH="<(target_arch)"',
+        'NODE_PLATFORM="<(OS)"',
+        'NODE_WANT_INTERNALS=1',
+      ],
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/fuzzers/fuzz_url.cc',
+      ],
+      'conditions': [
+        ['OS=="linux"', {
+          'ldflags': [ '-fsanitize=fuzzer' ]
+        }],
+        # Ensure that ossfuzz flag has been set and that we are on Linux
+        [ 'OS!="linux" or ossfuzz!="true"', {
+          'type': 'none',
+        }],
+      ],
+    }, # fuzz_url
+    { # fuzz_env
+      'target_name': 'fuzz_env',
+      'type': 'executable',
+      'dependencies': [
+        '<(node_lib_target_name)',
+        'deps/histogram/histogram.gyp:histogram',
+        'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'node_dtrace_header',
+        'node_dtrace_ustack',
+        'node_dtrace_provider',
+      ],
+      'includes': [
+        'node.gypi'
+      ],
+      'include_dirs': [
+        'src',
+        'tools/msvs/genfiles',
+        'deps/v8/include',
+        'deps/cares/include',
+        'deps/uv/include',
+        'deps/uvwasi/include',
+        'test/cctest',
+      ],
+      'defines': [
+        'NODE_ARCH="<(target_arch)"',
+        'NODE_PLATFORM="<(OS)"',
+        'NODE_WANT_INTERNALS=1',
+      ],
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/fuzzers/fuzz_env.cc',
+      ],
+      'conditions': [
+        ['OS=="linux"', {
+          'ldflags': [ '-fsanitize=fuzzer' ]
+        }],
+        # Ensure that ossfuzz flag has been set and that we are on Linux
+        [ 'OS!="linux" or ossfuzz!="true"', {
+          'type': 'none',
+        }],
+      ],
+    }, # fuzz_env
     {
       'target_name': 'cctest',
       'type': 'executable',
@@ -1201,6 +1296,62 @@
         }],
       ],
     }, # cctest
+
+    {
+      'target_name': 'embedtest',
+      'type': 'executable',
+
+      'dependencies': [
+        '<(node_lib_target_name)',
+        'deps/histogram/histogram.gyp:histogram',
+        'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'node_dtrace_header',
+        'node_dtrace_ustack',
+        'node_dtrace_provider',
+      ],
+
+      'includes': [
+        'node.gypi'
+      ],
+
+      'include_dirs': [
+        'src',
+        'tools/msvs/genfiles',
+        'deps/v8/include',
+        'deps/cares/include',
+        'deps/uv/include',
+        'deps/uvwasi/include',
+        'test/embedding',
+      ],
+
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/embedding/embedtest.cc',
+      ],
+
+      'conditions': [
+        ['OS=="solaris"', {
+          'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
+        }],
+        # Skip cctest while building shared lib node for Windows
+        [ 'OS=="win" and node_shared=="true"', {
+          'type': 'none',
+        }],
+        [ 'node_shared=="true"', {
+          'xcode_settings': {
+            'OTHER_LDFLAGS': [ '-Wl,-rpath,@loader_path', ],
+          },
+        }],
+        ['OS=="win"', {
+          'libraries': [
+            'Dbghelp.lib',
+            'winmm.lib',
+            'Ws2_32.lib',
+          ],
+        }],
+      ],
+    }, # embedtest
 
     # TODO(joyeecheung): do not depend on node_lib,
     # instead create a smaller static library node_lib_base that does

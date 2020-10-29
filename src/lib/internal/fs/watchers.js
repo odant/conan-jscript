@@ -29,6 +29,12 @@ const assert = require('internal/assert');
 const kOldStatus = Symbol('kOldStatus');
 const kUseBigint = Symbol('kUseBigint');
 
+const kFSWatchStart = Symbol('kFSWatchStart');
+const kFSStatWatcherStart = Symbol('kFSStatWatcherStart');
+const KFSStatWatcherRefCount = Symbol('KFSStatWatcherRefCount');
+const KFSStatWatcherMaxRefCount = Symbol('KFSStatWatcherMaxRefCount');
+const kFSStatWatcherAddOrCleanRef = Symbol('kFSStatWatcherAddOrCleanRef');
+
 function emitStop(self) {
   self.emit('stop');
 }
@@ -39,6 +45,8 @@ function StatWatcher(bigint) {
   this._handle = null;
   this[kOldStatus] = -1;
   this[kUseBigint] = bigint;
+  this[KFSStatWatcherRefCount] = 1;
+  this[KFSStatWatcherMaxRefCount] = 1;
 }
 ObjectSetPrototypeOf(StatWatcher.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(StatWatcher, EventEmitter);
@@ -56,13 +64,15 @@ function onchange(newStatus, stats) {
             getStatsFromBinding(stats, kFsStatsFieldsNumber));
 }
 
-// FIXME(joyeecheung): this method is not documented.
 // At the moment if filename is undefined, we
-// 1. Throw an Error if it's the first time .start() is called
-// 2. Return silently if .start() has already been called
+// 1. Throw an Error if it's the first
+//    time Symbol('kFSStatWatcherStart') is called
+// 2. Return silently if Symbol('kFSStatWatcherStart') has already been called
 //    on a valid filename and the wrap has been initialized
 // This method is a noop if the watcher has already been started.
-StatWatcher.prototype.start = function(filename, persistent, interval) {
+StatWatcher.prototype[kFSStatWatcherStart] = function(filename,
+                                                      persistent,
+                                                      interval) {
   if (this._handle !== null)
     return;
 
@@ -70,10 +80,10 @@ StatWatcher.prototype.start = function(filename, persistent, interval) {
   this._handle[owner_symbol] = this;
   this._handle.onchange = onchange;
   if (!persistent)
-    this._handle.unref();
+    this.unref();
 
   // uv_fs_poll is a little more powerful than ev_stat but we curb it for
-  // the sake of backwards compatibility
+  // the sake of backwards compatibility.
   this[kOldStatus] = -1;
 
   filename = getValidatedPath(filename, 'filename');
@@ -90,6 +100,12 @@ StatWatcher.prototype.start = function(filename, persistent, interval) {
   }
 };
 
+// To maximize backward-compatibility for the end user,
+// a no-op stub method has been added instead of
+// totally removing StatWatcher.prototype.start.
+// This should not be documented.
+StatWatcher.prototype.start = () => {};
+
 // FIXME(joyeecheung): this method is not documented while there is
 // another documented fs.unwatchFile(). The counterpart in
 // FSWatcher is .close()
@@ -104,6 +120,41 @@ StatWatcher.prototype.stop = function() {
                              this);
   this._handle.close();
   this._handle = null;
+};
+
+// Clean up or add ref counters.
+StatWatcher.prototype[kFSStatWatcherAddOrCleanRef] = function(operate) {
+  if (operate === 'add') {
+    // Add a Ref
+    this[KFSStatWatcherRefCount]++;
+    this[KFSStatWatcherMaxRefCount]++;
+  } else if (operate === 'clean') {
+    // Clean up a single
+    this[KFSStatWatcherMaxRefCount]--;
+    this.unref();
+  } else if (operate === 'cleanAll') {
+    // Clean up all
+    this[KFSStatWatcherMaxRefCount] = 0;
+    this[KFSStatWatcherRefCount] = 0;
+    this._handle && this._handle.unref();
+  }
+};
+
+StatWatcher.prototype.ref = function() {
+  // Avoid refCount calling ref multiple times causing unref to have no effect.
+  if (this[KFSStatWatcherRefCount] === this[KFSStatWatcherMaxRefCount])
+    return this;
+  if (this._handle && this[KFSStatWatcherRefCount]++ === 0)
+    this._handle.ref();
+  return this;
+};
+
+StatWatcher.prototype.unref = function() {
+  // Avoid refCount calling unref multiple times causing ref to have no effect.
+  if (this[KFSStatWatcherRefCount] === 0) return this;
+  if (this._handle && --this[KFSStatWatcherRefCount] === 0)
+    this._handle.unref();
+  return this;
 };
 
 
@@ -122,7 +173,7 @@ function FSWatcher() {
       if (this._handle !== null) {
         // We don't use this.close() here to avoid firing the close event.
         this._handle.close();
-        this._handle = null;  // Make the handle garbage collectable
+        this._handle = null;  // Make the handle garbage collectable.
       }
       const error = errors.uvException({
         errno: status,
@@ -139,18 +190,16 @@ function FSWatcher() {
 ObjectSetPrototypeOf(FSWatcher.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(FSWatcher, EventEmitter);
 
-
-// FIXME(joyeecheung): this method is not documented.
 // At the moment if filename is undefined, we
-// 1. Throw an Error if it's the first time .start() is called
-// 2. Return silently if .start() has already been called
+// 1. Throw an Error if it's the first time Symbol('kFSWatchStart') is called
+// 2. Return silently if Symbol('kFSWatchStart') has already been called
 //    on a valid filename and the wrap has been initialized
 // 3. Return silently if the watcher has already been closed
 // This method is a noop if the watcher has already been started.
-FSWatcher.prototype.start = function(filename,
-                                     persistent,
-                                     recursive,
-                                     encoding) {
+FSWatcher.prototype[kFSWatchStart] = function(filename,
+                                              persistent,
+                                              recursive,
+                                              encoding) {
   if (this._handle === null) {  // closed
     return;
   }
@@ -178,6 +227,12 @@ FSWatcher.prototype.start = function(filename,
   }
 };
 
+// To maximize backward-compatibility for the end user,
+// a no-op stub method has been added instead of
+// totally removing FSWatcher.prototype.start.
+// This should not be documented.
+FSWatcher.prototype.start = () => {};
+
 // This method is a noop if the watcher has not been started or
 // has already been closed.
 FSWatcher.prototype.close = function() {
@@ -189,8 +244,18 @@ FSWatcher.prototype.close = function() {
     return;
   }
   this._handle.close();
-  this._handle = null;  // Make the handle garbage collectable
+  this._handle = null;  // Make the handle garbage collectable.
   process.nextTick(emitCloseNT, this);
+};
+
+FSWatcher.prototype.ref = function() {
+  if (this._handle) this._handle.ref();
+  return this;
+};
+
+FSWatcher.prototype.unref = function() {
+  if (this._handle) this._handle.unref();
+  return this;
 };
 
 function emitCloseNT(self) {
@@ -206,5 +271,8 @@ ObjectDefineProperty(FSEvent.prototype, 'owner', {
 
 module.exports = {
   FSWatcher,
-  StatWatcher
+  StatWatcher,
+  kFSWatchStart,
+  kFSStatWatcherStart,
+  kFSStatWatcherAddOrCleanRef,
 };

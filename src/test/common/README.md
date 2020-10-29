@@ -81,7 +81,8 @@ least 1 GHz.
 
 Indicates if there is more than 1gb of total memory.
 
-### expectsError(validator\[, exact\])
+### `expectsError(validator[, exact])`
+
 * `validator` [&lt;Object>][] | [&lt;RegExp>][] | [&lt;Function>][] |
   [&lt;Error>][] The validator behaves identical to
   `assert.throws(fn, validator)`.
@@ -366,12 +367,6 @@ const { spawn } = require('child_process');
 
 spawn(...common.pwdCommand, { stdio: ['pipe'] });
 ```
-
-### `rootDir`
-
-* [&lt;string>][]
-
-Path to the 'root' directory. either `/` or `c:\\` (windows)
 
 ### `runWithInvalidFD(func)`
 
@@ -935,6 +930,26 @@ The realpath of the testing temporary directory.
 
 Deletes and recreates the testing temporary directory.
 
+The first time `refresh()` runs,  it adds a listener to process `'exit'` that
+cleans the temporary directory. Thus, every file under `tmpdir.path` needs to
+be closed before the test completes. A good way to do this is to add a
+listener to process `'beforeExit'`. If a file needs to be left open until
+Node.js completes, use a child process and call `refresh()` only in the
+parent.
+
+## UDP pair helper
+
+The `common/udppair` module exports a function `makeUDPPair` and a class
+`FakeUDPWrap`.
+
+`FakeUDPWrap` emits `'send'` events when data is to be sent on it, and provides
+an `emitReceived()` API for actin as if data has been received on it.
+
+`makeUDPPair` returns an object `{ clientSide, serverSide }` where each side
+is an `FakeUDPWrap` connected to the other side.
+
+There is no difference between cient or server side beyond their names.
+
 ## WPT Module
 
 ### `harness`
@@ -947,7 +962,7 @@ the original WPT harness, see [the WPT tests README][].
 
 ### Class: WPTRunner
 
-A driver class for running WPT with the WPT harness in a vm.
+A driver class for running WPT with the WPT harness in a worker thread.
 
 See [the WPT tests README][] for details.
 

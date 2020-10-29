@@ -52,7 +52,6 @@ is provided below for reference.
       "nghttp2": "1.34.0",
       "napi": "3",
       "llhttp": "1.0.1",
-      "http_parser": "2.8.0",
       "openssl": "1.1.0j"
     },
     "release": {
@@ -581,7 +580,9 @@ Specific API documentation can be found under
 ## Interaction with workers
 <!-- YAML
 changes:
-  - version: v12.16.2
+  - version:
+      - v13.9.0
+      - v12.16.2
     pr-url: https://github.com/nodejs/node/pull/31386
     description: Workers are now included in the report.
 -->
@@ -597,5 +598,5 @@ The thread which is generating the report will wait for the reports from Worker
 threads to finish. However, the latency for this will usually be low, as both
 running JavaScript and the event loop are interrupted to generate the report.
 
-[`process API documentation`]: process.html
-[`Worker`]: worker_threads.html
+[`Worker`]: worker_threads.md
+[`process API documentation`]: process.md

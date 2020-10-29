@@ -3,6 +3,8 @@
 #include "node_errors.h"
 #include "node_process.h"
 
+#include <time.h>  // tzset(), _tzset()
+
 namespace node {
 using v8::Array;
 using v8::Boolean;
@@ -62,6 +64,19 @@ Mutex env_var_mutex;
 std::shared_ptr<KVStore> system_environment = std::make_shared<RealEnvStore>();
 }  // namespace per_process
 
+template <typename T>
+void DateTimeConfigurationChangeNotification(Isolate* isolate, const T& key) {
+  if (key.length() == 2 && key[0] == 'T' && key[1] == 'Z') {
+#ifdef __POSIX__
+    tzset();
+#else
+    _tzset();
+#endif
+    auto constexpr time_zone_detection = Isolate::TimeZoneDetection::kRedetect;
+    isolate->DateTimeConfigurationChangeNotification(time_zone_detection);
+  }
+}
+
 Maybe<std::string> RealEnvStore::Get(const char* key) const {
   Mutex::ScopedLock lock(per_process::env_var_mutex);
 
@@ -109,6 +124,7 @@ void RealEnvStore::Set(Isolate* isolate,
   if (key.length() > 0 && key[0] == '=') return;
 #endif
   uv_os_setenv(*key, *val);
+  DateTimeConfigurationChangeNotification(isolate, key);
 }
 
 int32_t RealEnvStore::Query(const char* key) const {
@@ -143,6 +159,7 @@ void RealEnvStore::Delete(Isolate* isolate, Local<String> property) {
 
   node::Utf8Value key(isolate, property);
   uv_os_unsetenv(*key);
+  DateTimeConfigurationChangeNotification(isolate, key);
 }
 
 Local<Array> RealEnvStore::Enumerate(Isolate* isolate) const {
@@ -162,8 +179,7 @@ Local<Array> RealEnvStore::Enumerate(Isolate* isolate) const {
     // https://github.com/libuv/libuv/pull/2473 and can be removed later.
     if (items[i].name[0] == '=' || items[i].name[0] == '\0') continue;
 #endif
-    MaybeLocal<String> str = String::NewFromUtf8(
-        isolate, items[i].name, NewStringType::kNormal);
+    MaybeLocal<String> str = String::NewFromUtf8(isolate, items[i].name);
     if (str.IsEmpty()) {
       isolate->ThrowException(ERR_STRING_TOO_LONG(isolate));
       return Local<Array>();
@@ -360,13 +376,11 @@ static void EnvEnumerator(const PropertyCallbackInfo<Array>& info) {
       env->env_vars()->Enumerate(env->isolate()));
 }
 
-MaybeLocal<Object> CreateEnvVarProxy(Local<Context> context,
-                                     Isolate* isolate,
-                                     Local<Object> data) {
+MaybeLocal<Object> CreateEnvVarProxy(Local<Context> context, Isolate* isolate) {
   EscapableHandleScope scope(isolate);
   Local<ObjectTemplate> env_proxy_template = ObjectTemplate::New(isolate);
   env_proxy_template->SetHandler(NamedPropertyHandlerConfiguration(
-      EnvGetter, EnvSetter, EnvQuery, EnvDeleter, EnvEnumerator, data,
+      EnvGetter, EnvSetter, EnvQuery, EnvDeleter, EnvEnumerator, Local<Value>(),
       PropertyHandlerFlags::kHasNoSideEffect));
   return scope.EscapeMaybe(env_proxy_template->NewInstance(context));
 }

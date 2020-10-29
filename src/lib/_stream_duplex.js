@@ -28,6 +28,7 @@
 
 const {
   ObjectDefineProperties,
+  ObjectGetOwnPropertyDescriptor,
   ObjectKeys,
   ObjectSetPrototypeOf,
 } = primordials;
@@ -65,12 +66,27 @@ function Duplex(options) {
 
     if (options.allowHalfOpen === false) {
       this.allowHalfOpen = false;
-      this.once('end', onend);
     }
   }
 }
 
 ObjectDefineProperties(Duplex.prototype, {
+  writable:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writable'),
+  writableHighWaterMark:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableHighWaterMark'),
+  writableObjectMode:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableObjectMode'),
+  writableBuffer:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableBuffer'),
+  writableLength:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableLength'),
+  writableFinished:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableFinished'),
+  writableCorked:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableCorked'),
+  writableEnded:
+    ObjectGetOwnPropertyDescriptor(Writable.prototype, 'writableEnded'),
 
   destroyed: {
     get() {
@@ -82,62 +98,11 @@ ObjectDefineProperties(Duplex.prototype, {
     },
     set(value) {
       // Backward compatibility, the user is explicitly
-      // managing destroyed
+      // managing destroyed.
       if (this._readableState && this._writableState) {
         this._readableState.destroyed = value;
         this._writableState.destroyed = value;
       }
     }
-  },
-
-  writableHighWaterMark: {
-    get() {
-      return this._writableState && this._writableState.highWaterMark;
-    }
-  },
-
-  writableBuffer: {
-    get() {
-      return this._writableState && this._writableState.getBuffer();
-    }
-  },
-
-  writableLength: {
-    get() {
-      return this._writableState && this._writableState.length;
-    }
-  },
-
-  writableFinished: {
-    get() {
-      return this._writableState ? this._writableState.finished : false;
-    }
-  },
-
-  writableCorked: {
-    get() {
-      return this._writableState ? this._writableState.corked : 0;
-    }
-  },
-
-  writableEnded: {
-    get() {
-      return this._writableState ? this._writableState.ending : false;
-    }
   }
 });
-
-// The no-half-open enforcer
-function onend() {
-  // If the writable side ended, then we're ok.
-  if (this._writableState.ended)
-    return;
-
-  // No more data can be written.
-  // But allow more writes to happen in this tick.
-  process.nextTick(onEndNT, this);
-}
-
-function onEndNT(self) {
-  self.end();
-}

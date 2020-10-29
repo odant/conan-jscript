@@ -2,11 +2,15 @@
 
 const {
   Map,
+  NumberParseInt,
   ObjectDefineProperty,
   SafeWeakMap,
 } = primordials;
 
-const { getOptionValue } = require('internal/options');
+const {
+  getOptionValue,
+  shouldNotRegisterESMLoader
+} = require('internal/options');
 const { Buffer } = require('buffer');
 const { ERR_MANIFEST_ASSERT_INTEGRITY } = require('internal/errors').codes;
 const assert = require('internal/assert');
@@ -89,7 +93,9 @@ function patchProcessObject(expandArgv1) {
   if (expandArgv1 && process.argv[1] && !process.argv[1].startsWith('-')) {
     // Expand process.argv[1] into a full path.
     const path = require('path');
-    process.argv[1] = path.resolve(process.argv[1]);
+    try {
+      process.argv[1] = path.resolve(process.argv[1]);
+    } catch {}
   }
 
   // TODO(joyeecheung): most of these should be deprecated and removed,
@@ -316,7 +322,7 @@ function setupChildProcessIpcChannel() {
   if (process.env.NODE_CHANNEL_FD) {
     const assert = require('internal/assert');
 
-    const fd = parseInt(process.env.NODE_CHANNEL_FD, 10);
+    const fd = NumberParseInt(process.env.NODE_CHANNEL_FD, 10);
     assert(fd >= 0);
 
     // Make sure it's not accidentally inherited by child processes.
@@ -407,6 +413,8 @@ function initializeCJSLoader() {
 function initializeESMLoader() {
   // Create this WeakMap in js-land because V8 has no C++ API for WeakMap.
   internalBinding('module_wrap').callbackMap = new SafeWeakMap();
+
+  if (shouldNotRegisterESMLoader) return;
 
   const {
     setImportModuleDynamicallyCallback,

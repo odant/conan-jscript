@@ -41,6 +41,7 @@
 #include "node_version.h"
 
 #if HAVE_OPENSSL
+#include "allocated_buffer-inl.h"  // Inlined functions needed by node_crypto.h
 #include "node_crypto.h"
 #endif
 
@@ -67,6 +68,17 @@
 #endif
 
 #include "large_pages/node_large_page.h"
+
+#if defined(__APPLE__) || defined(__linux__)
+#define NODE_USE_V8_WASM_TRAP_HANDLER 1
+#else
+#define NODE_USE_V8_WASM_TRAP_HANDLER 0
+#endif
+
+#if NODE_USE_V8_WASM_TRAP_HANDLER
+#include <atomic>
+#include "v8-wasm-trap-handler-posix.h"
+#endif  // NODE_USE_V8_WASM_TRAP_HANDLER
 
 // ========== global C headers ==========
 
@@ -136,24 +148,17 @@ bool v8_initialized = false;
 // node_internals.h
 // process-relative uptime base in nanoseconds, initialized in node::Start()
 uint64_t node_start_time;
-// Tells whether --prof is passed.
-bool v8_is_profiling = false;
 
 // node_v8_platform-inl.h
 struct V8Platform v8_platform;
 }  // namespace per_process
 
-void SignalExit(int signo) {
+#ifdef __POSIX__
+void SignalExit(int signo, siginfo_t* info, void* ucontext) {
   ResetStdio();
-#ifdef __FreeBSD__
-  // FreeBSD has a nasty bug, see RegisterSignalHandler for details
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = SIG_DFL;
-  CHECK_EQ(sigaction(signo, &sa, nullptr), 0);
-#endif
   raise(signo);
 }
+#endif  // __POSIX__
 
 MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
                                       const char* id,
@@ -190,8 +195,8 @@ MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
 int Environment::InitializeInspector(
     std::unique_ptr<inspector::ParentInspectorHandle> parent_handle) {
   std::string inspector_path;
+  bool is_main = !parent_handle;
   if (parent_handle) {
-    DCHECK(!is_main_thread());
     inspector_path = parent_handle->url();
     inspector_agent_->SetParentHandle(std::move(parent_handle));
   } else {
@@ -205,7 +210,7 @@ int Environment::InitializeInspector(
   inspector_agent_->Start(inspector_path,
                           options_->debug_options(),
                           inspector_host_port(),
-                          is_main_thread());
+                          is_main);
   if (options_->debug_options().inspector_enabled &&
       !inspector_agent_->IsListening()) {
     return 12;  // Signal internal error
@@ -221,11 +226,56 @@ int Environment::InitializeInspector(
 }
 #endif  // HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
 
+#define ATOMIC_WAIT_EVENTS(V)                                               \
+  V(kStartWait,           "started")                                        \
+  V(kWokenUp,             "was woken up by another thread")                 \
+  V(kTimedOut,            "timed out")                                      \
+  V(kTerminatedExecution, "was stopped by terminated execution")            \
+  V(kAPIStopped,          "was stopped through the embedder API")           \
+  V(kNotEqual,            "did not wait because the values mismatched")     \
+
+static void AtomicsWaitCallback(Isolate::AtomicsWaitEvent event,
+                                Local<v8::SharedArrayBuffer> array_buffer,
+                                size_t offset_in_bytes, int64_t value,
+                                double timeout_in_ms,
+                                Isolate::AtomicsWaitWakeHandle* stop_handle,
+                                void* data) {
+  Environment* env = static_cast<Environment*>(data);
+
+  const char* message = "(unknown event)";
+  switch (event) {
+#define V(key, msg)                         \
+    case Isolate::AtomicsWaitEvent::key:    \
+      message = msg;                        \
+      break;
+    ATOMIC_WAIT_EVENTS(V)
+#undef V
+  }
+
+  fprintf(stderr,
+          "(node:%d) [Thread %" PRIu64 "] Atomics.wait(%p + %zx, %" PRId64
+              ", %.f) %s\n",
+          static_cast<int>(uv_os_getpid()),
+          env->thread_id(),
+          array_buffer->GetBackingStore()->Data(),
+          offset_in_bytes,
+          value,
+          timeout_in_ms,
+          message);
+}
+
 void Environment::InitializeDiagnostics() {
   isolate_->GetHeapProfiler()->AddBuildEmbedderGraphCallback(
       Environment::BuildEmbedderGraph, this);
   if (options_->trace_uncaught)
     isolate_->SetCaptureStackTraceForUncaughtExceptions(true);
+  if (options_->trace_atomics_wait) {
+    isolate_->SetAtomicsWaitCallback(AtomicsWaitCallback, this);
+    AddCleanupHook([](void* data) {
+      Environment* env = static_cast<Environment*>(data);
+      env->isolate()->SetAtomicsWaitCallback(nullptr, nullptr);
+    }, this);
+  }
 
 #if defined HAVE_DTRACE || defined HAVE_ETW
   InitDTrace(this);
@@ -323,8 +373,7 @@ MaybeLocal<Value> Environment::BootstrapNode() {
 
   Local<String> env_string = FIXED_ONE_BYTE_STRING(isolate_, "env");
   Local<Object> env_var_proxy;
-  if (!CreateEnvVarProxy(context(), isolate_, as_callback_data())
-           .ToLocal(&env_var_proxy) ||
+  if (!CreateEnvVarProxy(context(), isolate_).ToLocal(&env_var_proxy) ||
       process_object()->Set(context(), env_string, env_var_proxy).IsNothing()) {
     return MaybeLocal<Value>();
   }
@@ -364,6 +413,7 @@ void MarkBootstrapComplete(const FunctionCallbackInfo<Value>& args) {
       performance::NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
 }
 
+static
 MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
   EscapableHandleScope scope(env->isolate());
   CHECK_NOT_NULL(main_script_id);
@@ -384,22 +434,40 @@ MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
           ->GetFunction(env->context())
           .ToLocalChecked()};
 
-  InternalCallbackScope callback_scope(
-    env,
-    Object::New(env->isolate()),
-    { 1, 0 },
-    InternalCallbackScope::kSkipAsyncHooks);
-
   return scope.EscapeMaybe(
       ExecuteBootstrapper(env, main_script_id, &parameters, &arguments));
 }
 
-MaybeLocal<Value> StartMainThreadExecution(Environment* env) {
+MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
+  InternalCallbackScope callback_scope(
+      env,
+      Object::New(env->isolate()),
+      { 1, 0 },
+      InternalCallbackScope::kSkipAsyncHooks);
+
+  if (cb != nullptr) {
+    EscapableHandleScope scope(env->isolate());
+
+    if (StartExecution(env, "internal/bootstrap/environment").IsEmpty())
+      return {};
+
+    StartExecutionCallbackInfo info = {
+      env->process_object(),
+      env->native_module_require(),
+    };
+
+    return scope.EscapeMaybe(cb(info));
+  }
+
   // To allow people to extend Node in different ways, this hook allows
   // one to drop a file lib/_third_party_main.js into the build
   // directory which will be executed instead of Node's normal loading.
   if (NativeModuleEnv::Exists("_third_party_main")) {
     return StartExecution(env, "internal/main/run_third_party_main");
+  }
+
+  if (env->worker_context() != nullptr) {
+    return StartExecution(env, "internal/main/worker_thread");
   }
 
   std::string first_argv;
@@ -440,29 +508,48 @@ MaybeLocal<Value> StartMainThreadExecution(Environment* env) {
   return StartExecution(env, "internal/main/eval_stdin");
 }
 
-void LoadEnvironment(Environment* env) {
-  CHECK(env->is_main_thread());
-  // TODO(joyeecheung): Not all of the execution modes in
-  // StartMainThreadExecution() make sense for embedders. Pick the
-  // useful ones out, and allow embedders to customize the entry
-  // point more directly without using _third_party_main.js
-  USE(StartMainThreadExecution(env));
-}
+#ifdef __POSIX__
+typedef void (*sigaction_cb)(int signo, siginfo_t* info, void* ucontext);
+#endif
+#if NODE_USE_V8_WASM_TRAP_HANDLER
+static std::atomic<sigaction_cb> previous_sigsegv_action;
 
+void TrapWebAssemblyOrContinue(int signo, siginfo_t* info, void* ucontext) {
+  if (!v8::TryHandleWebAssemblyTrapPosix(signo, info, ucontext)) {
+    sigaction_cb prev = previous_sigsegv_action.load();
+    if (prev != nullptr) {
+      prev(signo, info, ucontext);
+    } else {
+      // Reset to the default signal handler, i.e. cause a hard crash.
+      struct sigaction sa;
+      memset(&sa, 0, sizeof(sa));
+      sa.sa_handler = SIG_DFL;
+      CHECK_EQ(sigaction(signo, &sa, nullptr), 0);
+
+      ResetStdio();
+      raise(signo);
+    }
+  }
+}
+#endif  // NODE_USE_V8_WASM_TRAP_HANDLER
 
 #ifdef __POSIX__
 void RegisterSignalHandler(int signal,
-                           void (*handler)(int signal),
+                           sigaction_cb handler,
                            bool reset_handler) {
+  CHECK_NOT_NULL(handler);
+#if NODE_USE_V8_WASM_TRAP_HANDLER
+  if (signal == SIGSEGV) {
+    CHECK(previous_sigsegv_action.is_lock_free());
+    CHECK(!reset_handler);
+    previous_sigsegv_action.store(handler);
+    return;
+  }
+#endif  // NODE_USE_V8_WASM_TRAP_HANDLER
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = handler;
-#ifndef __FreeBSD__
-  // FreeBSD has a nasty bug with SA_RESETHAND reseting the SA_SIGINFO, that is
-  // in turn set for a libthr wrapper. This leads to a crash.
-  // Work around the issue by manually setting SIG_DFL in the signal handler
+  sa.sa_sigaction = handler;
   sa.sa_flags = reset_handler ? SA_RESETHAND : 0;
-#endif
   sigfillset(&sa.sa_mask);
   CHECK_EQ(sigaction(signal, &sa, nullptr), 0);
 }
@@ -547,6 +634,21 @@ inline void PlatformInit() {
 
   RegisterSignalHandler(SIGINT, SignalExit, true);
   RegisterSignalHandler(SIGTERM, SignalExit, true);
+
+#if NODE_USE_V8_WASM_TRAP_HANDLER
+  // Tell V8 to disable emitting WebAssembly
+  // memory bounds checks. This means that we have
+  // to catch the SIGSEGV in TrapWebAssemblyOrContinue
+  // and pass the signal context to V8.
+  {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = TrapWebAssemblyOrContinue;
+    sa.sa_flags = SA_SIGINFO;
+    CHECK_EQ(sigaction(SIGSEGV, &sa, nullptr), 0);
+  }
+  V8::EnableWebAssemblyTrapHandler(false);
+#endif  // NODE_USE_V8_WASM_TRAP_HANDLER
 
   // Raise the open file descriptor limit.
   struct rlimit lim;
@@ -678,6 +780,13 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
     return 12;
   }
 
+  // TODO(mylesborins): remove this when the harmony-top-level-await flag
+  // is removed in V8
+  if (std::find(v8_args.begin(), v8_args.end(),
+                "--no-harmony-top-level-await") == v8_args.end()) {
+    v8_args.push_back("--harmony-top-level-await");
+  }
+
   auto env_opts = per_process::cli_options->per_isolate->per_env;
   if (std::find(v8_args.begin(), v8_args.end(),
                 "--abort-on-uncaught-exception") != v8_args.end() ||
@@ -686,19 +795,11 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
-  // TODO(bnoordhuis) Intercept --prof arguments and start the CPU profiler
-  // manually?  That would give us a little more control over its runtime
-  // behavior but it could also interfere with the user's intentions in ways
-  // we fail to anticipate.  Dillema.
-  if (std::find(v8_args.begin(), v8_args.end(), "--prof") != v8_args.end()) {
-    per_process::v8_is_profiling = true;
-  }
-
 #ifdef __POSIX__
   // Block SIGPROF signals when sleeping in epoll_wait/kevent/etc.  Avoids the
   // performance penalty of frequent EINTR wakeups when the profiler is running.
   // Only do this for v8.log profiling, as it breaks v8::CpuProfiler users.
-  if (per_process::v8_is_profiling) {
+  if (std::find(v8_args.begin(), v8_args.end(), "--prof") != v8_args.end()) {
     uv_loop_configure(uv_default_loop(), UV_LOOP_BLOCK_SIGNAL, SIGPROF);
   }
 #endif
@@ -853,8 +954,8 @@ void Init(int* argc,
   }
 
   if (per_process::cli_options->print_v8_help) {
-    V8::SetFlagsFromString("--help", 6);  // Doesn't return.
-    UNREACHABLE();
+    V8::SetFlagsFromString("--help", static_cast<size_t>(6));
+    exit(0);
   }
 
   *argc = argv_.size();
@@ -916,12 +1017,16 @@ InitializationResult InitializeOncePerProcess(int argc, char** argv) {
   if (per_process::cli_options->print_bash_completion) {
     std::string completion = options_parser::GetBashCompletion();
     printf("%s\n", completion.c_str());
-    exit(0);
+    result.exit_code = 0;
+    result.early_return = true;
+    return result;
   }
 
   if (per_process::cli_options->print_v8_help) {
-    V8::SetFlagsFromString("--help", 6);  // Doesn't return.
-    UNREACHABLE();
+    V8::SetFlagsFromString("--help", static_cast<size_t>(6));
+    result.exit_code = 0;
+    result.early_return = true;
+    return result;
   }
 
 #if HAVE_OPENSSL
@@ -985,6 +1090,7 @@ int Start(int argc, char** argv) {
         indexes = NodeMainInstance::GetIsolateDataIndexes();
       }
     }
+    uv_loop_configure(uv_default_loop(), UV_METRICS_IDLE_TIME);
 
     NodeMainInstance main_instance(&params,
                                    uv_default_loop(),

@@ -7,6 +7,7 @@ const {
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectKeys,
+  String,
 } = primordials;
 
 const { inspect } = require('internal/util/inspect');
@@ -312,6 +313,7 @@ class AssertionError extends Error {
       message,
       operator,
       stackStartFn,
+      details,
       // Compatibility with older versions.
       stackStartFunction
     } = options;
@@ -426,9 +428,22 @@ class AssertionError extends Error {
       configurable: true
     });
     this.code = 'ERR_ASSERTION';
-    this.actual = actual;
-    this.expected = expected;
-    this.operator = operator;
+    if (details) {
+      this.actual = undefined;
+      this.expected = undefined;
+      this.operator = undefined;
+      for (let i = 0; i < details.length; i++) {
+        this['message ' + i] = details[i].message;
+        this['actual ' + i] = details[i].actual;
+        this['expected ' + i] = details[i].expected;
+        this['operator ' + i] = details[i].operator;
+        this['stack trace ' + i] = details[i].stack;
+      }
+    } else {
+      this.actual = actual;
+      this.expected = expected;
+      this.operator = operator;
+    }
     // eslint-disable-next-line no-restricted-syntax
     Error.captureStackTrace(this, stackStartFn || stackStartFunction);
     // Create error message including the error code in the name.

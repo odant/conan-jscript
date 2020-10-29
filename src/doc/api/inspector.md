@@ -4,6 +4,8 @@
 
 > Stability: 1 - Experimental
 
+<!-- source_link=lib/inspector.js -->
+
 The `inspector` module provides an API for interacting with the V8 inspector.
 
 It can be accessed using:
@@ -43,7 +45,7 @@ started.
 If wait is `true`, will block until a client has connected to the inspect port
 and flow control has been passed to the debugger client.
 
-See the [security warning](cli.html#inspector_security) regarding the `host`
+See the [security warning](cli.md#inspector_security) regarding the `host`
 parameter usage.
 
 ## `inspector.url()`
@@ -84,7 +86,7 @@ An exception will be thrown if there is no active inspector.
 The `inspector.Session` is used for dispatching messages to the V8 inspector
 back-end and receiving message responses and notifications.
 
-### Constructor: `new inspector.Session()`
+### `new inspector.Session()`
 <!-- YAML
 added: v8.0.0
 -->
@@ -237,8 +239,8 @@ session.post('HeapProfiler.takeHeapSnapshot', null, (err, r) => {
 });
 ```
 
-[`'Debugger.paused'`]: https://chromedevtools.github.io/devtools-protocol/v8/Debugger#event-paused
-[`session.connect()`]: #inspector_session_connect
 [CPU Profiler]: https://chromedevtools.github.io/devtools-protocol/v8/Profiler
 [Chrome DevTools Protocol Viewer]: https://chromedevtools.github.io/devtools-protocol/v8/
 [Heap Profiler]: https://chromedevtools.github.io/devtools-protocol/v8/HeapProfiler
+[`'Debugger.paused'`]: https://chromedevtools.github.io/devtools-protocol/v8/Debugger#event-paused
+[`session.connect()`]: #inspector_session_connect

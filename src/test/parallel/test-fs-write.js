@@ -32,6 +32,7 @@ tmpdir.refresh();
 const fn = path.join(tmpdir.path, 'write.txt');
 const fn2 = path.join(tmpdir.path, 'write2.txt');
 const fn3 = path.join(tmpdir.path, 'write3.txt');
+const fn4 = path.join(tmpdir.path, 'write4.txt');
 const expected = 'ümlaut.';
 const constants = fs.constants;
 
@@ -134,6 +135,21 @@ fs.open(fn3, 'w', 0o644, common.mustCall((err, fd) => {
   fs.write(fd, expected, done);
 }));
 
+fs.open(fn4, 'w', 0o644, common.mustCall((err, fd) => {
+  assert.ifError(err);
+
+  const done = common.mustCall((err, written) => {
+    assert.ifError(err);
+    assert.strictEqual(written, Buffer.byteLength(expected));
+    fs.closeSync(fd);
+  });
+
+  const data = {
+    toString() { return expected; }
+  };
+  fs.write(fd, data, done);
+}));
+
 [false, 'test', {}, [], null, undefined].forEach((i) => {
   assert.throws(
     () => fs.write(i, common.mustNotCall()),
@@ -147,6 +163,23 @@ fs.open(fn3, 'w', 0o644, common.mustCall((err, fd) => {
     {
       code: 'ERR_INVALID_ARG_TYPE',
       name: 'TypeError'
+    }
+  );
+});
+
+[false, 5, {}, [], null, undefined].forEach((data) => {
+  assert.throws(
+    () => fs.write(1, data, common.mustNotCall()),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      message: /"buffer"/
+    }
+  );
+  assert.throws(
+    () => fs.writeSync(1, data),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      message: /"buffer"/
     }
   );
 });

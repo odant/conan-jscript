@@ -27,11 +27,8 @@ const {
 } = primordials;
 const { setImmediate } = require('timers');
 
+const { methods, HTTPParser } = internalBinding('http_parser');
 const { getOptionValue } = require('internal/options');
-
-const { methods, HTTPParser } =
-  getOptionValue('--http-parser') === 'legacy' ?
-    internalBinding('http_parser') : internalBinding('http_parser_llhttp');
 const insecureHTTPParser = getOptionValue('--insecure-http-parser');
 
 const FreeList = require('internal/freelist');
@@ -42,14 +39,18 @@ const {
   readStop
 } = incoming;
 
-const debug = require('internal/util/debuglog').debuglog('http');
+let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
+  debug = fn;
+});
 
 const kIncomingMessage = Symbol('IncomingMessage');
+const kRequestTimeout = Symbol('RequestTimeout');
 const kOnHeaders = HTTPParser.kOnHeaders | 0;
 const kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
 const kOnBody = HTTPParser.kOnBody | 0;
 const kOnMessageComplete = HTTPParser.kOnMessageComplete | 0;
 const kOnExecute = HTTPParser.kOnExecute | 0;
+const kOnTimeout = HTTPParser.kOnTimeout | 0;
 
 const MAX_HEADER_PAIRS = 2000;
 
@@ -98,6 +99,12 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
   incoming.httpVersion = `${versionMajor}.${versionMinor}`;
   incoming.url = url;
   incoming.upgrade = upgrade;
+
+  if (socket) {
+    debug('requestTimeout timer moved to req');
+    incoming[kRequestTimeout] = incoming.socket[kRequestTimeout];
+    incoming.socket[kRequestTimeout] = undefined;
+  }
 
   let n = headers.length;
 
@@ -163,7 +170,6 @@ const parsers = new FreeList('parsers', 1000, function parsersCb() {
 
   cleanParser(parser);
 
-  parser.onIncoming = null;
   parser[kOnHeaders] = parserOnHeaders;
   parser[kOnHeadersComplete] = parserOnHeadersComplete;
   parser[kOnBody] = parserOnBody;
@@ -233,7 +239,9 @@ function cleanParser(parser) {
   parser.outgoing = null;
   parser.maxHeaderPairs = MAX_HEADER_PAIRS;
   parser[kOnExecute] = null;
+  parser[kOnTimeout] = null;
   parser._consumed = false;
+  parser.onIncoming = null;
 }
 
 function prepareError(err, parser, rawPacket) {
@@ -263,6 +271,7 @@ module.exports = {
   methods,
   parsers,
   kIncomingMessage,
+  kRequestTimeout,
   HTTPParser,
   isLenient,
   prepareError,

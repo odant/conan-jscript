@@ -9,6 +9,8 @@ const {
   Boolean,
   Error,
   Map,
+  MathFloor,
+  Number,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
@@ -17,6 +19,7 @@ const {
   ReflectOwnKeys,
   Symbol,
   SymbolHasInstance,
+  SymbolToStringTag,
   WeakMap,
 } = primordials;
 
@@ -54,6 +57,9 @@ const kTraceBegin = CHAR_LOWERCASE_B;
 const kTraceEnd = CHAR_LOWERCASE_E;
 const kTraceInstant = CHAR_LOWERCASE_N;
 
+const kSecond = 1000;
+const kMinute = 60 * kSecond;
+const kHour = 60 * kMinute;
 const kMaxGroupIndentation = 1000;
 
 // Lazy loaded for startup performance.
@@ -228,6 +234,12 @@ ObjectDefineProperties(Console.prototype, {
           ...consolePropAttributes,
           value: groupIndentation
         },
+        [SymbolToStringTag]: {
+          writable: false,
+          enumerable: false,
+          configurable: true,
+          value: 'console'
+        }
       });
     }
   },
@@ -573,12 +585,49 @@ function timeLogImpl(self, name, label, data) {
   }
   const duration = process.hrtime(time);
   const ms = duration[0] * 1000 + duration[1] / 1e6;
+
+  const formatted = formatTime(ms);
+
   if (data === undefined) {
-    self.log('%s: %sms', label, ms.toFixed(3));
+    self.log('%s: %s', label, formatted);
   } else {
-    self.log('%s: %sms', label, ms.toFixed(3), ...data);
+    self.log('%s: %s', label, formatted, ...data);
   }
   return true;
+}
+
+function pad(value) {
+  return `${value}`.padStart(2, '0');
+}
+
+function formatTime(ms) {
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  if (ms >= kSecond) {
+    if (ms >= kMinute) {
+      if (ms >= kHour) {
+        hours = MathFloor(ms / kHour);
+        ms = ms % kHour;
+      }
+      minutes = MathFloor(ms / kMinute);
+      ms = ms % kMinute;
+    }
+    seconds = ms / kSecond;
+  }
+
+  if (hours !== 0 || minutes !== 0) {
+    [seconds, ms] = seconds.toFixed(3).split('.');
+    const res = hours !== 0 ? `${hours}:${pad(minutes)}` : minutes;
+    return `${res}:${pad(seconds)}.${ms} (${hours !== 0 ? 'h:m' : ''}m:ss.mmm)`;
+  }
+
+  if (seconds !== 0) {
+    return `${seconds.toFixed(3)}s`;
+  }
+
+  return `${Number(ms.toFixed(3))}ms`;
 }
 
 const keyKey = 'Key';
@@ -602,5 +651,6 @@ Console.prototype.groupCollapsed = Console.prototype.group;
 module.exports = {
   Console,
   kBindStreamsLazy,
-  kBindProperties
+  kBindProperties,
+  formatTime // exported for tests
 };

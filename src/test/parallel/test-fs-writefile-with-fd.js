@@ -1,10 +1,8 @@
 'use strict';
 
-/*
- * This test makes sure that `writeFile()` always writes from the current
- * position of the file, instead of truncating the file, when used with file
- * descriptors.
- */
+// This test makes sure that `writeFile()` always writes from the current
+// position of the file, instead of truncating the file, when used with file
+// descriptors.
 
 const common = require('../common');
 const assert = require('assert');
@@ -30,6 +28,9 @@ tmpdir.refresh();
 
   /* New content should be written at position five, instead of zero. */
   assert.deepStrictEqual(fs.readFileSync(filename).toString(), 'HelloWorld');
+
+  /* Close the file descriptor. */
+  fs.closeSync(fd);
 }
 
 {
@@ -52,6 +53,9 @@ tmpdir.refresh();
 
         /* New content should be written at position five, instead of zero. */
         assert.deepStrictEqual(fs.readFileSync(file).toString(), 'HelloWorld');
+
+        /* Close the file descriptor. */
+        fs.closeSync(fd);
       }));
     }));
   }));

@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/readline.js -->
+
 The `readline` module provides an interface for reading data from a [Readable][]
 stream (such as [`process.stdin`][]) one line at a time. It can be accessed
 using:
@@ -315,9 +317,13 @@ The `rl.write()` method will write the data to the `readline` `Interface`'s
 
 ### `rl[Symbol.asyncIterator]()`
 <!-- YAML
-added: v11.4.0
+added:
+ - v11.4.0
+ - v10.16.0
 changes:
-  - version: v11.14.0
+  - version:
+     - v11.14.0
+     - v10.17.0
     pr-url: https://github.com/nodejs/node/pull/26989
     description: Symbol.asyncIterator support is no longer experimental.
 -->
@@ -350,7 +356,11 @@ async function processLineByLine() {
 }
 ```
 
-### rl.line
+`readline.createInterface()` will start to consume the input stream once
+invoked. Having asynchronous operations between interface creation and
+asynchronous iteration may result in missed lines.
+
+### `rl.line`
 <!-- YAML
 added: v0.1.98
 -->
@@ -385,7 +395,7 @@ process.stdin.on('keypress', (c, k) => {
 });
 ```
 
-### rl.cursor
+### `rl.cursor`
 <!-- YAML
 added: v0.1.98
 -->
@@ -401,7 +411,9 @@ as well as the column where the terminal caret will be rendered.
 
 ### `rl.getCursorPos()`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.5.0
+ - v12.16.0
 -->
 
 * Returns: {Object}
@@ -456,7 +468,12 @@ the current position of the cursor down.
 <!-- YAML
 added: v0.1.98
 changes:
-  - version: v8.3.0, 6.11.4
+  - version: v13.9.0
+    pr-url: https://github.com/nodejs/node/pull/31318
+    description: The `tabSize` option is supported now.
+  - version:
+    - v8.3.0
+    - v6.11.4
     pr-url: https://github.com/nodejs/node/pull/13497
     description: Remove max limit of `crlfDelay` option.
   - version: v6.6.0
@@ -499,6 +516,8 @@ changes:
     can both form a complete key sequence using the input read so far and can
     take additional input to complete a longer key sequence).
     **Default:** `500`.
+  * `tabSize` {integer} The number of spaces a tab is equal to (minimum 1).
+    **Default:** `8`.
 
 The `readline.createInterface()` method creates a new `readline.Interface`
 instance.
@@ -811,7 +830,7 @@ const { createInterface } = require('readline');
   <tr>
     <td><code>ctrl</code> + <code>w</code> or <code>ctrl</code>
     + <code>backspace</code></td>
-    <td>Delete backwards to a word boundary</td>
+    <td>Delete backward to a word boundary</td>
     <td><code>ctrl</code> + <code>backspace</code> Doesn't
     work on Linux, Mac and Windows</td>
   </tr>
@@ -848,15 +867,15 @@ const { createInterface } = require('readline');
   </tr>
 </table>
 
-[`'SIGCONT'`]: readline.html#readline_event_sigcont
-[`'SIGTSTP'`]: readline.html#readline_event_sigtstp
-[`'line'`]: #readline_event_line
-[`fs.ReadStream`]: fs.html#fs_class_fs_readstream
-[`process.stdin`]: process.html#process_process_stdin
-[`process.stdout`]: process.html#process_process_stdout
-[`rl.close()`]: #readline_rl_close
-[Readable]: stream.html#stream_readable_streams
-[TTY]: tty.html
+[Readable]: stream.md#stream_readable_streams
+[TTY]: tty.md
 [TTY keybindings]: #readline_tty_keybindings
-[Writable]: stream.html#stream_writable_streams
+[Writable]: stream.md#stream_writable_streams
+[`'SIGCONT'`]: readline.md#readline_event_sigcont
+[`'SIGTSTP'`]: readline.md#readline_event_sigtstp
+[`'line'`]: #readline_event_line
+[`fs.ReadStream`]: fs.md#fs_class_fs_readstream
+[`process.stdin`]: process.md#process_process_stdin
+[`process.stdout`]: process.md#process_process_stdout
+[`rl.close()`]: #readline_rl_close
 [reading files]: #readline_example_read_file_stream_line_by_line

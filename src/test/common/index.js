@@ -59,12 +59,12 @@ if (process.argv.length === 2 &&
     !process.env.NODE_SKIP_FLAG_CHECK &&
     isMainThread &&
     hasCrypto &&
-    module.parent &&
+    require.main &&
     require('cluster').isMaster) {
   // The copyright notice is relatively big and the flags could come afterwards.
   const bytesToRead = 1500;
   const buffer = Buffer.allocUnsafe(bytesToRead);
-  const fd = fs.openSync(module.parent.filename, 'r');
+  const fd = fs.openSync(require.main.filename, 'r');
   const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead);
   fs.closeSync(fd);
   const source = buffer.toString('utf8', 0, bytesRead);
@@ -113,8 +113,6 @@ const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
 
 const isDumbTerminal = process.env.TERM === 'dumb';
-
-const rootDir = isWindows ? 'c:\\' : '/';
 
 const buildType = process.config.target_defaults ?
   process.config.target_defaults.default_configuration :
@@ -196,11 +194,9 @@ const PIPE = (() => {
   return path.join(pipePrefix, pipeName);
 })();
 
-/*
- * Check that when running a test with
- * `$node --abort-on-uncaught-exception $file child`
- * the process aborts.
- */
+// Check that when running a test with
+// `$node --abort-on-uncaught-exception $file child`
+// the process aborts.
 function childShouldThrowAndAbort() {
   let testCmd = '';
   if (!isWindows) {
@@ -550,19 +546,6 @@ function expectsError(validator, exact) {
   }, exact);
 }
 
-const suffix = 'This is caused by either a bug in Node.js ' +
-  'or incorrect usage of Node.js internals.\n' +
-  'Please open an issue with this stack trace at ' +
-  'https://github.com/nodejs/node/issues\n';
-
-function expectsInternalAssertion(fn, message) {
-  assert.throws(fn, {
-    message: `${message}\n${suffix}`,
-    name: 'Error',
-    code: 'ERR_INTERNAL_ASSERTION'
-  });
-}
-
 function skipIfInspectorDisabled() {
   if (!process.features.inspector) {
     skip('V8 inspector is disabled');
@@ -675,6 +658,30 @@ function skipIfDumbTerminal() {
   }
 }
 
+function gcUntil(name, condition) {
+  if (typeof name === 'function') {
+    condition = name;
+    name = undefined;
+  }
+  return new Promise((resolve, reject) => {
+    let count = 0;
+    function gcAndCheck() {
+      setImmediate(() => {
+        count++;
+        global.gc();
+        if (condition()) {
+          resolve();
+        } else if (count < 10) {
+          gcAndCheck();
+        } else {
+          reject(name === undefined ? undefined : 'Test ' + name + ' failed');
+        }
+      });
+    }
+    gcAndCheck();
+  });
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -683,8 +690,8 @@ const common = {
   createZeroFilledFile,
   disableCrashOnUnhandledRejection,
   expectsError,
-  expectsInternalAssertion,
   expectWarning,
+  gcUntil,
   getArrayBufferViews,
   getBufferSources,
   getCallSite,
@@ -712,7 +719,6 @@ const common = {
   platformTimeout,
   printSkipMessage,
   pwdCommand,
-  rootDir,
   runWithInvalidFD,
   skip,
   skipIf32Bits,
@@ -786,8 +792,6 @@ const common = {
 
     return localhostIPv4;
   },
-
-  get localhostIPv6() { return '::1'; },
 
   // opensslCli defined lazily to reduce overhead of spawnSync
   get opensslCli() {
