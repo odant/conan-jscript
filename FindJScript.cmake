@@ -62,6 +62,6 @@ if(JScript_FOUND AND NOT TARGET JScript::JScript)
     set(JScript_INCLUDE_DIRS ${JScript_INCLUDE_DIR})
     set(JScript_LIBRARIES ${JScript_LIBRARY})
     mark_as_advanced(JScript_INCLUDE_DIR JScript_LIBRARY)
-    set(PCRE_DEFINITIONS "${CONAN_COMPILE_DEFINITIONS_JSCRIPT}")
+    set(JScript_DEFINITIONS "${CONAN_COMPILE_DEFINITIONS_JSCRIPT}")
 
 endif()
