@@ -191,7 +191,7 @@ class JScriptConan(ConanFile):
         content = tools.load(cmake_script_path)
         lines = content.splitlines()
         def pred(l):
-            return False if "regexp-special-case.h" in l else True
+            return False if "../../deps/v8/src/heap/remembered-set.h" in l else True
         lines = filter(pred, lines)
         def patch(l):
             if l == "add_library(v8 STATIC)":
