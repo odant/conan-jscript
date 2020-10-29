@@ -1,8 +1,8 @@
 diff --git a/src/configure.py b/src/configure.py
-index b67ad1f06f4..ca46e9a308b 100755
+index a015b8ad1..e56f7337b 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -575,6 +575,11 @@ parser.add_option('--ninja',
+@@ -599,6 +599,11 @@ parser.add_option('--ninja',
      dest='use_ninja',
      help='generate build files for use with Ninja')
  
@@ -14,7 +14,7 @@ index b67ad1f06f4..ca46e9a308b 100755
  parser.add_option('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -660,6 +665,12 @@ parser.add_option('-C',
+@@ -690,6 +695,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -27,17 +27,16 @@ index b67ad1f06f4..ca46e9a308b 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1205,6 +1216,9 @@ def configure_node(o):
+@@ -1238,6 +1249,8 @@ def configure_node(o):
+   if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
- 
 +  o['variables']['node_core_target_name'] = options.node_core_target_name
 +  o['variables']['node_lib_target_name'] = 'lib' + options.node_core_target_name
-+
+ 
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-   output['variables']['napi_build_version'] = version
-@@ -1765,6 +1779,9 @@ if options.prefix:
+@@ -1864,6 +1877,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -47,20 +46,21 @@ index b67ad1f06f4..ca46e9a308b 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1787,6 +1804,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1886,6 +1902,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
 +elif options.use_cmake:
-+  gyp_args+= ['-f', 'cmake']
++  gyp_args += ['-f', 'cmake']
  elif flavor == 'win' and sys.platform != 'msys':
    gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
  else:
+
 diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
-index 116b7537195..63ff09ee37d 100644
+index 7fc7e0601..7fd5e575a 100644
 --- a/src/deps/uv/uv.gyp
 +++ b/src/deps/uv/uv.gyp
-@@ -250,6 +250,13 @@
+@@ -249,6 +249,13 @@
            'link_settings': {
              'libraries': [ '-ldl', '-lrt' ],
            },
@@ -75,10 +75,10 @@ index 116b7537195..63ff09ee37d 100644
          [ 'OS=="android"', {
            'sources': [
 diff --git a/src/node.gyp b/src/node.gyp
-index b030de8364a..00a563848b0 100644
+index 48ce65890..f9a6a305a 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -341,13 +341,10 @@
+@@ -348,13 +348,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -94,7 +94,7 @@ index b030de8364a..00a563848b0 100644
        ],
  
        'sources': [
-@@ -518,6 +515,36 @@
+@@ -531,6 +528,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -131,7 +131,7 @@ index b030de8364a..00a563848b0 100644
        ],
      }, # node_core_target_name
      {
-@@ -776,6 +803,13 @@
+@@ -796,6 +823,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -145,7 +145,7 @@ index b030de8364a..00a563848b0 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -793,6 +827,7 @@
+@@ -813,6 +847,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -153,10 +153,11 @@ index b030de8364a..00a563848b0 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1202,120 +1237,6 @@
+@@ -1352,121 +1387,6 @@
+         }],
        ],
-     }, # cctest
- 
+     }, # embedtest
+-
 -    # TODO(joyeecheung): do not depend on node_lib,
 -    # instead create a smaller static library node_lib_base that does
 -    # just enough for node_native_module.cc and the cache builder to
@@ -275,10 +276,10 @@ index b030de8364a..00a563848b0 100644
  
    'conditions': [
 diff --git a/src/node.gypi b/src/node.gypi
-index 116c1c71494..093ba2237b5 100644
+index 43dbda7bb..23d1612cc 100644
 --- a/src/node.gypi
 +++ b/src/node.gypi
-@@ -309,7 +309,7 @@
+@@ -308,7 +308,7 @@
        'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
      }],
      [ 'OS=="linux"', {
@@ -288,7 +289,7 @@ index 116c1c71494..093ba2237b5 100644
        ],
      }],
 diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
-index d87dd62c895..1b48b6b466b 100644
+index d87dd62c8..1b48b6b46 100644
 --- a/src/src/debug_utils-inl.h
 +++ b/src/src/debug_utils-inl.h
 @@ -124,9 +124,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
@@ -309,14 +310,14 @@ index d87dd62c895..1b48b6b466b 100644
  
  template <typename... Args>
 diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
-index a601c5ecf40..bd792ac3963 100644
+index a601c5ecf..13a1a81da 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
 @@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
    simple_fwrite();
  }
  
-+std::function<void(const std::string&)> cbRedirectFPrintF = nullptr;
++std::function<void(const std::string&)> cbRedirectFPrintF{ nullptr };
 +
 +void SetRedirectFPrintF(std::function<void(const std::string&)> cb) {
 +  cbRedirectFPrintF = std::move(cb);
@@ -326,7 +327,7 @@ index a601c5ecf40..bd792ac3963 100644
  
  extern "C" void __DumpBacktrace(FILE* fp) {
 diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
-index ecc53b0c2b0..66932a957ed 100644
+index ecc53b0c2..66932a957 100644
 --- a/src/src/debug_utils.h
 +++ b/src/src/debug_utils.h
 @@ -8,6 +8,7 @@
@@ -346,27 +347,27 @@ index ecc53b0c2b0..66932a957ed 100644
  // Listing the AsyncWrap provider types first enables us to cast directly
  // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 728785d5d27..8e04f2a912a 100644
+index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1011,3 +1011,5 @@ void Initialize() {}
+@@ -1117,3 +1117,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 9252d51555f..dc63d787835 100644
+index 280391501..5fe711110 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 12
- #define NODE_MINOR_VERSION 18
- #define NODE_PATCH_VERSION 4
+ #define NODE_MAJOR_VERSION 14
+ #define NODE_MINOR_VERSION 15
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
- #define NODE_VERSION_LTS_CODENAME "Erbium"
+ #define NODE_VERSION_LTS_CODENAME "Fermium"
 @@ -52,16 +53,31 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
                            NODE_STRINGIFY(NODE_PATCH_VERSION)     \
@@ -400,7 +401,7 @@ index 9252d51555f..dc63d787835 100644
  
  
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be70..d9f1f8b912f 100644
+index 9403e68be..d9f1f8b91 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
@@ -438,28 +439,32 @@ index 9403e68be70..d9f1f8b912f 100644
      END
      BLOCK "VarFileInfo"
 diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gyp/generator/cmake.py
-index e966a8f23e1..6160925ec1c 100644
+index f5ceacfca..7d729daad 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
-@@ -982,13 +982,6 @@ def WriteTarget(namer, qualified_target, target_dicts, build_dir, config_to_use,
-     if ldflags is not None:
-       SetTargetProperty(output, cmake_target_name, 'LINK_FLAGS', ldflags, ' ')
+@@ -1045,17 +1045,6 @@ def WriteTarget(
+         if ldflags is not None:
+             SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
  
--    # XCode settings
--    xcode_settings = config.get('xcode_settings', {})
--    for xcode_setting, xcode_value in xcode_settings.viewitems():
--      SetTargetProperty(output, cmake_target_name,
--                        "XCODE_ATTRIBUTE_%s" % xcode_setting, xcode_value,
--                        '' if isinstance(xcode_value, str) else ' ')
+-        # XCode settings
+-        xcode_settings = config.get("xcode_settings", {})
+-        for xcode_setting, xcode_value in xcode_settings.viewitems():
+-            SetTargetProperty(
+-                output,
+-                cmake_target_name,
+-                "XCODE_ATTRIBUTE_%s" % xcode_setting,
+-                xcode_value,
+-                "" if isinstance(xcode_value, str) else " ",
+-            )
 -
-   # Note on Dependencies and Libraries:
-   # CMake wants to handle link order, resolving the link line up front.
-   # Gyp does not retain or enforce specifying enough information to do so.
+     # Note on Dependencies and Libraries:
+     # CMake wants to handle link order, resolving the link line up front.
+     # Gyp does not retain or enforce specifying enough information to do so.
 diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
-index 26b8e56e834..c090fa9fefe 100644
+index 48ec392b6..73c3f072f 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
-@@ -933,6 +933,13 @@
+@@ -1027,6 +1027,13 @@
                '-lrt'
              ],
            },
