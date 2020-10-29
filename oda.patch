@@ -1,5 +1,5 @@
 diff --git a/src/configure.py b/src/configure.py
-index a015b8ad1..e56f7337b 100755
+index a015b8ad1ae..e56f7337b48 100755
 --- a/src/configure.py
 +++ b/src/configure.py
 @@ -599,6 +599,11 @@ parser.add_option('--ninja',
@@ -55,9 +55,8 @@ index a015b8ad1..e56f7337b 100755
  elif flavor == 'win' and sys.platform != 'msys':
    gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
  else:
-
 diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
-index 7fc7e0601..7fd5e575a 100644
+index 7fc7e0601b9..7fd5e575adc 100644
 --- a/src/deps/uv/uv.gyp
 +++ b/src/deps/uv/uv.gyp
 @@ -249,6 +249,13 @@
@@ -75,7 +74,7 @@ index 7fc7e0601..7fd5e575a 100644
          [ 'OS=="android"', {
            'sources': [
 diff --git a/src/node.gyp b/src/node.gyp
-index 48ce65890..f9a6a305a 100644
+index 48ce65890c5..f9a6a305aa2 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
 @@ -348,13 +348,10 @@
@@ -276,7 +275,7 @@ index 48ce65890..f9a6a305a 100644
  
    'conditions': [
 diff --git a/src/node.gypi b/src/node.gypi
-index 43dbda7bb..23d1612cc 100644
+index 43dbda7bbf5..23d1612cc72 100644
 --- a/src/node.gypi
 +++ b/src/node.gypi
 @@ -308,7 +308,7 @@
@@ -289,7 +288,7 @@ index 43dbda7bb..23d1612cc 100644
        ],
      }],
 diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
-index d87dd62c8..1b48b6b46 100644
+index d87dd62c895..1b48b6b466b 100644
 --- a/src/src/debug_utils-inl.h
 +++ b/src/src/debug_utils-inl.h
 @@ -124,9 +124,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
@@ -310,7 +309,7 @@ index d87dd62c8..1b48b6b46 100644
  
  template <typename... Args>
 diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
-index a601c5ecf..13a1a81da 100644
+index a601c5ecf40..13a1a81dac0 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
 @@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
@@ -327,7 +326,7 @@ index a601c5ecf..13a1a81da 100644
  
  extern "C" void __DumpBacktrace(FILE* fp) {
 diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
-index ecc53b0c2..66932a957 100644
+index ecc53b0c2b0..66932a957ed 100644
 --- a/src/src/debug_utils.h
 +++ b/src/src/debug_utils.h
 @@ -8,6 +8,7 @@
@@ -347,7 +346,7 @@ index ecc53b0c2..66932a957 100644
  // Listing the AsyncWrap provider types first enables us to cast directly
  // from a provider type to a debug category.
 diff --git a/src/src/node.cc b/src/src/node.cc
-index 905afd8c2..7784b41ba 100644
+index 905afd8c235..7784b41ba3e 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
 @@ -1117,3 +1117,5 @@ void Initialize() {}
@@ -357,7 +356,7 @@ index 905afd8c2..7784b41ba 100644
 +
 +#include <../oda/jscript-inl.h>
 diff --git a/src/src/node_version.h b/src/src/node_version.h
-index 280391501..5fe711110 100644
+index 28039150170..5fe711110d9 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
@@ -401,7 +400,7 @@ index 280391501..5fe711110 100644
  
  
 diff --git a/src/src/res/node.rc b/src/src/res/node.rc
-index 9403e68be..d9f1f8b91 100644
+index 9403e68be70..d9f1f8b912f 100644
 --- a/src/src/res/node.rc
 +++ b/src/src/res/node.rc
 @@ -29,8 +29,8 @@
@@ -439,9 +438,18 @@ index 9403e68be..d9f1f8b91 100644
      END
      BLOCK "VarFileInfo"
 diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gyp/generator/cmake.py
-index f5ceacfca..7d729daad 100644
+index f5ceacfca36..53c9a3151e1 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
+@@ -41,7 +41,7 @@ import gyp.xcode_emulation
+ try:
+     # maketrans moved to str in python3.
+     _maketrans = string.maketrans
+-except NameError:
++except AttributeError:
+     _maketrans = str.maketrans
+ 
+ generator_default_variables = {
 @@ -1045,17 +1045,6 @@ def WriteTarget(
          if ldflags is not None:
              SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
@@ -461,7 +469,7 @@ index f5ceacfca..7d729daad 100644
      # CMake wants to handle link order, resolving the link line up front.
      # Gyp does not retain or enforce specifying enough information to do so.
 diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
-index 48ec392b6..73c3f072f 100644
+index 48ec392b6f8..73c3f072fe8 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
 @@ -1027,6 +1027,13 @@
