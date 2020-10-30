@@ -619,8 +619,6 @@ void JSInstanceImpl::StartNodeInstance() {
                                              EnvironmentFlags::kOwnsProcessState |
                                              EnvironmentFlags::kOwnsInspector),
         ThreadId{});
-    env->InitializeLibuv();
-    env->InitializeDiagnostics();
 
     addSetStates(context);
 
