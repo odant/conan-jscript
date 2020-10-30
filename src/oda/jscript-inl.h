@@ -614,10 +614,12 @@ void JSInstanceImpl::StartNodeInstance() {
         context,
         args,
         exec_args,
-        static_cast<Environment::Flags>(Environment::kIsMainThread |
-                                        Environment::kOwnsProcessState |
-                                        Environment::kOwnsInspector));
-    env->InitializeLibuv(per_process::v8_is_profiling);
+        static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
+                                             EnvironmentFlags::kDefaultFlags     | 
+                                             EnvironmentFlags::kOwnsProcessState |
+                                             EnvironmentFlags::kOwnsInspector),
+        ThreadId{});
+    env->InitializeLibuv();
     env->InitializeDiagnostics();
 
     addSetStates(context);
