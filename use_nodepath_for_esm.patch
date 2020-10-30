@@ -13,9 +13,9 @@ index 21459cf3d..d5f106a01 100644
 +      }
 +      const baseUrl =
 +        path.startsWith('file:') ? path
-+                                 : 'file://'  path;
++                                 : 'file://' + path;
 +      let packageJSONUrl =
-+        new URL('./node_modules/'  packageName  '/package.json', baseUrl);
++        new URL('./node_modules/' + packageName + '/package.json', baseUrl);
 +
 +      let packageJSONPath = fileURLToPath(packageJSONUrl);
 +
