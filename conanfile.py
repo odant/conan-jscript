@@ -172,6 +172,8 @@ class JScriptConan(ConanFile):
                 cmake = CMake(self, build_type=cmake_build_type, msbuild_verbosity='normal')
                 cmake.verbose = True
                 cmake.configure(source_folder=cmake_src_folder, build_folder=cmake_src_folder)
+                # Manual build target before use it. Otherwise parallel build failed.
+                cmake.build(target="icudata__icupkg") 
                 cmake.build()
             elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 msbuild = MSBuild(self)
