@@ -23,11 +23,12 @@ namespace node {
 namespace jscript {
 using namespace ::node;
 
+
 std::atomic<bool> is_initilized{false};
 
 std::vector<std::string> args;
 std::vector<std::string> exec_args;
-std::vector<std::string> errors;
+
 
 class ExecutorCounter {
  public:
@@ -729,13 +730,14 @@ JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
   // argv = uv_setup_args(argc, argv);
 
   args = std::vector<std::string>(argv, argv + argc);
+  std::vector<std::string> errors;
 
   // This needs to run *before* V8::Initialize().
   {
     const int exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
     for (const std::string& error : errors)
       fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
-    if (exit_code != 0) std::abort();  // return exit_code;
+    CHECK_EQ(exit_code, 0);
   }
 
   if (per_process::cli_options->use_largepages == "on" ||
@@ -958,20 +960,13 @@ JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
 }
 
 JSCRIPT_EXTERN void Uninitilize() {
-  if (!is_initilized.exchange(false)) return;
+  if (!is_initilized.exchange(false)) {
+    return;
+  }
 
   ExecutorCounter::global().waitAllStop();
 
-  per_process::v8_initialized = false;
-  V8::Dispose();
-
-  // uv_run cannot be called from the time before the beforeExit callback
-  // runs until the program exits unless the event loop has any referenced
-  // handles after beforeExit terminates. This prevents unrefed timers
-  // that happen to terminate during shutdown from being run unsafely.
-  // Since uv_run cannot be called, uv_async handles held by the platform
-  // will never be fully cleaned up.
-  per_process::v8_platform.Dispose();
+  TearDownOncePerProcess();
 }
 
 JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
