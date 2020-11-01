@@ -1,6 +1,7 @@
 #pragma once
 
 #include "jscript.h"
+#include "executer_counter.h"
 
 #include "node_errors.h"
 #include "node_internals.h"
@@ -29,38 +30,6 @@ std::atomic<bool> is_initilized{false};
 std::vector<std::string> args;
 std::vector<std::string> exec_args;
 
-
-class ExecutorCounter {
- public:
-  class ScopeExecute {
-   public:
-    ScopeExecute() {
-      node::Mutex::ScopedLock lock(ExecutorCounter::global()._mutex);
-      ++ExecutorCounter::global()._count;
-    }
-
-    ~ScopeExecute() {
-      node::Mutex::ScopedLock lock(ExecutorCounter::global()._mutex);
-      --ExecutorCounter::global()._count;
-      ExecutorCounter::global()._cv.Broadcast(lock);
-    }
-  };
-
-  static ExecutorCounter& global() {
-    static ExecutorCounter executorController;
-    return executorController;
-  }
-
-  void waitAllStop() {
-    node::Mutex::ScopedLock lock(_mutex);
-    while (_count != 0) _cv.Wait(lock);
-  }
-
- private:
-  node::Mutex _mutex;
-  node::ConditionVariable _cv;
-  std::atomic_size_t _count{0};
-};
 
 class RefCounter {
  public:
