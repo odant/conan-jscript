@@ -2,6 +2,7 @@
 
 #include "jscript.h"
 #include "executer_counter.h"
+#include "ref_counter.h"
 
 #include "node_errors.h"
 #include "node_internals.h"
@@ -31,100 +32,9 @@ std::vector<std::string> args;
 std::vector<std::string> exec_args;
 
 
-class RefCounter {
- public:
-  RefCounter() = default;
-
-  friend inline void addRefecence(const RefCounter* p);
-  friend inline void releaseRefecence(const RefCounter* p);
-
-  template <typename Derived,
-            typename = typename std::enable_if<
-                std::is_convertible<Derived*, RefCounter*>::value,
-                void>::type>
-  class Ptr {
-   public:
-    Ptr() : _p(nullptr) {}
-    Ptr(Derived* p) : _p(p) { addRefecence(_p); }
-    Ptr(Ptr const& other) : _p(other._p) { addRefecence(_p); }
-    Ptr(Ptr&& other) : _p(other._p) { other._p = nullptr; }
-
-    Ptr& operator=(Ptr const& other) {
-      reset(other._p);
-      return *this;
-    }
-    Ptr& operator=(Ptr&& other) {
-      _p = other._p;
-      other._p = nullptr;
-      return *this;
-    }
-
-    ~Ptr() { releaseRefecence(_p); }
-
-    void reset() {
-      releaseRefecence(_p);
-      _p = nullptr;
-    }
-
-    void reset(Derived* p) {
-      releaseRefecence(_p);
-      _p = p;
-      addRefecence(_p);
-    }
-
-    void adopt(Derived* p) {
-      releaseRefecence(_p);
-      _p = p;
-    }
-
-    Derived* get() const { return _p; }
-
-    Derived* detach() {
-      Derived* p = _p;
-      _p = nullptr;
-      return p;
-    }
-
-    Derived& operator*() const {
-      CHECK_NOT_NULL(_p);
-      return *_p;
-    }
-
-    Derived* operator->() const { return _p; }
-
-    explicit operator bool() const { return _p != nullptr; }
-
-   private:
-    Derived* _p;
-  };
-
- protected:
-  virtual ~RefCounter() = default;
-
- private:
-  RefCounter(const RefCounter&) = delete;
-  RefCounter& operator=(const RefCounter&) = delete;
-
-  inline void addRef() const { ++_refCount; }
-
-  inline std::uint32_t releaseRef() const { return --_refCount; }
-
-  mutable std::atomic<std::uint32_t> _refCount = ATOMIC_VAR_INIT(0);
-};
-
-inline void addRefecence(const RefCounter* p) {
-  if (p != nullptr) p->addRef();
-}
-
-inline void releaseRefecence(const RefCounter* p) {
-  if (p != nullptr) {
-    const auto refCount = p->releaseRef();
-    if (refCount == 0) delete p;
-  }
-}
-
-class NodeInstanceData : public RefCounter {
- public:
+class NodeInstanceData
+{
+public:
   NodeInstanceData() : exit_code_(1) {
     event_loop_init_ = uv_loop_init(event_loop()) == 0;
     CHECK(event_loop_init_);
@@ -173,7 +83,9 @@ class NodeInstanceData : public RefCounter {
   int exit_code_;
 };
 
-class JSInstanceImpl : public JSInstance, public NodeInstanceData {
+
+class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstanceData
+{
   struct _constructor_tag {};
 
  public:
