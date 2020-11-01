@@ -91,8 +91,8 @@ public:
   };
 
 private:
-  void addRef() const { ++_refCount; }
-  std::size_t releaseRef() const { return --_refCount; }
+  void addRef() const;
+  std::size_t releaseRef() const;
 
   mutable std::atomic_size_t _refCount;
 };
@@ -102,6 +102,14 @@ inline RefCounter::RefCounter()
   :
     _refCount{0}
 {}
+
+inline void RefCounter::addRef() const {
+  ++_refCount;
+}
+
+inline std::size_t RefCounter::releaseRef() const {
+  return --_refCount;
+}
 
 
 inline void addRefecence(const RefCounter* p) {
