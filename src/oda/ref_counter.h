@@ -34,32 +34,7 @@ public:
   template <typename Derived,
             typename = IsConstructPtr<Derived>
   >
-  class Ptr {
-   public:
-    Ptr();
-    Ptr(Derived* p);
-    Ptr(Ptr const& other);
-    Ptr(Ptr&& other);
-
-    Ptr& operator= (const Ptr& other);
-    Ptr& operator= (Ptr&& other);
-
-    ~Ptr();
-
-    void reset();
-    void reset(Derived* p);
-    void adopt(Derived* p);
-    Derived* get();
-    Derived* detach();
-
-    Derived& operator* () const;
-    Derived* operator-> () const;
-
-    explicit operator bool() const;
-
-   private:
-    Derived* _p;
-  };
+  class Ptr;
 
 private:
   void addRef() const;
@@ -84,6 +59,37 @@ inline std::size_t RefCounter::releaseRef() const {
 
 
 /* RefCounter::Ptr implementation */
+
+
+template<typename Derived, typename T>
+class RefCounter::Ptr
+{
+public:
+  Ptr();
+
+  Ptr(Derived* p);
+  Ptr(const Ptr& other);
+  Ptr(Ptr&& other);
+
+  Ptr& operator= (const Ptr& other);
+  Ptr& operator= (Ptr&& other);
+
+  ~ Ptr();
+
+  void reset();
+  void reset(Derived* p);
+  void adopt(Derived* p);
+  Derived* get();
+  Derived* detach();
+
+  Derived& operator* () const;
+  Derived* operator-> () const;
+
+  explicit operator bool() const;
+
+private:
+  Derived* _p;
+};
 
 
 template<typename Derived, typename T>
