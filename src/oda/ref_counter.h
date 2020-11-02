@@ -28,12 +28,7 @@ public:
   friend inline void addRefecence(const RefCounter* p);
   friend inline void releaseRefecence(const RefCounter* p);
 
-  template<typename Derived>
-  using IsConstructPtr = std::enable_if_t< std::is_convertible<Derived*, RefCounter*>::value >;
-
-  template <typename Derived,
-            typename = IsConstructPtr<Derived>
-  >
+  template <typename Derived>
   class Ptr;
 
 private:
@@ -61,9 +56,11 @@ inline std::size_t RefCounter::releaseRef() const {
 /* RefCounter::Ptr implementation */
 
 
-template<typename Derived, typename T>
+template<typename Derived>
 class RefCounter::Ptr
 {
+  static_assert(std::is_convertible<Derived*, RefCounter*>::value, "RefCounter* must be contert to Derived*");
+
 public:
   Ptr();
 
@@ -92,101 +89,101 @@ private:
 };
 
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::Ptr()
+template<typename Derived>
+RefCounter::Ptr<Derived>::Ptr()
   :
     _p{nullptr}
 {}
 
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::Ptr(Derived* p)
+template<typename Derived>
+RefCounter::Ptr<Derived>::Ptr(Derived* p)
   :
     _p{p}
 {
   addRefecence(_p);
 }
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::Ptr(Ptr const& other)
+template<typename Derived>
+RefCounter::Ptr<Derived>::Ptr(Ptr const& other)
   :
     _p{other._p}
 {
   addRefecence(_p);
 }
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::Ptr(Ptr&& other)
+template<typename Derived>
+RefCounter::Ptr<Derived>::Ptr(Ptr&& other)
   :
     _p{other._p}
 {
   other._p = nullptr;
 }
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>& RefCounter::Ptr<Derived, T>::operator= (const Ptr<Derived, T>& other) {
+template<typename Derived>
+RefCounter::Ptr<Derived>& RefCounter::Ptr<Derived>::operator= (const Ptr<Derived>& other) {
   reset(other._p);
   return *this;
 }
 
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>& RefCounter::Ptr<Derived, T>::operator=(Ptr<Derived, T>&& other) {
+template<typename Derived>
+RefCounter::Ptr<Derived>& RefCounter::Ptr<Derived>::operator=(Ptr<Derived>&& other) {
     _p = other._p;
     other._p = nullptr;
     return *this;
 }
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::~Ptr() {
+template<typename Derived>
+RefCounter::Ptr<Derived>::~Ptr() {
   releaseRefecence(_p);
 }
 
-template<typename Derived, typename T>
-void RefCounter::Ptr<Derived, T>::reset() {
+template<typename Derived>
+void RefCounter::Ptr<Derived>::reset() {
   releaseRefecence(_p);
   _p = nullptr;
 }
 
-template<typename Derived, typename T>
-void RefCounter::Ptr<Derived, T>::reset(Derived* p) {
+template<typename Derived>
+void RefCounter::Ptr<Derived>::reset(Derived* p) {
   releaseRefecence(_p);
   _p = p;
   addRefecence(_p);
 }
 
-template<typename Derived, typename T>
-void RefCounter::Ptr<Derived, T>::adopt(Derived* p) {
+template<typename Derived>
+void RefCounter::Ptr<Derived>::adopt(Derived* p) {
   releaseRefecence(_p);
   _p = p;
 }
 
-template<typename Derived, typename T>
-Derived* RefCounter::Ptr<Derived, T>::get() {
+template<typename Derived>
+Derived* RefCounter::Ptr<Derived>::get() {
   return _p;
 }
 
-template<typename Derived, typename T>
-Derived* RefCounter::Ptr<Derived, T>::detach() {
+template<typename Derived>
+Derived* RefCounter::Ptr<Derived>::detach() {
   Derived* p = _p;
   _p = nullptr;
   return p;
 }
 
-template<typename Derived, typename T>
-Derived& RefCounter::Ptr<Derived, T>::operator* () const {
+template<typename Derived>
+Derived& RefCounter::Ptr<Derived>::operator* () const {
   CHECK_NOT_NULL(_p);
   return *_p;
 }
 
-template<typename Derived, typename T>
-Derived* RefCounter::Ptr<Derived, T>::operator-> () const {
+template<typename Derived>
+Derived* RefCounter::Ptr<Derived>::operator-> () const {
   CHECK_NOT_NULL(_p);
   return _p;
 }
 
-template<typename Derived, typename T>
-RefCounter::Ptr<Derived, T>::operator bool () const {
+template<typename Derived>
+RefCounter::Ptr<Derived>::operator bool () const {
     return _p != nullptr;
 }
 
