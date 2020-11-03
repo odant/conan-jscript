@@ -86,10 +86,16 @@ public:
 
 class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstanceData
 {
-  struct _constructor_tag {};
+private:
+  struct CtorTag {};
 
- public:
+public:
   using Ptr = RefCounter::Ptr<JSInstanceImpl>;
+
+  JSInstanceImpl(CtorTag);
+
+  static JSInstanceImpl::Ptr create();
+
 #ifdef ERROR
   #undef ERROR
 #endif
@@ -97,14 +103,16 @@ class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstance
   using AutoResetState = std::unique_ptr<void, std::function<void(void*)>>;
   AutoResetState createAutoReset(state_t);
 
-  JSInstanceImpl(_constructor_tag) : NodeInstanceData() {}
-
-  static JSInstanceImpl::Ptr create() {
-    return JSInstanceImpl::Ptr(new JSInstanceImpl(_constructor_tag()));
-  }
-
   void StartNodeInstance();
   void SetLogCallback(JSLogCallback& cb);
+
+  bool isStopping() const;
+  bool isRun() const;
+  bool isInitialize() const;
+
+  void setState(state_t state);
+
+  JSLogCallback& logCallback();
 
   static const std::string defaultOrigin;
   static const std::string externalOrigin;
@@ -114,29 +122,10 @@ class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstance
   Environment* _env{nullptr};
   std::thread _thread;
 
-  bool isStopping() const {
-    const bool envStopped = !(_env && _env->is_stopping());
-    return _state == STOPPING || envStopped;
-  }
-
-  bool isRun() const {
-    const bool envNotStopped = _env && !(_env->is_stopping());
-    return _state == RUN && envNotStopped;
-  }
-
-  bool isInitialize() const { return _state != CREATE; }
-
   std::mutex _state_mutex;
   std::condition_variable _state_cv;
 
-  void setState(state_t state) {
-    _state = state;
-    _state_cv.notify_all();
-  }
-
-  JSLogCallback& logCallback() { return _logCallback; }
-
- private:
+private:
   std::unique_ptr<Environment> CreateEnvironment(int*);
   void addSetStates(v8::Local<v8::Context> context);
   void addSetState(v8::Local<v8::Context> context, const char* name, state_t state);
@@ -151,8 +140,42 @@ class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstance
   JSLogCallback _logCallback;
 };
 
+
 const std::string JSInstanceImpl::defaultOrigin;
 const std::string JSInstanceImpl::externalOrigin;
+
+
+inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag)
+{}
+
+inline JSInstanceImpl::Ptr JSInstanceImpl::create() {
+  return JSInstanceImpl::Ptr{
+    new JSInstanceImpl{CtorTag{}}
+  };
+}
+
+bool JSInstanceImpl::isStopping() const {
+  const bool envStopped = !(_env && _env->is_stopping());
+  return _state == STOPPING || envStopped;
+}
+
+bool JSInstanceImpl::isRun() const {
+  const bool envNotStopped = _env && !(_env->is_stopping());
+  return _state == RUN && envNotStopped;
+}
+
+bool JSInstanceImpl::isInitialize() const {
+  return _state != CREATE;
+}
+
+void JSInstanceImpl::setState(state_t state) {
+  _state = state;
+  _state_cv.notify_all();
+}
+
+JSLogCallback& JSInstanceImpl::logCallback() {
+  return _logCallback;
+}
 
 void JSInstanceImpl::SetLogCallback(JSLogCallback& cb) {
   _logCallback = std::move(cb);
