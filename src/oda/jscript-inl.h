@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <chrono>
 
+
 namespace node {
 namespace jscript {
 using namespace ::node;
@@ -665,12 +666,12 @@ JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
 #endif  // NODE_FIPS_MODE
   // V8 on Windows doesn't have a good source of entropy. Seed it from
   // OpenSSL's pool.
-  V8::SetEntropySource(crypto::EntropySource);
+  v8::V8::SetEntropySource(crypto::EntropySource);
 #endif  // HAVE_OPENSSL
 
   per_process::v8_platform.Initialize(
       per_process::cli_options->v8_thread_pool_size);
-  V8::Initialize();
+  v8::V8::Initialize();
   performance::performance_v8_start = PERFORMANCE_NOW();
   per_process::v8_initialized = true;
 }

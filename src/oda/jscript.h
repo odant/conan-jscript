@@ -1,8 +1,12 @@
 #pragma once
 
+
+#include <v8.h>
+
 #include <string>
 #include <vector>
 #include <functional>
+
 
 #ifdef _WIN32
 # ifndef USE_JSCRIPT
@@ -12,10 +16,6 @@
 # endif
 #else
 # define JSCRIPT_EXTERN /* nothing */
-#endif
-
-#ifdef USE_JSCRIPT
-#  include "v8.h"
 #endif
 
 
