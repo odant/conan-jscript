@@ -105,7 +105,6 @@ public:
   AutoResetState createAutoReset(state_t);
 
   void StartNodeInstance();
-  void SetLogCallback(JSLogCallback& cb);
 
   bool isStopping() const;
   bool isRun() const;
@@ -113,6 +112,7 @@ public:
 
   void setState(state_t state);
 
+  void SetLogCallback(JSLogCallback cb);
   JSLogCallback& logCallback();
 
   static const std::string defaultOrigin;
@@ -178,7 +178,7 @@ JSLogCallback& JSInstanceImpl::logCallback() {
   return _logCallback;
 }
 
-void JSInstanceImpl::SetLogCallback(JSLogCallback& cb) {
+void JSInstanceImpl::SetLogCallback(JSLogCallback cb) {
   _logCallback = std::move(cb);
 }
 
@@ -691,7 +691,7 @@ JSCRIPT_EXTERN void Initialize(
     std::string executeFile,
     std::string coreFolder,
     std::string nodeFolder,
-    std::function<void(const std::string&)> logCallback) {
+    std::function<void(const std::string&)> redirectFPrintF) {
 
 #if defined(_M_X64) && _MSC_VER == 1800
   // Disable AVX for MSVC 2013
@@ -746,7 +746,7 @@ JSCRIPT_EXTERN void Initialize(
   CHECK_LT(static_cast<std::size_t>(argc), argv.size());
 
   Initialize(argc, argv.data());
-  SetRedirectFPrintF(std::move(logCallback));
+  SetRedirectFPrintF(std::move(redirectFPrintF));
 }
 
 
@@ -833,7 +833,7 @@ JSCRIPT_EXTERN void Initialize(
     std::string executeFile,
     std::string coreFolder,
     const std::vector<std::string>& nodeFolders,
-    std::function<void(const std::string&)> logCallback) {
+    std::function<void(const std::string&)> redirectFPrintF) {
 
 #ifdef _WIN32
     const char delimiter = ';';
@@ -854,14 +854,16 @@ JSCRIPT_EXTERN void Initialize(
                std::move(executeFile),
                std::move(coreFolder),
                std::move(nodePaths),
-               std::move(logCallback));
+               std::move(redirectFPrintF));
 }
 
-JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback& cb) {
-  if (!is_initilized) return;
-  if (instance == nullptr) return;
+JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
+  DCHECK(is_initilized);
+  DCHECK_NOT_NULL(instance);
+
   JSInstanceImpl* instanceImpl = static_cast<JSInstanceImpl*>(instance);
-  instanceImpl->SetLogCallback(cb);
+
+  instanceImpl->SetLogCallback(std::move(cb));
 }
 
 JSCRIPT_EXTERN void Uninitilize() {
@@ -898,6 +900,23 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
 }
 
 
+JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
+  if (instance_ == nullptr) return JS_ERROR;
+
+  JSInstanceImpl::Ptr instance;
+  instance.adopt(static_cast<JSInstanceImpl*>(instance_));
+  if (instance->isRun()) {
+    auto env = instance->_env;
+    if (env != nullptr) env->ExitEnv();
+  }
+
+  return JS_SUCCESS;
+}
+
+
+namespace {
+
+
 struct JSAsyncInfo
 {
   std::string script;
@@ -918,25 +937,10 @@ void JSAsyncInfo::Dispose() {
 }
 
 
-JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
-  if (instance_ == nullptr) return JS_ERROR;
-
-  JSInstanceImpl::Ptr instance;
-  instance.adopt(static_cast<JSInstanceImpl*>(instance_));
-  if (instance->isRun()) {
-    auto env = instance->_env;
-    if (env != nullptr) env->ExitEnv();
-  }
-
-  return JS_SUCCESS;
-}
-
-
-namespace {
-
 void compileAndRun(node::Environment& env, const std::string&, const std::vector<JSCallbackInfo>&);
 
-}
+
+} // Anonymous namespace
 
 
 void _async_execute_script(uv_async_t* handle) {
