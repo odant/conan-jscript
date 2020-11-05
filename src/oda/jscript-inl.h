@@ -128,9 +128,12 @@ public:
 
 private:
   std::unique_ptr<Environment> CreateEnvironment(int*);
+
   void addSetStates(v8::Local<v8::Context> context);
   void addSetState(v8::Local<v8::Context> context, const char* name, state_t state);
+
   void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
+
   void overrideConsole(Environment* env);
   void overrideConsole(Environment* env,
                        const char* name,
@@ -180,6 +183,255 @@ JSLogCallback& JSInstanceImpl::logCallback() {
 
 void JSInstanceImpl::SetLogCallback(JSLogCallback cb) {
   _logCallback = std::move(cb);
+}
+
+
+JSInstanceImpl::AutoResetState JSInstanceImpl::createAutoReset(state_t state) {
+  const auto deleter = [that = JSInstanceImpl::Ptr{ this }, state](void*) {
+    that->setState(state);
+  };
+
+  return AutoResetState{ this, deleter };
+}
+
+void JSInstanceImpl::StartNodeInstance() {
+  auto autoResetState = createAutoReset(state_t::STOP);
+
+  v8::Isolate::CreateParams params;
+  auto allocator = ArrayBufferAllocator::Create();
+  MultiIsolatePlatform* platform = per_process::v8_platform.Platform();
+
+  // Following code from NodeMainInstance::NodeMainInstance
+
+  params.array_buffer_allocator = allocator.get();
+  _isolate = v8::Isolate::Allocate();
+  CHECK_NOT_NULL(_isolate);
+  // Register the isolate on the platform before the isolate gets initialized,
+  // so that the isolate can access the platform during initialization.
+  platform->RegisterIsolate(_isolate, event_loop());
+  SetIsolateCreateParamsForNode(&params);
+  v8::Isolate::Initialize(_isolate, params);
+
+  // deserialize_mode_ = per_isolate_data_indexes != nullptr;
+  // If the indexes are not nullptr, we are not deserializing
+  //CHECK_IMPLIES(deserialize_mode_, params.external_references != nullptr);
+  {
+    // ctor IsolateData call Isolate::GetCurrent, need enter
+    v8::Locker locker{ _isolate };
+    isolate_data_ = std::make_unique<IsolateData>(
+      _isolate, event_loop(), platform, allocator.get());
+  }
+
+  IsolateSettings s;
+  SetIsolateMiscHandlers(_isolate, s);
+  if (!deserialize_mode_) {
+    // If in deserialize mode, delay until after the deserialization is
+    // complete.
+    SetIsolateErrorHandlers(_isolate, s);
+  }
+
+  // Following code from NodeMainInstance::Run
+
+  int exit_code = 0;
+  {
+    v8::Locker locker(_isolate);
+    v8::Isolate::Scope isolate_scope(_isolate);
+    v8::HandleScope handle_scope(_isolate);
+
+    auto env = this->CreateEnvironment(&exit_code);
+    CHECK(env);
+    _env = env.get();
+
+    v8::Context::Scope context_scope(env->context());
+    if (exit_code == 0) {
+      LoadEnvironment(env.get());
+      this->overrideConsole(env.get());
+
+      env->set_trace_sync_io(env->options()->trace_sync_io);
+
+      {
+        v8::SealHandleScope seal(_isolate);
+        bool more;
+        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
+
+        do {
+          uv_run(env->event_loop(), UV_RUN_DEFAULT);
+
+          per_process::v8_platform.DrainVMTasks(_isolate);
+
+
+          more = uv_loop_alive(env->event_loop());
+          if (more && !env->is_stopping()) {
+            continue;
+          }
+
+          if (!uv_loop_alive(env->event_loop())) {
+            EmitBeforeExit(env.get());
+          }
+
+          // Emit `beforeExit` if the loop became alive either after emitting
+          // event, or after running some callbacks.
+          more = uv_loop_alive(env->event_loop());
+        } while (more == true && !env->is_stopping());
+
+        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+        setState(JSInstanceImpl::STOP);
+      }
+
+      env->set_trace_sync_io(false);
+      exit_code = EmitExit(env.get());
+    }
+
+    env->set_can_call_into_js(false);
+    env->stop_sub_worker_contexts();
+    ResetStdio();
+    env->RunCleanup();
+
+    RunAtExit(env.get());
+
+    per_process::v8_platform.DrainVMTasks(_isolate);
+
+#if defined(LEAK_SANITIZER)
+    __lsan_do_leak_check();
+#endif
+  }
+  set_exit_code(exit_code);
+  _env = nullptr;
+
+  per_process::v8_platform.Platform()->UnregisterIsolate(_isolate);
+  _isolate->Dispose();
+
+  _isolate = nullptr;
+  close_loop();
+}
+
+std::unique_ptr<Environment> JSInstanceImpl::CreateEnvironment(int* exit_code) {
+    *exit_code = 0;  // Reset the exit code to 0
+
+    v8::HandleScope handle_scope(_isolate);
+
+    // TODO(addaleax): This should load a real per-Isolate option, currently
+    // this is still effectively per-process.
+    if (isolate_data_->options()->track_heap_objects) {
+      _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
+    }
+
+    const size_t kNodeContextIndex = 0;
+    v8::Local<v8::Context> context;
+    if (deserialize_mode_) {
+      context = v8::Context::FromSnapshot(_isolate, kNodeContextIndex).ToLocalChecked();
+      InitializeContextRuntime(context);
+      SetIsolateErrorHandlers(_isolate, {});
+    }
+    else {
+      context = NewContext(_isolate);
+    }
+    CHECK(!context.IsEmpty());
+
+    v8::Context::Scope context_scope(context);
+
+    std::unique_ptr<Environment> env = std::make_unique<Environment>(
+        isolate_data_.get(),
+        context,
+        args,
+        exec_args,
+        static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
+                                             EnvironmentFlags::kDefaultFlags     | 
+                                             EnvironmentFlags::kOwnsProcessState |
+                                             EnvironmentFlags::kOwnsInspector),
+        ThreadId{});
+
+    addSetStates(context);
+
+    const std::string defaultOriginName{ "DEFAULTORIGIN" };
+    addGlobalStringValue(context, defaultOriginName, defaultOrigin);
+
+    const std::string externalOriginName{ "EXTERNALORIGIN" };
+    addGlobalStringValue(context, externalOriginName, externalOrigin);
+
+    // TODO(joyeecheung): when we snapshot the bootstrapped context,
+    // the inspector and diagnostics setup should after after deserialization.
+#if HAVE_INSPECTOR
+    //*exit_code = env->InitializeInspector({});
+#endif
+    if (*exit_code != 0) {
+      return env;
+    }
+
+    if (env->RunBootstrapping().IsEmpty()) {
+      *exit_code = 1;
+    }
+
+    return env;
+}
+
+void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context)
+{
+  static const char* __oda_setRunState{ "__oda_setRunState" };
+  addSetState(context, __oda_setRunState, JSInstanceImpl::RUN);
+  static const char* __oda_setErrorState{ "__oda_setErrorState" };
+  addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
+}
+
+void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, state_t state) {
+    v8::Local<v8::Object> global = context->Global();
+    CHECK(!global.IsEmpty());
+
+    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
+
+    const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
+          v8::Isolate* isolate = args.GetIsolate();
+          v8::HandleScope handle_scope(isolate);
+
+          v8::Local<v8::Value> data = args.Data();
+          if (data.IsEmpty() || !data->IsArray()) {
+              return;
+          }
+          v8::Local<v8::Array> array = data.As<v8::Array>();
+          if (array.IsEmpty()) {
+              return;
+          }
+          if (array->Length() < 2) {
+              return;
+          }
+
+          v8::Local<v8::Context> context = array->CreationContext();
+
+          v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
+          if (instanceExt.IsEmpty()) {
+              return;
+          }
+
+          JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+          if (!instance) {
+              return;
+          }
+
+          v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
+          if (stateCode.IsEmpty()) {
+              return;
+          }
+
+          instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode-> Value()));
+    };  // callback
+
+    v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
+    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(context).ToLocalChecked();
+    v8::Local<v8::Array> array = v8::Array::New(_isolate, 2);
+    array->Set(context, 0, instanceExt).Check();
+    array->Set(context, 1, stateCode).Check();
+
+    v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
+    global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
+}
+
+void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value) {
+  v8::Local<v8::Object> global = context->Global();
+  CHECK(!global.IsEmpty());
+
+  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
+  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
+  global->Set(context, stringName, stringValue).Check();
 }
 
 void JSInstanceImpl::overrideConsole(Environment* env) {
@@ -370,254 +622,6 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   }
 }
 
-JSInstanceImpl::AutoResetState JSInstanceImpl::createAutoReset(state_t state) {
-  const auto deleter = [that = JSInstanceImpl::Ptr{ this }, state](void*) {
-    that->setState(state);
-  };
-
-  return AutoResetState{ this, deleter };
-}
-
-void JSInstanceImpl::StartNodeInstance() {
-  auto autoResetState = createAutoReset(state_t::STOP);
-
-  v8::Isolate::CreateParams params;
-  auto allocator = ArrayBufferAllocator::Create();
-  MultiIsolatePlatform* platform = per_process::v8_platform.Platform();
-
-  // Following code from NodeMainInstance::NodeMainInstance
-
-  params.array_buffer_allocator = allocator.get();
-  _isolate = v8::Isolate::Allocate();
-  CHECK_NOT_NULL(_isolate);
-  // Register the isolate on the platform before the isolate gets initialized,
-  // so that the isolate can access the platform during initialization.
-  platform->RegisterIsolate(_isolate, event_loop());
-  SetIsolateCreateParamsForNode(&params);
-  v8::Isolate::Initialize(_isolate, params);
-
-  // deserialize_mode_ = per_isolate_data_indexes != nullptr;
-  // If the indexes are not nullptr, we are not deserializing
-  //CHECK_IMPLIES(deserialize_mode_, params.external_references != nullptr);
-  {
-    // ctor IsolateData call Isolate::GetCurrent, need enter
-    v8::Locker locker{ _isolate };
-    isolate_data_ = std::make_unique<IsolateData>(
-      _isolate, event_loop(), platform, allocator.get());
-  }
-
-  IsolateSettings s;
-  SetIsolateMiscHandlers(_isolate, s);
-  if (!deserialize_mode_) {
-    // If in deserialize mode, delay until after the deserialization is
-    // complete.
-    SetIsolateErrorHandlers(_isolate, s);
-  }
-
-  // Following code from NodeMainInstance::Run
-
-  int exit_code = 0;
-  {
-    v8::Locker locker(_isolate);
-    v8::Isolate::Scope isolate_scope(_isolate);
-    v8::HandleScope handle_scope(_isolate);
-
-    auto env = this->CreateEnvironment(&exit_code);
-    _env = env.get();
-
-    CHECK_NOT_NULL(env);
-    v8::Context::Scope context_scope(env->context());
-    if (exit_code == 0) {
-      LoadEnvironment(env.get());
-      this->overrideConsole(env.get());
-
-      env->set_trace_sync_io(env->options()->trace_sync_io);
-
-      {
-        v8::SealHandleScope seal(_isolate);
-        bool more;
-        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
-
-        do {
-          uv_run(env->event_loop(), UV_RUN_DEFAULT);
-
-          per_process::v8_platform.DrainVMTasks(_isolate);
-
-
-          more = uv_loop_alive(env->event_loop());
-          if (more && !env->is_stopping()) {
-            continue;
-          }
-
-          if (!uv_loop_alive(env->event_loop())) {
-            EmitBeforeExit(env.get());
-          }
-
-          // Emit `beforeExit` if the loop became alive either after emitting
-          // event, or after running some callbacks.
-          more = uv_loop_alive(env->event_loop());
-        } while (more == true && !env->is_stopping());
-
-        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-        setState(JSInstanceImpl::STOP);
-      }
-
-      env->set_trace_sync_io(false);
-      exit_code = EmitExit(env.get());
-    }
-
-    env->set_can_call_into_js(false);
-    env->stop_sub_worker_contexts();
-    ResetStdio();
-    env->RunCleanup();
-
-    RunAtExit(env.get());
-
-    per_process::v8_platform.DrainVMTasks(_isolate);
-
-#if defined(LEAK_SANITIZER)
-    __lsan_do_leak_check();
-#endif
-  }
-  set_exit_code(exit_code);
-  _env = nullptr;
-
-  per_process::v8_platform.Platform()->UnregisterIsolate(_isolate);
-  _isolate->Dispose();
-
-  _isolate = nullptr;
-  close_loop();
-}
-
-  std::unique_ptr<Environment> JSInstanceImpl::CreateEnvironment(
-      int* exit_code) {
-    *exit_code = 0;  // Reset the exit code to 0
-
-    v8::HandleScope handle_scope(_isolate);
-
-    // TODO(addaleax): This should load a real per-Isolate option, currently
-    // this is still effectively per-process.
-    if (isolate_data_->options()->track_heap_objects) {
-      _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
-    }
-
-    const size_t kNodeContextIndex = 0;
-    v8::Local<v8::Context> context;
-    if (deserialize_mode_) {
-      context = v8::Context::FromSnapshot(_isolate, kNodeContextIndex).ToLocalChecked();
-      InitializeContextRuntime(context);
-      SetIsolateErrorHandlers(_isolate, {});
-    }
-    else {
-      context = NewContext(_isolate);
-    }
-    CHECK(!context.IsEmpty());
-
-    v8::Context::Scope context_scope(context);
-
-    std::unique_ptr<Environment> env = std::make_unique<Environment>(
-        isolate_data_.get(),
-        context,
-        args,
-        exec_args,
-        static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
-                                             EnvironmentFlags::kDefaultFlags     | 
-                                             EnvironmentFlags::kOwnsProcessState |
-                                             EnvironmentFlags::kOwnsInspector),
-        ThreadId{});
-
-    addSetStates(context);
-
-    const std::string defaultOriginName{ "DEFAULTORIGIN" };
-    addGlobalStringValue(context, defaultOriginName, defaultOrigin);
-
-    const std::string externalOriginName{ "EXTERNALORIGIN" };
-    addGlobalStringValue(context, externalOriginName, externalOrigin);
-
-    // TODO(joyeecheung): when we snapshot the bootstrapped context,
-    // the inspector and diagnostics setup should after after deserialization.
-#if HAVE_INSPECTOR
-    //*exit_code = env->InitializeInspector({});
-#endif
-    if (*exit_code != 0) {
-      return env;
-    }
-
-    if (env->RunBootstrapping().IsEmpty()) {
-      *exit_code = 1;
-    }
-
-    return env;
-  }
-
-void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context)
-{
-  static const char* __oda_setRunState{ "__oda_setRunState" };
-  addSetState(context, __oda_setRunState, JSInstanceImpl::RUN);
-  static const char* __oda_setErrorState{ "__oda_setErrorState" };
-  addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
-}
-
-void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, state_t state) {
-    v8::Local<v8::Object> global = context->Global();
-    CHECK(!global.IsEmpty());
-
-    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
-
-    const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
-          v8::Isolate* isolate = args.GetIsolate();
-          v8::HandleScope handle_scope(isolate);
-
-          v8::Local<v8::Value> data = args.Data();
-          if (data.IsEmpty() || !data->IsArray()) {
-              return;
-          }
-          v8::Local<v8::Array> array = data.As<v8::Array>();
-          if (array.IsEmpty()) {
-              return;
-          }
-          if (array->Length() < 2) {
-              return;
-          }
-
-          v8::Local<v8::Context> context = array->CreationContext();
-
-          v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
-          if (instanceExt.IsEmpty()) {
-              return;
-          }
-
-          JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-          if (!instance) {
-              return;
-          }
-
-          v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
-          if (stateCode.IsEmpty()) {
-              return;
-          }
-
-          instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode-> Value()));
-    };  // callback
-
-    v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(context).ToLocalChecked();
-    v8::Local<v8::Array> array = v8::Array::New(_isolate, 2);
-    array->Set(context, 0, instanceExt).Check();
-    array->Set(context, 1, stateCode).Check();
-
-    v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
-    global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
-}
-
-void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value) {
-  v8::Local<v8::Object> global = context->Global();
-  CHECK(!global.IsEmpty());
-
-  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
-  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
-  global->Set(context, stringName, stringValue).Check();
-}
 
 JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
   if (is_initilized.exchange(true)) return;
