@@ -23,11 +23,11 @@ int main(int argc, char** argv) {
     const std::string coreFolder = cwd;
     const std::string nodeFolder = coreFolder + "/node_modules";
 
-    auto logCb = [](const std::string& msg) {
-        std::cout << "logCb: " << msg;
+    auto redirectFPrintF = [](const std::string& msg) {
+        std::cout << "redirectFPrintF: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, logCb);
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, redirectFPrintF);
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;

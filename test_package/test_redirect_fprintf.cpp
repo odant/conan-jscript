@@ -1,5 +1,5 @@
 // Test for jscript Conan package manager
-// Load external init script
+// Redirect FPrintF
 // Dmitriy Vetutnev, ODANT, 2020
 
 
@@ -65,13 +65,13 @@ int main(int argc, char** argv) {
     const std::string executeFile = argv[0];
     const std::string coreFolder = cwd;
 
-    bool isLogCbCalled = false;
-    auto logCb = [&isLogCbCalled](const std::string& msg) {
-        isLogCbCalled = true;
-        std::cout << "logCb: " << msg;
+    bool isRedirectCbCalled = false;
+    auto redirectFPrintF = [&isRedirectCbCalled](const std::string& msg) {
+        isRedirectCbCalled = true;
+        std::cout << "redirectFPrintF cb: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::vector<std::string>{}, logCb);
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{}, redirectFPrintF);
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;
@@ -115,8 +115,8 @@ int main(int argc, char** argv) {
     }
     std::cout << "Instance stopped" << std::endl;
 
-    if (!isLogCbCalled) {
-        std::cout << "Error, logCb not called!" << std::endl;
+    if (!isRedirectCbCalled) {
+        std::cout << "Error, redirectFPrintF not called!" << std::endl;
         return EXIT_FAILURE;
     }
 

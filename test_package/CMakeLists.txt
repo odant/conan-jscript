@@ -193,29 +193,29 @@ add_test(
     COMMAND test_external_init_script
 )
 
-add_executable(test_log_callback test_log_callback.cpp)
-target_link_libraries(test_log_callback JScript::JScript)
-set_target_properties(test_log_callback
+add_executable(test_redirect_fprintf test_redirect_fprintf.cpp)
+target_link_libraries(test_redirect_fprintf JScript::JScript)
+set_target_properties(test_redirect_fprintf
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
     BUILD_WITH_INSTALL_RPATH True
 )
 add_test(
-    NAME test_external_log_callback
+    NAME test_redirect_fprintf
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-    COMMAND test_log_callback
+    COMMAND test_redirect_fprintf
 )
 
-add_executable(test_log_callback2 test_log_callback2.cpp)
-target_link_libraries(test_log_callback2 JScript::JScript)
-set_target_properties(test_log_callback2
+add_executable(test_redirect_fprintf2 test_redirect_fprintf2.cpp)
+target_link_libraries(test_redirect_fprintf2 JScript::JScript)
+set_target_properties(test_redirect_fprintf2
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
     BUILD_WITH_INSTALL_RPATH True
 )
 add_test(
-    NAME test_external_log_callback2
+    NAME test_redirect_fprintf2
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-    COMMAND test_log_callback2
+    COMMAND test_redirect_fprintf2
 )
 
