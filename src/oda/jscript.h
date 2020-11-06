@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <ostream>
 
 
 #ifdef _WIN32
@@ -67,6 +68,32 @@ JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
 
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script);
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
+
+
+inline std::ostream& operator<< (std::ostream &os, const JSLogType type) {
+    os << "JSLogType: ";
+
+    switch (type) {
+
+        case JSLogType::LOG_TYPE: {
+            os << "LOG_TYPE";
+        } break;
+
+        case JSLogType::WARN_TYPE: {
+                os << "WARN_TYPE";
+        } break;
+
+        case JSLogType::ERROR_TYPE: {
+                os << "ERROR_TYPE";
+        } break;
+
+        default: {
+                os << "DEFAULT_TYPE";
+        } break;
+    }
+
+    return os;
+}
 
 
 } // namespace jscript

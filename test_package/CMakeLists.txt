@@ -219,3 +219,16 @@ add_test(
     COMMAND test_redirect_fprintf2
 )
 
+add_executable(test_log_cb test_log_cb.cpp)
+target_link_libraries(test_log_cb JScript::JScript)
+set_target_properties(test_log_cb
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_log_cb
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_log_cb
+)
+
