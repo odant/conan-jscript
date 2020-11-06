@@ -50,40 +50,16 @@ int main(int argc, char** argv) {
     std::cout << "Instance created" << std::endl;
 
     const std::string script = ""
-        "var promise_require = new Promise((resolve, reject) => {\n"
-        "   setTimeout(() => {\n"
-        "       console.log('JS: Test NODE_PATH...');\n"
-        "       var m = require('fake_module');\n"
-        "       m.printMessage();\n"
-        "       resolve(42);\n"
-        "   }, 100);\n"
-        "});\n"
-        "promise_require.then((res) => {\n"
-        "   console.log(res);\n"
-        "}).catch((err) => {\n"
-        "   console.log(err);\n"
-        "});\n"
-        "\n"
-        "var promise_cb = new Promise((resolve, reject) => {\n"
-        "   setTimeout(() => {\n"
-        "       console.log('JS: Test callback...');\n"
-        "       resolve(42);\n"
-        "   }, 200);\n"
-        "});\n"
-        "promise_cb.then(resolve).catch(reject);\n"
+        "console.log('Im`a instance!')\n"
+        "scriptDone();\n"
         "";
 
     jscript::JSCallbackInfo resolveInfo;
-    resolveInfo.name = "resolve";
+    resolveInfo.name = "scriptDone";
     resolveInfo.function = script_cb;
 
-    jscript::JSCallbackInfo rejectInfo;
-    rejectInfo.name = "reject";
-    rejectInfo.function = script_cb;
-
     const std::vector<jscript::JSCallbackInfo> callbacks{
-        std::move(resolveInfo),
-        std::move(rejectInfo)
+        std::move(resolveInfo)
     };
 
     res = jscript::RunScriptText(instance, script, callbacks);
