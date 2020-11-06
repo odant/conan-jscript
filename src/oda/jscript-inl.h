@@ -129,15 +129,13 @@ public:
 private:
   std::unique_ptr<Environment> CreateEnvironment(int*);
 
-  void addSetStates(v8::Local<v8::Context> context);
-  void addSetState(v8::Local<v8::Context> context, const char* name, state_t state);
+  void addSetStates(v8::Local<v8::Context>);
+  void addSetState(v8::Local<v8::Context> context, const char* name, const state_t state);
 
   void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
 
-  void overrideConsole(Environment* env);
-  void overrideConsole(Environment* env,
-                       const char* name,
-                       const JSLogType type);
+  void overrideConsole(v8::Local<v8::Context>);
+  void overrideConsole(v8::Local<v8::Context>, const char* name, const JSLogType type);
 
   std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
@@ -234,18 +232,19 @@ void JSInstanceImpl::StartNodeInstance() {
 
   int exit_code = 0;
   {
-    v8::Locker locker(_isolate);
-    v8::Isolate::Scope isolate_scope(_isolate);
-    v8::HandleScope handle_scope(_isolate);
+    v8::Locker locker{_isolate};
+    v8::Isolate::Scope isolateScope{_isolate};
+    v8::HandleScope handleScope{_isolate};
 
     auto env = this->CreateEnvironment(&exit_code);
     CHECK(env);
     _env = env.get();
 
-    v8::Context::Scope context_scope(env->context());
+    v8::Local<v8::Context> context = env->context();
+    v8::Context::Scope contextScope{context};
     if (exit_code == 0) {
       LoadEnvironment(env.get());
-      this->overrideConsole(env.get());
+      this->overrideConsole(context);
 
       env->set_trace_sync_io(env->options()->trace_sync_io);
 
@@ -373,7 +372,7 @@ void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context)
   addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
 }
 
-void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, state_t state) {
+void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, const state_t state) {
     v8::Local<v8::Object> global = context->Global();
     CHECK(!global.IsEmpty());
 
@@ -434,78 +433,63 @@ void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const 
   global->Set(context, stringName, stringValue).Check();
 }
 
-void JSInstanceImpl::overrideConsole(Environment* env) {
-  overrideConsole(env, u8"log", JSLogType::LOG_TYPE);
-  overrideConsole(env, u8"warn", JSLogType::WARN_TYPE);
-  overrideConsole(env, u8"error", JSLogType::ERROR_TYPE);
+void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
+  overrideConsole(context, u8"log", JSLogType::LOG_TYPE);
+  overrideConsole(context, u8"warn", JSLogType::WARN_TYPE);
+  overrideConsole(context, u8"error", JSLogType::ERROR_TYPE);
 }
 
-void JSInstanceImpl::overrideConsole(Environment* env,
-                                     const char* name,
-                                     const JSLogType type) {
-  v8::HandleScope handle_scope(env->isolate());
-  v8::TryCatch try_catch(env->isolate());
-  try_catch.SetVerbose(true);
-  v8::Local<v8::Object> global = env->context()->Global();
-  if (global.IsEmpty()) {
-    return;
+void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const JSLogType type) {
+  v8::HandleScope handleScope{_isolate};
+  v8::TryCatch tryCatch{_isolate};
+  tryCatch.SetVerbose(true);
+
+  v8::Local<v8::Object> globalObj = context->Global();
+  DCHECK(!globalObj.IsEmpty());
+
+  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, u8"console", v8::NewStringType::kNormal).ToLocalChecked();
+
+  v8::MaybeLocal<v8::Value> maybeGlobalConsole = globalObj->Get(context, consoleName).ToLocalChecked();
+  if (maybeGlobalConsole.IsEmpty()) {
+      return;
   }
 
-  v8::Local<v8::String> consoleName =
-    v8::String::NewFromUtf8(env->isolate(), u8"console", v8::NewStringType::kNormal).ToLocalChecked();
-  if (consoleName.IsEmpty()) {
-    return;
-  }
-  v8::Local<v8::String> functionName =
-    v8::String::NewFromUtf8(env->isolate(), name, v8::NewStringType::kNormal).ToLocalChecked();
-  if (functionName.IsEmpty()) {
-    return;
+  v8::Local<v8::Object> globalConsoleObj = maybeGlobalConsole.ToLocalChecked().As<v8::Object>();
+  DCHECK(!globalConsoleObj.IsEmpty());
+
+  v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
+
+  v8::MaybeLocal<v8::Value> maybeGlobalFunction = globalConsoleObj->Get(context, functionName);
+  if (maybeGlobalFunction.IsEmpty()) {
+      return;
   }
 
-  v8::Local<v8::Value> globalConsole =
-    global->Get(env->context(), consoleName).ToLocalChecked();
-  if (globalConsole.IsEmpty() || !globalConsole->IsObject()) {
-    return;
-  }
-  v8::Local<v8::Object> globalConsoleObj = globalConsole.As<v8::Object>();
-  if (globalConsoleObj.IsEmpty()) {
-    return;
-  }
-
-  v8::Local<v8::Value> globalFunctionValue =
-    globalConsoleObj->Get(env->context(), functionName).ToLocalChecked();
-  if (globalFunctionValue.IsEmpty() || !globalFunctionValue->IsFunction()) {
-    return;
-  }
-  v8::Local<v8::Function> globalFunction =
-    globalFunctionValue.As<v8::Function>();
-  if (globalFunction.IsEmpty()) {
-    return;
-  }
+  v8::Local<v8::Function> globalFunction = maybeGlobalFunction.ToLocalChecked().As<v8::Function>();
+  DCHECK(!globalFunction.IsEmpty());
 
   //TODO: add check re-override control
 
   v8::Local<v8::External> instanceExt =
-    v8::External::New(env->isolate(), this);
+    v8::External::New(_isolate, this);
   if (instanceExt.IsEmpty()) {
     return;
   }
 
   v8::Local<v8::External> typeExt =
-    v8::External::New(env->isolate(),
+    v8::External::New(_isolate,
                       reinterpret_cast<void*>(static_cast<std::size_t>(type)));
   if (typeExt.IsEmpty()) {
     return;
   }
 
-  v8::Local<v8::Array> array = v8::Array::New(env->isolate(), 3);
+  v8::Local<v8::Array> array = v8::Array::New(_isolate, 3);
   if (array.IsEmpty()) {
     return;
   }
 
-  array->Set(env->context(), 0, globalFunction).Check();
-  array->Set(env->context(), 1, instanceExt).Check();
-  array->Set(env->context(), 2, typeExt).Check();
+  array->Set(context, 0, globalFunction).Check();
+  array->Set(context, 1, instanceExt).Check();
+  array->Set(context, 2, typeExt).Check();
 
   const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
@@ -568,21 +552,21 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   };
 
   v8::Local<v8::Function> overrideFunction =
-    v8::Function::New(env->context(),
+    v8::Function::New(context,
                       callback,
                       array
   ).ToLocalChecked();
 
   globalConsoleObj->Set(
-    env->context(),
+    context,
     functionName,
     overrideFunction
   ).Check();
 
   v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(
-      env->isolate(), u8"odantFramework", v8::NewStringType::kNormal).ToLocalChecked();
+      _isolate, u8"odantFramework", v8::NewStringType::kNormal).ToLocalChecked();
   v8::Local<v8::Value> odantFramework =
-      global->Get(env->context(), odantFrameworkName).ToLocalChecked();
+      globalObj->Get(context, odantFrameworkName).ToLocalChecked();
   if (odantFramework.IsEmpty() || !odantFramework->IsObject()) {
     return;
   }
@@ -591,17 +575,17 @@ void JSInstanceImpl::overrideConsole(Environment* env,
     return;
   }
   v8::Local<v8::Value> odantFrameworkConsole =
-      odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
+      odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
   if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
-    v8::Local<v8::Object> consoleObj = v8::Object::New(env->isolate());
+    v8::Local<v8::Object> consoleObj = v8::Object::New(_isolate);
     if (consoleObj.IsEmpty()) {
       return;
     }
-    if (!odantFrameworkObj->Set(env->context(), consoleName, consoleObj).ToChecked()) {
+    if (!odantFrameworkObj->Set(context, consoleName, consoleObj).ToChecked()) {
       return;
     }
     odantFrameworkConsole =
-      odantFrameworkObj->Get(env->context(), consoleName).ToLocalChecked();
+      odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
     if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
       return;
     }
@@ -613,9 +597,9 @@ void JSInstanceImpl::overrideConsole(Environment* env,
   }
 
   v8::Local<v8::Value> function =
-    odantFrameworkconsoleObj->Get(env->context(), functionName).ToLocalChecked();
+    odantFrameworkconsoleObj->Get(context, functionName).ToLocalChecked();
   if (function.IsEmpty() || !function->IsFunction()) {
-    odantFrameworkconsoleObj->Set(env->context(),
+    odantFrameworkconsoleObj->Set(context,
                     functionName,
                     overrideFunction
     ).Check();
