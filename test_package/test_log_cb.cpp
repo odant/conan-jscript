@@ -1,5 +1,5 @@
 // Test for jscript Conan package manager
-// Redirect FPrintF
+// SetLogCallback
 // Dmitriy Vetutnev, ODANT, 2020
 
 
