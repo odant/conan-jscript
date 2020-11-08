@@ -127,7 +127,7 @@ public:
   std::condition_variable _state_cv;
 
 private:
-  std::unique_ptr<Environment> CreateEnvironment(int*);
+  DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(int*);
 
   void addSetStates(v8::Local<v8::Context>);
   void addSetState(v8::Local<v8::Context> context, const char* name, const state_t state);
@@ -281,14 +281,7 @@ void JSInstanceImpl::StartNodeInstance() {
       exit_code = EmitExit(env.get());
     }
 
-    env->set_can_call_into_js(false);
-    env->stop_sub_worker_contexts();
     ResetStdio();
-    env->RunCleanup();
-
-    RunAtExit(env.get());
-
-    per_process::v8_platform.DrainVMTasks(_isolate);
 
 #if defined(LEAK_SANITIZER)
     __lsan_do_leak_check();
@@ -297,14 +290,16 @@ void JSInstanceImpl::StartNodeInstance() {
   set_exit_code(exit_code);
   _env = nullptr;
 
-  per_process::v8_platform.Platform()->UnregisterIsolate(_isolate);
+  platform->DrainTasks(_isolate);
+  platform->UnregisterIsolate(_isolate);
   _isolate->Dispose();
 
   _isolate = nullptr;
   close_loop();
 }
 
-std::unique_ptr<Environment> JSInstanceImpl::CreateEnvironment(int* exit_code) {
+DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
+      int* exit_code) {
     *exit_code = 0;  // Reset the exit code to 0
 
     v8::HandleScope handle_scope(_isolate);
@@ -329,7 +324,7 @@ std::unique_ptr<Environment> JSInstanceImpl::CreateEnvironment(int* exit_code) {
 
     v8::Context::Scope context_scope(context);
 
-    std::unique_ptr<Environment> env = std::make_unique<Environment>(
+    DeleteFnPtr<Environment, FreeEnvironment> env{ new Environment(
         isolate_data_.get(),
         context,
         args,
@@ -338,7 +333,8 @@ std::unique_ptr<Environment> JSInstanceImpl::CreateEnvironment(int* exit_code) {
                                              EnvironmentFlags::kDefaultFlags     | 
                                              EnvironmentFlags::kOwnsProcessState |
                                              EnvironmentFlags::kOwnsInspector),
-        ThreadId{});
+        ThreadId{})
+    };
 
     addSetStates(context);
 
