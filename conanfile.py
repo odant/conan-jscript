@@ -122,6 +122,8 @@ class JScriptConan(ConanFile):
         if self.settings.os == "Windows":
             zlib_libname = "zlibstatic.lib" if self.settings.build_type == "Release" else "zlibstaticd.lib"
             flags.append("--shared-zlib-libname=%s" % zlib_libname)
+            if self.settings.arch == "x86":
+                flags.append("--no-cross-compiling")
         # Build type, debug/release
         if self.settings.build_type == "Debug":
             flags.append("--debug")
