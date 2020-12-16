@@ -15,6 +15,7 @@ const {
   MathMin,
   NumberIsSafeInteger,
   Promise,
+  PromisePrototypeFinally,
   PromiseResolve,
   Symbol,
   Uint8Array,
@@ -321,8 +322,19 @@ async function open(path, flags, mode) {
                                  flagsNumber, mode, kUsePromises));
 }
 
-async function read(handle, buffer, offset, length, position) {
-  validateBuffer(buffer);
+async function read(handle, bufferOrOptions, offset, length, position) {
+  let buffer = bufferOrOptions;
+  if (!isArrayBufferView(buffer)) {
+    if (bufferOrOptions.buffer) {
+      buffer = bufferOrOptions.buffer;
+      validateBuffer(buffer);
+    } else {
+      buffer = Buffer.alloc(16384);
+    }
+    offset = bufferOrOptions.offset || 0;
+    length = buffer.length;
+    position = bufferOrOptions.position || null;
+  }
 
   if (offset == null) {
     offset = 0;
@@ -410,7 +422,7 @@ async function rename(oldPath, newPath) {
 
 async function truncate(path, len = 0) {
   const fd = await open(path, 'r+');
-  return ftruncate(fd, len).finally(fd.close.bind(fd));
+  return PromisePrototypeFinally(ftruncate(fd, len), fd.close);
 }
 
 async function ftruncate(handle, len = 0) {
@@ -538,7 +550,7 @@ async function lchmod(path, mode) {
     throw new ERR_METHOD_NOT_IMPLEMENTED('lchmod()');
 
   const fd = await open(path, O_WRONLY | O_SYMLINK);
-  return fchmod(fd, mode).finally(fd.close);
+  return PromisePrototypeFinally(fchmod(fd, mode), fd.close);
 }
 
 async function lchown(path, uid, gid) {
@@ -614,7 +626,7 @@ async function writeFile(path, data, options) {
     return writeFileHandle(path, data);
 
   const fd = await open(path, flag, options.mode);
-  return writeFileHandle(fd, data).finally(fd.close);
+  return PromisePrototypeFinally(writeFileHandle(fd, data), fd.close);
 }
 
 async function appendFile(path, data, options) {
@@ -632,7 +644,7 @@ async function readFile(path, options) {
     return readFileHandle(path, options);
 
   const fd = await open(path, flag, 0o666);
-  return readFileHandle(fd, options).finally(fd.close);
+  return PromisePrototypeFinally(readFileHandle(fd, options), fd.close);
 }
 
 module.exports = {

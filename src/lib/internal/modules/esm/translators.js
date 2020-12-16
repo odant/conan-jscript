@@ -3,8 +3,10 @@
 /* global WebAssembly */
 
 const {
+  ArrayPrototypeMap,
   Boolean,
   JSONParse,
+  ObjectGetPrototypeOf,
   ObjectPrototypeHasOwnProperty,
   ObjectKeys,
   PromisePrototypeCatch,
@@ -13,8 +15,10 @@ const {
   SafeMap,
   SafeSet,
   StringPrototypeReplace,
+  StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
+  SyntaxErrorPrototype,
 } = primordials;
 
 let _TYPES = null;
@@ -61,7 +65,7 @@ const { emitWarningSync } = require('internal/process/warning');
 let cjsParse;
 async function initCJSParse() {
   if (typeof WebAssembly === 'undefined') {
-    cjsParse = require('internal/deps/cjs-module-lexer/lexer');
+    cjsParse = require('internal/deps/cjs-module-lexer/lexer').parse;
   } else {
     const { parse, init } =
         require('internal/deps/cjs-module-lexer/dist/lexer');
@@ -147,6 +151,9 @@ translators.set('module', async function moduleStrategy(url) {
 });
 
 function enrichCJSError(err) {
+  if (err == null || ObjectGetPrototypeOf(err) !== SyntaxErrorPrototype) {
+    return;
+  }
   const stack = StringPrototypeSplit(err.stack, '\n');
   /*
   * The regular expression below targets the most common import statement
@@ -272,9 +279,9 @@ function cjsPreparseModuleExports(filename) {
 translators.set('builtin', async function builtinStrategy(url) {
   debug(`Translating BuiltinModule ${url}`);
   // Slice 'node:' scheme
-  const id = url.slice(5);
+  const id = StringPrototypeSlice(url, 5);
   const module = loadNativeModule(id, url, true);
-  if (!url.startsWith('node:') || !module) {
+  if (!StringPrototypeStartsWith(url, 'node:') || !module) {
     throw new ERR_UNKNOWN_BUILTIN_MODULE(url);
   }
   debug(`Loading BuiltinModule ${url}`);
@@ -286,7 +293,8 @@ translators.set('json', async function jsonStrategy(url) {
   emitExperimentalWarning('Importing JSON modules');
   debug(`Translating JSONModule ${url}`);
   debug(`Loading JSONModule ${url}`);
-  const pathname = url.startsWith('file:') ? fileURLToPath(url) : null;
+  const pathname = StringPrototypeStartsWith(url, 'file:') ?
+    fileURLToPath(url) : null;
   let modulePath;
   let module;
   if (pathname) {
@@ -360,8 +368,11 @@ translators.set('wasm', async function(url) {
   }
 
   const imports =
-      WebAssembly.Module.imports(compiled).map(({ module }) => module);
-  const exports = WebAssembly.Module.exports(compiled).map(({ name }) => name);
+      ArrayPrototypeMap(WebAssembly.Module.imports(compiled),
+                        ({ module }) => module);
+  const exports =
+    ArrayPrototypeMap(WebAssembly.Module.exports(compiled),
+                      ({ name }) => name);
 
   return createDynamicModule(imports, exports, url, (reflect) => {
     const { exports } = new WebAssembly.Instance(compiled, reflect.imports);

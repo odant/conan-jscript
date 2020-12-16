@@ -313,6 +313,15 @@ If `fn` is not provided, an empty function will be used.
 Returns a function that triggers an `AssertionError` if it is invoked. `msg` is
 used as the error message for the `AssertionError`.
 
+### `mustSucceed([fn])`
+
+* `fn` [&lt;Function>][] default = () => {}
+* return [&lt;Function>][]
+
+Returns a function that accepts arguments `(err, ...args)`. If `err` is not
+`undefined` or `null`, it triggers an `AssertionError`. Otherwise, it calls
+`fn(...args)`.
+
 ### `nodeProcessAborted(exitCode, signal)`
 
 * `exitCode` [&lt;number>][]
@@ -367,6 +376,11 @@ const { spawn } = require('child_process');
 
 spawn(...common.pwdCommand, { stdio: ['pipe'] });
 ```
+
+### `requireNoPackageJSONAbove()`
+
+Throws an `AssertionError` if a `package.json` file is in any ancestor
+directory. Such files may interfere with proper test functionality.
 
 ### `runWithInvalidFD(func)`
 

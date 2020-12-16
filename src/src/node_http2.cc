@@ -88,7 +88,8 @@ Http2Scope::Http2Scope(Http2Session* session) : session_(session) {
 Http2Scope::~Http2Scope() {
   if (!session_) return;
   session_->set_in_scope(false);
-  session_->MaybeScheduleWrite();
+  if (!session_->is_write_scheduled())
+    session_->MaybeScheduleWrite();
 }
 
 // The Http2Options object is used during the construction of Http2Session
@@ -1136,7 +1137,7 @@ int Http2Session::OnNghttpError(nghttp2_session* handle,
   // Unfortunately, this is currently the only way for us to know if
   // the session errored because the peer is not an http2 peer.
   Http2Session* session = static_cast<Http2Session*>(user_data);
-  Debug(session, "Error '%.*s'", len, message);
+  Debug(session, "Error '%s'", message);
   if (strncmp(message, BAD_PEER_MESSAGE, len) == 0) {
     Environment* env = session->env();
     Isolate* isolate = env->isolate();
@@ -1820,6 +1821,33 @@ void Http2Session::Consume(Local<Object> stream_obj) {
   StreamBase* stream = StreamBase::FromObject(stream_obj);
   stream->PushStreamListener(this);
   Debug(this, "i/o stream consumed");
+}
+
+// Allow injecting of data from JS
+// This is used when the socket has already some data received
+// before our listener was attached
+// https://github.com/nodejs/node/issues/35475
+void Http2Session::Receive(const FunctionCallbackInfo<Value>& args) {
+  Http2Session* session;
+  ASSIGN_OR_RETURN_UNWRAP(&session, args.Holder());
+  CHECK(args[0]->IsObject());
+
+  ArrayBufferViewContents<char> buffer(args[0]);
+  const char* data = buffer.data();
+  size_t len = buffer.length();
+  Debug(session, "Receiving %zu bytes injected from JS", len);
+
+  // Copy given buffer
+  while (len > 0) {
+    uv_buf_t buf = session->OnStreamAlloc(len);
+    size_t copy = buf.len > len ? len : buf.len;
+    memcpy(buf.base, data, copy);
+    buf.len = copy;
+    session->OnStreamRead(copy, buf);
+
+    data += copy;
+    len -= copy;
+  }
 }
 
 Http2Stream* Http2Stream::New(Http2Session* session,
@@ -3047,6 +3075,7 @@ void Initialize(Local<Object> target,
   env->SetProtoMethod(session, "altsvc", Http2Session::AltSvc);
   env->SetProtoMethod(session, "ping", Http2Session::Ping);
   env->SetProtoMethod(session, "consume", Http2Session::Consume);
+  env->SetProtoMethod(session, "receive", Http2Session::Receive);
   env->SetProtoMethod(session, "destroy", Http2Session::Destroy);
   env->SetProtoMethod(session, "goaway", Http2Session::Goaway);
   env->SetProtoMethod(session, "settings", Http2Session::Settings);

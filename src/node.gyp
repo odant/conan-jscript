@@ -226,6 +226,11 @@
       'lib/internal/streams/duplexpair.js',
       'lib/internal/streams/from.js',
       'lib/internal/streams/legacy.js',
+      'lib/internal/streams/readable.js',
+      'lib/internal/streams/writable.js',
+      'lib/internal/streams/duplex.js',
+      'lib/internal/streams/passthrough.js',
+      'lib/internal/streams/transform.js',
       'lib/internal/streams/destroy.js',
       'lib/internal/streams/state.js',
       'lib/internal/streams/pipeline.js',
@@ -247,7 +252,6 @@
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
       'deps/acorn-plugins/acorn-class-fields/index.js',
-      'deps/acorn-plugins/acorn-numeric-separator/index.js',
       'deps/acorn-plugins/acorn-private-class-elements/index.js',
       'deps/acorn-plugins/acorn-private-methods/index.js',
       'deps/acorn-plugins/acorn-static-class-features/index.js',
@@ -329,7 +333,7 @@
       'target_name': 'node_text_start',
       'type': 'none',
       'conditions': [
-        [ 'OS in "linux freebsd" and '
+        [ 'OS in "linux freebsd solaris" and '
           'target_arch=="x64"', {
           'type': 'static_library',
           'sources': [
@@ -652,6 +656,7 @@
         'src/base_object.h',
         'src/base_object-inl.h',
         'src/base64.h',
+        'src/base64-inl.h',
         'src/callback_queue.h',
         'src/callback_queue-inl.h',
         'src/connect_wrap.h',
@@ -897,7 +902,7 @@
             'src/tls_wrap.h'
           ],
         }],
-        [ 'OS in "linux freebsd mac" and '
+        [ 'OS in "linux freebsd mac solaris" and '
           'target_arch=="x64" and '
           'node_target_type=="executable"', {
           'defines': [ 'NODE_ENABLE_LARGE_CODE_PAGES=1' ],
