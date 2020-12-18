@@ -53,16 +53,20 @@ protected:
   const bool deserialize_mode_ = false;
 
 private:
-  uv_loop_t event_loop_;
-  bool event_loop_init_;
-
   int exit_code_;
+
+  bool isClosedEventLoop;
+  uv_loop_t event_loop_;
 };
 
 
-NodeInstanceData::NodeInstanceData() : exit_code_(1) {
-  event_loop_init_ = uv_loop_init(event_loop()) == 0;
-  CHECK(event_loop_init_);
+NodeInstanceData::NodeInstanceData()
+  :
+    exit_code_{1},
+    isClosedEventLoop{false}
+{
+  CHECK_EQ(::uv_loop_init(event_loop()), 0);
+  CHECK_EQ(::uv_loop_configure(event_loop(), UV_METRICS_IDLE_TIME), 0);
 }
 
 NodeInstanceData::~NodeInstanceData() {
@@ -74,24 +78,26 @@ uv_loop_t* NodeInstanceData::event_loop() {
 }
 
 void NodeInstanceData::print_handles() {
-  fprintf(stderr, "\r\n%p\r\n", event_loop());
-  uv_print_all_handles(event_loop(), stderr);
-  fprintf(stderr, "\r\n");
+  ::fprintf(stderr, "\r\n%p\r\n", event_loop());
+  ::uv_print_all_handles(event_loop(), stderr);
+  ::fprintf(stderr, "\r\n");
 }
 
 void NodeInstanceData::close_loop() {
-  if (event_loop_init_) {
-    while (uv_loop_close(event_loop()) == UV_EBUSY) {
-      uv_walk(event_loop(),
-              [](uv_handle_t* handle, void* arg) {
-                if (uv_is_closing(handle) == 0) uv_close(handle, nullptr);
-              },
-              nullptr);
+  if (isClosedEventLoop) {
+      return;
+  }
+  isClosedEventLoop = true;
 
-      uv_run(event_loop(), UV_RUN_DEFAULT);
-    }
+  while (::uv_loop_close(event_loop()) == UV_EBUSY) {
+    auto cb = [](uv_handle_t* handle, void* arg) {
+      if (::uv_is_closing(handle) == 0) {
+        ::uv_close(handle, nullptr);
+      }
+    };
+    ::uv_walk(event_loop(), cb, nullptr);
 
-    event_loop_init_ = false;
+    ::uv_run(event_loop(), UV_RUN_DEFAULT);
   }
 }
 
