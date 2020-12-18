@@ -36,53 +36,72 @@ std::vector<std::string> exec_args;
 class NodeInstanceData
 {
 public:
-  NodeInstanceData() : exit_code_(1) {
-    event_loop_init_ = uv_loop_init(event_loop()) == 0;
-    CHECK(event_loop_init_);
-  }
+  NodeInstanceData();
+  ~NodeInstanceData();
 
-  ~NodeInstanceData() { close_loop(); }
+  uv_loop_t* event_loop();
 
-  uv_loop_t* event_loop() { return &event_loop_; }
+  void print_handles();
 
-  void print_handles() {
-    fprintf(stderr, "\r\n%p\r\n", event_loop());
-    uv_print_all_handles(event_loop(), stderr);
-    fprintf(stderr, "\r\n");
-  }
+  void close_loop();
 
-  void close_loop() {
-    if (event_loop_init_) {
-      while (uv_loop_close(event_loop()) == UV_EBUSY) {
-        uv_walk(event_loop(),
-                [](uv_handle_t* handle, void* arg) {
-                  if (uv_is_closing(handle) == 0) uv_close(handle, nullptr);
-                },
-                nullptr);
+  int exit_code();
+  void set_exit_code(int);
 
-        uv_run(event_loop(), UV_RUN_DEFAULT);
-      }
-
-      event_loop_init_ = false;
-    }
-  }
-
-  int exit_code() { return exit_code_; }
-
-  void set_exit_code(int exit_code) { exit_code_ = exit_code; }
-
- protected:
-
+protected:
   std::unique_ptr<IsolateData> isolate_data_;
   const bool deserialize_mode_ = false;
 
-
- private:
+private:
   uv_loop_t event_loop_;
   bool event_loop_init_;
 
   int exit_code_;
 };
+
+
+NodeInstanceData::NodeInstanceData() : exit_code_(1) {
+  event_loop_init_ = uv_loop_init(event_loop()) == 0;
+  CHECK(event_loop_init_);
+}
+
+NodeInstanceData::~NodeInstanceData() {
+  close_loop();
+}
+
+uv_loop_t* NodeInstanceData::event_loop() {
+  return &event_loop_;
+}
+
+void NodeInstanceData::print_handles() {
+  fprintf(stderr, "\r\n%p\r\n", event_loop());
+  uv_print_all_handles(event_loop(), stderr);
+  fprintf(stderr, "\r\n");
+}
+
+void NodeInstanceData::close_loop() {
+  if (event_loop_init_) {
+    while (uv_loop_close(event_loop()) == UV_EBUSY) {
+      uv_walk(event_loop(),
+              [](uv_handle_t* handle, void* arg) {
+                if (uv_is_closing(handle) == 0) uv_close(handle, nullptr);
+              },
+              nullptr);
+
+      uv_run(event_loop(), UV_RUN_DEFAULT);
+    }
+
+    event_loop_init_ = false;
+  }
+}
+
+int NodeInstanceData::exit_code() {
+  return exit_code_;
+}
+
+void NodeInstanceData::set_exit_code(int exit_code) {
+  exit_code_ = exit_code;
+}
 
 
 class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstanceData
