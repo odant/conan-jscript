@@ -55,7 +55,6 @@ class NativeModuleLoader;
 namespace per_process {
 extern Mutex env_var_mutex;
 extern uint64_t node_start_time;
-extern bool v8_is_profiling;
 }  // namespace per_process
 
 // Forward declaration
@@ -91,11 +90,8 @@ void PrintCaughtException(v8::Isolate* isolate,
                           const v8::TryCatch& try_catch);
 
 void ResetStdio();  // Safe to call more than once and from signal handlers.
-void SignalExit(int signo);
 #ifdef __POSIX__
-void RegisterSignalHandler(int signal,
-                           void (*handler)(int signal),
-                           bool reset_handler = false);
+void SignalExit(int signal, siginfo_t* info, void* ucontext);
 #endif
 
 std::string GetProcessTitle(const char* default_title);
@@ -104,10 +100,6 @@ std::string GetHumanReadableProcessName();
 void InitializeContextRuntime(v8::Local<v8::Context>);
 bool InitializePrimordials(v8::Local<v8::Context> context);
 
-namespace task_queue {
-void PromiseRejectCallback(v8::PromiseRejectMessage message);
-}  // namespace task_queue
-
 class NodeArrayBufferAllocator : public ArrayBufferAllocator {
  public:
   inline uint32_t* zero_fill_field() { return &zero_fill_field_; }
@@ -115,7 +107,7 @@ class NodeArrayBufferAllocator : public ArrayBufferAllocator {
   void* Allocate(size_t size) override;  // Defined in src/node.cc
   void* AllocateUninitialized(size_t size) override;
   void Free(void* data, size_t size) override;
-  virtual void* Reallocate(void* data, size_t old_size, size_t size);
+  void* Reallocate(void* data, size_t old_size, size_t size) override;
   virtual void RegisterPointer(void* data, size_t size) {
     total_mem_usage_.fetch_add(size, std::memory_order_relaxed);
   }
@@ -163,8 +155,7 @@ v8::MaybeLocal<v8::Object> New(Environment* env,
 // ArrayBuffer::Allocator().
 v8::MaybeLocal<v8::Object> New(Environment* env,
                                char* data,
-                               size_t length,
-                               bool uses_malloc);
+                               size_t length);
 // Creates a Buffer instance over an existing ArrayBuffer.
 v8::MaybeLocal<v8::Uint8Array> New(Environment* env,
                                    v8::Local<v8::ArrayBuffer> ab,
@@ -186,7 +177,7 @@ static v8::MaybeLocal<v8::Object> New(Environment* env,
   const size_t len_in_bytes = buf->length() * sizeof(buf->out()[0]);
 
   if (buf->IsAllocated())
-    ret = New(env, src, len_in_bytes, true);
+    ret = New(env, src, len_in_bytes);
   else if (!buf->IsInvalidated())
     ret = Copy(env, src, len_in_bytes);
 
@@ -301,8 +292,10 @@ void DefineZlibConstants(v8::Local<v8::Object> target);
 v8::Isolate* NewIsolate(v8::Isolate::CreateParams* params,
                         uv_loop_t* event_loop,
                         MultiIsolatePlatform* platform);
+// This overload automatically picks the right 'main_script_id' if no callback
+// was provided by the embedder.
 v8::MaybeLocal<v8::Value> StartExecution(Environment* env,
-                                         const char* main_script_id);
+                                         StartExecutionCallback cb = nullptr);
 v8::MaybeLocal<v8::Object> GetPerContextExports(v8::Local<v8::Context> context);
 v8::MaybeLocal<v8::Value> ExecuteBootstrapper(
     Environment* env,
@@ -400,6 +393,8 @@ BaseObjectPtr<AsyncWrap> CreateHeapSnapshotStream(
 namespace fs {
 std::string Basename(const std::string& str, const std::string& extension);
 }  // namespace fs
+
+node_module napi_module_to_node_module(const napi_module* mod);
 
 }  // namespace node
 

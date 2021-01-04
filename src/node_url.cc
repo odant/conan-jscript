@@ -1169,7 +1169,7 @@ bool ParseHost(const std::string& input,
                std::string* output,
                bool is_special,
                bool unicode = false) {
-  if (input.length() == 0) {
+  if (input.empty()) {
     output->clear();
     return true;
   }
@@ -2036,7 +2036,7 @@ void URL::Parse(const char* input,
               (ch == kEOL ||
                ch == '?' ||
                ch == '#')) {
-            while (url->path.size() > 1 && url->path[0].length() == 0) {
+            while (url->path.size() > 1 && url->path[0].empty()) {
               url->path.erase(url->path.begin());
             }
           }
@@ -2059,9 +2059,9 @@ void URL::Parse(const char* input,
             state = kFragment;
             break;
           default:
-            if (url->path.size() == 0)
+            if (url->path.empty())
               url->path.emplace_back("");
-            if (url->path.size() > 0 && ch != kEOL)
+            else if (ch != kEOL)
               AppendOrEscape(&url->path[0], ch, C0_CONTROL_ENCODE_SET);
         }
         break;
@@ -2175,9 +2175,7 @@ void Parse(Environment* env,
     Local<Value> argv[2] = { undef, undef };
     argv[ERR_ARG_FLAGS] = Integer::NewFromUnsigned(isolate, url.flags);
     argv[ERR_ARG_INPUT] =
-      String::NewFromUtf8(env->isolate(),
-                          input,
-                          NewStringType::kNormal).ToLocalChecked();
+      String::NewFromUtf8(env->isolate(), input).ToLocalChecked();
     error_cb.As<Function>()->Call(context, recv, arraysize(argv), argv)
         .FromMaybe(Local<Value>());
   }
@@ -2225,9 +2223,7 @@ void EncodeAuthSet(const FunctionCallbackInfo<Value>& args) {
     AppendOrEscape(&output, ch, USERINFO_ENCODE_SET);
   }
   args.GetReturnValue().Set(
-      String::NewFromUtf8(env->isolate(),
-                          output.c_str(),
-                          NewStringType::kNormal).ToLocalChecked());
+      String::NewFromUtf8(env->isolate(), output.c_str()).ToLocalChecked());
 }
 
 void ToUSVString(const FunctionCallbackInfo<Value>& args) {
@@ -2279,9 +2275,7 @@ void DomainToASCII(const FunctionCallbackInfo<Value>& args) {
   }
   std::string out = host.ToStringMove();
   args.GetReturnValue().Set(
-      String::NewFromUtf8(env->isolate(),
-                          out.c_str(),
-                          NewStringType::kNormal).ToLocalChecked());
+      String::NewFromUtf8(env->isolate(), out.c_str()).ToLocalChecked());
 }
 
 void DomainToUnicode(const FunctionCallbackInfo<Value>& args) {
@@ -2299,9 +2293,7 @@ void DomainToUnicode(const FunctionCallbackInfo<Value>& args) {
   }
   std::string out = host.ToStringMove();
   args.GetReturnValue().Set(
-      String::NewFromUtf8(env->isolate(),
-                          out.c_str(),
-                          NewStringType::kNormal).ToLocalChecked());
+      String::NewFromUtf8(env->isolate(), out.c_str()).ToLocalChecked());
 }
 
 void SetURLConstructor(const FunctionCallbackInfo<Value>& args) {

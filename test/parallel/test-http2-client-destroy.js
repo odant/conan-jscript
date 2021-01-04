@@ -95,7 +95,7 @@ const Countdown = require('../common/countdown');
     });
 
     req.resume();
-    req.on('end', common.mustCall());
+    req.on('end', common.mustNotCall());
     req.on('close', common.mustCall(() => server.close()));
   }));
 }
@@ -145,6 +145,7 @@ const Countdown = require('../common/countdown');
   server.on('stream', common.mustNotCall());
   server.listen(0, common.mustCall(() => {
     const client = h2.connect(`http://localhost:${server.address().port}`);
+    client.on('close', common.mustCall());
     const socket = client[kSocket];
     socket.on('close', common.mustCall(() => {
       assert(socket.destroyed);

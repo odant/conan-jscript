@@ -6,6 +6,8 @@
 
 <!-- name=dgram -->
 
+<!-- source_link=lib/dgram.js -->
+
 The `dgram` module provides an implementation of UDP datagram sockets.
 
 ```js
@@ -94,6 +96,12 @@ The event handler function is passed two arguments: `msg` and `rinfo`.
   * `port` {number} The sender port.
   * `size` {number} The message size.
 
+If the source address of the incoming packet is an IPv6 link-local
+address, the interface name is added to the `address`. For
+example, a packet received on the `en0` interface might have the
+address field set to `'fe80::2618:1234:ab11:3b9c%en0'`, where `'%en0'`
+is the interface name as a zone ID suffix.
+
 ### `socket.addMembership(multicastAddress[, multicastInterface])`
 <!-- YAML
 added: v0.6.9
@@ -107,6 +115,9 @@ Tells the kernel to join a multicast group at the given `multicastAddress` and
 `multicastInterface` argument is not specified, the operating system will choose
 one interface and will add membership to it. To add membership to every
 available interface, call `addMembership` multiple times, once per interface.
+
+When called on an unbound socket, this method will implicitly bind to a random
+port, listening on all interfaces.
 
 When sharing a UDP socket across multiple `cluster` workers, the
 `socket.addMembership()` function must be called only once or an
@@ -128,7 +139,9 @@ if (cluster.isMaster) {
 
 ### `socket.addSourceSpecificMembership(sourceAddress, groupAddress[, multicastInterface])`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.1.0
+ - v12.16.0
 -->
 * `sourceAddress` {string}
 * `groupAddress` {string}
@@ -141,6 +154,9 @@ is not specified, the operating system will choose one interface and will add
 membership to it. To add membership to every available interface, call
 `socket.addSourceSpecificMembership()` multiple times, once per interface.
 
+When called on an unbound socket, this method will implicitly bind to a random
+port, listening on all interfaces.
+
 ### `socket.address()`
 <!-- YAML
 added: v0.1.99
@@ -152,11 +168,14 @@ Returns an object containing the address information for a socket.
 For UDP sockets, this object will contain `address`, `family` and `port`
 properties.
 
+This method throws `EBADF` if called on an unbound socket.
+
 ### `socket.bind([port][, address][, callback])`
 <!-- YAML
 added: v0.1.99
 changes:
-  - version: v0.10
+  - version: v0.9.1
+    commit: 332fea5ac1816e498030109c4211bca24a7fa667
     description: The method was changed to an asynchronous execution model.
                  Legacy code would need to be changed to pass a callback
                  function to the method call.
@@ -296,8 +315,9 @@ added: v12.0.0
 -->
 
 A synchronous function that disassociates a connected `dgram.Socket` from
-its remote address. Trying to call `disconnect()` on an already disconnected
-socket will result in an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][] exception.
+its remote address. Trying to call `disconnect()` on an unbound or already
+disconnected socket will result in an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][]
+exception.
 
 ### `socket.dropMembership(multicastAddress[, multicastInterface])`
 <!-- YAML
@@ -317,7 +337,9 @@ drop membership on all valid interfaces.
 
 ### `socket.dropSourceSpecificMembership(sourceAddress, groupAddress[, multicastInterface])`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.1.0
+ - v12.16.0
 -->
 
 * `sourceAddress` {string}
@@ -340,12 +362,16 @@ added: v8.7.0
 
 * Returns: {number} the `SO_RCVBUF` socket receive buffer size in bytes.
 
+This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
+
 ### `socket.getSendBufferSize()`
 <!-- YAML
 added: v8.7.0
 -->
 
 * Returns: {number} the `SO_SNDBUF` socket send buffer size in bytes.
+
+This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.ref()`
 <!-- YAML
@@ -373,13 +399,19 @@ added: v12.0.0
 * Returns: {Object}
 
 Returns an object containing the `address`, `family`, and `port` of the remote
-endpoint. It throws an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][] exception if the
-socket is not connected.
+endpoint. This method throws an [`ERR_SOCKET_DGRAM_NOT_CONNECTED`][] exception
+if the socket is not connected.
 
 ### `socket.send(msg[, offset, length][, port][, address][, callback])`
 <!-- YAML
 added: v0.1.99
 changes:
+  - version: v14.5.0
+    pr-url: https://github.com/nodejs/node/pull/22413
+    description: The `msg` parameter can now be any `TypedArray` or `DataView`.
+  - version: v12.0.0
+    pr-url: https://github.com/nodejs/node/pull/26871
+    description: Added support for sending data on connected sockets.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11985
     description: The `msg` parameter can be an `Uint8Array` now.
@@ -394,12 +426,9 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/4374
     description: The `msg` parameter can be an array now. Also, the `offset`
                  and `length` parameters are optional now.
-  - version: v12.0.0
-    pr-url: https://github.com/nodejs/node/pull/26871
-    description: Added support for sending data on connected sockets.
 -->
 
-* `msg` {Buffer|Uint8Array|string|Array} Message to be sent.
+* `msg` {Buffer|TypedArray|DataView|string|Array} Message to be sent.
 * `offset` {integer} Offset in the buffer where the message starts.
 * `length` {integer} Number of bytes in the message.
 * `port` {integer} Destination port.
@@ -412,8 +441,8 @@ specified. Connected sockets, on the other hand, will use their associated
 remote endpoint, so the `port` and `address` arguments must not be set.
 
 The `msg` argument contains the message to be sent.
-Depending on its type, different behavior can apply. If `msg` is a `Buffer`
-or `Uint8Array`,
+Depending on its type, different behavior can apply. If `msg` is a `Buffer`,
+any `TypedArray` or a `DataView`,
 the `offset` and `length` specify the offset within the `Buffer` where the
 message begins and the number of bytes in the message, respectively.
 If `msg` is a `String`, then it is automatically converted to a `Buffer`
@@ -442,7 +471,10 @@ passed as the first argument to the `callback`. If a `callback` is not given,
 the error is emitted as an `'error'` event on the `socket` object.
 
 Offset and length are optional but both *must* be set if either are used.
-They are supported only when the first argument is a `Buffer` or `Uint8Array`.
+They are supported only when the first argument is a `Buffer`, a `TypedArray`,
+or a `DataView`.
+
+This method throws [`ERR_SOCKET_BAD_PORT`][] if called on an unbound socket.
 
 Example of sending a UDP packet to a port on `localhost`;
 
@@ -489,25 +521,25 @@ client.connect(41234, 'localhost', (err) => {
 
 #### Note about UDP datagram size
 
-The maximum size of an `IPv4/v6` datagram depends on the `MTU`
-(_Maximum Transmission Unit_) and on the `Payload Length` field size.
+The maximum size of an IPv4/v6 datagram depends on the `MTU`
+(Maximum Transmission Unit) and on the `Payload Length` field size.
 
-* The `Payload Length` field is `16 bits` wide, which means that a normal
-  payload exceed 64K octets _including_ the internet header and data
+* The `Payload Length` field is 16 bits wide, which means that a normal
+  payload cannot exceed 64K octets including the internet header and data
   (65,507 bytes = 65,535 − 8 bytes UDP header − 20 bytes IP header);
   this is generally true for loopback interfaces, but such long datagram
   messages are impractical for most hosts and networks.
 
 * The `MTU` is the largest size a given link layer technology can support for
-  datagram messages. For any link, `IPv4` mandates a minimum `MTU` of `68`
-  octets, while the recommended `MTU` for IPv4 is `576` (typically recommended
+  datagram messages. For any link, IPv4 mandates a minimum `MTU` of 68
+  octets, while the recommended `MTU` for IPv4 is 576 (typically recommended
   as the `MTU` for dial-up type applications), whether they arrive whole or in
   fragments.
 
-  For `IPv6`, the minimum `MTU` is `1280` octets, however, the mandatory minimum
-  fragment reassembly buffer size is `1500` octets. The value of `68` octets is
+  For IPv6, the minimum `MTU` is 1280 octets. However, the mandatory minimum
+  fragment reassembly buffer size is 1500 octets. The value of 68 octets is
   very small, since most current link layer technologies, like Ethernet, have a
-  minimum `MTU` of `1500`.
+  minimum `MTU` of 1500.
 
 It is impossible to know in advance the MTU of each link through which
 a packet might travel. Sending a datagram greater than the receiver `MTU` will
@@ -523,6 +555,8 @@ added: v0.6.9
 
 Sets or clears the `SO_BROADCAST` socket option. When set to `true`, UDP
 packets may be sent to a local interface's broadcast address.
+
+This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.setMulticastInterface(multicastInterface)`
 <!-- YAML
@@ -549,6 +583,8 @@ interface as in the examples that follow. In IPv6, individual `send` calls can
 also use explicit scope in addresses, so only packets sent to a multicast
 address without specifying an explicit scope are affected by the most recent
 successful use of this call.
+
+This method throws `EBADF` if called on an unbound socket.
 
 #### Example: IPv6 outgoing multicast interface
 
@@ -612,6 +648,8 @@ added: v0.3.8
 Sets or clears the `IP_MULTICAST_LOOP` socket option. When set to `true`,
 multicast packets will also be received on the local interface.
 
+This method throws `EBADF` if called on an unbound socket.
+
 ### `socket.setMulticastTTL(ttl)`
 <!-- YAML
 added: v0.3.8
@@ -627,6 +665,8 @@ decremented to 0 by a router, it will not be forwarded.
 
 The `ttl` argument may be between 0 and 255. The default on most systems is `1`.
 
+This method throws `EBADF` if called on an unbound socket.
+
 ### `socket.setRecvBufferSize(size)`
 <!-- YAML
 added: v8.7.0
@@ -637,6 +677,8 @@ added: v8.7.0
 Sets the `SO_RCVBUF` socket option. Sets the maximum socket receive buffer
 in bytes.
 
+This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
+
 ### `socket.setSendBufferSize(size)`
 <!-- YAML
 added: v8.7.0
@@ -646,6 +688,8 @@ added: v8.7.0
 
 Sets the `SO_SNDBUF` socket option. Sets the maximum socket send buffer
 in bytes.
+
+This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
 ### `socket.setTTL(ttl)`
 <!-- YAML
@@ -662,6 +706,8 @@ Changing TTL values is typically done for network probes or when multicasting.
 
 The `ttl` argument may be between between 1 and 255. The default on most systems
 is 64.
+
+This method throws `EBADF` if called on an unbound socket.
 
 ### `socket.unref()`
 <!-- YAML
@@ -687,16 +733,16 @@ chained.
 <!-- YAML
 added: v0.11.13
 changes:
-  - version: v8.6.0
-    pr-url: https://github.com/nodejs/node/pull/14560
-    description: The `lookup` option is supported.
+  - version: v11.4.0
+    pr-url: https://github.com/nodejs/node/pull/23798
+    description: The `ipv6Only` option is supported.
   - version: v8.7.0
     pr-url: https://github.com/nodejs/node/pull/13623
     description: The `recvBufferSize` and `sendBufferSize` options are
                  supported now.
-  - version: v11.4.0
-    pr-url: https://github.com/nodejs/node/pull/23798
-    description: The `ipv6Only` option is supported.
+  - version: v8.6.0
+    pr-url: https://github.com/nodejs/node/pull/14560
+    description: The `lookup` option is supported.
 -->
 
 * `options` {Object} Available options are:
@@ -740,19 +786,21 @@ interfaces" address on a random port (it does the right thing for both `udp4`
 and `udp6` sockets). The bound address and port can be retrieved using
 [`socket.address().address`][] and [`socket.address().port`][].
 
+[IPv6 Zone Indices]: https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+[RFC 4007]: https://tools.ietf.org/html/rfc4007
 [`'close'`]: #dgram_event_close
-[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.html#errors_err_socket_dgram_is_connected
-[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.html#errors_err_socket_dgram_not_connected
-[`Error`]: errors.html#errors_class_error
-[`System Error`]: errors.html#errors_class_systemerror
+[`ERR_SOCKET_BAD_PORT`]: errors.md#errors_err_socket_bad_port
+[`ERR_SOCKET_BUFFER_SIZE`]: errors.md#errors_err_socket_buffer_size
+[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#errors_err_socket_dgram_is_connected
+[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.md#errors_err_socket_dgram_not_connected
+[`Error`]: errors.md#errors_class_error
+[`System Error`]: errors.md#errors_class_systemerror
 [`close()`]: #dgram_socket_close_callback
-[`cluster`]: cluster.html
+[`cluster`]: cluster.md
 [`connect()`]: #dgram_socket_connect_port_address_callback
 [`dgram.createSocket()`]: #dgram_dgram_createsocket_options_callback
-[`dns.lookup()`]: dns.html#dns_dns_lookup_hostname_options_callback
+[`dns.lookup()`]: dns.md#dns_dns_lookup_hostname_options_callback
 [`socket.address().address`]: #dgram_socket_address
 [`socket.address().port`]: #dgram_socket_address
 [`socket.bind()`]: #dgram_socket_bind_port_address_callback
-[IPv6 Zone Indices]: https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
-[RFC 4007]: https://tools.ietf.org/html/rfc4007
-[byte length]: buffer.html#buffer_class_method_buffer_bytelength_string_encoding
+[byte length]: buffer.md#buffer_static_method_buffer_bytelength_string_encoding

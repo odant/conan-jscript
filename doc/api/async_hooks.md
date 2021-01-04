@@ -4,6 +4,8 @@
 
 > Stability: 1 - Experimental
 
+<!-- source_link=lib/async_hooks.js -->
+
 The `async_hooks` module provides an API to track asynchronous resources. It
 can be accessed using:
 
@@ -180,7 +182,7 @@ of asynchronous operations.
 * Returns: {AsyncHook} A reference to `asyncHook`.
 
 Enable the callbacks for a given `AsyncHook` instance. If no callbacks are
-provided enabling is a noop.
+provided, enabling is a no-op.
 
 The `AsyncHook` instance is disabled by default. If the `AsyncHook` instance
 should be enabled immediately after creation, the following pattern can be used.
@@ -271,7 +273,8 @@ async_hooks.createHook({
   init(asyncId, type, triggerAsyncId) {
     const eid = async_hooks.executionAsyncId();
     fs.writeSync(
-      1, `${type}(${asyncId}): trigger: ${triggerAsyncId} execution: ${eid}\n`);
+      process.stdout.fd,
+      `${type}(${asyncId}): trigger: ${triggerAsyncId} execution: ${eid}\n`);
   }
 }).enable();
 
@@ -302,14 +305,9 @@ been initialized. This can contain useful information that can vary based on
 the value of `type`. For instance, for the `GETADDRINFOREQWRAP` resource type,
 `resource` provides the host name used when looking up the IP address for the
 host in `net.Server.listen()`. The API for accessing this information is
-currently not considered public, but using the Embedder API, users can provide
+not supported, but using the Embedder API, users can provide
 and document their own resource objects. For example, such a resource object
 could contain the SQL query being executed.
-
-In the case of Promises, the `resource` object will have an
-`isChainedPromise` property, set to `true` if the promise has a parent promise,
-and `false` otherwise. For example, in the case of `b = a.then(handler)`, `a` is
-considered a parent `Promise` of `b`. Here, `b` is considered a chained promise.
 
 In some cases the resource object is reused for performance reasons, it is
 thus not safe to use it as a key in a `WeakMap` or add properties to it.
@@ -328,26 +326,23 @@ async_hooks.createHook({
     const eid = async_hooks.executionAsyncId();
     const indentStr = ' '.repeat(indent);
     fs.writeSync(
-      1,
+      process.stdout.fd,
       `${indentStr}${type}(${asyncId}):` +
       ` trigger: ${triggerAsyncId} execution: ${eid}\n`);
   },
   before(asyncId) {
     const indentStr = ' '.repeat(indent);
-    fs.writeFileSync('log.out',
-                     `${indentStr}before:  ${asyncId}\n`, { flag: 'a' });
+    fs.writeSync(process.stdout.fd, `${indentStr}before:  ${asyncId}\n`);
     indent += 2;
   },
   after(asyncId) {
     indent -= 2;
     const indentStr = ' '.repeat(indent);
-    fs.writeFileSync('log.out',
-                     `${indentStr}after:  ${asyncId}\n`, { flag: 'a' });
+    fs.writeSync(process.stdout.fd, `${indentStr}after:  ${asyncId}\n`);
   },
   destroy(asyncId) {
     const indentStr = ' '.repeat(indent);
-    fs.writeFileSync('log.out',
-                     `${indentStr}destroy:  ${asyncId}\n`, { flag: 'a' });
+    fs.writeSync(process.stdout.fd, `${indentStr}destroy:  ${asyncId}\n`);
   },
 }).enable();
 
@@ -383,16 +378,38 @@ the value of the current execution context; which is delineated by calls to
 Only using `execution` to graph resource allocation results in the following:
 
 ```console
-Timeout(7) -> TickObject(6) -> root(1)
+  root(1)
+     ^
+     |
+TickObject(6)
+     ^
+     |
+ Timeout(7)
 ```
 
 The `TCPSERVERWRAP` is not part of this graph, even though it was the reason for
 `console.log()` being called. This is because binding to a port without a host
 name is a *synchronous* operation, but to maintain a completely asynchronous
-API the user's callback is placed in a `process.nextTick()`.
+API the user's callback is placed in a `process.nextTick()`. Which is why
+`TickObject` is present in the output and is a 'parent' for `.listen()`
+callback.
 
 The graph only shows *when* a resource was created, not *why*, so to track
-the *why* use `triggerAsyncId`.
+the *why* use `triggerAsyncId`. Which can be represented with the following
+graph:
+
+```console
+ bootstrap(1)
+     |
+     ˅
+TCPSERVERWRAP(5)
+     |
+     ˅
+ TickObject(6)
+     |
+     ˅
+  Timeout(7)
+```
 
 ##### `before(asyncId)`
 
@@ -467,7 +484,7 @@ init for PROMISE with id 6, trigger id: 5  # the Promise returned by then()
 #### `async_hooks.executionAsyncResource()`
 
 <!-- YAML
-added: v12.17.0
+added: v13.9.0
 -->
 
 * Returns: {Object} The resource representing the current execution.
@@ -527,7 +544,7 @@ added: v8.1.0
 changes:
   - version: v8.2.0
     pr-url: https://github.com/nodejs/node/pull/13490
-    description: Renamed from `currentId`
+    description: Renamed from `currentId`.
 -->
 
 * Returns: {number} The `asyncId` of the current execution context. Useful to
@@ -680,14 +697,14 @@ asyncResource.triggerAsyncId();
 * `type` {string} The type of async event.
 * `options` {Object}
   * `triggerAsyncId` {number} The ID of the execution context that created this
-  async event. **Default:** `executionAsyncId()`.
+    async event. **Default:** `executionAsyncId()`.
   * `requireManualDestroy` {boolean} If set to `true`, disables `emitDestroy`
-  when the object is garbage collected. This usually does not need to be set
-  (even if `emitDestroy` is called manually), unless the resource's `asyncId`
-  is retrieved and the sensitive API's `emitDestroy` is called with it.
-  When set to `false`, the `emitDestroy` call on garbage collection
-  will only take place if there is at least one active `destroy` hook.
-  **Default:** `false`.
+    when the object is garbage collected. This usually does not need to be set
+    (even if `emitDestroy` is called manually), unless the resource's `asyncId`
+    is retrieved and the sensitive API's `emitDestroy` is called with it.
+    When set to `false`, the `emitDestroy` call on garbage collection
+    will only take place if there is at least one active `destroy` hook.
+    **Default:** `false`.
 
 Example usage:
 
@@ -710,6 +727,32 @@ class DBQuery extends AsyncResource {
   }
 }
 ```
+
+#### Static method: `AsyncResource.bind(fn[, type])`
+<!-- YAML
+added: v14.8.0
+-->
+
+* `fn` {Function} The function to bind to the current execution context.
+* `type` {string} An optional name to associate with the underlying
+  `AsyncResource`.
+
+Binds the given function to the current execution context.
+
+The returned function will have an `asyncResource` property referencing
+the `AsyncResource` to which the function is bound.
+
+#### `asyncResource.bind(fn)`
+<!-- YAML
+added: v14.8.0
+-->
+
+* `fn` {Function} The function to bind to the current `AsyncResource`.
+
+Binds the given function to execute to this `AsyncResource`'s scope.
+
+The returned function will have an `asyncResource` property referencing
+the `AsyncResource` to which the function is bound.
 
 #### `asyncResource.runInAsyncScope(fn[, thisArg, ...args])`
 <!-- YAML
@@ -742,7 +785,7 @@ never be called.
 #### `asyncResource.triggerAsyncId()`
 
 * Returns: {number} The same `triggerAsyncId` that is passed to the
-`AsyncResource` constructor.
+  `AsyncResource` constructor.
 
 <a id="async-resource-worker-pool"></a>
 ### Using `AsyncResource` for a `Worker` thread pool
@@ -882,19 +925,19 @@ const { createServer } = require('http');
 const { AsyncResource, executionAsyncId } = require('async_hooks');
 
 const server = createServer((req, res) => {
-  const asyncResource = new AsyncResource('request');
-  // The listener will always run in the execution context of `asyncResource`.
-  req.on('close', asyncResource.runInAsyncScope.bind(asyncResource, () => {
-    // Prints: true
-    console.log(asyncResource.asyncId() === executionAsyncId());
+  req.on('close', AsyncResource.bind(() => {
+    // Execution context is bound to the current outer scope.
   }));
+  req.on('close', () => {
+    // Execution context is bound to the scope that caused 'close' to emit.
+  });
   res.end();
 }).listen(3000);
 ```
 
 ## Class: `AsyncLocalStorage`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 This class is used to create asynchronous state within callbacks and promise
@@ -943,7 +986,7 @@ from each other. It is safe to instantiate this class multiple times.
 
 ### `new AsyncLocalStorage()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 Creates a new instance of `AsyncLocalStorage`. Store is only provided within a
@@ -951,7 +994,7 @@ Creates a new instance of `AsyncLocalStorage`. Store is only provided within a
 
 ### `asyncLocalStorage.disable()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 This method disables the instance of `AsyncLocalStorage`. All subsequent calls
@@ -971,7 +1014,7 @@ in the current process.
 
 ### `asyncLocalStorage.getStore()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * Returns: {any}
@@ -982,7 +1025,7 @@ calling `asyncLocalStorage.run`, it will return `undefined`.
 
 ### `asyncLocalStorage.enterWith(store)`
 <!-- YAML
-added: v12.17.0
+added: v13.11.0
 -->
 
 * `store` {any}
@@ -1024,7 +1067,7 @@ asyncLocalStorage.getStore(); // Returns the same object
 
 ### `asyncLocalStorage.run(store, callback[, ...args])`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * `store` {any}
@@ -1059,7 +1102,7 @@ try {
 
 ### `asyncLocalStorage.exit(callback[, ...args])`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * `callback` {Function}
@@ -1114,26 +1157,26 @@ functions called by `foo`. Outside of `run`, calling `getStore` will return
 
 In most cases your application or library code should have no issues with
 `AsyncLocalStorage`. But in rare cases you may face situations when the
-current store is lost in one of asynchronous operations. Then you should
+current store is lost in one of asynchronous operations. In those cases,
 consider the following options.
 
 If your code is callback-based, it is enough to promisify it with
 [`util.promisify()`][], so it starts working with native promises.
 
 If you need to keep using callback-based API, or your code assumes
-a custom thenable implementation, you should use [`AsyncResource`][] class
+a custom thenable implementation, use the [`AsyncResource`][] class
 to associate the asynchronous operation with the correct execution context.
 
+[Hook Callbacks]: #async_hooks_hook_callbacks
+[PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
 [`AsyncResource`]: #async_hooks_class_asyncresource
 [`after` callback]: #async_hooks_after_asyncid
 [`before` callback]: #async_hooks_before_asyncid
 [`destroy` callback]: #async_hooks_destroy_asyncid
 [`init` callback]: #async_hooks_init_asyncid_type_triggerasyncid_resource
 [`promiseResolve` callback]: #async_hooks_promiseresolve_asyncid
-[`EventEmitter`]: events.html#events_class_eventemitter
-[Hook Callbacks]: #async_hooks_hook_callbacks
-[PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
-[`Stream`]: stream.html#stream_stream
-[`Worker`]: worker_threads.html#worker_threads_class_worker
+[`EventEmitter`]: events.md#events_class_eventemitter
+[`Stream`]: stream.md#stream_stream
+[`Worker`]: worker_threads.md#worker_threads_class_worker
+[`util.promisify()`]: util.md#util_util_promisify_original
 [promise execution tracking]: #async_hooks_promise_execution_tracking
-[`util.promisify()`]: util.html#util_util_promisify_original

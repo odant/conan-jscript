@@ -20,7 +20,6 @@ using v8::HandleScope;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::TryCatch;
@@ -46,8 +45,7 @@ bool SafeGetenv(const char* key, std::string* text, Environment* env) {
     TryCatch ignore_errors(env->isolate());
     MaybeLocal<String> maybe_value = env->env_vars()->Get(
         env->isolate(),
-        String::NewFromUtf8(env->isolate(), key, NewStringType::kNormal)
-            .ToLocalChecked());
+        String::NewFromUtf8(env->isolate(), key).ToLocalChecked());
     Local<String> value;
     if (!maybe_value.ToLocal(&value)) goto fail;
     String::Utf8Value utf8_value(env->isolate(), value);
@@ -58,8 +56,20 @@ bool SafeGetenv(const char* key, std::string* text, Environment* env) {
 
   {
     Mutex::ScopedLock lock(per_process::env_var_mutex);
-    if (const char* value = getenv(key)) {
-      *text = value;
+
+    size_t init_sz = 256;
+    MaybeStackBuffer<char, 256> val;
+    int ret = uv_os_getenv(key, *val, &init_sz);
+
+    if (ret == UV_ENOBUFS) {
+      // Buffer is not large enough, reallocate to the updated init_sz
+      // and fetch env value again.
+      val.AllocateSufficientStorage(init_sz);
+      ret = uv_os_getenv(key, *val, &init_sz);
+    }
+
+    if (ret >= 0) {  // Env key value fetch success.
+      *text = *val;
       return true;
     }
   }

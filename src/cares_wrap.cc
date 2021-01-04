@@ -22,6 +22,7 @@
 #define CARES_STATICLIB
 #include "ares.h"
 #include "async_wrap-inl.h"
+#include "base64-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "node.h"
@@ -66,7 +67,6 @@ using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -78,13 +78,6 @@ Mutex ares_library_mutex;
 
 inline uint16_t cares_get_16bit(const unsigned char* p) {
   return static_cast<uint32_t>(p[0] << 8U) | (static_cast<uint32_t>(p[1]));
-}
-
-inline uint32_t cares_get_32bit(const unsigned char* p) {
-  return static_cast<uint32_t>(p[0] << 24U) |
-         static_cast<uint32_t>(p[1] << 16U) |
-         static_cast<uint32_t>(p[2] << 8U) |
-         static_cast<uint32_t>(p[3]);
 }
 
 const int ns_t_cname_or_a = -1;
@@ -1067,14 +1060,15 @@ int ParseSoaReply(Environment* env,
   // Can't use ares_parse_soa_reply() here which can only parse single record
   const unsigned int ancount = cares_get_16bit(buf + 6);
   unsigned char* ptr = buf + NS_HFIXEDSZ;
-  char* name_temp;
+  char* name_temp = nullptr;
   long temp_len;  // NOLINT(runtime/int)
   int status = ares_expand_name(ptr, buf, len, &name_temp, &temp_len);
-  const ares_unique_ptr name(name_temp);
   if (status != ARES_SUCCESS) {
     // returns EBADRESP in case of invalid input
     return status == ARES_EBADNAME ? ARES_EBADRESP : status;
   }
+
+  const ares_unique_ptr name(name_temp);
 
   if (ptr + temp_len + NS_QFIXEDSZ > buf + len) {
     return ARES_EBADRESP;
@@ -1082,13 +1076,14 @@ int ParseSoaReply(Environment* env,
   ptr += temp_len + NS_QFIXEDSZ;
 
   for (unsigned int i = 0; i < ancount; i++) {
-    char* rr_name_temp;
+    char* rr_name_temp = nullptr;
     long rr_temp_len;  // NOLINT(runtime/int)
     int status2 = ares_expand_name(ptr, buf, len, &rr_name_temp, &rr_temp_len);
-    const ares_unique_ptr rr_name(rr_name_temp);
 
     if (status2 != ARES_SUCCESS)
       return status2 == ARES_EBADNAME ? ARES_EBADRESP : status2;
+
+    const ares_unique_ptr rr_name(rr_name_temp);
 
     ptr += rr_temp_len;
     if (ptr + NS_RRFIXEDSZ > buf + len) {
@@ -1101,38 +1096,38 @@ int ParseSoaReply(Environment* env,
 
     // only need SOA
     if (rr_type == ns_t_soa) {
-      char* nsname_temp;
+      char* nsname_temp = nullptr;
       long nsname_temp_len;  // NOLINT(runtime/int)
 
       int status3 = ares_expand_name(ptr, buf, len,
                                      &nsname_temp,
                                      &nsname_temp_len);
-      const ares_unique_ptr nsname(nsname_temp);
       if (status3 != ARES_SUCCESS) {
         return status3 == ARES_EBADNAME ? ARES_EBADRESP : status3;
       }
+      const ares_unique_ptr nsname(nsname_temp);
       ptr += nsname_temp_len;
 
-      char* hostmaster_temp;
+      char* hostmaster_temp = nullptr;
       long hostmaster_temp_len;  // NOLINT(runtime/int)
       int status4 = ares_expand_name(ptr, buf, len,
                                      &hostmaster_temp,
                                      &hostmaster_temp_len);
-      const ares_unique_ptr hostmaster(hostmaster_temp);
       if (status4 != ARES_SUCCESS) {
         return status4 == ARES_EBADNAME ? ARES_EBADRESP : status4;
       }
+      const ares_unique_ptr hostmaster(hostmaster_temp);
       ptr += hostmaster_temp_len;
 
       if (ptr + 5 * 4 > buf + len) {
         return ARES_EBADRESP;
       }
 
-      const unsigned int serial = cares_get_32bit(ptr + 0 * 4);
-      const unsigned int refresh = cares_get_32bit(ptr + 1 * 4);
-      const unsigned int retry = cares_get_32bit(ptr + 2 * 4);
-      const unsigned int expire = cares_get_32bit(ptr + 3 * 4);
-      const unsigned int minttl = cares_get_32bit(ptr + 4 * 4);
+      const unsigned int serial = ReadUint32BE(ptr + 0 * 4);
+      const unsigned int refresh = ReadUint32BE(ptr + 1 * 4);
+      const unsigned int retry = ReadUint32BE(ptr + 2 * 4);
+      const unsigned int expire = ReadUint32BE(ptr + 3 * 4);
+      const unsigned int minttl = ReadUint32BE(ptr + 4 * 4);
 
       Local<Object> soa_record = Object::New(env->isolate());
       soa_record->Set(context,
@@ -1937,8 +1932,8 @@ void CanonicalizeIP(const FunctionCallbackInfo<Value>& args) {
   char canonical_ip[INET6_ADDRSTRLEN];
   const int af = (rc == 4 ? AF_INET : AF_INET6);
   CHECK_EQ(0, uv_inet_ntop(af, &result, canonical_ip, sizeof(canonical_ip)));
-  Local<String> val = String::NewFromUtf8(isolate, canonical_ip,
-      NewStringType::kNormal).ToLocalChecked();
+  Local<String> val = String::NewFromUtf8(isolate, canonical_ip)
+      .ToLocalChecked();
   args.GetReturnValue().Set(val);
 }
 

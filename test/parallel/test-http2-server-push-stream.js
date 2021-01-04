@@ -14,8 +14,7 @@ server.on('stream', common.mustCall((stream, headers) => {
       ':scheme': 'http',
       ':path': '/foobar',
       ':authority': `localhost:${port}`,
-    }, common.mustCall((err, push, headers) => {
-      assert.ifError(err);
+    }, common.mustSucceed((push, headers) => {
       push.respond({
         'content-type': 'text/html',
         ':status': 200,
@@ -55,6 +54,8 @@ server.listen(0, common.mustCall(() => {
       assert.strictEqual(headers['x-push-data'], 'pushed by server');
     }));
     stream.on('aborted', common.mustNotCall());
+    // We have to read the data of the push stream to end gracefully.
+    stream.resume();
   }));
 
   let data = '';

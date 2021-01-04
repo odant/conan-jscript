@@ -195,6 +195,11 @@ void DumpBacktrace(FILE* fp);
 #define UNREACHABLE(...)                                                      \
   ERROR_AND_ABORT("Unreachable code reached" __VA_OPT__(": ") __VA_ARGS__)
 
+// ECMA262 20.1.2.6 Number.MAX_SAFE_INTEGER (2^53-1)
+constexpr int64_t kMaxSafeJsInteger = 9007199254740991;
+
+inline bool IsSafeJsInt(v8::Local<v8::Value> v);
+
 // TAILQ-style intrusive list node.
 template <typename T>
 class ListNode;
@@ -481,6 +486,10 @@ class Utf8Value : public MaybeStackBuffer<char> {
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
   inline std::string ToString() const { return std::string(out(), length()); }
+
+  inline bool operator==(const char* a) const {
+    return strcmp(out(), a) == 0;
+  }
 };
 
 class TwoByteValue : public MaybeStackBuffer<uint16_t> {
@@ -498,11 +507,12 @@ class BufferValue : public MaybeStackBuffer<char> {
 #define SPREAD_BUFFER_ARG(val, name)                                          \
   CHECK((val)->IsArrayBufferView());                                          \
   v8::Local<v8::ArrayBufferView> name = (val).As<v8::ArrayBufferView>();      \
-  v8::ArrayBuffer::Contents name##_c = name->Buffer()->GetContents();         \
+  std::shared_ptr<v8::BackingStore> name##_bs =                               \
+      name->Buffer()->GetBackingStore();                                      \
   const size_t name##_offset = name->ByteOffset();                            \
   const size_t name##_length = name->ByteLength();                            \
   char* const name##_data =                                                   \
-      static_cast<char*>(name##_c.Data()) + name##_offset;                    \
+      static_cast<char*>(name##_bs->Data()) + name##_offset;                  \
   if (name##_length > 0)                                                      \
     CHECK_NE(name##_data, nullptr);
 
@@ -670,11 +680,9 @@ inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
   do {                                                                         \
     v8::Isolate* isolate = target->GetIsolate();                               \
     v8::Local<v8::String> constant_name =                                      \
-        v8::String::NewFromUtf8(isolate, name, v8::NewStringType::kNormal)     \
-            .ToLocalChecked();                                                 \
+        v8::String::NewFromUtf8(isolate, name).ToLocalChecked();               \
     v8::Local<v8::String> constant_value =                                     \
-        v8::String::NewFromUtf8(isolate, constant, v8::NewStringType::kNormal) \
-            .ToLocalChecked();                                                 \
+        v8::String::NewFromUtf8(isolate, constant).ToLocalChecked();           \
     v8::PropertyAttribute constant_attributes =                                \
         static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontDelete);     \
     target                                                                     \
@@ -711,6 +719,13 @@ inline bool IsBigEndian() {
 template <typename T>
 constexpr T RoundUp(T a, T b) {
   return a % b != 0 ? a + b - (a % b) : a;
+}
+
+// Align ptr to an `alignment`-bytes boundary.
+template <typename T, typename U>
+constexpr T* AlignUp(T* ptr, U alignment) {
+  return reinterpret_cast<T*>(
+      RoundUp(reinterpret_cast<uintptr_t>(ptr), alignment));
 }
 
 class SlicedArguments : public MaybeStackBuffer<v8::Local<v8::Value>> {
@@ -756,6 +771,33 @@ class PersistentToLocal {
     return v8::Local<TypeName>::New(isolate, persistent);
   }
 };
+
+// Can be used as a key for std::unordered_map when lookup performance is more
+// important than size and the keys are statically used to avoid redundant hash
+// computations.
+class FastStringKey {
+ public:
+  constexpr explicit FastStringKey(const char* name);
+
+  struct Hash {
+    constexpr size_t operator()(const FastStringKey& key) const;
+  };
+  constexpr bool operator==(const FastStringKey& other) const;
+
+  constexpr const char* c_str() const;
+
+ private:
+  static constexpr size_t HashImpl(const char* str);
+
+  const char* name_;
+  size_t cached_hash_;
+};
+
+// Like std::static_pointer_cast but for unique_ptr with the default deleter.
+template <typename T, typename U>
+std::unique_ptr<T> static_unique_pointer_cast(std::unique_ptr<U>&& ptr) {
+  return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
+}
 
 }  // namespace node
 

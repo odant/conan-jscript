@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/dns.js -->
+
 The `dns` module enables name resolution. For example, use it to look up IP
 addresses of host names.
 
@@ -94,7 +96,7 @@ The following methods from the `dns` module are available:
 <!-- YAML
 added: v8.3.0
 changes:
-  - version: v12.18.3
+  - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33472
     description: The constructor now accepts an `options` object.
                  The single supported option is `timeout`.
@@ -216,22 +218,21 @@ is not set to `true`, it returns a `Promise` for an `Object` with `address` and
 ### Supported getaddrinfo flags
 <!-- YAML
 changes:
-  - version: v12.17.0
+  - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/32183
     description: Added support for the `dns.ALL` flag.
 -->
 
 The following flags can be passed as hints to [`dns.lookup()`][].
 
-* `dns.ADDRCONFIG`: Returned address types are determined by the types
-of addresses supported by the current system. For example, IPv4 addresses
-are only returned if the current system has at least one IPv4 address
-configured. Loopback addresses are not considered.
+* `dns.ADDRCONFIG`: Limits returned address types to the types of non-loopback
+  addresses configured on the system. For example, IPv4 addresses are only
+  returned if the current system has at least one IPv4 address configured.
 * `dns.V4MAPPED`: If the IPv6 family was specified, but no IPv6 addresses were
-found, then return IPv4 mapped IPv6 addresses. It is not supported
-on some operating systems (e.g FreeBSD 10.1).
+  found, then return IPv4 mapped IPv6 addresses. It is not supported
+  on some operating systems (e.g FreeBSD 10.1).
 * `dns.ALL`: If `dns.V4MAPPED` is specified, return resolved IPv6 addresses as
-well as IPv4 mapped IPv6 addresses.
+  well as IPv4 mapped IPv6 addresses.
 
 ## `dns.lookupService(address, port, callback)`
 <!-- YAML
@@ -557,10 +558,12 @@ be an array of objects with the following properties:
 added: v0.1.27
 -->
 
+<!--lint disable no-undefined-references list-item-bullet-indent-->
 * `hostname` {string}
 * `callback` {Function}
   * `err` {Error}
   * `records` <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&lt;string[][]&gt;</a>
+<!--lint enable no-undefined-references list-item-bullet-indent-->
 
 Uses the DNS protocol to resolve text queries (`TXT` records) for the
 `hostname`. The `records` argument passed to the `callback` function is a
@@ -615,7 +618,7 @@ The [`dns.setServers()`][] method affects only [`dns.resolve()`][],
 [`dns.lookup()`][]).
 
 This method works much like
-[resolve.conf](http://man7.org/linux/man-pages/man5/resolv.conf.5.html).
+[resolve.conf](https://man7.org/linux/man-pages/man5/resolv.conf.5.html).
 That is, if attempting to resolve with the first server provided results in a
 `NOTFOUND` error, the `resolve()` method will *not* attempt to resolve with
 subsequent servers provided. Fallback DNS servers will only be used if the
@@ -1079,7 +1082,7 @@ The `dnsPromises.setServers()` method must not be called while a DNS query is in
 progress.
 
 This method works much like
-[resolve.conf](http://man7.org/linux/man-pages/man5/resolv.conf.5.html).
+[resolve.conf](https://man7.org/linux/man-pages/man5/resolv.conf.5.html).
 That is, if attempting to resolve with the first server provided results in a
 `NOTFOUND` error, the `resolve()` method will *not* attempt to resolve with
 subsequent servers provided. Fallback DNS servers will only be used if the
@@ -1157,9 +1160,14 @@ processing that happens on libuv's threadpool that [`dns.lookup()`][] can have.
 They do not use the same set of configuration files than what [`dns.lookup()`][]
 uses. For instance, _they do not use the configuration from `/etc/hosts`_.
 
-[`Error`]: errors.html#errors_class_error
-[`UV_THREADPOOL_SIZE`]: cli.html#cli_uv_threadpool_size_size
-[`dgram.createSocket()`]: dgram.html#dgram_dgram_createsocket_options_callback
+[DNS error codes]: #dns_error_codes
+[Domain Name System (DNS)]: https://en.wikipedia.org/wiki/Domain_Name_System
+[Implementation considerations section]: #dns_implementation_considerations
+[RFC 5952]: https://tools.ietf.org/html/rfc5952#section-6
+[RFC 8482]: https://tools.ietf.org/html/rfc8482
+[`Error`]: errors.md#errors_class_error
+[`UV_THREADPOOL_SIZE`]: cli.md#cli_uv_threadpool_size_size
+[`dgram.createSocket()`]: dgram.md#dgram_dgram_createsocket_options_callback
 [`dns.getServers()`]: #dns_dns_getservers
 [`dns.lookup()`]: #dns_dns_lookup_hostname_options_callback
 [`dns.resolve()`]: #dns_dns_resolve_hostname_rrtype_callback
@@ -1192,11 +1200,6 @@ uses. For instance, _they do not use the configuration from `/etc/hosts`_.
 [`dnsPromises.resolveTxt()`]: #dns_dnspromises_resolvetxt_hostname
 [`dnsPromises.reverse()`]: #dns_dnspromises_reverse_ip
 [`dnsPromises.setServers()`]: #dns_dnspromises_setservers_servers
-[`socket.connect()`]: net.html#net_socket_connect_options_connectlistener
-[`util.promisify()`]: util.html#util_util_promisify_original
-[DNS error codes]: #dns_error_codes
-[Domain Name System (DNS)]: https://en.wikipedia.org/wiki/Domain_Name_System
-[Implementation considerations section]: #dns_implementation_considerations
-[RFC 5952]: https://tools.ietf.org/html/rfc5952#section-6
-[RFC 8482]: https://tools.ietf.org/html/rfc8482
+[`socket.connect()`]: net.md#net_socket_connect_options_connectlistener
+[`util.promisify()`]: util.md#util_util_promisify_original
 [supported `getaddrinfo` flags]: #dns_supported_getaddrinfo_flags

@@ -57,7 +57,7 @@ function parent() {
 
 function test(environ, shouldWrite, section, forceColors = false) {
   let expectErr = '';
-  const expectOut = 'ok\n';
+  const expectOut = shouldWrite ? 'enabled\n' : 'disabled\n';
 
   const spawn = require('child_process').spawn;
   const child = spawn(process.execPath, [__filename, 'child', section], {
@@ -118,8 +118,10 @@ function child(section) {
     value: tty.WriteStream.prototype.hasColors
   });
   // eslint-disable-next-line no-restricted-syntax
-  const debug = util.debuglog(section);
+  const debug = util.debuglog(section, common.mustCall((cb) => {
+    assert.strictEqual(typeof cb, 'function');
+  }));
   debug('this', { is: 'a' }, /debugging/);
   debug('num=%d str=%s obj=%j', 1, 'a', { foo: 'bar' });
-  console.log('ok');
+  console.log(debug.enabled ? 'enabled' : 'disabled');
 }
