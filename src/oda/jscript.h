@@ -24,17 +24,6 @@ namespace node {
 namespace jscript {
 
 
-enum JSLogType {
-    LOG_TYPE,
-    WARN_TYPE, 
-    ERROR_TYPE,
-    
-    DEFAULT_TYPE = LOG_TYPE
-};
-
-using JSLogCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>;
-
-
 class JSInstance { };
 
 JSCRIPT_EXTERN void Initialize(int argc, const char**);
@@ -45,9 +34,6 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
                                std::string executeFile, std::string coreFolder, // copy, not reference
                                const std::vector<std::string>& nodeFolders,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
-
-
-JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb);
 
 JSCRIPT_EXTERN void Uninitilize();
 
@@ -70,7 +56,19 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& s
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
 
 
-inline std::ostream& operator<< (std::ostream &os, const JSLogType type) {
+enum JSLogType {
+    LOG_TYPE,
+    WARN_TYPE,
+    ERROR_TYPE,
+
+    DEFAULT_TYPE = LOG_TYPE
+};
+
+using JSLogCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>;
+
+JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb);
+
+inline std::ostream& operator<< (std::ostream& os, const JSLogType type) {
     os << "JSLogType: ";
 
     switch (type) {
