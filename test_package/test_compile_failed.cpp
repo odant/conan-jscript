@@ -3,18 +3,17 @@
 
 
 #include <jscript.h>
-#include "get_cwd.h"
 
 #include <iostream>
 #include <cstdlib>
-#include <string>
 #include <thread>
 #include <chrono>
+#include <filesystem>
 
 
 int main(int argc, char** argv) {
 
-    const std::string cwd = GetCwd();
+    const std::string cwd = std::filesystem::current_path().string();
     std::cout << "Current directory: " << cwd << std::endl;
 
     const std::string origin = "http://127.0.0.1:8080";

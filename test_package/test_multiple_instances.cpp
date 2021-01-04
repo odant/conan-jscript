@@ -3,25 +3,20 @@
 
 
 #include <jscript.h>
-#include "get_cwd.h"
 
 #include <iostream>
 #include <cstdlib>
-#include <string>
+#include <filesystem>
 
 
 int main(int argc, char** argv) {
-
-    const std::string cwd = GetCwd();
-    std::cout << "Current directory: " << cwd << std::endl;
-
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
-    const std::string coreFolder = cwd;
-    const std::string nodeFolder = coreFolder + "/node_modules";
+    const auto coreFolder = std::filesystem::current_path();
+    const auto nodeFolder = coreFolder / "node_modules";
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
+    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder.string(), nodeFolder.string());
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;

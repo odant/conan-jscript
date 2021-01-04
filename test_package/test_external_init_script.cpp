@@ -4,15 +4,14 @@
 
 
 #include <jscript.h>
-#include "get_cwd.h"
 
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-#include <string>
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <filesystem>
 
 
 static std::atomic_bool script_done{false};
@@ -30,7 +29,7 @@ static void script_cb(const v8::FunctionCallbackInfo<v8::Value>&) {
 
 int main(int argc, char** argv) {
 
-    const std::string cwd = GetCwd();
+    const std::string cwd = std::filesystem::current_path().string();
     std::cout << "Current directory: " << cwd << std::endl;
 
     std::ofstream externalScript{cwd + "/web/jscript-init.js"};

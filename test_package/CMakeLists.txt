@@ -6,6 +6,15 @@ project(PackageTest CXX)
 cmake_minimum_required(VERSION 3.0)
 
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(FilesystemLibrary)
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(FilesystemLibrary stdc++fs)
+endif()
+
 include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
@@ -36,7 +45,7 @@ enable_testing()
 
 # CONAN_PKG imported targets
 add_executable(test_jscript_CONAN_PKG test_jscript.cpp)
-target_link_libraries(test_jscript_CONAN_PKG CONAN_PKG::jscript)
+target_link_libraries(test_jscript_CONAN_PKG CONAN_PKG::jscript ${FilesystemLibrary})
 set_target_properties(test_jscript_CONAN_PKG
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -53,7 +62,7 @@ add_test(
 find_package(JScript REQUIRED)
 
 add_executable(test_jscript test_jscript.cpp)
-target_link_libraries(test_jscript JScript::JScript)
+target_link_libraries(test_jscript JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_jscript
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -66,7 +75,7 @@ add_test(
 )
 
 add_executable(test_multiple_instances test_multiple_instances.cpp)
-target_link_libraries(test_multiple_instances JScript::JScript)
+target_link_libraries(test_multiple_instances JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_multiple_instances
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -79,7 +88,7 @@ add_test(
 )
 
 add_executable(test_headers test_headers.cpp)
-target_link_libraries(test_headers JScript::JScript)
+target_link_libraries(test_headers JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_headers
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -101,7 +110,7 @@ target_compile_definitions(napi_addon PRIVATE BUILDING_NODE_EXTENSION)
 target_link_libraries(napi_addon JScript::JScript)
 
 add_executable(test_napi_addon test_napi_addon.cpp)
-target_link_libraries(test_napi_addon JScript::JScript)
+target_link_libraries(test_napi_addon JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_napi_addon
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -132,7 +141,7 @@ if(UNIX)
 endif()
 
 add_executable(test_compile_failed test_compile_failed.cpp)
-target_link_libraries(test_compile_failed JScript::JScript)
+target_link_libraries(test_compile_failed JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_compile_failed
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -155,7 +164,7 @@ if(UNIX)
 endif()
 
 add_executable(test_throw_exception test_throw_exception.cpp)
-target_link_libraries(test_throw_exception JScript::JScript)
+target_link_libraries(test_throw_exception JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_throw_exception
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -168,7 +177,7 @@ add_test(
 )
 
 add_executable(test_multiple_paths_node_modules test_multiple_paths_node_modules.cpp)
-target_link_libraries(test_multiple_paths_node_modules JScript::JScript)
+target_link_libraries(test_multiple_paths_node_modules JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_multiple_paths_node_modules
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -181,7 +190,7 @@ add_test(
 )
 
 add_executable(test_external_init_script test_external_init_script.cpp)
-target_link_libraries(test_external_init_script JScript::JScript)
+target_link_libraries(test_external_init_script JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_external_init_script
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -194,7 +203,7 @@ add_test(
 )
 
 add_executable(test_redirect_fprintf test_redirect_fprintf.cpp)
-target_link_libraries(test_redirect_fprintf JScript::JScript)
+target_link_libraries(test_redirect_fprintf JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_redirect_fprintf
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -207,7 +216,7 @@ add_test(
 )
 
 add_executable(test_redirect_fprintf2 test_redirect_fprintf2.cpp)
-target_link_libraries(test_redirect_fprintf2 JScript::JScript)
+target_link_libraries(test_redirect_fprintf2 JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_redirect_fprintf2
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
@@ -220,7 +229,7 @@ add_test(
 )
 
 add_executable(test_log_cb test_log_cb.cpp)
-target_link_libraries(test_log_cb JScript::JScript)
+target_link_libraries(test_log_cb JScript::JScript ${FilesystemLibrary})
 set_target_properties(test_log_cb
     PROPERTIES
     INSTALL_RPATH "$ORIGIN"
