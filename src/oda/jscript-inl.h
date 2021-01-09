@@ -7,6 +7,8 @@
 #include "node_errors.h"
 #include "node_internals.h"
 #include "node_v8_platform-inl.h"
+#include "node_crypto.h"
+#include "large_pages/node_large_page.h"
 
 #include <array>
 #include <atomic>
