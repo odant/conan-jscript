@@ -703,11 +703,6 @@ JSCRIPT_EXTERN void Initialize(
     std::string nodeFolder,
     std::function<void(const std::string&)> redirectFPrintF) {
 
-#if defined(_M_X64) && _MSC_VER == 1800
-  // Disable AVX for MSVC 2013
-  _set_FMA3_enable(0);
-#endif
-
   std::replace(std::begin(executeFile), std::end(executeFile), '\\', '/');
   std::replace(std::begin(nodeFolder), std::end(nodeFolder), '\\', '/');
   std::replace(std::begin(coreFolder), std::end(coreFolder), '\\', '/');
