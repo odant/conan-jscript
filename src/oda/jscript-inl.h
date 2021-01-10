@@ -10,7 +10,6 @@
 #include "node_crypto.h"
 #include "large_pages/node_large_page.h"
 
-#include <array>
 #include <atomic>
 #include <cstring>
 #include <iostream>
@@ -630,8 +629,10 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
 }
 
 
-JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
-  if (is_initilized.exchange(true)) return;
+JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv) {
+  if (is_initilized.exchange(true)) {
+    return;
+  }
 
   // Initialized the enabled list for Debug() calls with system
   // environment variables.
@@ -640,12 +641,10 @@ JSCRIPT_EXTERN void Initialize(int argc, const char** argv) {
   atexit(ResetStdio);
   PlatformInit();
 
-  CHECK_GT(argc, 0);
-
   // Hack around with the argv pointer. Used for process.title = "blah".
   // argv = uv_setup_args(argc, argv);
 
-  args = std::vector<std::string>(argv, argv + argc);
+  args = std::move(argv);
   std::vector<std::string> errors;
 
   // This needs to run *before* V8::Initialize().
@@ -720,43 +719,37 @@ JSCRIPT_EXTERN void Initialize(
   // 'none' - category for oda log callback
   CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
 
-  int argc = 0;
-  std::array<const char*, 20> argv;
-
-  // Path to executable file
-  argv[argc++] = executeFile.c_str();
-
-  // Path to modules-loader.js
-  argv[argc++] = "--experimental-vm-modules";
+  std::vector<std::string> argv{
+      std::move(executeFile),
+      "--experimental-vm-modules"
+  };
 
   std::string modulesLoader = findModule(coreFolder + "/web", "modules-loader");
   if (!modulesLoader.empty()) {
-      argv[argc++] = "--experimental-loader";
+      argv.push_back("--experimental-loader");
 #ifdef _WIN32
           static const std::string fileScheme{ "file:///" };
 #else
           static const std::string fileScheme{ "file://" };
 #endif
       modulesLoader = fileScheme + modulesLoader;
-      argv[argc++] = modulesLoader.c_str();
+      argv.push_back(std::move(modulesLoader));
   }
   
   const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
   const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
 
-  const std::string moduleInit = findModule(coreFolder + "/web", "jscript-init");
+  std::string moduleInit = findModule(coreFolder + "/web", "jscript-init");
   if (moduleInit.empty()) {
-    argv[argc++] = "-e";
+    argv.push_back("-e");
     const std::string& initScript = getInitScript(coreFolder + "/web/core/odant.js");
-    argv[argc++] = initScript.c_str();
+    argv.push_back(initScript);
   }
   else {
-    argv[argc++] = moduleInit.c_str();
+    argv.push_back(std::move(moduleInit));
   }
 
-  CHECK_LT(static_cast<std::size_t>(argc), argv.size());
-
-  Initialize(argc, argv.data());
+  Initialize(std::move(argv));
   SetRedirectFPrintF(std::move(redirectFPrintF));
 }
 

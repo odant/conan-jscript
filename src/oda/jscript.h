@@ -24,9 +24,9 @@ namespace node {
 namespace jscript {
 
 
-class JSInstance { };
+JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv);  // copy, not reference
 
-JSCRIPT_EXTERN void Initialize(int argc, const char**);
+
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                std::string executeFile, std::string coreFolder, std::string nodeFolder, // copy, not reference
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
@@ -43,14 +43,17 @@ typedef enum {
     JS_ERROR
 } result_t;
 
+class JSInstance { };
+
+JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
+JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
+
+
 struct JSCallbackInfo {
     std::string          name;
     v8::FunctionCallback function = nullptr;
     void*                external = nullptr;
 };
-
-JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
-JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
 
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script);
 JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
