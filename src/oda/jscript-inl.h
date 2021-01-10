@@ -630,7 +630,9 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
 
 
 JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
-                               const std::string& nodeFolder) {
+                               const std::string& nodeFolder,
+                               std::function<void(const std::string&)> redirectFPrintF) {
+
   if (is_initilized.exchange(true)) {
     return;
   }
@@ -692,6 +694,8 @@ JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
   v8::V8::Initialize();
   performance::performance_v8_start = PERFORMANCE_NOW();
   per_process::v8_initialized = true;
+
+  SetRedirectFPrintF(std::move(redirectFPrintF));
 }
 
 
@@ -737,8 +741,9 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
     argv.push_back(std::move(moduleInit));
   }
 
-  Initialize(argv, nodeFolder);
-  SetRedirectFPrintF(std::move(redirectFPrintF));
+  Initialize(argv,
+             nodeFolder,
+             std::move(redirectFPrintF));
 }
 
 

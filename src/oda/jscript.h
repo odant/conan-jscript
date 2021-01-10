@@ -25,7 +25,8 @@ namespace jscript {
 
 
 JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
-                               const std::string& nodeFolder); // set NODE_PATH environment variable (node modules paths)
+                               const std::string& nodeFolder,   // set NODE_PATH environment variable (node modules paths)
+                               std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
 
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
