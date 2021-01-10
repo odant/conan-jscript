@@ -629,10 +629,18 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
 }
 
 
-JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv) {
+JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
+                               const std::string& nodeFolder) {
   if (is_initilized.exchange(true)) {
     return;
   }
+
+  // Paths to node modules
+  CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
+
+  // categories is ','-separated list of C++ core debug categories that should print debug output
+  // 'none' - category for oda log callback
+  CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
 
   // Initialized the enabled list for Debug() calls with system
   // environment variables.
@@ -644,7 +652,7 @@ JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv) {
   // Hack around with the argv pointer. Used for process.title = "blah".
   // argv = uv_setup_args(argc, argv);
 
-  args = std::move(argv);
+  args = argv;
   std::vector<std::string> errors;
 
   // This needs to run *before* V8::Initialize().
@@ -690,29 +698,14 @@ JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv) {
 namespace {
 
 std::string findModule(const std::string& folder, const std::string& name);
-const std::string& getInitScript(const std::string& odaFrameworkPath);
+std::string getInitScript(std::string odaFrameworkPath);
 
 }
 
 
-JSCRIPT_EXTERN void Initialize(
-    const std::string& origin,
-    const std::string& externalOrigin,
-    std::string executeFile,
-    std::string coreFolder,
-    std::string nodeFolder,
-    std::function<void(const std::string&)> redirectFPrintF) {
-
-  std::replace(std::begin(executeFile), std::end(executeFile), '\\', '/');
-  std::replace(std::begin(nodeFolder), std::end(nodeFolder), '\\', '/');
-  std::replace(std::begin(coreFolder), std::end(coreFolder), '\\', '/');
-
-  // Paths to node modules
-  CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
-
-  // categories is ','-separated list of C++ core debug categories that should print debug output
-  // 'none' - category for oda log callback
-  CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
+                               std::function<void(const std::string&)> redirectFPrintF) {
 
   std::vector<std::string> argv{
       std::move(executeFile),
@@ -744,7 +737,7 @@ JSCRIPT_EXTERN void Initialize(
     argv.push_back(std::move(moduleInit));
   }
 
-  Initialize(std::move(argv));
+  Initialize(argv, nodeFolder);
   SetRedirectFPrintF(std::move(redirectFPrintF));
 }
 
@@ -779,8 +772,10 @@ std::string findModule(const std::string& folder, const std::string& name) {
           return std::string{};
 }
 
-const std::string& getInitScript(const std::string& odaFrameworkPath) {
-  static const std::string cache =  ""
+std::string getInitScript(std::string odaFrameworkPath) {
+  std::replace(std::begin(odaFrameworkPath), std::end(odaFrameworkPath), '\\', '/');
+
+  std::string script =  ""
     "'use strict';\n"
     "process.stdout.write = (msg) => {\n"
     "   process._rawDebug(msg);\n"
@@ -819,20 +814,16 @@ const std::string& getInitScript(const std::string& odaFrameworkPath) {
     "});\n"
   ;
 
-  return cache;
+  return script;
 }
 
 
 } // Anonymouse namespace
 
 
-JSCRIPT_EXTERN void Initialize(
-    const std::string& origin,
-    const std::string& externalOrigin,
-    std::string executeFile,
-    std::string coreFolder,
-    const std::vector<std::string>& nodeFolders,
-    std::function<void(const std::string&)> redirectFPrintF) {
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
+                               std::function<void(const std::string&)> redirectFPrintF) {
 
 #ifdef _WIN32
     const char delimiter = ';';
@@ -840,21 +831,19 @@ JSCRIPT_EXTERN void Initialize(
     const char delimiter = ':';
 #endif
 
-    std::string nodePaths;
+    std::string nodeFolder;
     for (const std::string& folder : nodeFolders) {
-        if (!nodePaths.empty()) {
-            nodePaths += delimiter;
+        if (!nodeFolder.empty()) {
+            nodeFolder += delimiter;
         }
-        nodePaths += folder;
+        nodeFolder += folder;
     }
 
-    Initialize(origin,
-               externalOrigin,
-               std::move(executeFile),
-               std::move(coreFolder),
-               std::move(nodePaths),
+    Initialize(origin, externalOrigin,
+               executeFile, coreFolder, nodeFolder,
                std::move(redirectFPrintF));
 }
+
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
   DCHECK(is_initilized);

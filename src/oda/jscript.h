@@ -24,15 +24,15 @@ namespace node {
 namespace jscript {
 
 
-JSCRIPT_EXTERN void Initialize(std::vector<std::string> argv);  // copy, not reference
+JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
+                               const std::string& nodeFolder); // set NODE_PATH environment variable (node modules paths)
 
 
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               std::string executeFile, std::string coreFolder, std::string nodeFolder, // copy, not reference
+                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               std::string executeFile, std::string coreFolder, // copy, not reference
-                               const std::vector<std::string>& nodeFolders,
+                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
 JSCRIPT_EXTERN void Uninitilize();
