@@ -399,7 +399,7 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
     v8::Local<v8::Object> global = context->Global();
     CHECK(!global.IsEmpty());
 
-    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
+    v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
     const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
           v8::Isolate* isolate = args.GetIsolate();
@@ -443,16 +443,16 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
     array->Set(context, 0, instanceExt).Check();
     array->Set(context, 1, stateCode).Check();
 
-    v8::MaybeLocal<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array);
-    global->Set(context, functionName, setRunStateFunction.ToLocalChecked()).Check();
+    v8::Local<v8::Function> setRunStateFunction = v8::Function::New(context, callback, array).ToLocalChecked();
+    global->Set(context, functionName, setRunStateFunction).Check();
 }
 
 void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value) {
   v8::Local<v8::Object> global = context->Global();
   CHECK(!global.IsEmpty());
 
-  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
-  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str(), v8::NewStringType::kNormal).ToLocalChecked();
+  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str()).ToLocalChecked();
+  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str()).ToLocalChecked();
   global->Set(context, stringName, stringValue).Check();
 }
 
@@ -470,7 +470,7 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
   v8::Local<v8::Object> globalObj = context->Global();
   DCHECK(!globalObj.IsEmpty());
 
-  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, u8"console", v8::NewStringType::kNormal).ToLocalChecked();
+  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, "console").ToLocalChecked();
 
   v8::MaybeLocal<v8::Value> maybeGlobalConsole = globalObj->Get(context, consoleName).ToLocalChecked();
   if (maybeGlobalConsole.IsEmpty()) {
@@ -480,7 +480,7 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
   v8::Local<v8::Object> globalConsoleObj = maybeGlobalConsole.ToLocalChecked().As<v8::Object>();
   DCHECK(!globalConsoleObj.IsEmpty());
 
-  v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name, v8::NewStringType::kNormal).ToLocalChecked();
+  v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
   v8::MaybeLocal<v8::Value> maybeGlobalFunction = globalConsoleObj->Get(context, functionName);
   if (maybeGlobalFunction.IsEmpty()) {
@@ -1040,10 +1040,7 @@ void compileAndRun(node::Environment& env, const std::string& text, const std::v
     insertCallbacks(context, cbInfo);
   }
 
-  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate,
-                                                         text.c_str(),
-                                                         v8::NewStringType::kNormal)
-          .ToLocalChecked();
+  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, text.c_str()).ToLocalChecked();
 
   v8::TryCatch tryCatch{isolate};
 #ifdef _DEBUG
@@ -1074,20 +1071,15 @@ void compileAndRun(node::Environment& env, const std::string& text, const std::v
 void insertCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
   v8::Isolate* isolate = context->GetIsolate();
 
-  v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate,
-                                                       callbackInfo.name.c_str(),
-                                                       v8::NewStringType::kInternalized).ToLocalChecked();
+  v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate, callbackInfo.name.c_str(),
+                                                       v8::NewStringType::kInternalized, callbackInfo.name.length()).ToLocalChecked();
 
   v8::Local<v8::External> external;
   if (callbackInfo.external) {
     external = v8::External::New(isolate, callbackInfo.external);
   }
 
-  v8::Local<v8::FunctionTemplate> functionTemplate = v8::FunctionTemplate::New(isolate,
-                                                                               callbackInfo.function,
-                                                                               external);
-
-  v8::Local<v8::Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
+  v8::Local<v8::Function> function = v8::Function::New(context, callbackInfo.function, external).ToLocalChecked();
   function->SetName(name);
 
   v8::Local<v8::Object> global = context->Global();
