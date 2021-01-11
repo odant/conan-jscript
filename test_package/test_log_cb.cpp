@@ -10,6 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <filesystem>
+#include <sstream>
 
 
 bool isScriptDone = false;
@@ -64,9 +65,15 @@ int main(int argc, char** argv) {
         "";
 
 
+    auto cbFPrintF = [](const std::string& msg) {
+        std::cout << "cbFPrintF: " << msg;
+    };
+
     jscript::Initialize(origin, externalOrigin,
                         executeFile, coreFolder, {},
-                        initScript);
+                        initScript,
+                        cbFPrintF);
+
     std::cout << "jscript::Initialize() done" << std::endl;
 
     jscript::result_t res;
@@ -81,7 +88,32 @@ int main(int argc, char** argv) {
     bool isLogCbCalled= false;
     jscript::JSLogCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, const jscript::JSLogType type) {
         isLogCbCalled = true;
-        std::cout << "logCb: " << type << std::endl;
+
+        v8::Isolate* isolate = args.GetIsolate();
+        v8::HandleScope handleScope(isolate);
+        v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+        std::ostringstream ss;
+        ss << "logCb: type " << type << std::endl;
+        ss << " " << "length: " << args.Length() << std::endl;
+
+        ss << " " << "args: ";
+        for (int i = 0; i < args.Length(); ++i) {
+            auto arg = args[i];
+            if (arg.IsEmpty()) {
+                continue;
+            }
+            auto strObj = arg->ToString(context);
+            if (strObj.IsEmpty()) {
+                continue;
+            }
+
+            v8::String::Utf8Value v8Utf8String(isolate, strObj.ToLocalChecked());
+            ss << *v8Utf8String;
+        }
+        ss << std::endl;
+
+        std::cout << ss.str();
     };
     jscript::SetLogCallback(instance, cb);
 
