@@ -17,6 +17,7 @@
 #include <thread>
 #include <cstdio>
 #include <algorithm>
+#include <sstream>
 
 #include <mutex>
 #include <condition_variable>
@@ -644,6 +645,8 @@ JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
   // 'none' - category for oda log callback
   CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
 
+  SetRedirectFPrintF(std::move(redirectFPrintF));
+
   // Initialized the enabled list for Debug() calls with system
   // environment variables.
   per_process::enabled_debug_list.Parse(nullptr);
@@ -651,8 +654,19 @@ JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
   atexit(ResetStdio);
   PlatformInit();
 
-  // Hack around with the argv pointer. Used for process.title = "blah".
-  // argv = uv_setup_args(argc, argv);
+#ifdef _DEBUG
+  {
+    std::ostringstream ss;
+    ss << "jscript:" << std::endl;
+    ss << "  " << "node argv:";
+    for (const auto& arg : argv) {
+      ss << ' ' << arg;
+    }
+    ss << std::endl;
+    ss << "  " << "nodeFolder: " << nodeFolder << std::endl;
+    per_process::Debug(DebugCategory::NONE, ss.str().c_str());
+  }
+#endif
 
   args = argv;
   std::vector<std::string> errors;
