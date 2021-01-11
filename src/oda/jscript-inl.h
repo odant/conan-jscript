@@ -715,8 +715,11 @@ JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
 
 namespace {
 
+void setOrigin(const std::string& origin, const std::string& externalOrigin);
+std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder);
 std::string findModule(const std::string& folder, const std::string& name);
 std::string getInitScript(std::string odaFrameworkPath);
+std::string convertNodeFolders(const std::vector<std::string>&);
 
 }
 
@@ -725,31 +728,15 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF) {
 
-  std::vector<std::string> argv{
-      std::move(executeFile),
-      "--experimental-vm-modules"
-  };
+  setOrigin(origin, externalOrigin);
 
-  std::string modulesLoader = findModule(coreFolder + "/web", "modules-loader");
-  if (!modulesLoader.empty()) {
-      argv.push_back("--experimental-loader");
-#ifdef _WIN32
-          static const std::string fileScheme{ "file:///" };
-#else
-          static const std::string fileScheme{ "file://" };
-#endif
-      modulesLoader = fileScheme + modulesLoader;
-      argv.push_back(std::move(modulesLoader));
-  }
-  
-  const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
-  const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
+  std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
 
   std::string moduleInit = findModule(coreFolder + "/web", "jscript-init");
   if (moduleInit.empty()) {
     argv.push_back("-e");
-    const std::string& initScript = getInitScript(coreFolder + "/web/core/odant.js");
-    argv.push_back(initScript);
+    std::string initScript = getInitScript(coreFolder + "/web/core/odant.js");
+    argv.push_back(std::move(initScript));
   }
   else {
     argv.push_back(std::move(moduleInit));
@@ -760,9 +747,65 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
              std::move(redirectFPrintF));
 }
 
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
+                               std::function<void(const std::string&)> redirectFPrintF) {
+
+    const std::string nodeFolder = convertNodeFolders(nodeFolders);
+
+    Initialize(origin, externalOrigin,
+               executeFile, coreFolder, nodeFolder,
+               std::move(redirectFPrintF));
+}
+
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
+                               const std::string& initScript,
+                               std::function<void(const std::string&)> redirectFPrintF) {
+
+  setOrigin(origin, externalOrigin);
+
+  std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
+
+  argv.push_back("-e");
+  argv.push_back(initScript);
+
+  const std::string nodeFolder = convertNodeFolders(nodeFolders);
+
+  Initialize(argv,
+             nodeFolder,
+             std::move(redirectFPrintF));
+}
+
 
 namespace {
 
+
+void setOrigin(const std::string& origin, const std::string& externalOrigin) {
+    const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
+    const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
+}
+
+std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder) {
+    std::vector<std::string> argv{
+        std::move(executeFile),
+        "--experimental-vm-modules"
+    };
+
+    std::string modulesLoader = findModule(coreFolder + "/web", "modules-loader");
+    if (!modulesLoader.empty()) {
+        argv.push_back("--experimental-loader");
+  #ifdef _WIN32
+            static const std::string fileScheme{ "file:///" };
+  #else
+            static const std::string fileScheme{ "file://" };
+  #endif
+        modulesLoader = fileScheme + modulesLoader;
+        argv.push_back(std::move(modulesLoader));
+    }
+
+    return argv;
+}
 
 std::string findModule(const std::string& folder, const std::string& name) {
           FILE* file;
@@ -836,14 +879,7 @@ std::string getInitScript(std::string odaFrameworkPath) {
   return script;
 }
 
-
-} // Anonymouse namespace
-
-
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
-                               std::function<void(const std::string&)> redirectFPrintF) {
-
+std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
 #ifdef _WIN32
     const char delimiter = ';';
 #else
@@ -858,10 +894,11 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
         nodeFolder += folder;
     }
 
-    Initialize(origin, externalOrigin,
-               executeFile, coreFolder, nodeFolder,
-               std::move(redirectFPrintF));
+    return nodeFolder;
 }
+
+
+} // Anonymouse namespace
 
 
 JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {

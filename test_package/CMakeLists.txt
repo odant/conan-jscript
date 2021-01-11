@@ -241,3 +241,15 @@ add_test(
     COMMAND test_log_cb
 )
 
+add_executable(test_init_script test_init_script.cpp)
+target_link_libraries(test_init_script JScript::JScript ${FilesystemLibrary})
+set_target_properties(test_init_script
+    PROPERTIES
+    INSTALL_RPATH "$ORIGIN"
+    BUILD_WITH_INSTALL_RPATH True
+)
+add_test(
+    NAME test_init_script
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    COMMAND test_init_script
+)

@@ -32,9 +32,16 @@ JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
+
 JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
+
+JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
+                               const std::string& initScript,
+                               std::function<void(const std::string&)> redirectFPrintF = nullptr);
+
 
 JSCRIPT_EXTERN void Uninitilize();
 
