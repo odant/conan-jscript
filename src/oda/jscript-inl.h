@@ -457,15 +457,13 @@ void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const 
 }
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
-  overrideConsole(context, u8"log", JSLogType::LOG_TYPE);
-  overrideConsole(context, u8"warn", JSLogType::WARN_TYPE);
-  overrideConsole(context, u8"error", JSLogType::ERROR_TYPE);
+  overrideConsole(context, "log", JSLogType::LOG_TYPE);
+  overrideConsole(context, "warn", JSLogType::WARN_TYPE);
+  overrideConsole(context, "error", JSLogType::ERROR_TYPE);
 }
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const JSLogType type) {
   v8::HandleScope handleScope{_isolate};
-  v8::TryCatch tryCatch{_isolate};
-  tryCatch.SetVerbose(true);
 
   v8::Local<v8::Object> globalObj = context->Global();
   DCHECK(!globalObj.IsEmpty());
@@ -586,47 +584,23 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
     overrideFunction
   ).Check();
 
-  v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(
-      _isolate, u8"odantFramework", v8::NewStringType::kNormal).ToLocalChecked();
-  v8::Local<v8::Value> odantFramework =
-      globalObj->Get(context, odantFrameworkName).ToLocalChecked();
-  if (odantFramework.IsEmpty() || !odantFramework->IsObject()) {
+
+  v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(_isolate, "odantFramework").ToLocalChecked();
+  v8::Local<v8::Value> odantFramework = globalObj->Get(context, odantFrameworkName).ToLocalChecked();
+  if (!odantFramework->IsObject()) {
     return;
   }
   v8::Local<v8::Object> odantFrameworkObj = odantFramework.As<v8::Object>();
-  if (odantFrameworkObj.IsEmpty()) {
-    return;
-  }
-  v8::Local<v8::Value> odantFrameworkConsole =
-      odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
-  if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
-    v8::Local<v8::Object> consoleObj = v8::Object::New(_isolate);
-    if (consoleObj.IsEmpty()) {
-      return;
-    }
-    if (!odantFrameworkObj->Set(context, consoleName, consoleObj).ToChecked()) {
-      return;
-    }
-    odantFrameworkConsole =
-      odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
-    if (odantFrameworkConsole.IsEmpty() || !odantFrameworkConsole->IsObject()) {
-      return;
-    }
+
+  v8::Local<v8::Value> odantFrameworkConsole = odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
+  if (!odantFrameworkConsole->IsObject()) {
+    odantFrameworkConsole = v8::Object::New(_isolate);
+    odantFrameworkObj->Set(context, consoleName, odantFrameworkConsole).Check();
   }
 
-  v8::Local<v8::Object> odantFrameworkconsoleObj = odantFrameworkConsole.As<v8::Object>();
-  if (odantFrameworkconsoleObj.IsEmpty()) {
-    return;
-  }
-
-  v8::Local<v8::Value> function =
-    odantFrameworkconsoleObj->Get(context, functionName).ToLocalChecked();
-  if (function.IsEmpty() || !function->IsFunction()) {
-    odantFrameworkconsoleObj->Set(context,
-                    functionName,
-                    overrideFunction
-    ).Check();
-  }
+  v8::Local<v8::Object> odantFrameworkConsoleObj = odantFrameworkConsole.As<v8::Object>();
+  DCHECK(!odantFrameworkConsoleObj.IsEmpty());
+  odantFrameworkConsoleObj->Set(context, functionName, overrideFunction).Check();
 }
 
 
