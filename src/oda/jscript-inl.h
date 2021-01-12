@@ -401,18 +401,19 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
 
     v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
-    const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) -> void {
+    const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
           v8::Isolate* isolate = args.GetIsolate();
-          v8::HandleScope handle_scope(isolate);
+          v8::HandleScope handleScope(isolate);
 
           v8::Local<v8::Value> data = args.Data();
+          DCHECK(!data.IsEmpty());
+          DCHECK(data->IsArray());
           if (data.IsEmpty() || !data->IsArray()) {
               return;
           }
+
           v8::Local<v8::Array> array = data.As<v8::Array>();
-          if (array.IsEmpty()) {
-              return;
-          }
+          DCHECK_GE(array->Length(), 2);
           if (array->Length() < 2) {
               return;
           }
@@ -420,20 +421,11 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
           v8::Local<v8::Context> context = array->CreationContext();
 
           v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
-          if (instanceExt.IsEmpty()) {
-              return;
-          }
 
           JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-          if (!instance) {
-              return;
-          }
+          DCHECK_NOT_NULL(instance);
 
           v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
-          if (stateCode.IsEmpty()) {
-              return;
-          }
-
           instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode-> Value()));
     };  // callback
 
@@ -462,6 +454,14 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
   overrideConsole(context, "error", JSLogType::ERROR_TYPE);
 }
 
+
+namespace {
+
+void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+}
+
+
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const JSLogType type) {
   v8::HandleScope handleScope{_isolate};
 
@@ -469,94 +469,24 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
   DCHECK(!globalObj.IsEmpty());
 
   v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, "console").ToLocalChecked();
-  v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
+  v8::Local<v8::String> methodName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
   v8::Local<v8::Object> globalConsoleObj = globalObj->Get(context, consoleName).ToLocalChecked().As<v8::Object>();
-  v8::Local<v8::Value> globalFunction = globalConsoleObj->Get(context, functionName).ToLocalChecked().As<v8::Function>();
 
   //TODO: add check re-override control
 
-  v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-  v8::Local<v8::External> typeExt = v8::External::New(_isolate, reinterpret_cast<void*>(static_cast<std::size_t>(type)));
-
   v8::Local<v8::Array> array = v8::Array::New(_isolate, 3);
 
-  array->Set(context, 0, globalFunction).Check();
+  v8::Local<v8::Value> globalMethod = globalConsoleObj->Get(context, methodName).ToLocalChecked().As<v8::Function>();
+  v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
+  v8::Local<v8::External> typeExt = v8::External::New(_isolate, reinterpret_cast<void*>(type));
+
+  array->Set(context, 0, globalMethod).Check();
   array->Set(context, 1, instanceExt).Check();
   array->Set(context, 2, typeExt).Check();
 
-  const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-    v8::Isolate* isolate = args.GetIsolate();
-    v8::HandleScope handle_scope(isolate);
-
-    v8::Local<v8::Value> data = args.Data();
-    if (data.IsEmpty() || !data->IsArray()) {
-      return;
-    }
-    v8::Local<v8::Array> array = data.As<v8::Array>();
-    if (array.IsEmpty()) {
-      return;
-    }
-    if (array->Length() < 3) {
-      return;
-    }
-
-    v8::Local<v8::Context> context = array->CreationContext();
-
-    v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
-    if (globalLogFunc.IsEmpty()) {
-      return;
-    }
-
-    v8::TryCatch trycatch(isolate);
-    trycatch.SetVerbose(true);
-
-    std::unique_ptr<v8::Local<v8::Value>[]> info{
-        new v8::Local<v8::Value>[args.Length()]
-    };
-
-    for (int i = 0; i < args.Length(); ++i) {
-      info[i] = args[i];
-    }
-
-    globalLogFunc->Call(isolate->GetCurrentContext(),
-      v8::Null(isolate),
-      args.Length(),
-      info.get());
-
-    v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
-    if (instanceExt.IsEmpty()) {
-      return;
-    }
-    JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-    if (!instance) {
-      return;
-    }
-
-    v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
-    if (typeExt.IsEmpty()) {
-      return;
-    }
-    JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
-
-    auto& logCallback = instance->logCallback();
-    if (logCallback) {
-      logCallback(args, type);
-    }
-  };
-
-  v8::Local<v8::Function> overrideFunction =
-    v8::Function::New(context,
-                      callback,
-                      array
-  ).ToLocalChecked();
-
-  globalConsoleObj->Set(
-    context,
-    functionName,
-    overrideFunction
-  ).Check();
-
+  v8::Local<v8::Function> overrideFunction = v8::Function::New(context, consoleCallback, array).ToLocalChecked();
+  globalConsoleObj->Set(context, methodName, overrideFunction).Check();
 
   v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(_isolate, "odantFramework").ToLocalChecked();
   v8::Local<v8::Value> odantFramework = globalObj->Get(context, odantFrameworkName).ToLocalChecked();
@@ -572,9 +502,59 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
   }
 
   v8::Local<v8::Object> odantFrameworkConsoleObj = odantFrameworkConsole.As<v8::Object>();
-  DCHECK(!odantFrameworkConsoleObj.IsEmpty());
-  odantFrameworkConsoleObj->Set(context, functionName, overrideFunction).Check();
+  odantFrameworkConsoleObj->Set(context, methodName, overrideFunction).Check();
 }
+
+
+namespace {
+
+
+void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::Isolate* isolate = args.GetIsolate();
+    v8::HandleScope handleScope(isolate);
+
+    v8::Local<v8::Value> data = args.Data();
+    DCHECK(!data.IsEmpty());
+    DCHECK(data->IsArray());
+    if (data.IsEmpty() || !data->IsArray()) {
+        return;
+    }
+
+    v8::Local<v8::Array> array = data.As<v8::Array>();
+    DCHECK_GE(array->Length(), 3);
+    if (array->Length() < 3) {
+        return;
+    }
+
+    v8::Local<v8::Context> context = array->CreationContext();
+
+    v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
+
+    v8::TryCatch trycatch(isolate);
+    trycatch.SetVerbose(true);
+
+    std::vector<v8::Local<v8::Value>> info;
+    for (int i = 0; i < args.Length(); ++i) {
+        info.push_back(args[i]);
+    }
+
+    globalLogFunc->Call(context, v8::Null(isolate), info.size(), info.data()).ToLocalChecked();
+
+    v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
+    JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+    DCHECK_NOT_NULL(instance);
+
+    auto& logCallback = instance->logCallback();
+    if (logCallback) {
+        v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
+        JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+
+        logCallback(args, type);
+    }
+}
+
+
+} // Anonymouse namespace
 
 
 JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
