@@ -469,44 +469,17 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
   DCHECK(!globalObj.IsEmpty());
 
   v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, "console").ToLocalChecked();
-
-  v8::MaybeLocal<v8::Value> maybeGlobalConsole = globalObj->Get(context, consoleName).ToLocalChecked();
-  if (maybeGlobalConsole.IsEmpty()) {
-      return;
-  }
-
-  v8::Local<v8::Object> globalConsoleObj = maybeGlobalConsole.ToLocalChecked().As<v8::Object>();
-  DCHECK(!globalConsoleObj.IsEmpty());
-
   v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
-  v8::MaybeLocal<v8::Value> maybeGlobalFunction = globalConsoleObj->Get(context, functionName);
-  if (maybeGlobalFunction.IsEmpty()) {
-      return;
-  }
-
-  v8::Local<v8::Function> globalFunction = maybeGlobalFunction.ToLocalChecked().As<v8::Function>();
-  DCHECK(!globalFunction.IsEmpty());
+  v8::Local<v8::Object> globalConsoleObj = globalObj->Get(context, consoleName).ToLocalChecked().As<v8::Object>();
+  v8::Local<v8::Value> globalFunction = globalConsoleObj->Get(context, functionName).ToLocalChecked().As<v8::Function>();
 
   //TODO: add check re-override control
 
-  v8::Local<v8::External> instanceExt =
-    v8::External::New(_isolate, this);
-  if (instanceExt.IsEmpty()) {
-    return;
-  }
-
-  v8::Local<v8::External> typeExt =
-    v8::External::New(_isolate,
-                      reinterpret_cast<void*>(static_cast<std::size_t>(type)));
-  if (typeExt.IsEmpty()) {
-    return;
-  }
+  v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
+  v8::Local<v8::External> typeExt = v8::External::New(_isolate, reinterpret_cast<void*>(static_cast<std::size_t>(type)));
 
   v8::Local<v8::Array> array = v8::Array::New(_isolate, 3);
-  if (array.IsEmpty()) {
-    return;
-  }
 
   array->Set(context, 0, globalFunction).Check();
   array->Set(context, 1, instanceExt).Check();
