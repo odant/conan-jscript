@@ -61,6 +61,8 @@ int main(int argc, char** argv) {
 
         "global.__oda_setRunState();\n"
 
+        "global.odantFramework = new Object();\n"
+
         "console.log('initScript done');\n"
         "";
 
@@ -109,7 +111,7 @@ int main(int argc, char** argv) {
             }
 
             v8::String::Utf8Value v8Utf8String(isolate, strObj.ToLocalChecked());
-            ss << *v8Utf8String;
+            ss << " " << *v8Utf8String;
         }
         ss << std::endl;
 
@@ -118,9 +120,14 @@ int main(int argc, char** argv) {
     jscript::SetLogCallback(instance, cb);
 
     const std::string script = ""
-        "console.log('log');\n"
-        "console.warn('warn');\n"
-        "console.error('error');\n"
+        "console.log('console.log');\n"
+        "console.warn('console.warn', 'console.warn');\n"
+        "console.error('console.error', 'console.error', 'console.error');\n"
+
+        "odantFramework.console.log('odantFramework.console.log');\n"
+        "odantFramework.console.warn('odantFramework.console.warn');\n"
+        "odantFramework.console.error('odantFramework.console.error');\n"
+
         "scriptDone();\n"
         "";
 
