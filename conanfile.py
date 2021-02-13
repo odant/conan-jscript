@@ -1,5 +1,5 @@
 # jscript Conan package
-# Dmitriy Vetutnev, Odant, 2018-2020
+# Dmitriy Vetutnev, Odant, 2018-2021
 
 
 from conans import ConanFile, tools, MSBuild, CMake
@@ -214,19 +214,13 @@ class JScriptConan(ConanFile):
             tools.rmdir(self.package_folder)
             tools.mkdir(self.package_folder)
         # CMake script
-        self.copy("FindJScript.cmake", dst=".", src=".", keep_path=False)
+        self.copy("FindJScript.cmake", dst=".", src=".")
         # Headers
-        self.copy("jscript.h", dst="include", src="src/oda", keep_path=False)
-        self.copy("node.h", dst="include", src="src/src", keep_path=False)
-        self.copy("node_buffer.h", dst="include", src="src/src", keep_path=False)
-        self.copy("node_version.h", dst="include", src="src/src", keep_path=False)
-        self.copy("node_object_wrap.h", dst="include", src="src/src", keep_path=False)
-        self.copy("node_api.h", dst="include", src="src/src", keep_path=False)
-        self.copy("js_native_api.h", dst="include", src="src/src", keep_path=False)
-        self.copy("js_native_api_types.h", dst="include", src="src/src", keep_path=False)
-        self.copy("node_api_types.h", dst="include", src="src/src", keep_path=False)
+        self.copy("jscript.h", dst="include", src="src/oda")
+        self.copy("*.h", dst="include", src="src/src", keep_path=True)
         self.copy("*.h", dst="include", src="src/deps/v8/include", keep_path=True)
         self.copy("*.h", dst="include", src="src/deps/uv/include", keep_path=True)
+        #
         self.copy("win_delay_load_hook.cc", dst="include", src=".", keep_path=False)
         # Libraries
         output_folder = "src/out/%s" % str(self.settings.build_type)
@@ -281,4 +275,7 @@ class JScriptConan(ConanFile):
 
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
-        self.cpp_info.defines = ["USE_JSCRIPT"]
+        self.cpp_info.defines = [
+            "USE_JSCRIPT",
+            "NODE_USE_V8_PLATFORM"
+        ]
