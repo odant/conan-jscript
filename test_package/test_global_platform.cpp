@@ -26,12 +26,12 @@ int main(int argc, char** argv) {
         coreFolder + "/node_modules",
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolders);
+    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolders);
 
     node::MultiIsolatePlatform* p = node::jscript::GetGlobalPlatform();
     assert(p != nullptr);
 
-    jscript::Uninitilize();
+    node::jscript::Uninitilize();
 
     return EXIT_SUCCESS;
 }
