@@ -90,7 +90,7 @@ library_test(test_redirect_fprintf)
 library_test(test_redirect_fprintf2)
 library_test(test_log_cb)
 library_test(test_init_script)
-library_test(test_per_process_v8_platform)
+library_test(test_global_platform)
 
 library_test(test_napi_addon)
 add_library(napi_addon SHARED
