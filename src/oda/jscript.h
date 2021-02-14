@@ -2,6 +2,7 @@
 
 
 #include <v8.h>
+#include <node.h>
 
 #include <string>
 #include <vector>
@@ -103,6 +104,9 @@ inline std::ostream& operator<< (std::ostream& os, const JSLogType type) {
 
     return os;
 }
+
+
+JSCRIPT_EXTERN MultiIsolatePlatform* GetGlobalPlatform();
 
 
 } // namespace jscript

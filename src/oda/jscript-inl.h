@@ -1089,6 +1089,10 @@ JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance_,
   return JS_SUCCESS;
 }
 
+MultiIsolatePlatform* GetGlobalPlatform() {
+    return per_process::v8_platform.Platform();
+}
+
 
 }  // namespace jscript
 }  // namespace node

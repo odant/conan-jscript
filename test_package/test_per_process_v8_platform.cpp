@@ -10,10 +10,6 @@
 
 #include <jscript.h>
 
-#define NODE_WANT_INTERNALS 1
-#include <node_internals.h>
-#include <node_v8_platform-inl.h>
-
 #include <cassert>
 #include <cstdlib>
 #include <filesystem>
@@ -32,7 +28,7 @@ int main(int argc, char** argv) {
 
     jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolders);
 
-    node::MultiIsolatePlatform* p = node::per_process::v8_platform.Platform();
+    node::MultiIsolatePlatform* p = node::jscript::GetGlobalPlatform();
     assert(p != nullptr);
 
     jscript::Uninitilize();
