@@ -557,7 +557,7 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
 } // Anonymouse namespace
 
 
-JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
+NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
                                const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF) {
 
@@ -651,7 +651,7 @@ std::string convertNodeFolders(const std::vector<std::string>&);
 }
 
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF) {
 
@@ -674,7 +674,7 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
              std::move(redirectFPrintF));
 }
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                std::function<void(const std::string&)> redirectFPrintF) {
 
@@ -685,7 +685,7 @@ JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& ext
                std::move(redirectFPrintF));
 }
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                const std::string& initScript,
                                std::function<void(const std::string&)> redirectFPrintF) {
@@ -828,7 +828,7 @@ std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
 } // Anonymouse namespace
 
 
-JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
+NODE_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
   DCHECK(is_initilized);
   DCHECK_NOT_NULL(instance);
 
@@ -837,7 +837,7 @@ JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
   instanceImpl->SetLogCallback(std::move(cb));
 }
 
-JSCRIPT_EXTERN void Uninitilize() {
+NODE_EXTERN void Uninitilize() {
   if (!is_initilized.exchange(false)) {
     return;
   }
@@ -847,7 +847,7 @@ JSCRIPT_EXTERN void Uninitilize() {
   TearDownOncePerProcess();
 }
 
-JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
+NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
   JSInstanceImpl::Ptr instance = JSInstanceImpl::create();
   if (!instance) return JS_ERROR;
 
@@ -871,7 +871,7 @@ JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
 }
 
 
-JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance_) {
+NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
   if (instance_ == nullptr) return JS_ERROR;
 
   JSInstanceImpl::Ptr instance;
@@ -1043,13 +1043,13 @@ void processTryCatch(node::Environment& env, const v8::TryCatch& tryCatch) {
 } // Anonymous namespace
 
 
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance,
+NODE_EXTERN result_t RunScriptText(JSInstance* instance,
                                       const std::string& script) {
     const std::vector<JSCallbackInfo> dummy{};
     return RunScriptText(instance, script, dummy);
 }
 
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance_,
+NODE_EXTERN result_t RunScriptText(JSInstance* instance_,
                                       const std::string& script,
                                       const std::vector<JSCallbackInfo>& callbacks) {
   if (instance_ == nullptr) {

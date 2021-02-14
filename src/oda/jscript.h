@@ -10,41 +10,30 @@
 #include <ostream>
 
 
-#ifdef _WIN32
-# ifndef USE_JSCRIPT
-#   define JSCRIPT_EXTERN __declspec(dllexport)
-# else
-#   define JSCRIPT_EXTERN __declspec(dllimport)
-# endif
-#else
-# define JSCRIPT_EXTERN /* nothing */
-#endif
-
-
 namespace node {
 namespace jscript {
 
 
-JSCRIPT_EXTERN void Initialize(const std::vector<std::string>& argv,
+NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
                                const std::string& nodeFolder,   // set NODE_PATH environment variable (node modules paths)
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
-JSCRIPT_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
+NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
                                const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
                                const std::string& initScript,
                                std::function<void(const std::string&)> redirectFPrintF = nullptr);
 
 
-JSCRIPT_EXTERN void Uninitilize();
+NODE_EXTERN void Uninitilize();
 
 
 typedef enum {
@@ -54,8 +43,8 @@ typedef enum {
 
 class JSInstance { };
 
-JSCRIPT_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
-JSCRIPT_EXTERN result_t StopInstance(JSInstance* instance);
+NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
+NODE_EXTERN result_t StopInstance(JSInstance* instance);
 
 
 struct JSCallbackInfo {
@@ -64,8 +53,8 @@ struct JSCallbackInfo {
     void*                external = nullptr;
 };
 
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script);
-JSCRIPT_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
+NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script);
+NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
 
 
 enum JSLogType {
@@ -78,7 +67,7 @@ enum JSLogType {
 
 using JSLogCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>;
 
-JSCRIPT_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb);
+NODE_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb);
 
 inline std::ostream& operator<< (std::ostream& os, const JSLogType type) {
     os << "JSLogType: ";
@@ -106,7 +95,7 @@ inline std::ostream& operator<< (std::ostream& os, const JSLogType type) {
 }
 
 
-JSCRIPT_EXTERN MultiIsolatePlatform* GetGlobalPlatform();
+NODE_EXTERN MultiIsolatePlatform* GetGlobalPlatform();
 
 
 } // namespace jscript
