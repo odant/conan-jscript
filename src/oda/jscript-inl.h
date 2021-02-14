@@ -600,7 +600,7 @@ NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
 
   // This needs to run *before* V8::Initialize().
   {
-    const int exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
+    const auto exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
     for (const std::string& error : errors)
       fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
     CHECK_EQ(exit_code, 0);
