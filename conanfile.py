@@ -52,17 +52,6 @@ class JScriptConan(ConanFile):
     _zlib_channel = "stable"
 
     def configure(self):
-        if self.settings.os == "Windows":
-            # Only MSVC 15
-            if self.settings.compiler.get_safe("version") < "15":
-                raise Exception("This package is only compatible with Visual Studio 15 2017")
-            # Disable Windows XP support
-            if not self.settings.compiler.get_safe("toolset") in [None, "'v141'"]:
-                raise Exception("This package is compatible with compiler toolset None or v141")
-        # Only C++11
-        if self.settings.compiler.get_safe("libcxx") == "libstdc++":
-            raise Exception("This package is only compatible with libstdc++11")
-        # DLL sign, only on Windows
         if self.settings.os != "Windows":
             del self.options.dll_sign
 
@@ -71,9 +60,8 @@ class JScriptConan(ConanFile):
         self.requires("zlib/%s@%s/%s" % (self._zlib_version, self.user, self._zlib_channel))
 
     def build_requirements(self):
-        if self.settings.arch == "x86_64" or self.settings.arch == "x86":
-            if self.options.ninja:
-                self.build_requires("ninja/1.9.0")
+        if self.options.ninja:
+            self.build_requires("ninja/1.9.0")
         if self.options.get_safe("dll_sign"):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
