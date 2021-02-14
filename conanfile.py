@@ -30,7 +30,18 @@ class JScriptConan(ConanFile):
         "cmake": False,
         "with_unit_tests": False
     }
-    exports_sources = "src/*", "oda.patch", "FindJScript.cmake", "experimental.patch", "use_nodepath_for_esm.patch", "win_delay_load_hook.cc", "v8.patch"
+    exports_patches = [
+        "oda.patch",
+        "experimental.patch",
+        "v8.patch",
+        "export_v8_platform.patch"
+    ]
+    exports_sources = [
+        "src/*",
+        "FindJScript.cmake",
+        "win_delay_load_hook.cc",
+        *exports_patches
+    ]
     no_copy_source = False
     build_policy = "missing"
     short_paths = True
@@ -67,18 +78,16 @@ class JScriptConan(ConanFile):
             self.build_requires("windows_signtool/[~=1.1]@%s/stable" % self.user)
 
     def source(self):
-        self.patch_version();
-        tools.patch(patch_file="oda.patch")
-        tools.patch(patch_file="experimental.patch")
-        tools.patch(patch_file="use_nodepath_for_esm.patch")
-        tools.patch(patch_file="v8.patch")
+        self.patch_version()
+        for p in self.exports_patches:
+            tools.patch(patch_file=p)
 
     def patch_version(self):
         build_version = self.version.split(".")[3]
         content = tools.load("oda.patch")
-        r = re.compile("\+#define NODE_BUILD_VERSION \d+")
-        content = r.sub("+#define NODE_BUILD_VERSION %s" % build_version, content);
-        tools.save("oda.patch", content);
+        r = re.compile(r"\+#define NODE_BUILD_VERSION \d+")
+        content = r.sub("+#define NODE_BUILD_VERSION %s" % build_version, content)
+        tools.save("oda.patch", content)
 
     def build(self):
         output_name = "jscript"

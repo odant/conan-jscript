@@ -1,0 +1,13 @@
+diff --git a/src/src/node_v8_platform-inl.h b/src/src/node_v8_platform-inl.h
+index d79dd99bf3..0586e2980c 100644
+--- a/src/src/node_v8_platform-inl.h
++++ b/src/src/node_v8_platform-inl.h
+@@ -80,7 +80,7 @@ class NodeTraceStateObserver
+   v8::TracingController* controller_;
+ };
+ 
+-struct V8Platform {
++struct NODE_EXTERN V8Platform {
+   bool initialized_ = false;
+ 
+ #if NODE_USE_V8_PLATFORM
