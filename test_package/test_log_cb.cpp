@@ -3,6 +3,10 @@
 // Dmitriy Vetutnev, ODANT, 2020-2021
 
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <jscript.h>
 
 #include <iostream>
@@ -72,20 +76,17 @@ int main(int argc, char** argv) {
     };
 
     node::jscript::Initialize(origin, externalOrigin,
-                        executeFile, coreFolder, {},
-                        initScript,
-                        cbFPrintF);
+                              executeFile, coreFolder, {},
+                              initScript,
+                              cbFPrintF);
 
     std::cout << "node::jscript::Initialize() done" << std::endl;
 
     node::jscript::result_t res;
     node::jscript::JSInstance* instance{nullptr};
     res = node::jscript::CreateInstance(&instance);
-    if (res != node::jscript::JS_SUCCESS || !instance) {
-        std::cout << "Failed instance create" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    std::cout << "Instance created" << std::endl;
+    assert(instance != nullptr);
+    assert(res == node::jscript::JS_SUCCESS);
 
     bool isLogCbCalled= false;
     node::jscript::JSLogCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, const node::jscript::JSLogType type) {
@@ -140,10 +141,7 @@ int main(int argc, char** argv) {
     };
 
     res = node::jscript::RunScriptText(instance, script, callbacks);
-    if (res != node::jscript::JS_SUCCESS) {
-        std::cout << "Failed running script" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(res == node::jscript::JS_SUCCESS);
 
     std::cout << "Script running, waiting..." << std::endl;    
     std::unique_lock<std::mutex> lock{mtxIsScriptDone};
@@ -152,16 +150,10 @@ int main(int argc, char** argv) {
     std::cout << "Script done" << std::endl;
     
     res = node::jscript::StopInstance(instance);
-    if (res != node::jscript::JS_SUCCESS) {
-        std::cout << "Failed instance stop" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(res == node::jscript::JS_SUCCESS);
     std::cout << "Instance stopped" << std::endl;
 
-    if (!isLogCbCalled) {
-        std::cout << "Error, log cb not called!" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(isLogCbCalled);
 
     node::jscript::Uninitilize();
     std::cout << "node::jscript::Uninitilize() done" << std::endl;
