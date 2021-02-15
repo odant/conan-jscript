@@ -70,13 +70,13 @@ int main(int argc, char** argv) {
         std::cout << "redirectFPrintF cb: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{}, redirectFPrintF);
-    std::cout << "jscript::Initialize() done" << std::endl;
+    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{}, redirectFPrintF);
+    std::cout << "node::jscript::Initialize() done" << std::endl;
 
-    jscript::result_t res;
-    jscript::JSInstance* instance{nullptr};
-    res = jscript::CreateInstance(&instance);
-    if (res != jscript::JS_SUCCESS || !instance) {
+    node::jscript::result_t res;
+    node::jscript::JSInstance* instance{nullptr};
+    res = node::jscript::CreateInstance(&instance);
+    if (res != node::jscript::JS_SUCCESS || !instance) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -87,16 +87,16 @@ int main(int argc, char** argv) {
         "scriptDone();\n"
         "";
 
-    jscript::JSCallbackInfo callbackInfo;
+    node::jscript::JSCallbackInfo callbackInfo;
     callbackInfo.name = "scriptDone";
     callbackInfo.function = script_cb;
 
-    const std::vector<jscript::JSCallbackInfo> callbacks{
+    const std::vector<node::jscript::JSCallbackInfo> callbacks{
         std::move(callbackInfo)
     };
 
-    res = jscript::RunScriptText(instance, script, callbacks);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::RunScriptText(instance, script, callbacks);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
         
     std::cout << "Script done" << std::endl;
     
-    res = jscript::StopInstance(instance);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::StopInstance(instance);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -119,8 +119,8 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    jscript::Uninitilize();
-    std::cout << "jscript::Uninitilize() done" << std::endl;
+    node::jscript::Uninitilize();
+    std::cout << "node::jscript::Uninitilize() done" << std::endl;
 
     return EXIT_SUCCESS;
 }

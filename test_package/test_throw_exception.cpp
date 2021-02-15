@@ -26,20 +26,20 @@ int main(int argc, char** argv) {
         std::cout << "redirectFPrintF: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, redirectFPrintF);
-    std::cout << "jscript::Initialize() done" << std::endl;
+    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, redirectFPrintF);
+    std::cout << "node::jscript::Initialize() done" << std::endl;
 
-    jscript::result_t res;
-    jscript::JSInstance* instance{nullptr};
-    res = jscript::CreateInstance(&instance);
-    if (res != jscript::JS_SUCCESS || !instance) {
+    node::jscript::result_t res;
+    node::jscript::JSInstance* instance{nullptr};
+    res = node::jscript::CreateInstance(&instance);
+    if (res != node::jscript::JS_SUCCESS || !instance) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance created" << std::endl;
 
-    res = jscript::RunScriptText(instance, "throw 'Error42';");
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::RunScriptText(instance, "throw 'Error42';");
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -49,15 +49,15 @@ int main(int argc, char** argv) {
         
     std::cout << "Script done" << std::endl;
     
-    res = jscript::StopInstance(instance);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::StopInstance(instance);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance stopped" << std::endl;
         
-    jscript::Uninitilize();
-    std::cout << "jscript::Uninitilize() done" << std::endl;
+    node::jscript::Uninitilize();
+    std::cout << "node::jscript::Uninitilize() done" << std::endl;
 
     return EXIT_SUCCESS;
 }

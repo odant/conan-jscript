@@ -16,24 +16,24 @@ int main(int argc, char** argv) {
     const auto coreFolder = std::filesystem::current_path();
     const auto nodeFolder = coreFolder / "node_modules";
 
-    jscript::Initialize(origin, externalOrigin, executeFile, coreFolder.string(), nodeFolder.string());
-    std::cout << "jscript::Initialize() done" << std::endl;
+    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder.string(), nodeFolder.string());
+    std::cout << "node::jscript::Initialize() done" << std::endl;
 
-    jscript::result_t res;
+    node::jscript::result_t res;
 
     // Create instances
 
-    jscript::JSInstance* instance1{nullptr};
-    res = jscript::CreateInstance(&instance1);
-    if (res != jscript::JS_SUCCESS || !instance1) {
+    node::jscript::JSInstance* instance1{nullptr};
+    res = node::jscript::CreateInstance(&instance1);
+    if (res != node::jscript::JS_SUCCESS || !instance1) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "First instance created" << std::endl;
 
-    jscript::JSInstance* instance2{nullptr};
-    res = jscript::CreateInstance(&instance2);
-    if (res != jscript::JS_SUCCESS || !instance2) {
+    node::jscript::JSInstance* instance2{nullptr};
+    res = node::jscript::CreateInstance(&instance2);
+    if (res != node::jscript::JS_SUCCESS || !instance2) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -41,22 +41,22 @@ int main(int argc, char** argv) {
 
     // Shutdown
 
-    res = jscript::StopInstance(instance1);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::StopInstance(instance1);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "First instance stopped" << std::endl;
 
-    res = jscript::StopInstance(instance2);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::StopInstance(instance2);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Second instance stopped" << std::endl;
 
-    jscript::Uninitilize();
-    std::cout << "jscript::Uninitilize() done" << std::endl;
+    node::jscript::Uninitilize();
+    std::cout << "node::jscript::Uninitilize() done" << std::endl;
 
     return EXIT_SUCCESS;
 }

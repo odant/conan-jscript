@@ -110,8 +110,3 @@ NODE_EXTERN MultiIsolatePlatform* GetGlobalPlatform();
 
 } // namespace jscript
 } // namespace node
-
-
-#ifdef USE_JSCRIPT
-namespace jscript = node::jscript;
-#endif

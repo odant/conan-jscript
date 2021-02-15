@@ -1,4 +1,4 @@
-// Test for jscript Conan package manager
+// Test for node::jscript:: Conan package manager
 // SetLogCallback
 // Dmitriy Vetutnev, ODANT, 2020-2021
 
@@ -71,24 +71,24 @@ int main(int argc, char** argv) {
         std::cout << "cbFPrintF: " << msg;
     };
 
-    jscript::Initialize(origin, externalOrigin,
+    node::jscript::Initialize(origin, externalOrigin,
                         executeFile, coreFolder, {},
                         initScript,
                         cbFPrintF);
 
-    std::cout << "jscript::Initialize() done" << std::endl;
+    std::cout << "node::jscript::Initialize() done" << std::endl;
 
-    jscript::result_t res;
-    jscript::JSInstance* instance{nullptr};
-    res = jscript::CreateInstance(&instance);
-    if (res != jscript::JS_SUCCESS || !instance) {
+    node::jscript::result_t res;
+    node::jscript::JSInstance* instance{nullptr};
+    res = node::jscript::CreateInstance(&instance);
+    if (res != node::jscript::JS_SUCCESS || !instance) {
         std::cout << "Failed instance create" << std::endl;
         std::exit(EXIT_FAILURE);
     }
     std::cout << "Instance created" << std::endl;
 
     bool isLogCbCalled= false;
-    jscript::JSLogCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, const jscript::JSLogType type) {
+    node::jscript::JSLogCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, const node::jscript::JSLogType type) {
         isLogCbCalled = true;
 
         v8::Isolate* isolate = args.GetIsolate();
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
 
         std::cout << ss.str();
     };
-    jscript::SetLogCallback(instance, cb);
+    node::jscript::SetLogCallback(instance, cb);
 
     const std::string script = ""
         "console.log('console.log');\n"
@@ -131,16 +131,16 @@ int main(int argc, char** argv) {
         "scriptDone();\n"
         "";
 
-    jscript::JSCallbackInfo callbackInfo;
+    node::jscript::JSCallbackInfo callbackInfo;
     callbackInfo.name = "scriptDone";
     callbackInfo.function = cbScriptDone;
 
-    const std::vector<jscript::JSCallbackInfo> callbacks{
+    const std::vector<node::jscript::JSCallbackInfo> callbacks{
         std::move(callbackInfo)
     };
 
-    res = jscript::RunScriptText(instance, script, callbacks);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::RunScriptText(instance, script, callbacks);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed running script" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -151,8 +151,8 @@ int main(int argc, char** argv) {
         
     std::cout << "Script done" << std::endl;
     
-    res = jscript::StopInstance(instance);
-    if (res != jscript::JS_SUCCESS) {
+    res = node::jscript::StopInstance(instance);
+    if (res != node::jscript::JS_SUCCESS) {
         std::cout << "Failed instance stop" << std::endl;
         std::exit(EXIT_FAILURE);
     }
@@ -163,8 +163,8 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    jscript::Uninitilize();
-    std::cout << "jscript::Uninitilize() done" << std::endl;
+    node::jscript::Uninitilize();
+    std::cout << "node::jscript::Uninitilize() done" << std::endl;
 
     return EXIT_SUCCESS;
 }
