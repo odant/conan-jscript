@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <sstream>
+#include <cassert>
 
 
 bool isScriptDone = false;
