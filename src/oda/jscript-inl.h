@@ -635,8 +635,6 @@ NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
   v8::V8::Initialize();
   performance::performance_v8_start = PERFORMANCE_NOW();
   per_process::v8_initialized = true;
-
-  SetRedirectFPrintF(std::move(redirectFPrintF));
 }
 
 
