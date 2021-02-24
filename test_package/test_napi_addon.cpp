@@ -11,6 +11,7 @@
 #include <jscript.h>
 
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <atomic>
 #include <mutex>
@@ -33,13 +34,44 @@ static void script_cb(const v8::FunctionCallbackInfo<v8::Value>&) {
 
 
 int main(int argc, char** argv) {
+    const std::string externalScript = ""
+        "process.stdout.write = (msg) => {\n"
+        "    process._rawDebug(msg);\n"
+        "};\n"
+        "process.stderr.write = (msg) => {\n"
+        "    process._rawDebug(msg);\n"
+        "};\n"
+        "process.on('uncaughtException', (err) => {\n"
+        "    console.log(err);\n"
+        "});\n"
+        "process.on('unhandledRejection', (err) => {\n"
+        "    console.log(err);\n"
+        "});\n"
+
+        "console.log('I`m external init script');\n"
+
+        "var infiniteFunction = () => {\n"
+        "    setTimeout(() => {\n"
+        "        infiniteFunction();\n"
+        "    }, 1000);\n"
+        "};\n"
+        "infiniteFunction();\n"
+
+        "global.__oda_setRunState();\n"
+
+        "console.log('External script done');\n"
+        ;
+
+    std::ofstream fExternalScript{std::filesystem::current_path() / "web" / "jscript-init.js"};
+    fExternalScript << externalScript;
+    fExternalScript.close();
+
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
     const std::string coreFolder = std::filesystem::current_path().string();
-    const std::string nodeFolder = coreFolder; // + "/node_modules";
 
-    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
+    node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::vector<std::string>{});
     std::cout << "node::jscript::Initialize() done" << std::endl;
 
     node::jscript::result_t res;
@@ -49,7 +81,7 @@ int main(int argc, char** argv) {
     assert(instance != nullptr);
     std::cout << "Instance created" << std::endl;
 
-    const char* script = ""
+    const std::string script = ""
         "try {\n"
         "var addon = require('napi_addon');\n"
         "console.log(addon.hello());\n"
