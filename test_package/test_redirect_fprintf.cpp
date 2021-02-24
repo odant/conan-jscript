@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
 
         "console.log('I`m external init script');\n"
 
-        "var infiniteFunction = () => {\n"
+        "const infiniteFunction = () => {\n"
         "    setTimeout(() => {\n"
         "        infiniteFunction();\n"
         "    }, 1000);\n"
