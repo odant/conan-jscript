@@ -3,6 +3,11 @@
 // Dmitriy Vetutnev, Odant, 2020
 
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+
 #include <jscript.h>
 
 #include <iostream>
@@ -11,6 +16,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <filesystem>
+#include <cassert>
 
 
 static std::atomic_bool script_done{false};
@@ -27,25 +33,20 @@ static void script_cb(const v8::FunctionCallbackInfo<v8::Value>&) {
 
 
 int main(int argc, char** argv) {
-
-    const std::string cwd = std::filesystem::current_path().string();
-
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
     const std::string executeFile = argv[0];
-    const std::string coreFolder = cwd;
+    const std::string coreFolder = std::filesystem::current_path().string();
     const std::string nodeFolder = coreFolder; // + "/node_modules";
 
     node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder);
     std::cout << "node::jscript::Initialize() done" << std::endl;
 
     node::jscript::result_t res;
-    node::jscript::JSInstance* instance{nullptr};
+    node::jscript::JSInstance* instance = nullptr;
     res = node::jscript::CreateInstance(&instance);
-    if (res != node::jscript::JS_SUCCESS || !instance) {
-        std::cout << "Failed instance create" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(res == node::jscript::JS_SUCCESS);
+    assert(instance != nullptr);
     std::cout << "Instance created" << std::endl;
 
     const char* script = ""
@@ -63,10 +64,7 @@ int main(int argc, char** argv) {
     callbackInfo.function = script_cb;
 
     res = node::jscript::RunScriptText(instance, script, {std::move(callbackInfo)});
-    if (res != node::jscript::JS_SUCCESS) {
-        std::cout << "Failed running script" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(res == node::jscript::JS_SUCCESS);
 
     std::cout << "Script running, waiting..." << std::endl;
     std::unique_lock<std::mutex> script_lock{script_mutex};
@@ -75,10 +73,7 @@ int main(int argc, char** argv) {
     std::cout << "Script done" << std::endl;
 
     res = node::jscript::StopInstance(instance);
-    if (res != node::jscript::JS_SUCCESS) {
-        std::cout << "Failed instance stop" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    assert(res == node::jscript::JS_SUCCESS);
     std::cout << "Instance stopped" << std::endl;
 
     node::jscript::Uninitilize();
