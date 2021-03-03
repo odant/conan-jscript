@@ -1,8 +1,8 @@
 diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/esm/resolve.js
-index 21459cf3d..d5f106a01 100644
+index dadad4ff57..5500908d6e 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -650,6 +650,37 @@ function packageResolve(specifier, base, conditions) {
+@@ -650,6 +650,34 @@ function packageResolve(specifier, base, conditions) {
      // Cross-platform root check.
    } while (packageJSONPath.length !== lastPath.length);
  
@@ -14,26 +14,23 @@ index 21459cf3d..d5f106a01 100644
 +      const baseUrl =
 +        path.startsWith('file:') ? path
 +                                 : 'file://' + path;
-+      let packageJSONUrl =
-+        new URL('./node_modules/' + packageName + '/package.json', baseUrl);
++      const packageJSONUrl =
++        new URL(baseUrl + '/' + packageName + '/package.json');
 +
-+      let packageJSONPath = fileURLToPath(packageJSONUrl);
++      const packageJSONPath = fileURLToPath(packageJSONUrl);
 +
 +      const stat = tryStatSync(StringPrototypeSlice(packageJSONPath, 0,
 +                                                    packageJSONPath.length - 13));
 +      if (!stat.isDirectory()) {
 +        continue;
 +      }
-+      
++
 +      // Package match.
 +      const packageConfig = getPackageConfig(packageJSONPath, specifier, base);
 +      if (packageConfig.exports !== undefined && packageConfig.exports !== null)
 +        return packageExportsResolve(
 +          packageJSONUrl, packageSubpath, packageConfig, base, conditions
 +        ).resolved;
-+      if (packageSubpath === '.')
-+        return legacyMainResolve(packageJSONUrl, packageConfig, base);
-+      return new URL(packageSubpath, packageJSONUrl);
 +    }
 +  }
 +
