@@ -39,6 +39,9 @@ execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DI
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules ${CMAKE_BINARY_DIR}/bin/node_modules)
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules2 ${CMAKE_BINARY_DIR}/bin/node_modules2)
 
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/esm_nodepath ${CMAKE_BINARY_DIR}/bin/node_modules/esm_nodepath)
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/esm_nodepath2 ${CMAKE_BINARY_DIR}/bin/node_modules2/esm_nodepath2)
+
 
 enable_testing()
 
@@ -68,9 +71,9 @@ function(interpreter_test name)
     add_test(
         NAME ${name}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-        COMMAND ${JSCRIPT_INTERPRETER} $ARGN
+        COMMAND ${JSCRIPT_INTERPRETER} ${ARGN}
     )
-    set_property(TEST ${name} PROPERTY WILL_FAIL True)
+
     if(UNIX)
         set_property(TEST ${name} PROPERTY ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/bin)
     endif()
@@ -80,9 +83,15 @@ endfunction()
 library_test(test_jscript)
 library_test(test_multiple_instances)
 library_test(test_headers)
-interpreter_test(test_compile_failed_interpreter -e "compile failed zzzzzzzzz")
+
+interpreter_test(test_compile_failed_interpreter --eval "compile failed zzzzzzzzz")
+set_property(TEST test_compile_failed_interpreter PROPERTY WILL_FAIL True)
+
 library_test(test_compile_failed)
-interpreter_test(test_throw_exception_interpreter -e "throw 'Error42'" --trace-uncaught)
+
+interpreter_test(test_throw_exception_interpreter --eval "throw 'Error42'" --trace-uncaught)
+set_property(TEST test_throw_exception_interpreter PROPERTY WILL_FAIL True)
+
 library_test(test_throw_exception)
 library_test(test_multiple_paths_node_modules)
 library_test(test_external_init_script)
@@ -91,6 +100,15 @@ library_test(test_redirect_fprintf2)
 library_test(test_log_cb)
 library_test(test_init_script)
 library_test(test_global_platform)
+
+interpreter_test(test_esm_nodepath_interpreter ${CMAKE_SOURCE_DIR}/test_esm_nodepath.mjs)
+if(WIN32)
+    set(delimiter ";")
+else()
+    set(delimiter ":")
+endif()
+set(NODE_PATH "${CMAKE_BINARY_DIR}/bin/node_modules${delimiter}${CMAKE_BINARY_DIR}/bin/node_modules2")
+set_property(TEST test_esm_nodepath_interpreter PROPERTY ENVIRONMENT NODE_PATH=${NODE_PATH})
 
 library_test(test_napi_addon)
 add_library(napi_addon SHARED
