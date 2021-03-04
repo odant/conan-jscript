@@ -103,12 +103,16 @@ library_test(test_global_platform)
 
 interpreter_test(test_esm_nodepath_interpreter ${CMAKE_SOURCE_DIR}/test_esm_nodepath.mjs)
 if(WIN32)
-    set(delimiter ";")
+    set(NODE_ENV
+        "NODE_PATH=${CMAKE_BINARY_DIR}/bin/node_modules\\\;${CMAKE_BINARY_DIR}/bin/node_modules2"
+        "NODE_SKIP_PLATFORM_CHECK=1"
+    )
 else()
-    set(delimiter ":")
+    set(NODE_ENV
+        "NODE_PATH=${CMAKE_BINARY_DIR}/bin/node_modules:${CMAKE_BINARY_DIR}/bin/node_modules2"
+    )
 endif()
-set(NODE_PATH "${CMAKE_BINARY_DIR}/bin/node_modules${delimiter}${CMAKE_BINARY_DIR}/bin/node_modules2")
-set_property(TEST test_esm_nodepath_interpreter PROPERTY ENVIRONMENT NODE_PATH=${NODE_PATH})
+set_property(TEST test_esm_nodepath_interpreter PROPERTY ENVIRONMENT ${NODE_ENV})
 
 library_test(test_napi_addon)
 add_library(napi_addon SHARED
