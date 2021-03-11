@@ -39,8 +39,8 @@ execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DI
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules ${CMAKE_BINARY_DIR}/bin/node_modules)
 execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/node_modules2 ${CMAKE_BINARY_DIR}/bin/node_modules2)
 
-execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/esm_nodepath ${CMAKE_BINARY_DIR}/bin/node_modules/esm_nodepath)
-execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/esm_nodepath2 ${CMAKE_BINARY_DIR}/bin/node_modules2/esm_nodepath2)
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/_esm_nodepath ${CMAKE_BINARY_DIR}/bin/node_modules/esm_nodepath)
+execute_process(COMMAND ${CMAKE_COMMAND} "-E" "copy_directory" ${CMAKE_SOURCE_DIR}/_esm_nodepath2 ${CMAKE_BINARY_DIR}/bin/node_modules2/esm_nodepath2)
 
 
 enable_testing()
