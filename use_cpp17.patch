@@ -1,0 +1,22 @@
+diff --git a/src/common.gypi b/src/common.gypi
+index e610650a01..d68f0ea79f 100644
+--- a/src/common.gypi
++++ b/src/common.gypi
+@@ -374,7 +374,7 @@
+       }],
+       [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
+         'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
+-        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++1y' ],
++        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++17' ],
+         'defines': [ '__STDC_FORMAT_MACROS' ],
+         'ldflags': [ '-rdynamic' ],
+         'target_conditions': [
+@@ -519,7 +519,7 @@
+           ['clang==1', {
+             'xcode_settings': {
+               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
+-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++1y',  # -std=gnu++1y
++              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++17',  # -std=gnu++17
+               'CLANG_CXX_LIBRARY': 'libc++',
+             },
+           }],
