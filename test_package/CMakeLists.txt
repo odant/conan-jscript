@@ -97,7 +97,7 @@ library_test(test_multiple_paths_node_modules)
 library_test(test_external_init_script)
 library_test(test_redirect_fprintf)
 library_test(test_redirect_fprintf2)
-library_test(test_log_cb)
+library_test(test_console_callback)
 library_test(test_init_script)
 library_test(test_global_platform)
 
