@@ -18,10 +18,10 @@
 #include <cstdio>
 #include <algorithm>
 #include <sstream>
-
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include <optional>
 
 
 namespace node {
@@ -140,7 +140,7 @@ public:
   void setState(state_t state);
 
   void SetConsoleCallback(ConsoleCallback cb);
-  ConsoleCallback& GetConsoleCallback();
+  const std::optional<ConsoleCallback>& GetConsoleCallback();
 
   static const std::string defaultOrigin;
   static const std::string externalOrigin;
@@ -166,7 +166,7 @@ private:
 
   std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
-  ConsoleCallback _consoleCallback;
+  std::optional<ConsoleCallback> _consoleCallback;
 };
 
 
@@ -202,7 +202,7 @@ void JSInstanceImpl::setState(state_t state) {
   _state_cv.notify_all();
 }
 
-ConsoleCallback& JSInstanceImpl::GetConsoleCallback() {
+const std::optional<ConsoleCallback>& JSInstanceImpl::GetConsoleCallback() {
   return _consoleCallback;
 }
 
@@ -544,12 +544,12 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
     DCHECK_NOT_NULL(instance);
 
-    auto& consoleCallback = instance->GetConsoleCallback();
+    const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
     if (consoleCallback) {
         v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
-        ConsoleType type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+        auto type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(typeExt->Value()));
 
-        consoleCallback(args, type);
+        consoleCallback->operator()(args, type);
     }
 }
 
