@@ -32,6 +32,7 @@ void cbScriptDone(const v8::FunctionCallbackInfo<v8::Value>&) {
 
 
 int main(int argc, char** argv) {
+    (void) argc;
 
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
@@ -90,7 +91,7 @@ int main(int argc, char** argv) {
     assert(res == node::jscript::JS_SUCCESS);
 
     bool isLogCbCalled= false;
-    node::jscript::JSLogCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, const node::jscript::JSLogType type) {
+    node::jscript::ConsoleCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, node::jscript::ConsoleType type) {
         isLogCbCalled = true;
 
         v8::Isolate* isolate = args.GetIsolate();
@@ -119,7 +120,7 @@ int main(int argc, char** argv) {
 
         std::cout << ss.str();
     };
-    node::jscript::SetLogCallback(instance, cb);
+    node::jscript::SetConsoleCallback(instance, cb);
 
     const std::string script = ""
         "console.log('console.log');\n"

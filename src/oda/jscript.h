@@ -67,37 +67,37 @@ NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& scri
 NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script, const std::vector<JSCallbackInfo>& callbacks);
 
 
-enum JSLogType {
-    LOG_TYPE,
-    WARN_TYPE,
-    ERROR_TYPE,
+enum class ConsoleType {
+    LOG,
+    WARN,
+    ERROR,
 
-    DEFAULT_TYPE = LOG_TYPE
+    DEFAULT = LOG
 };
 
-using JSLogCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, const JSLogType)>;
+using ConsoleCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, ConsoleType)>;
 
-NODE_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb);
+NODE_EXTERN void SetConsoleCallback(JSInstance* instance, ConsoleCallback cb);
 
-inline std::ostream& operator<< (std::ostream& os, const JSLogType type) {
-    os << "JSLogType: ";
+inline std::ostream& operator<< (std::ostream& os, const ConsoleType type) {
+    os << "ConsoleType: ";
 
     switch (type) {
 
-        case JSLogType::LOG_TYPE: {
-            os << "LOG_TYPE";
+        case ConsoleType::LOG: {
+            os << "LOG";
         } break;
 
-        case JSLogType::WARN_TYPE: {
-                os << "WARN_TYPE";
+        case ConsoleType::WARN: {
+                os << "WARN";
         } break;
 
-        case JSLogType::ERROR_TYPE: {
-                os << "ERROR_TYPE";
+        case ConsoleType::ERROR: {
+                os << "ERROR";
         } break;
 
         default: {
-                os << "DEFAULT_TYPE";
+                os << "DEFAULT";
         } break;
     }
 

@@ -139,8 +139,8 @@ public:
 
   void setState(state_t state);
 
-  void SetLogCallback(JSLogCallback cb);
-  JSLogCallback& logCallback();
+  void SetConsoleCallback(ConsoleCallback cb);
+  ConsoleCallback& GetConsoleCallback();
 
   static const std::string defaultOrigin;
   static const std::string externalOrigin;
@@ -162,11 +162,11 @@ private:
   void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
 
   void overrideConsole(v8::Local<v8::Context>);
-  void overrideConsole(v8::Local<v8::Context>, const char* name, const JSLogType type);
+  void overrideConsole(v8::Local<v8::Context>, const char* name, const ConsoleType type);
 
   std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
-  JSLogCallback _logCallback;
+  ConsoleCallback _consoleCallback;
 };
 
 
@@ -202,12 +202,12 @@ void JSInstanceImpl::setState(state_t state) {
   _state_cv.notify_all();
 }
 
-JSLogCallback& JSInstanceImpl::logCallback() {
-  return _logCallback;
+ConsoleCallback& JSInstanceImpl::GetConsoleCallback() {
+  return _consoleCallback;
 }
 
-void JSInstanceImpl::SetLogCallback(JSLogCallback cb) {
-  _logCallback = std::move(cb);
+void JSInstanceImpl::SetConsoleCallback(ConsoleCallback cb) {
+  _consoleCallback = std::move(cb);
 }
 
 
@@ -449,9 +449,9 @@ void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const 
 }
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
-  overrideConsole(context, "log", JSLogType::LOG_TYPE);
-  overrideConsole(context, "warn", JSLogType::WARN_TYPE);
-  overrideConsole(context, "error", JSLogType::ERROR_TYPE);
+  overrideConsole(context, "log", ConsoleType::LOG);
+  overrideConsole(context, "warn", ConsoleType::WARN);
+  overrideConsole(context, "error", ConsoleType::ERROR);
 }
 
 
@@ -462,7 +462,7 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args);
 }
 
 
-void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const JSLogType type) {
+void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const ConsoleType type) {
   v8::HandleScope handleScope{_isolate};
 
   v8::Local<v8::Object> globalObj = context->Global();
@@ -544,12 +544,12 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
     DCHECK_NOT_NULL(instance);
 
-    auto& logCallback = instance->logCallback();
-    if (logCallback) {
+    auto& consoleCallback = instance->GetConsoleCallback();
+    if (consoleCallback) {
         v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
-        JSLogType type = static_cast<JSLogType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+        ConsoleType type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(typeExt->Value()));
 
-        logCallback(args, type);
+        consoleCallback(args, type);
     }
 }
 
@@ -826,13 +826,13 @@ std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
 } // Anonymouse namespace
 
 
-NODE_EXTERN void SetLogCallback(JSInstance* instance, JSLogCallback cb) {
+NODE_EXTERN void SetConsoleCallback(JSInstance* instance, ConsoleCallback cb) {
   DCHECK(is_initilized);
   DCHECK_NOT_NULL(instance);
 
   JSInstanceImpl* instanceImpl = static_cast<JSInstanceImpl*>(instance);
 
-  instanceImpl->SetLogCallback(std::move(cb));
+  instanceImpl->SetConsoleCallback(std::move(cb));
 }
 
 NODE_EXTERN void Uninitilize() {
