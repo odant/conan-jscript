@@ -449,9 +449,9 @@ void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const 
 }
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
-  overrideConsole(context, "log", ConsoleType::LOG);
-  overrideConsole(context, "warn", ConsoleType::WARN);
-  overrideConsole(context, "error", ConsoleType::ERROR);
+  overrideConsole(context, "log", ConsoleType::Log);
+  overrideConsole(context, "warn", ConsoleType::Warn);
+  overrideConsole(context, "error", ConsoleType::Error);
 }
 
 

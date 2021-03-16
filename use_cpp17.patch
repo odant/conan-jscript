@@ -1,8 +1,16 @@
 diff --git a/src/common.gypi b/src/common.gypi
-index e610650a01..d68f0ea79f 100644
+index e610650a0..e3aa0ba46 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
-@@ -374,7 +374,7 @@
+@@ -268,6 +268,7 @@
+         'SuppressStartupBanner': 'true',
+         'WarnAsError': 'false',
+         'WarningLevel': 3,                    # /W3
++        'AdditionalOptions': [ '/std:c++17', ],
+       },
+       'VCLinkerTool': {
+         'target_conditions': [
+@@ -374,7 +375,7 @@
        }],
        [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
          'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
@@ -11,7 +19,7 @@ index e610650a01..d68f0ea79f 100644
          'defines': [ '__STDC_FORMAT_MACROS' ],
          'ldflags': [ '-rdynamic' ],
          'target_conditions': [
-@@ -519,7 +519,7 @@
+@@ -519,7 +520,7 @@
            ['clang==1', {
              'xcode_settings': {
                'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',

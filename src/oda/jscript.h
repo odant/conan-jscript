@@ -68,11 +68,11 @@ NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& scri
 
 
 enum class ConsoleType {
-    LOG,
-    WARN,
-    ERROR,
+    Log,
+    Warn,
+    Error,
 
-    DEFAULT = LOG
+    Default = Log
 };
 
 using ConsoleCallback = std::function<void(const v8::FunctionCallbackInfo<v8::Value>&, ConsoleType)>;
@@ -84,20 +84,20 @@ inline std::ostream& operator<< (std::ostream& os, const ConsoleType type) {
 
     switch (type) {
 
-        case ConsoleType::LOG: {
-            os << "LOG";
+        case ConsoleType::Log: {
+            os << "Log";
         } break;
 
-        case ConsoleType::WARN: {
-                os << "WARN";
+        case ConsoleType::Warn: {
+                os << "Warn";
         } break;
 
-        case ConsoleType::ERROR: {
-                os << "ERROR";
+        case ConsoleType::Error: {
+                os << "Error";
         } break;
 
         default: {
-                os << "DEFAULT";
+                os << "Default";
         } break;
     }
 

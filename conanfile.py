@@ -35,7 +35,7 @@ class JScriptConan(ConanFile):
         "experimental.patch",
         "v8.patch",
         "use_nodepath_for_esm.patch",
-        "use_cpp17.patch"
+        #"use_cpp17.patch"
     ]
     exports_sources = [
         "src/*",
@@ -139,11 +139,11 @@ class JScriptConan(ConanFile):
             ld_env_path = os.environ.get("LD_LIBRARY_PATH")
             if ld_env_path is not None:
                 env["LD_LIBRARY_PATH"] += ":" + ld_env_path
-        if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
+        if self.settings.compiler == "Visual Studio":
             env = tools.vcvars_dict(self.settings, force=True)
             if not "GYP_MSVS_VERSION" in os.environ:
-                env["GYP_MSVS_VERSION"] = "2017"
-                env["PLATFORM_TOOLSET"] = "v141"
+                env["GYP_MSVS_VERSION"] = "2019"
+                env["PLATFORM_TOOLSET"] = "v142"
             # Explicit use external Ninja
             if self.options.ninja:
                 ninja_binpath = self.deps_cpp_info["ninja"].bin_paths[0].replace("\\", "/")
