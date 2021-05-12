@@ -66,7 +66,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -1865,6 +1878,9 @@ if options.prefix:
+@@ -1862,6 +1875,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -76,7 +76,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1887,6 +1903,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1884,6 +1900,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
@@ -107,7 +107,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -352,13 +352,10 @@
+@@ -355,13 +355,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -123,7 +123,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -535,6 +532,36 @@
+@@ -538,6 +535,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -160,7 +160,7 @@ index f18a0d58a..c187559b1 100644
        ],
      }, # node_core_target_name
      {
-@@ -553,6 +580,12 @@
+@@ -556,6 +583,12 @@
          'deps/uvwasi/uvwasi.gyp:uvwasi',
        ],
  
@@ -173,7 +173,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -801,6 +834,13 @@
+@@ -807,6 +840,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -187,7 +187,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -818,6 +858,7 @@
+@@ -824,6 +864,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -195,7 +195,7 @@ index f18a0d58a..c187559b1 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1357,121 +1398,6 @@
+@@ -1363,121 +1404,6 @@
          }],
        ],
      }, # embedtest
@@ -404,7 +404,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 14
- #define NODE_MINOR_VERSION 16
+ #define NODE_MINOR_VERSION 17
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
@@ -463,7 +463,7 @@ index 9403e68be..d9f1f8b91 100644
          BEGIN
 -            VALUE "CompanyName", "Node.js"
 -            VALUE "ProductName", "Node.js"
--            VALUE "FileDescription", "Node.js: Server-side JavaScript"
+-            VALUE "FileDescription", "Node.js JavaScript Runtime"
 -            VALUE "FileVersion", NODE_EXE_VERSION
 -            VALUE "ProductVersion", NODE_EXE_VERSION
 -            VALUE "OriginalFilename", "node.exe"
@@ -471,7 +471,7 @@ index 9403e68be..d9f1f8b91 100644
 -            VALUE "LegalCopyright", "Copyright Node.js contributors. MIT license."
 +            VALUE "CompanyName", "BIS"
 +            VALUE "ProductName", "jscript (from Node.js)"
-+            VALUE "FileDescription", "jscript: Server-side JavaScript (from Node.js)"
++            VALUE "FileDescription", "jscript: JavaScript Runtime (from Node.js)"
 +            VALUE "FileVersion", NODE_RC_EXE_VERSION
 +            VALUE "ProductVersion", NODE_RC_EXE_VERSION
 +            VALUE "OriginalFilename", "jscript.dll"
