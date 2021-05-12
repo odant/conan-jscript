@@ -16,7 +16,9 @@ const ModuleFindPath = Module._findPath;
 const hacks = [
   'eslint-plugin-node-core',
   'eslint-plugin-markdown',
-  'babel-eslint',
+  '@babel/eslint-parser',
+  '@babel/plugin-syntax-class-properties',
+  '@babel/plugin-syntax-top-level-await',
 ];
 Module._findPath = (request, paths, isMain) => {
   const r = ModuleFindPath(request, paths, isMain);
@@ -37,8 +39,17 @@ Module._findPath = (request, paths, isMain) => {
 module.exports = {
   root: true,
   plugins: ['markdown', 'node-core'],
-  parser: 'babel-eslint',
-  parserOptions: { sourceType: 'script' },
+  parser: '@babel/eslint-parser',
+  parserOptions: {
+    babelOptions: {
+      plugins: [
+        Module._findPath('@babel/plugin-syntax-class-properties'),
+        Module._findPath('@babel/plugin-syntax-top-level-await'),
+      ],
+    },
+    requireConfigFile: false,
+    sourceType: 'script',
+  },
   overrides: [
     {
       files: [
@@ -46,6 +57,7 @@ module.exports = {
         'doc/api/module.md',
         'doc/api/modules.md',
         'doc/api/packages.md',
+        'doc/api/wasi.md',
         'test/es-module/test-esm-type-flag.js',
         'test/es-module/test-esm-type-flag-alias.js',
         '*.mjs',
@@ -275,13 +287,15 @@ module.exports = {
     'template-curly-spacing': 'error',
     'unicode-bom': 'error',
     'use-isnan': 'error',
-    'valid-typeof': 'error',
+    'valid-typeof': ['error', { requireStringLiterals: true }],
 
     // Custom rules from eslint-plugin-node-core
     'node-core/no-unescaped-regexp-dot': 'error',
     'node-core/no-duplicate-requires': 'error',
   },
   globals: {
+    AbortController: 'readable',
+    AbortSignal: 'readable',
     Atomics: 'readable',
     BigInt: 'readable',
     BigInt64Array: 'readable',

@@ -59,6 +59,7 @@ module.exports = {
 
 const { NativeModule } = require('internal/bootstrap/loaders');
 const {
+  getSourceMapsEnabled,
   maybeCacheSourceMap,
   rekeySourceMap
 } = require('internal/source_map/source_map_cache');
@@ -81,7 +82,6 @@ const {
   loadNativeModule
 } = require('internal/modules/cjs/helpers');
 const { getOptionValue } = require('internal/options');
-const enableSourceMaps = getOptionValue('--enable-source-maps');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 // Do not eagerly grab .manifest, it may be in TDZ
@@ -128,6 +128,7 @@ const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
 let statCache = null;
+let isPreloading = false;
 
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
@@ -217,6 +218,10 @@ ObjectDefineProperty(Module, 'wrapper', {
     patched = true;
     wrapperProxy = value;
   }
+});
+
+ObjectDefineProperty(Module.prototype, 'isPreloading', {
+  get() { return isPreloading; }
 });
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
@@ -758,7 +763,7 @@ Module._load = function(request, parent, isMain) {
     // Intercept exceptions that occur during the first tick and rekey them
     // on error instance rather than module instance (which will immediately be
     // garbage collected).
-    if (enableSourceMaps) {
+    if (getSourceMapsEnabled()) {
       try {
         module.load(filename);
       } catch (err) {
@@ -1202,6 +1207,8 @@ Module._preloadModules = function(requests) {
   if (!ArrayIsArray(requests))
     return;
 
+  isPreloading = true;
+
   // Preloaded modules have a dummy parent module which is deemed to exist
   // in the current working directory. This seeds the search path for
   // preloaded modules.
@@ -1210,11 +1217,13 @@ Module._preloadModules = function(requests) {
     parent.paths = Module._nodeModulePaths(process.cwd());
   } catch (e) {
     if (e.code !== 'ENOENT') {
+      isPreloading = false;
       throw e;
     }
   }
   for (let n = 0; n < requests.length; n++)
     parent.require(requests[n]);
+  isPreloading = false;
 };
 
 Module.syncBuiltinESMExports = function syncBuiltinESMExports() {

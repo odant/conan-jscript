@@ -414,7 +414,7 @@ function uvException(ctx) {
     message += ` -> '${dest}'`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -465,7 +465,7 @@ function uvExceptionWithHostPort(err, syscall, address, port) {
     details = ` ${address}`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -539,7 +539,7 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
     details += ` - Local (${additional})`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -584,7 +584,7 @@ function dnsException(code, syscall, hostname) {
     }
   }
   const message = `${syscall} ${code}${hostname ? ` ${hostname}` : ''}`;
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -704,6 +704,16 @@ const fatalExceptionStackEnhancers = {
   }
 };
 
+// Node uses an AbortError that isn't exactly the same as the DOMException
+// to make usage of the error in userland and readable-stream easier.
+// It is a regular error with `.code` and `.name`.
+class AbortError extends Error {
+  constructor() {
+    super('The operation was aborted');
+    this.code = 'ABORT_ERR';
+    this.name = 'AbortError';
+  }
+}
 module.exports = {
   addCodeToName, // Exported for NghttpError
   codes,
@@ -718,6 +728,7 @@ module.exports = {
   uvException,
   uvExceptionWithHostPort,
   SystemError,
+  AbortError,
   // This is exported only to facilitate testing.
   E,
   kNoOverride,
@@ -1259,6 +1270,7 @@ E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
   '%s is not supported on Node.js compiled without ICU', TypeError);
+E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error);
 E('ERR_OUT_OF_RANGE',
   (str, range, input, replaceDefaultBoolean = false) => {
     assert(range, 'Missing "range" argument');

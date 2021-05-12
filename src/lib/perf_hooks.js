@@ -75,7 +75,6 @@ const kInsertEntry = Symbol('insert-entry');
 const kGetEntries = Symbol('get-entries');
 const kIndex = Symbol('index');
 const kMarks = Symbol('marks');
-const kCount = Symbol('count');
 
 const observers = {};
 const observerableTypes = [
@@ -166,50 +165,94 @@ function getMilestoneTimestamp(milestoneIdx) {
 }
 
 class PerformanceNodeTiming extends PerformanceEntry {
-  get name() {
-    return 'node';
-  }
+  constructor() {
+    super();
 
-  get entryType() {
-    return 'node';
-  }
+    ObjectDefineProperties(this, {
+      name: {
+        enumerable: true,
+        configurable: true,
+        value: 'node'
+      },
 
-  get startTime() {
-    return 0;
-  }
+      entryType: {
+        enumerable: true,
+        configurable: true,
+        value: 'node'
+      },
 
-  get duration() {
-    return now() - timeOrigin;
-  }
+      startTime: {
+        enumerable: true,
+        configurable: true,
+        value: 0
+      },
 
-  get nodeStart() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_NODE_START);
-  }
+      duration: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return now() - timeOrigin;
+        }
+      },
 
-  get v8Start() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_V8_START);
-  }
+      nodeStart: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_NODE_START);
+        }
+      },
 
-  get environment() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_ENVIRONMENT);
-  }
+      v8Start: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_V8_START);
+        }
+      },
 
-  get loopStart() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_START);
-  }
+      environment: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_ENVIRONMENT);
+        }
+      },
 
-  get loopExit() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-  }
+      loopStart: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_START);
+        }
+      },
 
-  get bootstrapComplete() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
-  }
+      loopExit: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+        }
+      },
 
-  get idleTime() {
-    return loopIdleTime();
-  }
+      bootstrapComplete: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(
+            NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
+        }
+      },
 
+      idleTime: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return loopIdleTime();
+        }
+      }
+    });
+  }
   [kInspect]() {
     return {
       name: 'node',
@@ -236,11 +279,6 @@ class PerformanceObserverEntryList {
         writable: true,
         enumerable: false,
         value: {}
-      },
-      [kCount]: {
-        writable: true,
-        enumerable: false,
-        value: 0
       }
     });
     L.init(this[kEntries]);
@@ -249,11 +287,6 @@ class PerformanceObserverEntryList {
   [kInsertEntry](entry) {
     const item = { entry };
     L.append(this[kEntries], item);
-    this[kCount]++;
-  }
-
-  get length() {
-    return this[kCount];
   }
 
   [kGetEntries](name, type) {

@@ -101,9 +101,9 @@ primordials.SafeSet = makeSafe(
   Set,
   class SafeSet extends Set {}
 );
-primordials.SafePromise = makeSafe(
-  Promise,
-  class SafePromise extends Promise {}
+primordials.SafeWeakSet = makeSafe(
+  WeakSet,
+  class SafeWeakSet extends WeakSet {}
 );
 
 // Create copies of the namespace objects

@@ -857,7 +857,7 @@ def get_gas_version(cc):
 
 # Note: Apple clang self-reports as clang 4.2.0 and gcc 4.2.1.  It passes
 # the version check more by accident than anything else but a more rigorous
-# check involves checking the build number against a whitelist.  I'm not
+# check involves checking the build number against an allowlist.  I'm not
 # quite prepared to go that far yet.
 def check_compiler(o):
   if sys.platform == 'win32':
@@ -1248,8 +1248,7 @@ def configure_library(lib, output, pkgname=None):
   output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
 
   if getattr(options, shared_lib):
-    (pkg_libs, pkg_cflags, pkg_libpath, pkg_modversion) = (
-        pkg_config(pkgname or lib))
+    (pkg_libs, pkg_cflags, pkg_libpath, _) = pkg_config(pkgname or lib)
 
     if options.__dict__[shared_lib + '_includes']:
       output['include_dirs'] += [options.__dict__[shared_lib + '_includes']]
@@ -1454,8 +1453,6 @@ def configure_intl(o):
     'variables': {}
   }
   icu_config_name = 'icu_config.gypi'
-  def write_config(data, name):
-    return
 
   # write an empty file to start with
   write(icu_config_name, do_not_edit +

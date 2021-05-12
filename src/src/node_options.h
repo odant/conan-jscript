@@ -102,6 +102,7 @@ class EnvironmentOptions : public Options {
   bool abort_on_uncaught_exception = false;
   std::vector<std::string> conditions;
   bool enable_source_maps = false;
+  bool experimental_abortcontroller = false;
   bool experimental_json_modules = false;
   bool experimental_modules = false;
   std::string experimental_specifier_resolution;
@@ -225,7 +226,7 @@ class PerProcessOptions : public Options {
 #endif
 
   // Per-process because they affect singleton OpenSSL shared library state,
-  // or are used once during process intialization.
+  // or are used once during process initialization.
 #if HAVE_OPENSSL
   std::string openssl_config;
   std::string tls_cipher_list = DEFAULT_CIPHER_LIST_CORE;

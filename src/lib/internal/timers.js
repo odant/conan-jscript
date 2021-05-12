@@ -84,7 +84,8 @@ const {
   scheduleTimer,
   toggleTimerRef,
   getLibuvNow,
-  immediateInfo
+  immediateInfo,
+  toggleImmediateRef
 } = internalBinding('timers');
 
 const {
@@ -274,11 +275,11 @@ ImmediateList.prototype.append = function(item) {
 // Removes an item from the linked list, adjusting the pointers of adjacent
 // items and the linked list's head or tail pointers as necessary
 ImmediateList.prototype.remove = function(item) {
-  if (item._idleNext !== null) {
+  if (item._idleNext) {
     item._idleNext._idlePrev = item._idlePrev;
   }
 
-  if (item._idlePrev !== null) {
+  if (item._idlePrev) {
     item._idlePrev._idleNext = item._idleNext;
   }
 
@@ -593,12 +594,53 @@ function getTimerCallbacks(runNextTicks) {
   };
 }
 
+class Immediate {
+  constructor(callback, args) {
+    this._idleNext = null;
+    this._idlePrev = null;
+    this._onImmediate = callback;
+    this._argv = args;
+    this._destroyed = false;
+    this[kRefed] = false;
+
+    initAsyncResource(this, 'Immediate');
+
+    this.ref();
+    immediateInfo[kCount]++;
+
+    immediateQueue.append(this);
+  }
+
+  ref() {
+    if (this[kRefed] === false) {
+      this[kRefed] = true;
+      if (immediateInfo[kRefCount]++ === 0)
+        toggleImmediateRef(true);
+    }
+    return this;
+  }
+
+  unref() {
+    if (this[kRefed] === true) {
+      this[kRefed] = false;
+      if (--immediateInfo[kRefCount] === 0)
+        toggleImmediateRef(false);
+    }
+    return this;
+  }
+
+  hasRef() {
+    return !!this[kRefed];
+  }
+}
+
 module.exports = {
   TIMEOUT_MAX,
   kTimeout: Symbol('timeout'), // For hiding Timeouts on other internals.
   async_id_symbol,
   trigger_async_id_symbol,
   Timeout,
+  Immediate,
   kRefed,
   kHasPrimitive,
   initAsyncResource,

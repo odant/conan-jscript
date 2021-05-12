@@ -1386,7 +1386,8 @@ function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
       'special'
     );
   }
-  throw err;
+  /* c8 ignore next */
+  assert.fail(err.stack);
 }
 
 function formatNumber(fn, value) {
@@ -1437,9 +1438,7 @@ function formatNamespaceObject(keys, ctx, value, recurseTimes) {
       output[i] = formatProperty(ctx, value, recurseTimes, keys[i],
                                  kObjectType);
     } catch (err) {
-      if (!(isNativeError(err) && err.name === 'ReferenceError')) {
-        throw err;
-      }
+      assert(isNativeError(err) && err.name === 'ReferenceError');
       // Use the existing functionality. This makes sure the indentation and
       // line breaks are always correct. Otherwise it is very difficult to keep
       // this aligned, even though this is a hacky way of dealing with this.
@@ -1738,6 +1737,8 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc,
   if (typeof key === 'symbol') {
     const tmp = key.toString().replace(strEscapeSequencesReplacer, escapeFn);
     name = `[${ctx.stylize(tmp, 'symbol')}]`;
+  } else if (key === '__proto__') {
+    name = "['__proto__']";
   } else if (desc.enumerable === false) {
     name = `[${key.replace(strEscapeSequencesReplacer, escapeFn)}]`;
   } else if (keyStrRegExp.test(key)) {
@@ -1776,7 +1777,7 @@ function reduceToSingleString(
   ctx, output, base, braces, extrasType, recurseTimes, value) {
   if (ctx.compact !== true) {
     if (typeof ctx.compact === 'number' && ctx.compact >= 1) {
-      // Memorize the original output length. In case the the output is grouped,
+      // Memorize the original output length. In case the output is grouped,
       // prevent lining up the entries on a single line.
       const entries = output.length;
       // Group array elements together if the array contains at least six

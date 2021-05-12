@@ -94,12 +94,15 @@ const {
     ERR_OUT_OF_RANGE,
     ERR_SOCKET_CLOSED
   },
-  hideStackFrames
+  hideStackFrames,
+  AbortError
 } = require('internal/errors');
-const { validateNumber,
-        validateString,
-        validateUint32,
-        isUint32,
+const {
+  isUint32,
+  validateNumber,
+  validateString,
+  validateUint32,
+  validateAbortSignal,
 } = require('internal/validators');
 const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
@@ -1246,7 +1249,7 @@ class Http2Session extends EventEmitter {
   }
 
   // If ping is called while we are still connecting, or after close() has
-  // been called, the ping callback will be invoked immediately will a ping
+  // been called, the ping callback will be invoked immediately with a ping
   // cancelled error and a duration of 0.0.
   ping(payload, callback) {
     if (this.destroyed)
@@ -1376,7 +1379,7 @@ class Http2Session extends EventEmitter {
     settingsFn();
   }
 
-  // Sumits a GOAWAY frame to be sent to the remote peer. Note that this
+  // Submits a GOAWAY frame to be sent to the remote peer. Note that this
   // is only a notification, and does not affect the usable state of the
   // session with the notable exception that new incoming streams will
   // be rejected automatically.
@@ -1665,6 +1668,20 @@ class ClientHttp2Session extends Http2Session {
 
     if (options.waitForTrailers)
       stream[kState].flags |= STREAM_FLAGS_HAS_TRAILERS;
+
+    const { signal } = options;
+    if (signal) {
+      validateAbortSignal(signal, 'options.signal');
+      const aborter = () => stream.destroy(new AbortError());
+      if (signal.aborted) {
+        aborter();
+      } else {
+        signal.addEventListener('abort', aborter);
+        stream.once('close', () => {
+          signal.removeEventListener('abort', aborter);
+        });
+      }
+    }
 
     const onConnect = requestOnConnect.bind(stream, headersList, options);
     if (this.connecting) {
@@ -2994,6 +3011,12 @@ class Http2SecureServer extends TLSServer {
     }
     return this;
   }
+
+  updateSettings(settings) {
+    assertIsObject(settings, 'settings');
+    validateSettings(settings);
+    this[kOptions].settings = { ...this[kOptions].settings, ...settings };
+  }
 }
 
 class Http2Server extends NETServer {
@@ -3015,6 +3038,12 @@ class Http2Server extends NETServer {
       this.on('timeout', callback);
     }
     return this;
+  }
+
+  updateSettings(settings) {
+    assertIsObject(settings, 'settings');
+    validateSettings(settings);
+    this[kOptions].settings = { ...this[kOptions].settings, ...settings };
   }
 }
 

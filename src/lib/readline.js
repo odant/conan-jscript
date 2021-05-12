@@ -252,9 +252,6 @@ function Interface(input, output, completer, terminal) {
     input.on('keypress', onkeypress);
     input.on('end', ontermend);
 
-    // Current line
-    this.line = '';
-
     this._setRawMode(true);
     this.terminal = true;
 
@@ -269,6 +266,9 @@ function Interface(input, output, completer, terminal) {
 
     self.once('close', onSelfCloseWithTerminal);
   }
+
+  // Current line
+  this.line = '';
 
   input.resume();
 }
@@ -288,6 +288,11 @@ ObjectDefineProperty(Interface.prototype, 'columns', {
 
 Interface.prototype.setPrompt = function(prompt) {
   this._prompt = prompt;
+};
+
+
+Interface.prototype.getPrompt = function() {
+  return this._prompt;
 };
 
 

@@ -92,12 +92,13 @@ void IsolateData::DeserializeProperties(const std::vector<size_t>* indexes) {
 #define VS(PropertyName, StringValue) V(String, PropertyName)
 #define V(TypeName, PropertyName)                                              \
   do {                                                                         \
-    MaybeLocal<TypeName> field =                                               \
+    MaybeLocal<TypeName> maybe_field =                                         \
         isolate_->GetDataFromSnapshotOnce<TypeName>((*indexes)[i++]);          \
-    if (field.IsEmpty()) {                                                     \
+    Local<TypeName> field;                                                     \
+    if (!maybe_field.ToLocal(&field)) {                                        \
       fprintf(stderr, "Failed to deserialize " #PropertyName "\n");            \
     }                                                                          \
-    PropertyName##_.Set(isolate_, field.ToLocalChecked());                     \
+    PropertyName##_.Set(isolate_, field);                                      \
   } while (0);
   PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES(VP)
   PER_ISOLATE_SYMBOL_PROPERTIES(VY)
@@ -108,12 +109,13 @@ void IsolateData::DeserializeProperties(const std::vector<size_t>* indexes) {
 #undef VP
 
   for (size_t j = 0; j < AsyncWrap::PROVIDERS_LENGTH; j++) {
-    MaybeLocal<String> field =
+    MaybeLocal<String> maybe_field =
         isolate_->GetDataFromSnapshotOnce<String>((*indexes)[i++]);
-    if (field.IsEmpty()) {
+    Local<String> field;
+    if (!maybe_field.ToLocal(&field)) {
       fprintf(stderr, "Failed to deserialize AsyncWrap provider %zu\n", j);
     }
-    async_wrap_providers_[j].Set(isolate_, field.ToLocalChecked());
+    async_wrap_providers_[j].Set(isolate_, field);
   }
 }
 
@@ -205,10 +207,7 @@ void IsolateData::MemoryInfo(MemoryTracker* tracker) const {
 #define V(PropertyName, StringValue)                                           \
   tracker->TrackField(#PropertyName, PropertyName());
   PER_ISOLATE_SYMBOL_PROPERTIES(V)
-#undef V
 
-#define V(PropertyName, StringValue)                                           \
-  tracker->TrackField(#PropertyName, PropertyName());
   PER_ISOLATE_STRING_PROPERTIES(V)
 #undef V
 
@@ -344,9 +343,10 @@ Environment::Environment(IsolateData* isolate_data,
   // easier to modify them after Environment creation. The defaults are
   // part of the per-Isolate option set, for which in turn the defaults are
   // part of the per-process option set.
-  options_.reset(new EnvironmentOptions(*isolate_data->options()->per_env));
-  inspector_host_port_.reset(
-      new ExclusiveAccess<HostPort>(options_->debug_options().host_port));
+  options_ = std::make_shared<EnvironmentOptions>(
+      *isolate_data->options()->per_env);
+  inspector_host_port_ = std::make_shared<ExclusiveAccess<HostPort>>(
+      options_->debug_options().host_port);
 
   if (!(flags_ & EnvironmentFlags::kOwnsProcessState)) {
     set_abort_on_uncaught_exception(false);
@@ -495,14 +495,25 @@ void Environment::InitializeLibuv() {
 
   uv_check_start(immediate_check_handle(), CheckImmediate);
 
+  // Inform V8's CPU profiler when we're idle.  The profiler is sampling-based
+  // but not all samples are created equal; mark the wall clock time spent in
+  // epoll_wait() and friends so profiling tools can filter it out.  The samples
+  // still end up in v8.log but with state=IDLE rather than state=EXTERNAL.
+  uv_prepare_init(event_loop(), &idle_prepare_handle_);
+  uv_check_init(event_loop(), &idle_check_handle_);
+
   uv_async_init(
       event_loop(),
       &task_queues_async_,
       [](uv_async_t* async) {
         Environment* env = ContainerOf(
             &Environment::task_queues_async_, async);
+        HandleScope handle_scope(env->isolate());
+        Context::Scope context_scope(env->context());
         env->RunAndClearNativeImmediates();
       });
+  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
+  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   uv_unref(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 
   {
@@ -519,6 +530,8 @@ void Environment::InitializeLibuv() {
   // the one environment per process setup, but will be called in
   // FreeEnvironment.
   RegisterHandleCleanups();
+
+  StartProfilerIdleNotifier();
 }
 
 void Environment::ExitEnv() {
@@ -546,6 +559,8 @@ void Environment::RegisterHandleCleanups() {
   register_handle(reinterpret_cast<uv_handle_t*>(timer_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_check_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_idle_handle()));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   register_handle(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 }
 
@@ -575,6 +590,17 @@ void Environment::CleanupHandles() {
          !handle_wrap_queue_.IsEmpty()) {
     uv_run(event_loop(), UV_RUN_ONCE);
   }
+}
+
+void Environment::StartProfilerIdleNotifier() {
+  uv_prepare_start(&idle_prepare_handle_, [](uv_prepare_t* handle) {
+    Environment* env = ContainerOf(&Environment::idle_prepare_handle_, handle);
+    env->isolate()->SetIdle(true);
+  });
+  uv_check_start(&idle_check_handle_, [](uv_check_t* handle) {
+    Environment* env = ContainerOf(&Environment::idle_check_handle_, handle);
+    env->isolate()->SetIdle(false);
+  });
 }
 
 void Environment::PrintSyncTrace() const {

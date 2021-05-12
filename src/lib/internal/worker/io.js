@@ -30,6 +30,7 @@ const {
 const { Readable, Writable } = require('stream');
 const {
   Event,
+  EventTarget,
   NodeEventTarget,
   defineEventHandler,
   initNodeEventTarget,
@@ -79,11 +80,15 @@ class MessageEvent extends Event {
   }
 }
 
+const originalCreateEvent = EventTarget.prototype[kCreateEvent];
 ObjectDefineProperty(
   MessagePort.prototype,
   kCreateEvent,
   {
     value: function(data, type) {
+      if (type !== 'message' && type !== 'messageerror') {
+        return originalCreateEvent.call(this, data, type);
+      }
       return new MessageEvent(data, this, type);
     },
     configurable: false,
@@ -94,12 +99,11 @@ ObjectDefineProperty(
 // This is called from inside the `MessagePort` constructor.
 function oninit() {
   initNodeEventTarget(this);
-  // TODO(addaleax): This should be on MessagePort.prototype, but
-  // defineEventHandler() does not support that.
-  defineEventHandler(this, 'message');
-  defineEventHandler(this, 'messageerror');
   setupPortReferencing(this, this, 'message');
 }
+
+defineEventHandler(MessagePort.prototype, 'message');
+defineEventHandler(MessagePort.prototype, 'messageerror');
 
 ObjectDefineProperty(MessagePort.prototype, onInitSymbol, {
   enumerable: true,

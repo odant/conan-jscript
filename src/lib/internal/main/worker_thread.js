@@ -13,6 +13,7 @@ const {
   setupInspectorHooks,
   setupWarningHandler,
   setupDebugEnv,
+  initializeAbortController,
   initializeDeprecations,
   initializeWASI,
   initializeCJSLoader,
@@ -112,15 +113,12 @@ port.on('message', (message) => {
     if (manifestSrc) {
       require('internal/process/policy').setup(manifestSrc, manifestURL);
     }
+    initializeAbortController();
     initializeDeprecations();
     initializeWASI();
     initializeCJSLoader();
     initializeESMLoader();
 
-    const CJSLoader = require('internal/modules/cjs/loader');
-    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
-    loadPreloadModules();
-    initializeFrozenIntrinsics();
     if (argv !== undefined) {
       process.argv = process.argv.concat(argv);
     }
@@ -142,6 +140,11 @@ port.on('message', (message) => {
       return cachedCwd;
     };
     workerIo.sharedCwdCounter = cwdCounter;
+
+    const CJSLoader = require('internal/modules/cjs/loader');
+    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
+    loadPreloadModules();
+    initializeFrozenIntrinsics();
 
     if (!hasStdin)
       process.stdin.push(null);
@@ -190,15 +193,27 @@ port.on('message', (message) => {
 function workerOnGlobalUncaughtException(error, fromPromise) {
   debug(`[${threadId}] gets uncaught exception`);
   let handled = false;
+  let handlerThrew = false;
   try {
     handled = onGlobalUncaughtException(error, fromPromise);
   } catch (e) {
     error = e;
+    handlerThrew = true;
   }
   debug(`[${threadId}] uncaught exception handled = ${handled}`);
 
   if (handled) {
     return true;
+  }
+
+  if (!process._exiting) {
+    try {
+      process._exiting = true;
+      process.exitCode = 1;
+      if (!handlerThrew) {
+        process.emit('exit', process.exitCode);
+      }
+    } catch {}
   }
 
   let serialized;

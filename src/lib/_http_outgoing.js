@@ -22,10 +22,12 @@
 'use strict';
 
 const {
+  Array,
   ArrayIsArray,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectKeys,
+  ObjectValues,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   MathFloor,
@@ -445,7 +447,8 @@ function _storeHeader(firstLine, headers) {
   }
 
   if (!state.contLen && !state.te) {
-    if (!this._hasBody) {
+    if (!this._hasBody && (this.statusCode === 204 ||
+                           this.statusCode === 304)) {
       // Make sure we don't end the 0\r\n\r\n at the end of the message.
       this.chunkedEncoding = false;
     } else if (!this.useChunkedEncodingByDefault) {
@@ -565,6 +568,7 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
     this[kOutHeaders] = headers = ObjectCreate(null);
 
   headers[name.toLowerCase()] = [name, value];
+  return this;
 };
 
 
@@ -583,6 +587,23 @@ OutgoingMessage.prototype.getHeader = function getHeader(name) {
 // Returns an array of the names of the current outgoing headers.
 OutgoingMessage.prototype.getHeaderNames = function getHeaderNames() {
   return this[kOutHeaders] !== null ? ObjectKeys(this[kOutHeaders]) : [];
+};
+
+
+// Returns an array of the names of the current outgoing raw headers.
+OutgoingMessage.prototype.getRawHeaderNames = function getRawHeaderNames() {
+  const headersMap = this[kOutHeaders];
+  if (headersMap === null) return [];
+
+  const values = ObjectValues(headersMap);
+  const headers = Array(values.length);
+  // Retain for(;;) loop for performance reasons
+  // Refs: https://github.com/nodejs/node/pull/30958
+  for (let i = 0, l = values.length; i < l; i++) {
+    headers[i] = values[i][0];
+  }
+
+  return headers;
 };
 
 
@@ -655,6 +676,11 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableEnded', {
   get: function() { return this.finished; }
 });
 
+ObjectDefineProperty(OutgoingMessage.prototype, 'writableNeedDrain', {
+  get: function() {
+    return !this.destroyed && !this.finished && this[kNeedDrain];
+  }
+});
 
 const crlf_buf = Buffer.from('\r\n');
 OutgoingMessage.prototype.write = function write(chunk, encoding, callback) {

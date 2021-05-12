@@ -217,9 +217,12 @@ class Resolver {
 
 Resolver.prototype.getServers = CallbackResolver.prototype.getServers;
 Resolver.prototype.setServers = CallbackResolver.prototype.setServers;
+Resolver.prototype.cancel = CallbackResolver.prototype.cancel;
+Resolver.prototype.setLocalAddress = CallbackResolver.prototype.setLocalAddress;
 Resolver.prototype.resolveAny = resolveMap.ANY = resolver('queryAny');
 Resolver.prototype.resolve4 = resolveMap.A = resolver('queryA');
 Resolver.prototype.resolve6 = resolveMap.AAAA = resolver('queryAaaa');
+Resolver.prototype.resolveCaa = resolveMap.CAA = resolver('queryCaa');
 Resolver.prototype.resolveCname = resolveMap.CNAME = resolver('queryCname');
 Resolver.prototype.resolveMx = resolveMap.MX = resolver('queryMx');
 Resolver.prototype.resolveNs = resolveMap.NS = resolver('queryNs');

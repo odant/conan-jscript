@@ -31,6 +31,7 @@ const expectedModules = new Set([
   'Internal Binding types',
   'Internal Binding url',
   'Internal Binding util',
+  'NativeModule async_hooks',
   'NativeModule buffer',
   'NativeModule events',
   'NativeModule fs',
@@ -93,6 +94,7 @@ const expectedModules = new Set([
 if (!common.isMainThread) {
   [
     'Internal Binding messaging',
+    'Internal Binding performance',
     'Internal Binding symbols',
     'Internal Binding worker',
     'NativeModule internal/streams/duplex',

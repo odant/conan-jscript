@@ -4,7 +4,7 @@
 // lib/internal/modules/esm/* (ES Modules).
 //
 // This file is compiled and run by node.cc before bootstrap/node.js
-// was called, therefore the loaders are bootstraped before we start to
+// was called, therefore the loaders are bootstrapped before we start to
 // actually bootstrap Node.js. It creates the following objects:
 //
 // C++ binding loaders:
@@ -69,11 +69,11 @@ ObjectDefineProperty(process, 'moduleLoadList', {
 });
 
 
-// internalBindingWhitelist contains the name of internalBinding modules
-// that are whitelisted for access via process.binding()... This is used
+// internalBindingAllowlist contains the name of internalBinding modules
+// that are allowed for access via process.binding()... This is used
 // to provide a transition path for modules that are being moved over to
 // internalBinding.
-const internalBindingWhitelist = new SafeSet([
+const internalBindingAllowlist = new SafeSet([
   'async_wrap',
   'buffer',
   'cares_wrap',
@@ -113,7 +113,7 @@ const internalBindingWhitelist = new SafeSet([
     module = String(module);
     // Deprecated specific process.binding() modules, but not all, allow
     // selective fallback to internalBinding for the deprecated ones.
-    if (internalBindingWhitelist.has(module)) {
+    if (internalBindingAllowlist.has(module)) {
       return internalBinding(module);
     }
     // eslint-disable-next-line no-restricted-syntax

@@ -1,3 +1,4 @@
+// Flags: --experimental-abortcontroller
 'use strict';
 const common = require('../common');
 
@@ -56,4 +57,30 @@ for (const e of fileInfo) {
     assert.ifError(err);
     assert.deepStrictEqual(buf, e.contents);
   }));
+}
+{
+  // Test cancellation, before
+  const controller = new AbortController();
+  const signal = controller.signal;
+  controller.abort();
+  fs.readFile(fileInfo[0].name, { signal }, common.mustCall((err, buf) => {
+    assert.strictEqual(err.name, 'AbortError');
+  }));
+}
+{
+  // Test cancellation, during read
+  const controller = new AbortController();
+  const signal = controller.signal;
+  fs.readFile(fileInfo[0].name, { signal }, common.mustCall((err, buf) => {
+    assert.strictEqual(err.name, 'AbortError');
+  }));
+  process.nextTick(() => controller.abort());
+}
+{
+  // Verify that if something different than Abortcontroller.signal
+  // is passed, ERR_INVALID_ARG_TYPE is thrown
+  assert.throws(() => {
+    const callback = common.mustNotCall(() => {});
+    fs.readFile(fileInfo[0].name, { signal: 'hello' }, callback);
+  }, { code: 'ERR_INVALID_ARG_TYPE', name: 'TypeError' });
 }
