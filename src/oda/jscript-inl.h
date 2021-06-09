@@ -657,7 +657,10 @@ NODE_EXTERN void Initialize(const std::string& origin, const std::string& extern
 
   std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
 
-  std::string moduleInit = findModule(coreFolder + "/web", "jscript-init");
+  std::string moduleInit = findModule(coreFolder + "/web/core", "jscript-init");
+  if (moduleInit.empty()) {
+      moduleInit = findModule(coreFolder + "/web", "jscript-init");
+  }
   if (moduleInit.empty()) {
     argv.push_back("-e");
     std::string initScript = getInitScript(coreFolder + "/web/core/odant.js");
@@ -717,7 +720,10 @@ std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const
         "--experimental-vm-modules"
     };
 
-    std::string modulesLoader = findModule(coreFolder + "/web", "modules-loader");
+    std::string modulesLoader = findModule(coreFolder + "/web/core", "modules-loader");
+    if (modulesLoader.empty()) {
+        modulesLoader = findModule(coreFolder + "/web", "modules-loader");
+    }
     if (!modulesLoader.empty()) {
         argv.push_back("--experimental-loader");
   #ifdef _WIN32
