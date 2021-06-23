@@ -54,12 +54,19 @@ const execOpts = { encoding: 'utf8', shell: true };
   const ac = new AbortController();
   const { signal } = ac;
 
-  const callback = common.mustCall((err) => {
-    assert.strictEqual(err.code, 'ABORT_ERR');
-    assert.strictEqual(err.name, 'AbortError');
-  });
-  execFile(process.execPath, [echoFixture, 0], { signal }, callback);
+  const test = () => {
+    const check = common.mustCall((err) => {
+      assert.strictEqual(err.code, 'ABORT_ERR');
+      assert.strictEqual(err.name, 'AbortError');
+      assert.strictEqual(err.signal, undefined);
+    });
+    execFile(process.execPath, [echoFixture, 0], { signal }, check);
+  };
+
+  test();
   ac.abort();
+  // Verify that it still works the same way now that the signal is aborted.
+  test();
 }
 
 {

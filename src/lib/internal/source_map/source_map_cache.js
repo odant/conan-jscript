@@ -1,19 +1,17 @@
 'use strict';
 
 const {
+  ArrayPrototypeMap,
   JSONParse,
   ObjectCreate,
   ObjectKeys,
   ObjectGetOwnPropertyDescriptor,
   ObjectPrototypeHasOwnProperty,
-  Map,
-  MapPrototypeEntries,
-  WeakMap,
-  WeakMapPrototypeGet,
-  uncurryThis,
+  RegExpPrototypeTest,
+  SafeMap,
+  StringPrototypeMatch,
+  StringPrototypeSplit,
 } = primordials;
-
-const MapIteratorNext = uncurryThis(MapPrototypeEntries(new Map()).next);
 
 function ObjectGetValueSafe(obj, key) {
   const desc = ObjectGetOwnPropertyDescriptor(obj, key);
@@ -27,17 +25,17 @@ let debug = require('internal/util/debuglog').debuglog('source_map', (fn) => {
 });
 const fs = require('fs');
 const { getOptionValue } = require('internal/options');
+const { IterableWeakMap } = require('internal/util/iterable_weak_map');
 const {
   normalizeReferrerURL,
 } = require('internal/modules/cjs/helpers');
-// For cjs, since Module._cache is exposed to users, we use a WeakMap
-// keyed on module, facilitating garbage collection.
-const cjsSourceMapCache = new WeakMap();
-// The esm cache is not exposed to users, so we can use a Map keyed
-// on filenames.
-const esmSourceMapCache = new Map();
-const { fileURLToPath, URL } = require('url');
-let Module;
+// Since the CJS module cache is mutable, which leads to memory leaks when
+// modules are deleted, we use a WeakMap so that the source map cache will
+// be purged automatically:
+const cjsSourceMapCache = new IterableWeakMap();
+// The esm cache is not mutable, so we can use a Map without memory concerns:
+const esmSourceMapCache = new SafeMap();
+const { fileURLToPath, pathToFileURL, URL } = require('internal/url');
 let SourceMap;
 
 let sourceMapsEnabled;
@@ -70,13 +68,14 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance) {
     debug(err.stack);
     return;
   }
-
-  const match = content.match(/\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/);
+  const match = StringPrototypeMatch(
+    content,
+    /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/
+  );
   if (match) {
     const data = dataFromUrl(filename, match.groups.sourceMappingURL);
     const url = data ? null : match.groups.sourceMappingURL;
     if (cjsModuleInstance) {
-      if (!Module) Module = require('internal/modules/cjs/loader').Module;
       cjsSourceMapCache.set(cjsModuleInstance, {
         filename,
         lineLengths: lineLengths(content),
@@ -120,7 +119,7 @@ function lineLengths(content) {
   // We purposefully keep \r as part of the line-length calculation, in
   // cases where there is a \r\n separator, so that this can be taken into
   // account in coverage calculations.
-  return content.split(/\n|\u2028|\u2029/).map((line) => {
+  return ArrayPrototypeMap(StringPrototypeSplit(content, /\n|\u2028|\u2029/), (line) => {
     return line.length;
   });
 }
@@ -139,8 +138,8 @@ function sourceMapFromFile(mapURL) {
 // data:[<mediatype>][;base64],<data> see:
 // https://tools.ietf.org/html/rfc2397#section-2
 function sourceMapFromDataUrl(sourceURL, url) {
-  const [format, data] = url.split(',');
-  const splitFormat = format.split(';');
+  const { 0: format, 1: data } = StringPrototypeSplit(url, ',');
+  const splitFormat = StringPrototypeSplit(format, ';');
   const contentType = splitFormat[0];
   const base64 = splitFormat[splitFormat.length - 1] === 'base64';
   if (contentType === 'application/json') {
@@ -191,11 +190,7 @@ function rekeySourceMap(cjsModuleInstance, newInstance) {
 function sourceMapCacheToObject() {
   const obj = ObjectCreate(null);
 
-  const it = MapPrototypeEntries(esmSourceMapCache);
-  let entry;
-  while (!(entry = MapIteratorNext(it)).done) {
-    const k = entry.value[0];
-    const v = entry.value[1];
+  for (const { 0: k, 1: v } of esmSourceMapCache) {
     obj[k] = v;
   }
 
@@ -207,48 +202,32 @@ function sourceMapCacheToObject() {
   return obj;
 }
 
-// Since WeakMap can't be iterated over, we use Module._cache's
-// keys to facilitate Source Map serialization.
-//
-// TODO(bcoe): this means we don't currently serialize source-maps attached
-// to error instances, only module instances.
 function appendCJSCache(obj) {
-  if (!Module) return;
-  const cjsModuleCache = ObjectGetValueSafe(Module, '_cache');
-  const cjsModules = ObjectKeys(cjsModuleCache);
-  for (let i = 0; i < cjsModules.length; i++) {
-    const key = cjsModules[i];
-    const module = ObjectGetValueSafe(cjsModuleCache, key);
-    const value = WeakMapPrototypeGet(cjsSourceMapCache, module);
-    if (value) {
-      // This is okay because `obj` has a null prototype.
-      obj[`file://${key}`] = {
-        lineLengths: ObjectGetValueSafe(value, 'lineLengths'),
-        data: ObjectGetValueSafe(value, 'data'),
-        url: ObjectGetValueSafe(value, 'url')
-      };
-    }
+  for (const value of cjsSourceMapCache) {
+    obj[ObjectGetValueSafe(value, 'filename')] = {
+      lineLengths: ObjectGetValueSafe(value, 'lineLengths'),
+      data: ObjectGetValueSafe(value, 'data'),
+      url: ObjectGetValueSafe(value, 'url')
+    };
   }
 }
 
-// Attempt to lookup a source map, which is either attached to a file URI, or
-// keyed on an error instance.
-// TODO(bcoe): once WeakRefs are available in Node.js, refactor to drop
-// requirement of error parameter.
-function findSourceMap(uri, error) {
-  if (!Module) Module = require('internal/modules/cjs/loader').Module;
+function findSourceMap(sourceURL) {
+  if (!RegExpPrototypeTest(/^\w+:\/\//, sourceURL)) {
+    sourceURL = pathToFileURL(sourceURL).href;
+  }
   if (!SourceMap) {
     SourceMap = require('internal/source_map/source_map').SourceMap;
   }
-  let sourceMap = cjsSourceMapCache.get(Module._cache[uri]);
-  if (!uri.startsWith('file://')) uri = normalizeReferrerURL(uri);
+  let sourceMap = esmSourceMapCache.get(sourceURL);
   if (sourceMap === undefined) {
-    sourceMap = esmSourceMapCache.get(uri);
-  }
-  if (sourceMap === undefined) {
-    const candidateSourceMap = cjsSourceMapCache.get(error);
-    if (candidateSourceMap && uri === candidateSourceMap.filename) {
-      sourceMap = candidateSourceMap;
+    for (const value of cjsSourceMapCache) {
+      const filename = ObjectGetValueSafe(value, 'filename');
+      if (sourceURL === filename) {
+        sourceMap = {
+          data: ObjectGetValueSafe(value, 'data')
+        };
+      }
     }
   }
   if (sourceMap && sourceMap.data) {

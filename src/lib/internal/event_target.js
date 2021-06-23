@@ -4,8 +4,11 @@ const {
   ArrayFrom,
   Boolean,
   Error,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
   NumberIsInteger,
-  Object,
+  ObjectAssign,
+  ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ReflectApply,
@@ -43,7 +46,7 @@ const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
 const kHandlers = Symbol('khandlers');
 
-const kHybridDispatch = Symbol.for('nodejs.internal.kHybridDispatch');
+const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
 const kCreateEvent = Symbol('kCreateEvent');
 const kNewListener = Symbol('kNewListener');
 const kRemoveListener = Symbol('kRemoveListener');
@@ -80,8 +83,9 @@ class Event {
   constructor(type, options = null) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('type');
-    if (options !== null)
-      validateObject(options, 'options');
+    validateObject(options, 'options', {
+      allowArray: true, allowFunction: true, nullable: true,
+    });
     const { cancelable, bubbles, composed } = { ...options };
     this[kCancelable] = !!cancelable;
     this[kBubbles] = !!bubbles;
@@ -90,7 +94,7 @@ class Event {
     this[kDefaultPrevented] = false;
     this[kTimestamp] = lazyNow();
     this[kPropagationStopped] = false;
-    if (options != null && options[kTrustEvent]) {
+    if (options?.[kTrustEvent]) {
       isTrustedSet.add(this);
     }
 
@@ -108,7 +112,7 @@ class Event {
     if (depth < 0)
       return name;
 
-    const opts = Object.assign({}, options, {
+    const opts = ObjectAssign({}, options, {
       depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
     });
 
@@ -170,7 +174,7 @@ class Event {
   static BUBBLING_PHASE = 3;
 }
 
-Object.defineProperty(Event.prototype, SymbolToStringTag, {
+ObjectDefineProperty(Event.prototype, SymbolToStringTag, {
   writable: false,
   enumerable: false,
   configurable: true,
@@ -180,7 +184,7 @@ Object.defineProperty(Event.prototype, SymbolToStringTag, {
 class NodeCustomEvent extends Event {
   constructor(type, options) {
     super(type, options);
-    if (options && options.detail) {
+    if (options?.detail) {
       this.detail = options.detail;
     }
   }
@@ -207,7 +211,7 @@ class Listener {
     this.callback =
       typeof listener === 'function' ?
         listener :
-        listener.handleEvent.bind(listener);
+        FunctionPrototypeBind(listener.handleEvent, listener);
   }
 
   same(listener, capture) {
@@ -320,10 +324,7 @@ class EventTarget {
       return;
 
     type = String(type);
-    // TODO(@jasnell): If it's determined this cannot be backported
-    // to 12.x, then this can be simplified to:
-    //   const capture = Boolean(options?.capture);
-    const capture = options != null && options.capture === true;
+    const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);
     if (root === undefined || root.next === undefined)
@@ -395,7 +396,7 @@ class EventTarget {
         } else {
           arg = createEvent();
         }
-        const result = handler.callback.call(this, arg);
+        const result = FunctionPrototypeCall(handler.callback, this, arg);
         if (result !== undefined && result !== null)
           addCatch(this, result, createEvent());
       } catch (err) {
@@ -417,7 +418,7 @@ class EventTarget {
     if (depth < 0)
       return name;
 
-    const opts = Object.assign({}, options, {
+    const opts = ObjectAssign({}, options, {
       depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
     });
 
@@ -425,12 +426,12 @@ class EventTarget {
   }
 }
 
-Object.defineProperties(EventTarget.prototype, {
+ObjectDefineProperties(EventTarget.prototype, {
   addEventListener: { enumerable: true },
   removeEventListener: { enumerable: true },
   dispatchEvent: { enumerable: true }
 });
-Object.defineProperty(EventTarget.prototype, SymbolToStringTag, {
+ObjectDefineProperty(EventTarget.prototype, SymbolToStringTag, {
   writable: false,
   enumerable: false,
   configurable: true,
@@ -511,7 +512,7 @@ class NodeEventTarget extends EventTarget {
   }
 }
 
-Object.defineProperties(NodeEventTarget.prototype, {
+ObjectDefineProperties(NodeEventTarget.prototype, {
   setMaxListeners: { enumerable: true },
   getMaxListeners: { enumerable: true },
   eventNames: { enumerable: true },
@@ -529,9 +530,7 @@ Object.defineProperties(NodeEventTarget.prototype, {
 
 function shouldAddListener(listener) {
   if (typeof listener === 'function' ||
-      (listener != null &&
-       typeof listener === 'object' &&
-       typeof listener.handleEvent === 'function')) {
+      typeof listener?.handleEvent === 'function') {
     return true;
   }
 
@@ -544,7 +543,9 @@ function shouldAddListener(listener) {
 function validateEventListenerOptions(options) {
   if (typeof options === 'boolean')
     return { capture: options };
-  validateObject(options, 'options');
+  validateObject(options, 'options', {
+    allowArray: true, allowFunction: true,
+  });
   return {
     once: Boolean(options.once),
     capture: Boolean(options.capture),
@@ -559,13 +560,13 @@ function validateEventListenerOptions(options) {
 // It stands in its current implementation as a compromise.
 // Ref: https://github.com/nodejs/node/pull/33661
 function isEventTarget(obj) {
-  return obj && obj.constructor && obj.constructor[kIsEventTarget];
+  return obj?.constructor?.[kIsEventTarget];
 }
 
 function addCatch(that, promise, event) {
   const then = promise.then;
   if (typeof then === 'function') {
-    then.call(promise, undefined, function(err) {
+    FunctionPrototypeCall(then, promise, undefined, function(err) {
       // The callback is called with nextTick to avoid a follow-up
       // rejection from this promise.
       process.nextTick(emitUnhandledRejectionOrErr, that, err, event);

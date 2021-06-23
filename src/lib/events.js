@@ -22,7 +22,7 @@
 'use strict';
 
 const {
-  ArrayPrototypePush,
+  ArrayPrototypeSlice,
   Boolean,
   Error,
   ErrorCaptureStackTrace,
@@ -36,7 +36,6 @@ const {
   Promise,
   PromiseReject,
   PromiseResolve,
-  ReflectApply,
   ReflectOwnKeys,
   String,
   Symbol,
@@ -172,8 +171,8 @@ EventEmitter.setMaxListeners =
       if (isEventTarget === undefined)
         isEventTarget = require('internal/event_target').isEventTarget;
 
-      // Performance for forEach is now comparable with regular for-loop
-      eventTargets.forEach((target) => {
+      for (let i = 0; i < eventTargets.length; i++) {
+        const target = eventTargets[i];
         if (isEventTarget(target)) {
           target[kMaxEventTargetListeners] = n;
           target[kMaxEventTargetListenersWarned] = false;
@@ -185,7 +184,7 @@ EventEmitter.setMaxListeners =
             ['EventEmitter', 'EventTarget'],
             target);
         }
-      });
+      }
     }
   };
 
@@ -200,7 +199,7 @@ EventEmitter.init = function(opts) {
   this._maxListeners = this._maxListeners || undefined;
 
 
-  if (opts && opts.captureRejections) {
+  if (opts?.captureRejections) {
     if (typeof opts.captureRejections !== 'boolean') {
       throw new ERR_INVALID_ARG_TYPE('options.captureRejections',
                                      'boolean', opts.captureRejections);
@@ -373,7 +372,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     return false;
 
   if (typeof handler === 'function') {
-    const result = ReflectApply(handler, this, args);
+    const result = handler.apply(this, args);
 
     // We check if result is undefined first because that
     // is the most common case so we do not pay any perf
@@ -385,7 +384,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     const len = handler.length;
     const listeners = arrayClone(handler);
     for (let i = 0; i < len; ++i) {
-      const result = ReflectApply(listeners[i], this, args);
+      const result = listeners[i].apply(this, args);
 
       // We check if result is undefined first because that
       // is the most common case so we do not pay any perf
@@ -670,7 +669,7 @@ function arrayClone(arr) {
     case 5: return [arr[0], arr[1], arr[2], arr[3], arr[4]];
     case 6: return [arr[0], arr[1], arr[2], arr[3], arr[4], arr[5]];
   }
-  return arr.slice();
+  return ArrayPrototypeSlice(arr);
 }
 
 function unwrapListeners(arr) {
@@ -695,7 +694,7 @@ function getEventListeners(emitterOrTarget, type) {
     const listeners = [];
     let handler = root?.next;
     while (handler?.listener !== undefined) {
-      ArrayPrototypePush(listeners, handler.listener);
+      listeners.push(handler.listener);
       handler = handler.next;
     }
     return listeners;
@@ -706,9 +705,9 @@ function getEventListeners(emitterOrTarget, type) {
 }
 
 async function once(emitter, name, options = {}) {
-  const signal = options ? options.signal : undefined;
+  const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
-  if (signal && signal.aborted)
+  if (signal?.aborted)
     throw lazyDOMException('The operation was aborted', 'AbortError');
   return new Promise((resolve, reject) => {
     const errorListener = (err) => {
@@ -788,7 +787,7 @@ function eventTargetAgnosticRemoveListener(emitter, name, listener, flags) {
 
 function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
   if (typeof emitter.on === 'function') {
-    if (flags && flags.once) {
+    if (flags?.once) {
       emitter.once(name, listener);
     } else {
       emitter.on(name, listener);
@@ -803,9 +802,9 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
 }
 
 function on(emitter, event, options) {
-  const { signal } = { ...options };
+  const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
-  if (signal && signal.aborted) {
+  if (signal?.aborted) {
     throw lazyDOMException('The operation was aborted', 'AbortError');
   }
 

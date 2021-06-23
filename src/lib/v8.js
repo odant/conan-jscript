@@ -17,14 +17,17 @@
 const {
   Array,
   ArrayBuffer,
+  ArrayPrototypeForEach,
+  ArrayPrototypePush,
+  DataView,
   Error,
   Float32Array,
   Float64Array,
   Int16Array,
   Int32Array,
   Int8Array,
-  Map,
   ObjectPrototypeToString,
+  SafeMap,
   Uint16Array,
   Uint32Array,
   Uint8Array,
@@ -180,17 +183,18 @@ const arrayBufferViewTypes = [Int8Array, Uint8Array, Uint8ClampedArray,
                               Int16Array, Uint16Array, Int32Array, Uint32Array,
                               Float32Array, Float64Array, DataView];
 
-const arrayBufferViewTypeToIndex = new Map();
+const arrayBufferViewTypeToIndex = new SafeMap();
 
 {
   const dummy = new ArrayBuffer();
-  for (const [i, ctor] of arrayBufferViewTypes.entries()) {
+  ArrayPrototypeForEach(arrayBufferViewTypes, (ctor, i) => {
     const tag = ObjectPrototypeToString(new ctor(dummy));
     arrayBufferViewTypeToIndex.set(tag, i);
-  }
+  });
 }
 
-const bufferConstructorIndex = arrayBufferViewTypes.push(FastBuffer) - 1;
+const bufferConstructorIndex =
+  ArrayPrototypePush(arrayBufferViewTypes, FastBuffer) - 1;
 
 class DefaultSerializer extends Serializer {
   constructor() {

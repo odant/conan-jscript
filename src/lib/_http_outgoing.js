@@ -380,7 +380,8 @@ function _storeHeader(firstLine, headers) {
       }
     } else if (ArrayIsArray(headers)) {
       if (headers.length && ArrayIsArray(headers[0])) {
-        for (const entry of headers) {
+        for (let i = 0; i < headers.length; i++) {
+          const entry = headers[i];
           processHeader(this, state, entry[0], entry[1], true);
         }
       } else {
@@ -447,8 +448,7 @@ function _storeHeader(firstLine, headers) {
   }
 
   if (!state.contLen && !state.te) {
-    if (!this._hasBody && (this.statusCode === 204 ||
-                           this.statusCode === 304)) {
+    if (!this._hasBody) {
       // Make sure we don't end the 0\r\n\r\n at the end of the message.
       this.chunkedEncoding = false;
     } else if (!this.useChunkedEncodingByDefault) {

@@ -3,24 +3,17 @@
 const {
   Array,
   ArrayIsArray,
-  BigInt64Array,
   BigIntPrototypeValueOf,
-  BigUint64Array,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
   DatePrototypeToISOString,
   DatePrototypeToString,
   ErrorPrototypeToString,
-  Float32Array,
-  Float64Array,
   FunctionPrototypeCall,
   FunctionPrototypeToString,
-  Int8Array,
-  Int16Array,
-  Int32Array,
   JSONStringify,
   Map,
-  MapPrototype,
+  MapPrototypeGetSize,
   MapPrototypeEntries,
   MathFloor,
   MathMax,
@@ -49,8 +42,9 @@ const {
   ReflectApply,
   RegExp,
   RegExpPrototypeToString,
+  SafeStringIterator,
   Set,
-  SetPrototype,
+  SetPrototypeGetSize,
   SetPrototypeValues,
   String,
   StringPrototypeValueOf,
@@ -58,11 +52,9 @@ const {
   SymbolPrototypeValueOf,
   SymbolIterator,
   SymbolToStringTag,
-  Uint16Array,
-  Uint32Array,
+  TypedArrayPrototypeGetLength,
+  TypedArrayPrototypeGetSymbolToStringTag,
   Uint8Array,
-  Uint8ArrayPrototype,
-  Uint8ClampedArray,
   uncurryThis,
 } = primordials;
 
@@ -120,30 +112,11 @@ const {
   isNumberObject,
   isBooleanObject,
   isBigIntObject,
-  isUint8Array,
-  isUint8ClampedArray,
-  isUint16Array,
-  isUint32Array,
-  isInt8Array,
-  isInt16Array,
-  isInt32Array,
-  isFloat32Array,
-  isFloat64Array,
-  isBigInt64Array,
-  isBigUint64Array
 } = require('internal/util/types');
 
 const assert = require('internal/assert');
 
 const { NativeModule } = require('internal/bootstrap/loaders');
-
-const setSizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(SetPrototype, 'size').get);
-const mapSizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(MapPrototype, 'size').get);
-const typedArraySizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(
-    ObjectGetPrototypeOf(Uint8ArrayPrototype), 'length').get);
 
 let hexSlice;
 
@@ -218,7 +191,7 @@ const meta = [
 ];
 
 // Regex used for ansi escape code splitting
-// Adopted from https://github.com/chalk/ansi-regex/blob/master/index.js
+// Adopted from https://github.com/chalk/ansi-regex/blob/HEAD/index.js
 // License: MIT, authors: @sindresorhus, Qix-, arjunmehta and LitoMore
 // Matches all ansi escape code sequences in a string
 const ansiPattern = '[\\u001B\\u009B][[\\]()#;?]*' +
@@ -720,26 +693,6 @@ function formatProxy(ctx, proxy, recurseTimes) {
     ctx, res, '', ['Proxy [', ']'], kArrayExtrasType, recurseTimes);
 }
 
-function findTypedConstructor(value) {
-  for (const [check, clazz] of [
-    [isUint8Array, Uint8Array],
-    [isUint8ClampedArray, Uint8ClampedArray],
-    [isUint16Array, Uint16Array],
-    [isUint32Array, Uint32Array],
-    [isInt8Array, Int8Array],
-    [isInt16Array, Int16Array],
-    [isInt32Array, Int32Array],
-    [isFloat32Array, Float32Array],
-    [isFloat64Array, Float64Array],
-    [isBigInt64Array, BigInt64Array],
-    [isBigUint64Array, BigUint64Array]
-  ]) {
-    if (check(value)) {
-      return clazz;
-    }
-  }
-}
-
 // Note: using `formatValue` directly requires the indentation level to be
 // corrected by setting `ctx.indentationLvL += diff` and then to decrease the
 // value afterwards again.
@@ -863,7 +816,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       extrasType = kArrayExtrasType;
       formatter = formatArray;
     } else if (isSet(value)) {
-      const size = setSizeGetter(value);
+      const size = SetPrototypeGetSize(value);
       const prefix = getPrefix(constructor, tag, 'Set', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
@@ -873,7 +826,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
     } else if (isMap(value)) {
-      const size = mapSizeGetter(value);
+      const size = MapPrototypeGetSize(value);
       const prefix = getPrefix(constructor, tag, 'Map', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
@@ -887,12 +840,11 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       let bound = value;
       let fallback = '';
       if (constructor === null) {
-        const constr = findTypedConstructor(value);
-        fallback = constr.name;
+        fallback = TypedArrayPrototypeGetSymbolToStringTag(value);
         // Reconstruct the array information.
-        bound = new constr(value);
+        bound = new primordials[fallback](value);
       }
-      const size = typedArraySizeGetter(value);
+      const size = TypedArrayPrototypeGetLength(value);
       const prefix = getPrefix(constructor, tag, fallback, `(${size})`);
       braces = [`${prefix}[`, ']'];
       if (value.length === 0 && keys.length === 0 && !ctx.showHidden)
@@ -2055,7 +2007,7 @@ if (internalBinding('config').hasIntl) {
     if (removeControlChars)
       str = stripVTControlCharacters(str);
     str = str.normalize('NFC');
-    for (const char of str) {
+    for (const char of new SafeStringIterator(str)) {
       const code = char.codePointAt(0);
       if (isFullWidthCodePoint(code)) {
         width += 2;

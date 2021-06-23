@@ -2,12 +2,19 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeFilter,
+  ArrayPrototypeForEach,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
   Boolean,
   NumberIsSafeInteger,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
-  Set,
+  SafeSet,
   Symbol,
 } = primordials;
 
@@ -361,13 +368,13 @@ class PerformanceObserver extends AsyncResource {
   disconnect() {
     const observerCountsGC = observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC];
     const types = this[kTypes];
-    for (const key of ObjectKeys(types)) {
+    ArrayPrototypeForEach(ObjectKeys(types), (key) => {
       const item = types[key];
       if (item) {
         L.remove(item);
         observerCounts[key]--;
       }
-    }
+    });
     this[kTypes] = {};
     if (observerCountsGC === 1 &&
       observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC] === 0) {
@@ -383,7 +390,9 @@ class PerformanceObserver extends AsyncResource {
     if (!ArrayIsArray(entryTypes)) {
       throw new ERR_INVALID_OPT_VALUE('entryTypes', entryTypes);
     }
-    const filteredEntryTypes = entryTypes.filter(filterTypes).map(mapTypes);
+    const filteredEntryTypes =
+      ArrayPrototypeMap(ArrayPrototypeFilter(entryTypes, filterTypes),
+                        mapTypes);
     if (filteredEntryTypes.length === 0) {
       throw new ERR_VALID_PERFORMANCE_ENTRY_TYPE();
     }
@@ -392,14 +401,14 @@ class PerformanceObserver extends AsyncResource {
     this[kBuffer][kEntries] = [];
     L.init(this[kBuffer][kEntries]);
     this[kBuffering] = Boolean(options.buffered);
-    for (const entryType of filteredEntryTypes) {
+    ArrayPrototypeForEach(filteredEntryTypes, (entryType) => {
       const list = getObserversList(entryType);
-      if (this[kTypes][entryType]) continue;
+      if (this[kTypes][entryType]) return;
       const item = { obs: this };
       this[kTypes][entryType] = item;
       L.append(list, item);
       observerCounts[entryType]++;
-    }
+    });
     if (observerCountsGC === 0 &&
       observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC] === 1) {
       installGarbageCollectionTracking();
@@ -410,7 +419,7 @@ class PerformanceObserver extends AsyncResource {
 class Performance {
   constructor() {
     this[kIndex] = {
-      [kMarks]: new Set()
+      [kMarks]: new SafeSet()
     };
   }
 
@@ -577,7 +586,7 @@ function observersCallback(entry) {
 setupObservers(observersCallback);
 
 function filterTypes(i) {
-  return observerableTypes.indexOf(`${i}`) >= 0;
+  return ArrayPrototypeIncludes(observerableTypes, `${i}`);
 }
 
 function mapTypes(i) {
@@ -615,18 +624,19 @@ function sortedInsert(list, entry) {
   const entryStartTime = entry.startTime;
   if (list.length === 0 ||
       (list[list.length - 1].startTime < entryStartTime)) {
-    list.push(entry);
+    ArrayPrototypePush(list, entry);
     return;
   }
   if (list[0] && (list[0].startTime > entryStartTime)) {
-    list.unshift(entry);
+    ArrayPrototypeUnshift(list, entry);
     return;
   }
   const location = getInsertLocation(list, entryStartTime);
-  list.splice(location, 0, entry);
+  ArrayPrototypeSplice(list, location, 0, entry);
 }
 
 class ELDHistogram extends Histogram {
+  constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
   enable() { return this[kHandle].enable(); }
   disable() { return this[kHandle].disable(); }
 }

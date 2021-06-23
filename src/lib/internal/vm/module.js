@@ -11,8 +11,10 @@ const {
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   PromiseAll,
+  ReflectApply,
   SafeWeakMap,
   Symbol,
+  SymbolToStringTag,
   TypeError,
 } = primordials;
 
@@ -242,7 +244,7 @@ class Module {
     o.context = this.context;
 
     ObjectSetPrototypeOf(o, ObjectGetPrototypeOf(this));
-    ObjectDefineProperty(o, Symbol.toStringTag, {
+    ObjectDefineProperty(o, SymbolToStringTag, {
       value: constructor.name,
       configurable: true
     });
@@ -446,7 +448,7 @@ class SyntheticModule extends Module {
 
 function importModuleDynamicallyWrap(importModuleDynamically) {
   const importModuleDynamicallyWrapper = async (...args) => {
-    const m = await importModuleDynamically(...args);
+    const m = await ReflectApply(importModuleDynamically, this, args);
     if (isModuleNamespaceObject(m)) {
       return m;
     }

@@ -1,15 +1,11 @@
 'use strict';
 
 const {
-  ArrayPrototypePop,
   ArrayPrototypeSlice,
-  ArrayPrototypeUnshift,
   ErrorCaptureStackTrace,
-  FunctionPrototypeBind,
   ObjectPrototypeHasOwnProperty,
   ObjectDefineProperty,
   Promise,
-  ReflectApply,
   Symbol,
 } = primordials;
 
@@ -91,9 +87,10 @@ const { resource_symbol, owner_symbol } = internalBinding('symbols');
 // Each constant tracks how many callbacks there are for any given step of
 // async execution. These are tracked so if the user didn't include callbacks
 // for a given step, that step can bail out early.
-const { kInit, kBefore, kAfter, kDestroy, kTotals, kPromiseResolve,
-        kCheck, kExecutionAsyncId, kAsyncIdCounter, kTriggerAsyncId,
-        kDefaultTriggerAsyncId, kStackLength, kUsesExecutionAsyncResource
+const {
+  kInit, kBefore, kAfter, kDestroy, kTotals, kPromiseResolve,
+  kCheck, kExecutionAsyncId, kAsyncIdCounter, kTriggerAsyncId,
+  kDefaultTriggerAsyncId, kStackLength, kUsesExecutionAsyncResource,
 } = async_wrap.constants;
 
 const { async_id_symbol,
@@ -128,16 +125,16 @@ function callbackTrampoline(asyncId, resource, cb, ...args) {
 
   let result;
   if (asyncId === 0 && typeof domain_cb === 'function') {
-    ArrayPrototypeUnshift(args, cb);
-    result = ReflectApply(domain_cb, this, args);
+    args.unshift(cb);
+    result = domain_cb.apply(this, args);
   } else {
-    result = ReflectApply(cb, this, args);
+    result = cb.apply(this, args);
   }
 
   if (asyncId !== 0 && hasHooks(kAfter))
     emitAfterNative(asyncId);
 
-  ArrayPrototypePop(execution_async_resources);
+  execution_async_resources.pop();
   return result;
 }
 
@@ -255,7 +252,7 @@ function emitHook(symbol, asyncId) {
 }
 
 function emitHookFactory(symbol, name) {
-  const fn = FunctionPrototypeBind(emitHook, undefined, symbol);
+  const fn = emitHook.bind(undefined, symbol);
 
   // Set the name property of the function as it looks good in the stack trace.
   ObjectDefineProperty(fn, 'name', {
@@ -428,14 +425,14 @@ function clearDefaultTriggerAsyncId() {
 
 function defaultTriggerAsyncIdScope(triggerAsyncId, block, ...args) {
   if (triggerAsyncId === undefined)
-    return block(...args);
+    return block.apply(null, args);
   // CHECK(NumberIsSafeInteger(triggerAsyncId))
   // CHECK(triggerAsyncId > 0)
   const oldDefaultTriggerAsyncId = async_id_fields[kDefaultTriggerAsyncId];
   async_id_fields[kDefaultTriggerAsyncId] = triggerAsyncId;
 
   try {
-    return block(...args);
+    return block.apply(null, args);
   } finally {
     async_id_fields[kDefaultTriggerAsyncId] = oldDefaultTriggerAsyncId;
   }
@@ -532,7 +529,7 @@ function popAsyncContext(asyncId) {
   const offset = stackLength - 1;
   async_id_fields[kExecutionAsyncId] = async_wrap.async_ids_stack[2 * offset];
   async_id_fields[kTriggerAsyncId] = async_wrap.async_ids_stack[2 * offset + 1];
-  ArrayPrototypePop(execution_async_resources);
+  execution_async_resources.pop();
   async_hook_fields[kStackLength] = offset;
   return offset > 0;
 }

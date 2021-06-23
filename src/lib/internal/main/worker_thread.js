@@ -4,7 +4,11 @@
 // message port.
 
 const {
+  ArrayPrototypeConcat,
+  ArrayPrototypeForEach,
+  ArrayPrototypeSplice,
   ObjectDefineProperty,
+  PromisePrototypeCatch,
 } = primordials;
 
 const {
@@ -120,7 +124,7 @@ port.on('message', (message) => {
     initializeESMLoader();
 
     if (argv !== undefined) {
-      process.argv = process.argv.concat(argv);
+      process.argv = ArrayPrototypeConcat(process.argv, argv);
     }
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;
@@ -162,24 +166,25 @@ port.on('message', (message) => {
         enumerable: true,
         value: filename,
       });
-      process.argv.splice(1, 0, name);
+      ArrayPrototypeSplice(process.argv, 1, 0, name);
       evalScript(name, filename);
     } else if (doEval === 'module') {
       const { evalModule } = require('internal/process/execution');
-      evalModule(filename).catch((e) => {
+      PromisePrototypeCatch(evalModule(filename), (e) => {
         workerOnGlobalUncaughtException(e, true);
       });
     } else {
       // script filename
       // runMain here might be monkey-patched by users in --require.
       // XXX: the monkey-patchability here should probably be deprecated.
-      process.argv.splice(1, 0, filename);
+      ArrayPrototypeSplice(process.argv, 1, 0, filename);
       CJSLoader.Module.runMain(filename);
     }
   } else if (message.type === STDIO_PAYLOAD) {
     const { stream, chunks } = message;
-    for (const { chunk, encoding } of chunks)
+    ArrayPrototypeForEach(chunks, ({ chunk, encoding }) => {
       process[stream].push(chunk, encoding);
+    });
   } else {
     assert(
       message.type === STDIO_WANTS_MORE_DATA,

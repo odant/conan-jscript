@@ -46,7 +46,7 @@ const { readFileSync } = require('fs');
   Error.prepareStackTrace = (error, trace) => {
     const throwingRequireCallSite = trace[0];
     if (throwingRequireCallSite.getFileName().endsWith('typescript-throw.js')) {
-      sourceMap = findSourceMap(throwingRequireCallSite.getFileName(), error);
+      sourceMap = findSourceMap(throwingRequireCallSite.getFileName());
       callSite = throwingRequireCallSite;
     }
   };
@@ -54,6 +54,7 @@ const { readFileSync } = require('fs');
     // Require a file that throws an exception, and has a source map.
     require('../fixtures/source-map/typescript-throw.js');
   } catch (err) {
+    // eslint-disable-next-line no-unused-expressions
     err.stack; // Force prepareStackTrace() to be called.
   }
   assert(callSite);

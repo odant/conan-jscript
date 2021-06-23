@@ -75,8 +75,10 @@
 const {
   MathMax,
   MathTrunc,
+  NumberIsFinite,
   NumberMIN_SAFE_INTEGER,
   ObjectCreate,
+  ReflectApply,
   Symbol,
 } = primordials;
 
@@ -380,7 +382,7 @@ function setUnrefTimeout(callback, after) {
 // Type checking used by timers.enroll() and Socket#setTimeout()
 function getTimerDuration(msecs, name) {
   validateNumber(msecs, name);
-  if (msecs < 0 || !isFinite(msecs)) {
+  if (msecs < 0 || !NumberIsFinite(msecs)) {
     throw new ERR_OUT_OF_RANGE(name, 'a non-negative finite number', msecs);
   }
 
@@ -554,7 +556,7 @@ function getTimerCallbacks(runNextTicks) {
         if (args === undefined)
           timer._onTimeout();
         else
-          timer._onTimeout(...args);
+          ReflectApply(timer._onTimeout, timer, args);
       } finally {
         if (timer._repeat && timer._idleTimeout !== -1) {
           timer._idleTimeout = timer._repeat;

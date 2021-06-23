@@ -3,11 +3,13 @@
 const {
   ArrayIsArray,
   BigInt,
+  Date,
   DateNow,
   ErrorCaptureStackTrace,
   ObjectPrototypeHasOwnProperty,
   Number,
   NumberIsFinite,
+  NumberIsInteger,
   MathMin,
   ObjectSetPrototypeOf,
   ReflectOwnKeys,
@@ -618,6 +620,12 @@ const validateOffsetLengthWrite = hideStackFrames(
     if (length > byteLength - offset) {
       throw new ERR_OUT_OF_RANGE('length', `<= ${byteLength - offset}`, length);
     }
+
+    if (length < 0) {
+      throw new ERR_OUT_OF_RANGE('length', '>= 0', length);
+    }
+
+    validateInt32(length, 'length', 0);
   }
 );
 
@@ -758,7 +766,7 @@ const getValidMode = hideStackFrames((mode, type) => {
   if (mode == null) {
     return def;
   }
-  if (Number.isInteger(mode) && mode >= min && mode <= max) {
+  if (NumberIsInteger(mode) && mode >= min && mode <= max) {
     return mode;
   }
   if (typeof mode !== 'number') {

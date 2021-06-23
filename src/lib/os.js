@@ -22,9 +22,13 @@
 'use strict';
 
 const {
+  ArrayPrototypePush,
   Float64Array,
   NumberParseInt,
   ObjectDefineProperties,
+  StringPrototypeEndsWith,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
   SymbolToPrimitive,
 } = primordials;
 
@@ -132,7 +136,7 @@ function cpus() {
   const result = [];
   let i = 0;
   while (i < data.length) {
-    result.push({
+    ArrayPrototypePush(result, {
       model: data[i++],
       speed: data[i++],
       times: {
@@ -172,15 +176,16 @@ function tmpdir() {
     path = process.env.TEMP ||
            process.env.TMP ||
            (process.env.SystemRoot || process.env.windir) + '\\temp';
-    if (path.length > 1 && path.endsWith('\\') && !path.endsWith(':\\'))
-      path = path.slice(0, -1);
+    if (path.length > 1 && StringPrototypeEndsWith(path, '\\') &&
+        !StringPrototypeEndsWith(path, ':\\'))
+      path = StringPrototypeSlice(path, 0, -1);
   } else {
     path = safeGetenv('TMPDIR') ||
            safeGetenv('TMP') ||
            safeGetenv('TEMP') ||
            '/tmp';
-    if (path.length > 1 && path.endsWith('/'))
-      path = path.slice(0, -1);
+    if (path.length > 1 && StringPrototypeEndsWith(path, '/'))
+      path = StringPrototypeSlice(path, 0, -1);
   }
 
   return path;
@@ -217,7 +222,7 @@ function getCIDR(address, netmask, family) {
     groupLength = 16;
   }
 
-  const parts = netmask.split(split);
+  const parts = StringPrototypeSplit(netmask, split);
   for (var i = 0; i < parts.length; i++) {
     if (parts[i] !== '') {
       const binary = NumberParseInt(parts[i], range);
@@ -272,7 +277,7 @@ function networkInterfaces() {
 
     const existing = result[name];
     if (existing !== undefined)
-      existing.push(entry);
+      ArrayPrototypePush(existing, entry);
     else
       result[name] = [entry];
   }
@@ -281,7 +286,7 @@ function networkInterfaces() {
 }
 
 /**
- * @param {number} pid
+ * @param {number} [pid=0]
  * @param {number} priority
  * @returns {void}
  */
@@ -301,7 +306,7 @@ function setPriority(pid, priority) {
 }
 
 /**
- * @param {number} pid
+ * @param {number} [pid=0]
  * @returns {number}
  */
 function getPriority(pid) {
@@ -320,9 +325,9 @@ function getPriority(pid) {
 }
 
 /**
- * @param {{ encoding?: string }} options If `encoding` is set to `'buffer'`,
- * the `username`, `shell`, and `homedir` values will be `Buffer` instances.
- * Default: `'utf8'`
+ * @param {{ encoding?: string }} [options=utf8] If `encoding` is set to
+ * `'buffer'`, the `username`, `shell`, and `homedir` values will
+ * be `Buffer` instances.
  * @returns {{
  *   uid: number
  *   gid: number

@@ -675,7 +675,9 @@ TLSSocket.prototype._init = function(socket, wrap) {
     if (event !== 'keylog')
       return;
 
-    ssl.enableKeylogCallback();
+    // Guard against enableKeylogCallback after destroy
+    if (!this._handle) return;
+    this._handle.enableKeylogCallback();
 
     // Remove this listener since it's no longer needed.
     this.removeListener('newListener', keylogNewListener);
@@ -719,7 +721,9 @@ TLSSocket.prototype._init = function(socket, wrap) {
       if (event !== 'session')
         return;
 
-      ssl.enableSessionCallbacks();
+      // Guard against enableSessionCallbacks after destroy
+      if (!this._handle) return;
+      this._handle.enableSessionCallbacks();
 
       // Remove this listener since it's no longer needed.
       this.removeListener('newListener', newListener);
@@ -1367,6 +1371,9 @@ Server.prototype.getTicketKeys = function getTicketKeys() {
 
 
 Server.prototype.setTicketKeys = function setTicketKeys(keys) {
+  validateBuffer(keys);
+  assert(keys.byteLength === 48,
+         'Session ticket keys must be a 48-byte buffer');
   this._sharedCreds.context.setTicketKeys(keys);
 };
 

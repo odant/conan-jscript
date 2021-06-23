@@ -24,7 +24,7 @@
 
 #define NODE_MAJOR_VERSION 14
 #define NODE_MINOR_VERSION 17
-#define NODE_PATCH_VERSION 0
+#define NODE_PATCH_VERSION 1
 
 #define NODE_VERSION_IS_LTS 1
 #define NODE_VERSION_LTS_CODENAME "Fermium"
@@ -84,7 +84,7 @@
  * if it can be made ABI compatible with the previous version.
  *
  * The registry of used NODE_MODULE_VERSION numbers is located at
- *   https://github.com/nodejs/node/blob/master/doc/abi_version_registry.json
+ *   https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json
  * Extenders, embedders and other consumers of Node.js that require ABI
  * version matching should open a pull request to reserve a number in this
  * registry.

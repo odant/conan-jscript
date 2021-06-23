@@ -28,9 +28,13 @@ const {
   ArrayIsArray,
   Int8Array,
   MathAbs,
+  NumberIsFinite,
   ObjectCreate,
   ObjectKeys,
   String,
+  StringPrototypeCharCodeAt,
+  StringPrototypeSlice,
+  decodeURIComponent,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -90,20 +94,20 @@ function unescapeBuffer(s, decodeSpaces) {
   // Flag to know if some hex chars have been decoded
   let hasHex = false;
   while (index < s.length) {
-    currentChar = s.charCodeAt(index);
+    currentChar = StringPrototypeCharCodeAt(s, index);
     if (currentChar === 43 /* '+' */ && decodeSpaces) {
       out[outIndex++] = 32; // ' '
       index++;
       continue;
     }
     if (currentChar === 37 /* '%' */ && index < maxLength) {
-      currentChar = s.charCodeAt(++index);
+      currentChar = StringPrototypeCharCodeAt(s, ++index);
       hexHigh = unhexTable[currentChar];
       if (!(hexHigh >= 0)) {
         out[outIndex++] = 37; // '%'
         continue;
       } else {
-        nextChar = s.charCodeAt(++index);
+        nextChar = StringPrototypeCharCodeAt(s, ++index);
         hexLow = unhexTable[nextChar];
         if (!(hexLow >= 0)) {
           out[outIndex++] = 37; // '%'
@@ -175,7 +179,7 @@ function qsEscape(str) {
 function stringifyPrimitive(v) {
   if (typeof v === 'string')
     return v;
-  if (typeof v === 'number' && isFinite(v))
+  if (typeof v === 'number' && NumberIsFinite(v))
     return '' + v;
   if (typeof v === 'bigint')
     return '' + v;
@@ -192,7 +196,7 @@ function stringifyPrimitive(v) {
 function encodeStringified(v, encode) {
   if (typeof v === 'string')
     return (v.length ? encode(v) : '');
-  if (typeof v === 'number' && isFinite(v)) {
+  if (typeof v === 'number' && NumberIsFinite(v)) {
     // Values >= 1e21 automatically switch to scientific notation which requires
     // escaping due to the inclusion of a '+' in the output
     return (MathAbs(v) < 1e21 ? '' + v : encode('' + v));
@@ -271,10 +275,10 @@ function stringify(obj, sep, eq, options) {
  */
 function charCodes(str) {
   if (str.length === 0) return [];
-  if (str.length === 1) return [str.charCodeAt(0)];
+  if (str.length === 1) return [StringPrototypeCharCodeAt(str, 0)];
   const ret = new Array(str.length);
   for (let i = 0; i < str.length; ++i)
-    ret[i] = str.charCodeAt(i);
+    ret[i] = StringPrototypeCharCodeAt(str, i);
   return ret;
 }
 const defSepCodes = [38]; // &
@@ -318,8 +322,8 @@ function parse(qs, sep, eq, options) {
     return obj;
   }
 
-  const sepCodes = (!sep ? defSepCodes : charCodes(sep + ''));
-  const eqCodes = (!eq ? defEqCodes : charCodes(eq + ''));
+  const sepCodes = (!sep ? defSepCodes : charCodes(String(sep)));
+  const eqCodes = (!eq ? defEqCodes : charCodes(String(eq)));
   const sepLen = sepCodes.length;
   const eqLen = eqCodes.length;
 
@@ -350,7 +354,7 @@ function parse(qs, sep, eq, options) {
   const plusChar = (customDecode ? '%20' : ' ');
   let encodeCheck = 0;
   for (let i = 0; i < qs.length; ++i) {
-    const code = qs.charCodeAt(i);
+    const code = StringPrototypeCharCodeAt(qs, i);
 
     // Try matching key/value pair separator (e.g. '&')
     if (code === sepCodes[sepIdx]) {
@@ -361,7 +365,7 @@ function parse(qs, sep, eq, options) {
           // We didn't find the (entire) key/value separator
           if (lastPos < end) {
             // Treat the substring as part of the key instead of the value
-            key += qs.slice(lastPos, end);
+            key += StringPrototypeSlice(qs, lastPos, end);
           } else if (key.length === 0) {
             // We saw an empty substring between separators
             if (--pairs === 0)
@@ -371,7 +375,7 @@ function parse(qs, sep, eq, options) {
             continue;
           }
         } else if (lastPos < end) {
-          value += qs.slice(lastPos, end);
+          value += StringPrototypeSlice(qs, lastPos, end);
         }
 
         addKeyVal(obj, key, value, keyEncoded, valEncoded, decode);
@@ -393,7 +397,7 @@ function parse(qs, sep, eq, options) {
             // Key/value separator match!
             const end = i - eqIdx + 1;
             if (lastPos < end)
-              key += qs.slice(lastPos, end);
+              key += StringPrototypeSlice(qs, lastPos, end);
             encodeCheck = 0;
             lastPos = i + 1;
           }
@@ -419,7 +423,7 @@ function parse(qs, sep, eq, options) {
         }
         if (code === 43/* + */) {
           if (lastPos < i)
-            key += qs.slice(lastPos, i);
+            key += StringPrototypeSlice(qs, lastPos, i);
           key += plusChar;
           lastPos = i + 1;
           continue;
@@ -427,7 +431,7 @@ function parse(qs, sep, eq, options) {
       }
       if (code === 43/* + */) {
         if (lastPos < i)
-          value += qs.slice(lastPos, i);
+          value += StringPrototypeSlice(qs, lastPos, i);
         value += plusChar;
         lastPos = i + 1;
       } else if (!valEncoded) {
@@ -450,9 +454,9 @@ function parse(qs, sep, eq, options) {
   // Deal with any leftover key or value data
   if (lastPos < qs.length) {
     if (eqIdx < eqLen)
-      key += qs.slice(lastPos);
+      key += StringPrototypeSlice(qs, lastPos);
     else if (sepIdx < sepLen)
-      value += qs.slice(lastPos);
+      value += StringPrototypeSlice(qs, lastPos);
   } else if (eqIdx === 0 && key.length === 0) {
     // We ended on an empty substring
     return obj;
