@@ -32,7 +32,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -599,6 +599,11 @@ parser.add_option('--ninja',
+@@ -604,6 +604,11 @@ parser.add_option('--ninja',
      dest='use_ninja',
      help='generate build files for use with Ninja')
  
@@ -44,7 +44,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_option('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -690,6 +695,12 @@ parser.add_option('-C',
+@@ -695,6 +700,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -57,7 +57,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1238,6 +1249,8 @@ def configure_node(o):
+@@ -1243,6 +1254,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -66,7 +66,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -1862,6 +1875,9 @@ if options.prefix:
+@@ -1867,6 +1880,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -76,7 +76,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1884,6 +1900,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1889,6 +1905,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
@@ -107,7 +107,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -355,13 +355,10 @@
+@@ -356,13 +356,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -123,7 +123,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -538,6 +535,36 @@
+@@ -539,6 +536,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -160,7 +160,7 @@ index f18a0d58a..c187559b1 100644
        ],
      }, # node_core_target_name
      {
-@@ -556,6 +583,12 @@
+@@ -557,6 +584,12 @@
          'deps/uvwasi/uvwasi.gyp:uvwasi',
        ],
  
@@ -173,7 +173,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -807,6 +840,13 @@
+@@ -808,6 +841,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -187,7 +187,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -824,6 +864,7 @@
+@@ -825,6 +865,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -195,7 +195,7 @@ index f18a0d58a..c187559b1 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1363,121 +1404,6 @@
+@@ -1364,121 +1405,6 @@
          }],
        ],
      }, # embedtest
@@ -405,7 +405,7 @@ index 0f72abc0b..4375a1415 100644
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 14
  #define NODE_MINOR_VERSION 17
- #define NODE_PATCH_VERSION 0
+ #define NODE_PATCH_VERSION 1
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
@@ -484,22 +484,13 @@ diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gy
 index f5ceacfca..53c9a3151 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
-@@ -41,7 +41,7 @@ import gyp.xcode_emulation
- try:
-     # maketrans moved to str in python3.
-     _maketrans = string.maketrans
--except NameError:
-+except AttributeError:
-     _maketrans = str.maketrans
- 
- generator_default_variables = {
 @@ -1045,17 +1045,6 @@ def WriteTarget(
          if ldflags is not None:
              SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
  
 -        # XCode settings
 -        xcode_settings = config.get("xcode_settings", {})
--        for xcode_setting, xcode_value in xcode_settings.viewitems():
+-        for xcode_setting, xcode_value in xcode_settings.items():
 -            SetTargetProperty(
 -                output,
 -                cmake_target_name,
