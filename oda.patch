@@ -2,7 +2,7 @@ diff --git a/src/common.gypi b/src/common.gypi
 index e610650a0..e3aa0ba46 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
-@@ -268,6 +268,7 @@
+@@ -275,6 +275,7 @@
          'SuppressStartupBanner': 'true',
          'WarnAsError': 'false',
          'WarningLevel': 3,                    # /W3
@@ -10,7 +10,7 @@ index e610650a0..e3aa0ba46 100644
        },
        'VCLinkerTool': {
          'target_conditions': [
-@@ -374,7 +375,7 @@
+@@ -381,7 +382,7 @@
        }],
        [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
          'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
@@ -19,7 +19,7 @@ index e610650a0..e3aa0ba46 100644
          'defines': [ '__STDC_FORMAT_MACROS' ],
          'ldflags': [ '-rdynamic' ],
          'target_conditions': [
-@@ -519,7 +520,7 @@
+@@ -526,7 +527,7 @@
            ['clang==1', {
              'xcode_settings': {
                'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
@@ -57,7 +57,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1243,6 +1254,8 @@ def configure_node(o):
+@@ -1252,6 +1263,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -66,7 +66,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -1867,6 +1880,9 @@ if options.prefix:
+@@ -1876,6 +1889,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -76,7 +76,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1889,6 +1905,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1898,6 +1914,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
@@ -173,7 +173,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -808,6 +841,13 @@
+@@ -810,6 +843,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -187,7 +187,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -825,6 +865,7 @@
+@@ -827,6 +867,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -195,7 +195,7 @@ index f18a0d58a..c187559b1 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1364,121 +1405,6 @@
+@@ -1366,121 +1407,6 @@
          }],
        ],
      }, # embedtest
@@ -405,7 +405,7 @@ index 0f72abc0b..4375a1415 100644
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 14
  #define NODE_MINOR_VERSION 17
- #define NODE_PATCH_VERSION 2
+ #define NODE_PATCH_VERSION 4
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
