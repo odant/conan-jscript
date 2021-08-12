@@ -4,13 +4,12 @@
 #include <v8.h>
 
 #ifdef _MSC_VER
-#pragma warning (disable:4251)
-#pragma warning (disable:4275)
+#    pragma warning (push)
+#    pragma warning (disable:4251 4275)
 #endif
 #include <node.h>
 #ifdef _MSC_VER
-#pragma warning (default:4251)
-#pragma warning (default:4275)
+#    pragma warning (pop)
 #endif
 
 
