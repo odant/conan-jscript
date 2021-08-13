@@ -134,6 +134,8 @@ public:
   void StartNodeInstance();
 
   bool isStopping() const;
+  bool isStop() const;
+  bool isError() const;
   bool isRun() const;
   bool isInitialize() const;
 
@@ -144,6 +146,7 @@ public:
 
   static const std::string defaultOrigin;
   static const std::string externalOrigin;
+  static const std::string stopScript;
 
   Mutex _isolate_mutex;
   v8::Isolate* _isolate{nullptr};
@@ -172,6 +175,7 @@ private:
 
 const std::string JSInstanceImpl::defaultOrigin;
 const std::string JSInstanceImpl::externalOrigin;
+const std::string JSInstanceImpl::stopScript;
 
 
 inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag)
@@ -185,20 +189,31 @@ inline JSInstanceImpl::Ptr JSInstanceImpl::create() {
 
 bool JSInstanceImpl::isStopping() const {
   const bool envStopped = !(_env && _env->is_stopping());
-  return _state == STOPPING || envStopped;
+  return _state == JSInstanceImpl::state_t::STOPPING || envStopped;
+}
+
+bool JSInstanceImpl::isStop() const {
+  return _state == JSInstanceImpl::state_t::STOP;
+}
+
+bool JSInstanceImpl::isError() const {
+  return _state == JSInstanceImpl::state_t::ERROR;
 }
 
 bool JSInstanceImpl::isRun() const {
   const bool envNotStopped = _env && !(_env->is_stopping());
-  return _state == RUN && envNotStopped;
+  return _state == JSInstanceImpl::state_t::RUN && envNotStopped;
 }
 
 bool JSInstanceImpl::isInitialize() const {
-  return _state != CREATE;
+  return _state != JSInstanceImpl::state_t::CREATE;
 }
 
 void JSInstanceImpl::setState(state_t state) {
-  _state = state;
+  {
+    std::unique_lock<std::mutex> lock(_state_mutex);
+    _state = state;
+  }
   _state_cv.notify_all();
 }
 
@@ -301,11 +316,13 @@ void JSInstanceImpl::StartNodeInstance() {
         } while (more == true && !env->is_stopping());
 
         env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-        setState(JSInstanceImpl::STOP);
       }
 
       env->set_trace_sync_io(false);
-      if (!env->is_stopping()) env->VerifyNoStrongBaseObjects();
+
+      // Disabling validation due to ContextifyScript (comment MakeWeak() in constructor)
+      //if (!env->is_stopping()) env->VerifyNoStrongBaseObjects();
+
       exit_code = EmitExit(env.get());
     }
 
@@ -642,9 +659,11 @@ NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
 namespace {
 
 void setOrigin(const std::string& origin, const std::string& externalOrigin);
+void setStopScript(std::string stopScript);
 std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder);
 std::string findModule(const std::string& folder, const std::string& name);
 std::string getInitScript(std::string odaFrameworkPath);
+std::string getStopScript(const std::string& coreFolder);
 std::string convertNodeFolders(const std::vector<std::string>&);
 
 }
@@ -655,6 +674,7 @@ NODE_EXTERN void Initialize(const std::string& origin, const std::string& extern
                                std::function<void(const std::string&)> redirectFPrintF) {
 
   setOrigin(origin, externalOrigin);
+  setStopScript(getStopScript(coreFolder));
 
   std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
 
@@ -693,6 +713,7 @@ NODE_EXTERN void Initialize(const std::string& origin, const std::string& extern
                                std::function<void(const std::string&)> redirectFPrintF) {
 
   setOrigin(origin, externalOrigin);
+  setStopScript(getStopScript(coreFolder));
 
   std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
 
@@ -714,6 +735,11 @@ void setOrigin(const std::string& origin, const std::string& externalOrigin) {
     const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
     const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
 }
+
+void setStopScript(std::string stopScript) {
+  const_cast<std::string&>(JSInstanceImpl::stopScript) = std::move(stopScript);
+}
+
 
 std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder) {
     std::vector<std::string> argv{
@@ -740,30 +766,30 @@ std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const
 }
 
 std::string findModule(const std::string& folder, const std::string& name) {
-          FILE* file;
+    FILE* file;
 
-          const std::string esModulesLoader{ folder + '/' + name + ".mjs" };
-          file = ::fopen(esModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              ::fclose(file);
-              return esModulesLoader;
-          }
+    const std::string esModulesLoader{ folder + '/' + name + ".mjs" };
+    file = ::fopen(esModulesLoader.c_str(), "r");
+    if (file != nullptr) {
+        ::fclose(file);
+        return esModulesLoader;
+    }
 
-          const std::string commonModulesLoader{ folder + '/' + name + ".cjs"};
-          file = ::fopen(commonModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              ::fclose(file);
-              return commonModulesLoader;
-          }
+    const std::string commonModulesLoader{ folder + '/' + name + ".cjs"};
+    file = ::fopen(commonModulesLoader.c_str(), "r");
+    if (file != nullptr) {
+        ::fclose(file);
+        return commonModulesLoader;
+    }
 
-          const std::string jsModulesLoader{ folder + '/' + name + ".js" };
-          file = ::fopen(jsModulesLoader.c_str(), "r");
-          if (file != nullptr) {
-              ::fclose(file);
-              return jsModulesLoader;
-          }
+    const std::string jsModulesLoader{ folder + '/' + name + ".js" };
+    file = ::fopen(jsModulesLoader.c_str(), "r");
+    if (file != nullptr) {
+        ::fclose(file);
+        return jsModulesLoader;
+    }
 
-          return std::string{};
+    return std::string{};
 }
 
 std::string getInitScript(std::string odaFrameworkPath) {
@@ -809,6 +835,45 @@ std::string getInitScript(std::string odaFrameworkPath) {
   ;
 
   return script;
+}
+
+std::string getStopScript(const std::string& coreFolder) {
+    const std::string stopModuleName{ "jscript-stop" };
+    std::string path = findModule(coreFolder + "/web/core", stopModuleName);
+    if (path.empty()) {
+        path = findModule(coreFolder + "/web", stopModuleName);
+    }
+
+    std::string script;
+    if (!path.empty()) {
+        FILE* file = ::fopen(path.c_str(), "r");
+        if (file != nullptr) {
+            ::fseek(file, 0L, SEEK_END);
+            const auto fileSize = ::ftell(file);
+            assert(fileSize > 0);
+            if (fileSize > 0) {
+                ::rewind(file);
+                script.reserve(fileSize + 1);
+                for (char symbol = ::fgetc(file); !::feof(file); symbol = ::fgetc(file)) {
+                    script += symbol;
+                }
+            }
+            ::fclose(file);
+        }
+    }
+    if (script.empty()) {
+        script =
+R"eof(
+if (globalThis.__oda_stopInstance && typeof globalThis.__oda_stopInstance === 'function') {
+    globalThis.__oda_stopInstance();
+}
+else if (globalThis.__oda_setErrorState && typeof globalThis.__oda_setErrorState === 'function') {
+    globalThis.__oda_setErrorState();
+}
+)eof";
+    }
+
+    return script;
 }
 
 std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
@@ -877,16 +942,34 @@ NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
 
 
 NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
-  if (instance_ == nullptr) return JS_ERROR;
+    if (instance_ == nullptr)
+        return JS_ERROR;
 
-  JSInstanceImpl::Ptr instance;
-  instance.adopt(static_cast<JSInstanceImpl*>(instance_));
-  if (instance->isRun()) {
-    auto env = instance->_env;
-    if (env != nullptr) env->ExitEnv();
-  }
+    JSInstanceImpl::Ptr instance;
+    instance.adopt(static_cast<JSInstanceImpl*>(instance_));
+    if (!instance->isStop()) {
+        assert(!JSInstanceImpl::stopScript.empty());
+        RunScriptText(instance_, JSInstanceImpl::stopScript);
+        std::unique_lock<std::mutex> lock(instance->_state_mutex);
+        const auto timeout = std::chrono::seconds(30);
+        while (true) {
+            if (instance->isStop())
+                break;
+            if (instance->isError()) {
+                auto env = instance->_env;
+                if (env != nullptr && !env->is_stopping())
+                    env->ExitEnv();
+            }
+            const auto waitStatus = instance->_state_cv.wait_for(lock, timeout);
+            if (waitStatus == std::cv_status::timeout) {
+                auto env = instance->_env;
+                if (env != nullptr && !env->is_stopping())
+                    env->ExitEnv();
+            }
+        }
+    }
 
-  return JS_SUCCESS;
+    return JS_SUCCESS;
 }
 
 
