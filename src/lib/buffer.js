@@ -116,6 +116,10 @@ const {
   addBufferPrototypeMethods
 } = require('internal/buffer');
 
+const {
+  Blob,
+} = require('internal/blob');
+
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
 addBufferPrototypeMethods(Buffer.prototype);
@@ -659,6 +663,20 @@ const encodingOps = {
                     encodingsMap.base64,
                     dir)
   },
+  base64url: {
+    encoding: 'base64url',
+    encodingVal: encodingsMap.base64url,
+    byteLength: (string) => base64ByteLength(string, string.length),
+    write: (buf, string, offset, len) =>
+      buf.base64urlWrite(string, offset, len),
+    slice: (buf, start, end) => buf.base64urlSlice(start, end),
+    indexOf: (buf, val, byteOffset, dir) =>
+      indexOfBuffer(buf,
+                    fromStringFast(val, encodingOps.base64url),
+                    byteOffset,
+                    encodingsMap.base64url,
+                    dir)
+  },
   hex: {
     encoding: 'hex',
     encodingVal: encodingsMap.hex,
@@ -714,6 +732,11 @@ function getEncodingOps(encoding) {
     case 3:
       if (encoding === 'hex' || StringPrototypeToLowerCase(encoding) === 'hex')
         return encodingOps.hex;
+      break;
+    case 9:
+      if (encoding === 'base64url' ||
+          StringPrototypeToLowerCase(encoding) === 'base64url')
+        return encodingOps.base64url;
       break;
   }
 }
@@ -1240,6 +1263,7 @@ function atob(input) {
 }
 
 module.exports = {
+  Blob,
   Buffer,
   SlowBuffer,
   transcode,
