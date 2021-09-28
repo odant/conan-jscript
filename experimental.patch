@@ -2,7 +2,7 @@ diff --git a/src/src/node_contextify.cc b/src/src/node_contextify.cc
 index 848e883a8..1589568fe 100644
 --- a/src/src/node_contextify.cc
 +++ b/src/src/node_contextify.cc
-@@ -1016,7 +1016,7 @@ bool ContextifyScript::EvalMachine(Environment* env,
+@@ -1021,7 +1021,7 @@ bool ContextifyScript::EvalMachine(Environment* env,
  ContextifyScript::ContextifyScript(Environment* env, Local<Object> object)
      : BaseObject(env, object),
        id_(env->get_next_script_id()) {

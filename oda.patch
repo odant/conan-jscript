@@ -32,7 +32,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -604,6 +604,11 @@ parser.add_option('--ninja',
+@@ -605,6 +605,11 @@ parser.add_option('--ninja',
      dest='use_ninja',
      help='generate build files for use with Ninja')
  
@@ -44,7 +44,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_option('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -695,6 +700,12 @@ parser.add_option('-C',
+@@ -696,6 +701,12 @@ parser.add_option('-C',
      dest='compile_commands_json',
      help=optparse.SUPPRESS_HELP)
  
@@ -57,7 +57,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1252,6 +1263,8 @@ def configure_node(o):
+@@ -1250,6 +1261,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -66,7 +66,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -1876,6 +1889,9 @@ if options.prefix:
+@@ -1875,6 +1888,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -76,7 +76,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1898,6 +1914,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1897,6 +1913,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
@@ -89,7 +89,7 @@ diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
 index 7fc7e0601..7fd5e575a 100644
 --- a/src/deps/uv/uv.gyp
 +++ b/src/deps/uv/uv.gyp
-@@ -249,6 +249,13 @@
+@@ -250,6 +250,13 @@
            'link_settings': {
              'libraries': [ '-ldl', '-lrt' ],
            },
@@ -107,7 +107,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -356,13 +356,10 @@
+@@ -146,13 +146,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -123,7 +123,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -539,6 +536,36 @@
+@@ -329,6 +326,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -160,7 +160,7 @@ index f18a0d58a..c187559b1 100644
        ],
      }, # node_core_target_name
      {
-@@ -557,6 +584,12 @@
+@@ -348,6 +375,12 @@
          'deps/uvwasi/uvwasi.gyp:uvwasi',
        ],
  
@@ -173,7 +173,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -810,6 +843,13 @@
+@@ -604,6 +637,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -187,7 +187,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -827,6 +867,7 @@
+@@ -621,6 +661,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -195,10 +195,10 @@ index f18a0d58a..c187559b1 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1366,121 +1407,6 @@
+@@ -1187,121 +1228,6 @@
          }],
-       ],
-     }, # embedtest
+       ]
+     }, # overlapped-checker
 -
 -    # TODO(joyeecheung): do not depend on node_lib,
 -    # instead create a smaller static library node_lib_base that does
@@ -392,7 +392,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1117,3 +1117,5 @@ void Initialize() {}
+@@ -1122,3 +1122,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -404,8 +404,8 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 14
- #define NODE_MINOR_VERSION 17
- #define NODE_PATCH_VERSION 5
+ #define NODE_MINOR_VERSION 18
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
