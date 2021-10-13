@@ -8,7 +8,7 @@ from conans import ConanFile, CMake
 class PackageTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
-    requires = "ninja/1.9.0"
+    requires = "ninja/[>=1.10.2]"
 
     def imports(self):
         self.copy("*.pdb", dst="bin", src="bin")
