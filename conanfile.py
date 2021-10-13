@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "14.18.0.0"
+    version = "14.18.1.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -46,7 +46,7 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "1.1.1k+0"
+    _openssl_version = "1.1.1L+0"
     _openssl_channel = "stable"
     _zlib_version = "1.2.11"
     _zlib_channel = "stable"
