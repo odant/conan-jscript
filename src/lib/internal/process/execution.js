@@ -83,7 +83,7 @@ function evalScript(name, body, breakFirstLine, print) {
       displayErrors: true,
       [kVmBreakFirstLineSymbol]: !!breakFirstLine,
       async importModuleDynamically(specifier) {
-        const loader = await asyncESM.ESMLoader;
+        const loader = await asyncESM.esmLoader;
         return loader.import(specifier, baseUrl);
       }
     }));
@@ -152,10 +152,13 @@ function createOnGlobalUncaughtException() {
       try {
         const report = internalBinding('report');
         if (report != null && report.shouldReportOnUncaughtException()) {
-          report.writeReport(er ? er.message : 'Exception',
-                             'Exception',
-                             null,
-                             er ? er : {});
+          report.writeReport(
+            typeof er?.message === 'string' ?
+              er.message :
+              'Exception',
+            'Exception',
+            null,
+            er ? er : {});
         }
       } catch {}  // Ignore the exception. Diagnostic reporting is unavailable.
     }

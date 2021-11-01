@@ -90,7 +90,7 @@ rl.on('line', (input) => {
 
 ### Event: `'history'`
 <!-- YAML
-added: v14.18.0
+added: v15.8.0
 -->
 
 The `'history'` event is emitted whenever the history array has changed.
@@ -346,7 +346,7 @@ whenever `rl.prompt()` is called.
 
 ### `rl.getPrompt()`
 <!-- YAML
-added: v14.17.0
+added: v15.3.0
 -->
 
 * Returns: {string} the current prompt string
@@ -436,7 +436,7 @@ asynchronous iteration may result in missed lines.
 <!-- YAML
 added: v0.1.98
 changes:
-  - version: v14.18.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/33676
     description: Value will always be a string, never undefined.
 -->
@@ -544,10 +544,10 @@ the current position of the cursor down.
 <!-- YAML
 added: v0.1.98
 changes:
-  - version: v14.18.0
+  - version: v15.14.0
     pr-url: https://github.com/nodejs/node/pull/37932
     description: The `signal` option is supported now.
-  - version: v14.18.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/33662
     description: The `history` option is supported now.
   - version: v13.9.0
@@ -967,16 +967,16 @@ const { createInterface } = require('readline');
   </tr>
 </table>
 
-[Readable]: stream.md#stream_readable_streams
+[Readable]: stream.md#readable-streams
 [TTY]: tty.md
-[TTY keybindings]: #readline_tty_keybindings
-[Writable]: stream.md#stream_writable_streams
-[`'SIGCONT'`]: #readline_event_sigcont
-[`'SIGTSTP'`]: #readline_event_sigtstp
-[`'line'`]: #readline_event_line
-[`fs.ReadStream`]: fs.md#fs_class_fs_readstream
-[`process.stdin`]: process.md#process_process_stdin
-[`process.stdout`]: process.md#process_process_stdout
-[`rl.close()`]: #readline_rl_close
-[`unref()`]: net.md#net_socket_unref
-[reading files]: #readline_example_read_file_stream_line_by_line
+[TTY keybindings]: #tty-keybindings
+[Writable]: stream.md#writable-streams
+[`'SIGCONT'`]: #event-sigcont
+[`'SIGTSTP'`]: #event-sigtstp
+[`'line'`]: #event-line
+[`fs.ReadStream`]: fs.md#class-fsreadstream
+[`process.stdin`]: process.md#processstdin
+[`process.stdout`]: process.md#processstdout
+[`rl.close()`]: #rlclose
+[`unref()`]: net.md#socketunref
+[reading files]: #example-read-file-stream-line-by-line

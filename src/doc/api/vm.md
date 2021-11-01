@@ -10,7 +10,7 @@
 
 The `vm` module enables compiling and running code within V8 Virtual
 Machine contexts. **The `vm` module is not a security mechanism. Do
-not use it to run untrusted code**.
+not use it to run untrusted code.**
 
 JavaScript code can be compiled and run immediately or
 compiled, saved, and run later.
@@ -54,6 +54,10 @@ executed in specific contexts.
 <!-- YAML
 added: v0.3.1
 changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
   - version: v10.6.0
     pr-url: https://github.com/nodejs/node/pull/20300
     description: The `produceCachedData` is deprecated in favour of
@@ -91,6 +95,9 @@ changes:
     using it in a production environment.
     * `specifier` {string} specifier passed to `import()`
     * `script` {vm.Script}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
       recommended in order to take advantage of error tracking, and to avoid
       issues with namespaces that contain `then` function exports.
@@ -541,6 +548,16 @@ The identifier of the current module, as set in the constructor.
     import foo from 'foo';
     //              ^^^^^ the module specifier
     ```
+  * `extra` {Object}
+    * `assert` {Object} The data from the assertion:
+      <!-- eslint-skip -->
+      ```js
+      import foo from 'foo' assert { name: 'value' };
+      //                           ^^^^^^^^^^^^^^^^^ the assertion
+      ```
+      Per ECMA-262, hosts are expected to ignore assertions that they do not
+      support, as opposed to, for example, triggering an error if an
+      unsupported assertion is present.
 
   * `referencingModule` {vm.Module} The `Module` object `link()` is called on.
   * Returns: {vm.Module|Promise}
@@ -632,6 +649,13 @@ The `vm.SourceTextModule` class provides the [Source Text Module Record][] as
 defined in the ECMAScript specification.
 
 ### `new vm.SourceTextModule(code[, options])`
+<!-- YAML
+changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
+-->
 
 * `code` {string} JavaScript Module code to parse
 * `options`
@@ -657,6 +681,9 @@ defined in the ECMAScript specification.
     `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
     * `specifier` {string} specifier passed to `import()`
     * `module` {vm.Module}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
       recommended in order to take advantage of error tracking, and to avoid
       issues with namespaces that contain `then` function exports.
@@ -724,7 +751,9 @@ const contextifiedObject = vm.createContext({ secret: 42 });
 
 ### `sourceTextModule.createCachedData()`
 <!-- YAML
-added: v13.7.0
+added:
+ - v13.7.0
+ - v12.17.0
 -->
 
 * Returns: {Buffer}
@@ -786,7 +815,7 @@ added:
 * `evaluateCallback` {Function} Called when the module is evaluated.
 * `options`
   * `identifier` {string} String used in stack traces.
-   **Default:** `'vm:module(i)'` where `i` is a context-specific ascending
+    **Default:** `'vm:module(i)'` where `i` is a context-specific ascending
     index.
   * `context` {Object} The [contextified][] object as returned by the
     `vm.createContext()` method, to compile and evaluate this `Module` in.
@@ -840,6 +869,13 @@ const vm = require('vm');
 <!-- YAML
 added: v10.10.0
 changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
+  - version: v15.9.0
+    pr-url: https://github.com/nodejs/node/pull/35431
+    description: Added `importModuleDynamically` option again.
   - version: v14.3.0
     pr-url: https://github.com/nodejs/node/pull/33364
     description: Removal of `importModuleDynamically` due to compatibility
@@ -871,6 +907,19 @@ changes:
   * `contextExtensions` {Object[]} An array containing a collection of context
     extensions (objects wrapping the current scope) to be applied while
     compiling. **Default:** `[]`.
+  * `importModuleDynamically` {Function} Called during evaluation of this module
+    when `import()` is called. If this option is not specified, calls to
+    `import()` will reject with [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][].
+    This option is part of the experimental modules API, and should not be
+    considered stable.
+    * `specifier` {string} specifier passed to `import()`
+    * `function` {Function}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
+    * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
+      recommended in order to take advantage of error tracking, and to avoid
+      issues with namespaces that contain `then` function exports.
 * Returns: {Function}
 
 Compiles the given code into the provided context (if no context is
@@ -1043,6 +1092,10 @@ vm.measureMemory({ mode: 'detailed', execution: 'eager' })
 <!-- YAML
 added: v0.3.1
 changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
   - version: v6.3.0
     pr-url: https://github.com/nodejs/node/pull/6635
     description: The `breakOnSigint` option is supported now.
@@ -1088,6 +1141,9 @@ changes:
     using it in a production environment.
     * `specifier` {string} specifier passed to `import()`
     * `script` {vm.Script}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
       recommended in order to take advantage of error tracking, and to avoid
       issues with namespaces that contain `then` function exports.
@@ -1120,6 +1176,10 @@ console.log(contextObject);
 <!-- YAML
 added: v0.3.1
 changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
   - version: v14.6.0
     pr-url: https://github.com/nodejs/node/pull/34023
     description: The `microtaskMode` option is supported now.
@@ -1186,6 +1246,9 @@ changes:
     using it in a production environment.
     * `specifier` {string} specifier passed to `import()`
     * `script` {vm.Script}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
       recommended in order to take advantage of error tracking, and to avoid
       issues with namespaces that contain `then` function exports.
@@ -1222,6 +1285,10 @@ console.log(contextObject);
 <!-- YAML
 added: v0.3.1
 changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/40249
+    description: Added support for import assertions to the
+                 `importModuleDynamically` parameter.
   - version: v6.3.0
     pr-url: https://github.com/nodejs/node/pull/6635
     description: The `breakOnSigint` option is supported now.
@@ -1265,6 +1332,9 @@ changes:
     using it in a production environment.
     * `specifier` {string} specifier passed to `import()`
     * `script` {vm.Script}
+    * `importAssertions` {Object} The `"assert"` value passed to the
+      [`optionsExpression`][] optional parameter, or an empty object if no value
+      was provided.
     * Returns: {Module Namespace Object|vm.Module} Returning a `vm.Module` is
       recommended in order to take advantage of error tracking, and to avoid
       issues with namespaces that contain `then` function exports.
@@ -1413,7 +1483,7 @@ which are shared by all contexts. Therefore, callbacks passed to those functions
 are not controllable through the timeout either.
 
 [Cyclic Module Record]: https://tc39.es/ecma262/#sec-cyclic-module-records
-[ECMAScript Module Loader]: esm.md#esm_modules_ecmascript_modules
+[ECMAScript Module Loader]: esm.md#modules-ecmascript-modules
 [Evaluate() concrete method]: https://tc39.es/ecma262/#sec-moduleevaluation
 [GetModuleNamespace]: https://tc39.es/ecma262/#sec-getmodulenamespace
 [HostResolveImportedModule]: https://tc39.es/ecma262/#sec-hostresolveimportedmodule
@@ -1422,18 +1492,19 @@ are not controllable through the timeout either.
 [Source Text Module Record]: https://tc39.es/ecma262/#sec-source-text-module-records
 [Synthetic Module Record]: https://heycam.github.io/webidl/#synthetic-module-records
 [V8 Embedder's Guide]: https://v8.dev/docs/embed#contexts
-[`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`]: errors.md#ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING
-[`ERR_VM_MODULE_STATUS`]: errors.md#ERR_VM_MODULE_STATUS
-[`Error`]: errors.md#errors_class_error
-[`URL`]: url.md#url_class_url
+[`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`]: errors.md#err_vm_dynamic_import_callback_missing
+[`ERR_VM_MODULE_STATUS`]: errors.md#err_vm_module_status
+[`Error`]: errors.md#class-error
+[`URL`]: url.md#class-url
 [`eval()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval
-[`script.runInContext()`]: #vm_script_runincontext_contextifiedobject_options
-[`script.runInThisContext()`]: #vm_script_runinthiscontext_options
-[`url.origin`]: url.md#url_url_origin
-[`vm.createContext()`]: #vm_vm_createcontext_contextobject_options
-[`vm.runInContext()`]: #vm_vm_runincontext_code_contextifiedobject_options
-[`vm.runInThisContext()`]: #vm_vm_runinthiscontext_code_options
-[contextified]: #vm_what_does_it_mean_to_contextify_an_object
+[`optionsExpression`]: https://tc39.es/proposal-import-assertions/#sec-evaluate-import-call
+[`script.runInContext()`]: #scriptrunincontextcontextifiedobject-options
+[`script.runInThisContext()`]: #scriptruninthiscontextoptions
+[`url.origin`]: url.md#urlorigin
+[`vm.createContext()`]: #vmcreatecontextcontextobject-options
+[`vm.runInContext()`]: #vmrunincontextcode-contextifiedobject-options
+[`vm.runInThisContext()`]: #vmruninthiscontextcode-options
+[contextified]: #what-does-it-mean-to-contextify-an-object
 [global object]: https://es5.github.io/#x15.1
 [indirect `eval()` call]: https://es5.github.io/#x10.4.2
 [origin]: https://developer.mozilla.org/en-US/docs/Glossary/Origin

@@ -1,6 +1,7 @@
 # Node-API
 
 <!--introduced_in=v8.0.0-->
+
 <!-- type=misc -->
 
 > Stability: 2 - Stable
@@ -732,7 +733,9 @@ typedef struct {
 
 #### napi_async_cleanup_hook_handle
 <!-- YAML
-added: v14.10.0
+added:
+  - v14.10.0
+  - v12.19.0
 -->
 
 An opaque value returned by [`napi_add_async_cleanup_hook`][]. It must be passed
@@ -869,7 +872,9 @@ handle and/or callback scope inside the function body is not necessary.
 
 #### napi_async_cleanup_hook
 <!-- YAML
-added: v14.10.0
+added:
+  - v14.10.0
+  - v12.19.0
 -->
 
 Function pointer used with [`napi_add_async_cleanup_hook`][]. It will be called
@@ -1569,7 +1574,7 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
 
 Returns `napi_ok` if the API succeeded.
 
-This API create a new reference with the specified reference count
+This API creates a new reference with the specified reference count
 to the `Object` passed in.
 
 #### napi_delete_reference
@@ -1724,7 +1729,9 @@ added:
   - v12.19.0
 napiVersion: 8
 changes:
-  - version: v14.10.0
+  - version:
+    - v14.10.0
+    - v12.19.0
     pr-url: https://github.com/nodejs/node/pull/34819
     description: Changed signature of the `hook` callback.
 -->
@@ -1759,9 +1766,13 @@ is being torn down anyway.
 
 #### napi_remove_async_cleanup_hook
 <!-- YAML
-added: v14.8.0
+added:
+  - v14.8.0
+  - v12.19.0
 changes:
-  - version: v14.10.0
+  - version:
+    - v14.10.0
+    - v12.19.0
     pr-url: https://github.com/nodejs/node/pull/34819
     description: Removed `env` parameter.
 -->
@@ -1917,6 +1928,7 @@ the `napi_value` in question is of the JavaScript type expected by the API.
 <!-- YAML
 added:
  - v13.7.0
+ - v12.17.0
  - v10.20.0
 napiVersion: 6
 -->
@@ -1940,6 +1952,7 @@ of the objects's prototype chain as well.
 <!-- YAML
 added:
  - v13.7.0
+ - v12.17.0
  - v10.20.0
 napiVersion: 6
 -->
@@ -1961,6 +1974,7 @@ Property filter bits. They can be or'ed to build a composite filter.
 <!-- YAML
 added:
  - v13.7.0
+ - v12.17.0
  - v10.20.0
 napiVersion: 6
 -->
@@ -2746,7 +2760,7 @@ napi_status napi_get_buffer_info(napi_env env,
 Returns `napi_ok` if the API succeeded.
 
 This API is used to retrieve the underlying data buffer of a `node::Buffer`
-and it's length.
+and its length.
 
 *Warning*: Use caution while using this API since the underlying data buffer's
 lifetime is not guaranteed if it's managed by the VM.
@@ -3290,7 +3304,6 @@ Returns `napi_ok` if the API succeeded.
 
 This API implements the abstract operation `ToBoolean()` as defined in
 [Section 7.1.2][] of the ECMAScript Language Specification.
-This API can be re-entrant if getters are defined on the passed-in `Object`.
 
 ### napi_coerce_to_number
 <!-- YAML
@@ -3312,7 +3325,8 @@ Returns `napi_ok` if the API succeeded.
 
 This API implements the abstract operation `ToNumber()` as defined in
 [Section 7.1.3][] of the ECMAScript Language Specification.
-This API can be re-entrant if getters are defined on the passed-in `Object`.
+This function potentially runs JS code if the passed-in value is an
+object.
 
 ### napi_coerce_to_object
 <!-- YAML
@@ -3334,7 +3348,6 @@ Returns `napi_ok` if the API succeeded.
 
 This API implements the abstract operation `ToObject()` as defined in
 [Section 7.1.13][] of the ECMAScript Language Specification.
-This API can be re-entrant if getters are defined on the passed-in `Object`.
 
 ### napi_coerce_to_string
 <!-- YAML
@@ -3356,7 +3369,8 @@ Returns `napi_ok` if the API succeeded.
 
 This API implements the abstract operation `ToString()` as defined in
 [Section 7.1.13][] of the ECMAScript Language Specification.
-This API can be re-entrant if getters are defined on the passed-in `Object`.
+This function potentially runs JS code if the passed-in value is an
+object.
 
 ### napi_typeof
 <!-- YAML
@@ -3887,6 +3901,7 @@ included.
 <!-- YAML
 added:
  - v13.7.0
+ - v12.17.0
  - v10.20.0
 napiVersion: 6
 -->
@@ -4117,7 +4132,7 @@ napi_status napi_set_element(napi_env env,
 
 Returns `napi_ok` if the API succeeded.
 
-This API sets and element on the `Object` passed in.
+This API sets an element on the `Object` passed in.
 
 #### napi_get_element
 <!-- YAML
@@ -5214,7 +5229,7 @@ avoid introducing causing memory leaks. However, if the `async_resource` is
 garbage collected by JavaScript engine before the `napi_async_context` was
 destroyed by `napi_async_destroy`, calling `napi_async_context` related APIs
 like [`napi_open_callback_scope`][] and [`napi_make_callback`][] can cause
-problems like loss of async context when using the `AsyncLocalStoage` API.
+problems like loss of async context when using the `AsyncLocalStorage` API.
 
 In order to retain ABI compatibility with previous versions, passing `NULL`
 for `async_resource` does not result in an error. However, this is not
@@ -5717,7 +5732,7 @@ after receiving a return value of `napi_closing` in response to a call to
 `napi_threadsafe_function` can be freed in its `napi_finalize` callback which
 was passed to `napi_create_threadsafe_function()`. The parameter
 `initial_thread_count` of `napi_create_threadsafe_function` marks the initial
-number of aquisitions of the thread-safe functions, instead of calling
+number of acquisitions of the thread-safe functions, instead of calling
 `napi_acquire_threadsafe_function` multiple times at creation.
 
 Once the number of threads making use of a `napi_threadsafe_function` reaches
@@ -5965,7 +5980,9 @@ This API may only be called from the main thread.
 ## node_api_get_module_file_name
 
 <!-- YAML
-added: v14.18.0
+added:
+  - v15.9.0
+  - v12.22.0
 -->
 
 > Stability: 1 - Experimental
@@ -5991,14 +6008,14 @@ the add-on's file name during loading.
 [CMake]: https://cmake.org
 [CMake.js]: https://github.com/cmake-js/cmake-js
 [ECMAScript Language Specification]: https://tc39.github.io/ecma262/
-[Error handling]: #n_api_error_handling
+[Error handling]: #error-handling
 [GCC]: https://gcc.gnu.org
 [GYP]: https://gyp.gsrc.io
 [GitHub releases]: https://help.github.com/en/github/administering-a-repository/about-releases
 [LLVM]: https://llvm.org
 [Native Abstractions for Node.js]: https://github.com/nodejs/nan
-[Object lifetime management]: #n_api_object_lifetime_management
-[Object wrap]: #n_api_object_wrap
+[Object lifetime management]: #object-lifetime-management
+[Object wrap]: #object-wrap
 [Section 12.10.4]: https://tc39.github.io/ecma262/#sec-instanceofoperator
 [Section 12.5.5]: https://tc39.github.io/ecma262/#sec-typeof-operator
 [Section 19.2]: https://tc39.github.io/ecma262/#sec-function-objects
@@ -6028,79 +6045,79 @@ the add-on's file name during loading.
 [Section 9.1.6]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
 [Travis CI]: https://travis-ci.org
 [Visual Studio]: https://visualstudio.microsoft.com
-[Working with JavaScript properties]: #n_api_working_with_javascript_properties
+[Working with JavaScript properties]: #working-with-javascript-properties
 [Xcode]: https://developer.apple.com/xcode/
 [`Number.MAX_SAFE_INTEGER`]: https://tc39.github.io/ecma262/#sec-number.max_safe_integer
 [`Number.MIN_SAFE_INTEGER`]: https://tc39.github.io/ecma262/#sec-number.min_safe_integer
-[`Worker`]: worker_threads.md#worker_threads_class_worker
-[`async_hooks.executionAsyncResource()`]: async_hooks.md#async_hooks_async_hooks_executionasyncresource
-[`global`]: globals.md#globals_global
-[`init` hooks]: async_hooks.md#async_hooks_init_asyncid_type_triggerasyncid_resource
-[`napi_add_async_cleanup_hook`]: #n_api_napi_add_async_cleanup_hook
-[`napi_add_env_cleanup_hook`]: #n_api_napi_add_env_cleanup_hook
-[`napi_add_finalizer`]: #n_api_napi_add_finalizer
-[`napi_async_cleanup_hook`]: #n_api_napi_async_cleanup_hook
-[`napi_async_complete_callback`]: #n_api_napi_async_complete_callback
-[`napi_async_destroy`]: #n_api_napi_async_destroy
-[`napi_async_init`]: #n_api_napi_async_init
-[`napi_callback`]: #n_api_napi_callback
-[`napi_cancel_async_work`]: #n_api_napi_cancel_async_work
-[`napi_close_callback_scope`]: #n_api_napi_close_callback_scope
-[`napi_close_escapable_handle_scope`]: #n_api_napi_close_escapable_handle_scope
-[`napi_close_handle_scope`]: #n_api_napi_close_handle_scope
-[`napi_create_async_work`]: #n_api_napi_create_async_work
-[`napi_create_error`]: #n_api_napi_create_error
-[`napi_create_external_arraybuffer`]: #n_api_napi_create_external_arraybuffer
-[`napi_create_range_error`]: #n_api_napi_create_range_error
-[`napi_create_reference`]: #n_api_napi_create_reference
-[`napi_create_type_error`]: #n_api_napi_create_type_error
-[`napi_define_class`]: #n_api_napi_define_class
-[`napi_delete_async_work`]: #n_api_napi_delete_async_work
-[`napi_delete_reference`]: #n_api_napi_delete_reference
-[`napi_escape_handle`]: #n_api_napi_escape_handle
-[`napi_finalize`]: #n_api_napi_finalize
-[`napi_get_and_clear_last_exception`]: #n_api_napi_get_and_clear_last_exception
-[`napi_get_array_length`]: #n_api_napi_get_array_length
-[`napi_get_element`]: #n_api_napi_get_element
-[`napi_get_last_error_info`]: #n_api_napi_get_last_error_info
-[`napi_get_property`]: #n_api_napi_get_property
-[`napi_get_reference_value`]: #n_api_napi_get_reference_value
-[`napi_get_value_external`]: #n_api_napi_get_value_external
-[`napi_has_property`]: #n_api_napi_has_property
-[`napi_instanceof`]: #n_api_napi_instanceof
-[`napi_is_error`]: #n_api_napi_is_error
-[`napi_is_exception_pending`]: #n_api_napi_is_exception_pending
-[`napi_make_callback`]: #n_api_napi_make_callback
-[`napi_open_callback_scope`]: #n_api_napi_open_callback_scope
-[`napi_open_escapable_handle_scope`]: #n_api_napi_open_escapable_handle_scope
-[`napi_open_handle_scope`]: #n_api_napi_open_handle_scope
-[`napi_property_attributes`]: #n_api_napi_property_attributes
-[`napi_property_descriptor`]: #n_api_napi_property_descriptor
-[`napi_queue_async_work`]: #n_api_napi_queue_async_work
-[`napi_reference_ref`]: #n_api_napi_reference_ref
-[`napi_reference_unref`]: #n_api_napi_reference_unref
-[`napi_remove_async_cleanup_hook`]: #n_api_napi_remove_async_cleanup_hook
-[`napi_remove_env_cleanup_hook`]: #n_api_napi_remove_env_cleanup_hook
-[`napi_set_instance_data`]: #n_api_napi_set_instance_data
-[`napi_set_property`]: #n_api_napi_set_property
-[`napi_threadsafe_function_call_js`]: #n_api_napi_threadsafe_function_call_js
-[`napi_throw_error`]: #n_api_napi_throw_error
-[`napi_throw_range_error`]: #n_api_napi_throw_range_error
-[`napi_throw_type_error`]: #n_api_napi_throw_type_error
-[`napi_throw`]: #n_api_napi_throw
-[`napi_unwrap`]: #n_api_napi_unwrap
-[`napi_wrap`]: #n_api_napi_wrap
+[`Worker`]: worker_threads.md#class-worker
+[`async_hooks.executionAsyncResource()`]: async_hooks.md#async_hooksexecutionasyncresource
+[`global`]: globals.md#global
+[`init` hooks]: async_hooks.md#initasyncid-type-triggerasyncid-resource
+[`napi_add_async_cleanup_hook`]: #napi_add_async_cleanup_hook
+[`napi_add_env_cleanup_hook`]: #napi_add_env_cleanup_hook
+[`napi_add_finalizer`]: #napi_add_finalizer
+[`napi_async_cleanup_hook`]: #napi_async_cleanup_hook
+[`napi_async_complete_callback`]: #napi_async_complete_callback
+[`napi_async_destroy`]: #napi_async_destroy
+[`napi_async_init`]: #napi_async_init
+[`napi_callback`]: #napi_callback
+[`napi_cancel_async_work`]: #napi_cancel_async_work
+[`napi_close_callback_scope`]: #napi_close_callback_scope
+[`napi_close_escapable_handle_scope`]: #napi_close_escapable_handle_scope
+[`napi_close_handle_scope`]: #napi_close_handle_scope
+[`napi_create_async_work`]: #napi_create_async_work
+[`napi_create_error`]: #napi_create_error
+[`napi_create_external_arraybuffer`]: #napi_create_external_arraybuffer
+[`napi_create_range_error`]: #napi_create_range_error
+[`napi_create_reference`]: #napi_create_reference
+[`napi_create_type_error`]: #napi_create_type_error
+[`napi_define_class`]: #napi_define_class
+[`napi_delete_async_work`]: #napi_delete_async_work
+[`napi_delete_reference`]: #napi_delete_reference
+[`napi_escape_handle`]: #napi_escape_handle
+[`napi_finalize`]: #napi_finalize
+[`napi_get_and_clear_last_exception`]: #napi_get_and_clear_last_exception
+[`napi_get_array_length`]: #napi_get_array_length
+[`napi_get_element`]: #napi_get_element
+[`napi_get_last_error_info`]: #napi_get_last_error_info
+[`napi_get_property`]: #napi_get_property
+[`napi_get_reference_value`]: #napi_get_reference_value
+[`napi_get_value_external`]: #napi_get_value_external
+[`napi_has_property`]: #napi_has_property
+[`napi_instanceof`]: #napi_instanceof
+[`napi_is_error`]: #napi_is_error
+[`napi_is_exception_pending`]: #napi_is_exception_pending
+[`napi_make_callback`]: #napi_make_callback
+[`napi_open_callback_scope`]: #napi_open_callback_scope
+[`napi_open_escapable_handle_scope`]: #napi_open_escapable_handle_scope
+[`napi_open_handle_scope`]: #napi_open_handle_scope
+[`napi_property_attributes`]: #napi_property_attributes
+[`napi_property_descriptor`]: #napi_property_descriptor
+[`napi_queue_async_work`]: #napi_queue_async_work
+[`napi_reference_ref`]: #napi_reference_ref
+[`napi_reference_unref`]: #napi_reference_unref
+[`napi_remove_async_cleanup_hook`]: #napi_remove_async_cleanup_hook
+[`napi_remove_env_cleanup_hook`]: #napi_remove_env_cleanup_hook
+[`napi_set_instance_data`]: #napi_set_instance_data
+[`napi_set_property`]: #napi_set_property
+[`napi_threadsafe_function_call_js`]: #napi_threadsafe_function_call_js
+[`napi_throw_error`]: #napi_throw_error
+[`napi_throw_range_error`]: #napi_throw_range_error
+[`napi_throw_type_error`]: #napi_throw_type_error
+[`napi_throw`]: #napi_throw
+[`napi_unwrap`]: #napi_unwrap
+[`napi_wrap`]: #napi_wrap
 [`node-addon-api`]: https://github.com/nodejs/node-addon-api
 [`node_api.h`]: https://github.com/nodejs/node/blob/HEAD/src/node_api.h
-[`process.release`]: process.md#process_process_release
+[`process.release`]: process.md#processrelease
 [`uv_ref`]: https://docs.libuv.org/en/v1.x/handle.html#c.uv_ref
 [`uv_unref`]: https://docs.libuv.org/en/v1.x/handle.html#c.uv_unref
-[async_hooks `type`]: async_hooks.md#async_hooks_type
-[context-aware addons]: addons.md#addons_context_aware_addons
+[async_hooks `type`]: async_hooks.md#type
+[context-aware addons]: addons.md#context-aware-addons
 [docs]: https://github.com/nodejs/node-addon-api#api-documentation
 [global scope]: globals.md
 [gyp-next]: https://github.com/nodejs/gyp-next
-[module scope]: modules.md#modules_the_module_scope
+[module scope]: modules.md#the-module-scope
 [node-gyp]: https://github.com/nodejs/node-gyp
 [node-pre-gyp]: https://github.com/mapbox/node-pre-gyp
 [prebuild]: https://github.com/prebuild/prebuild

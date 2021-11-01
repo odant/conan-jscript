@@ -378,7 +378,7 @@ fs.access('file/that/does/not/exist', (err) => {
 
 ## `util.getSystemErrorMap()`
 <!-- YAML
-added: v14.17.0
+added: v16.0.0
 -->
 
 * Returns: {Map}
@@ -572,18 +572,17 @@ changes:
     negative to show no elements. **Default:** `100`.
   * `maxStringLength` {integer} Specifies the maximum number of characters to
     include when formatting. Set to `null` or `Infinity` to show all elements.
-    Set to `0` or negative to show no characters. **Default:** `Infinity`.
+    Set to `0` or negative to show no characters. **Default:** `10000`.
   * `breakLength` {integer} The length at which input values are split across
     multiple lines. Set to `Infinity` to format the input as a single line
     (in combination with `compact` set to `true` or any number >= `1`).
     **Default:** `80`.
   * `compact` {boolean|integer} Setting this to `false` causes each object key
-    to be displayed on a new line. It will also add new lines to text that is
+    to be displayed on a new line. It will break on new lines in text that is
     longer than `breakLength`. If set to a number, the most `n` inner elements
     are united on a single line as long as all properties fit into
-    `breakLength`. Short array elements are also grouped together. No
-    text will be reduced below 16 characters, no matter the `breakLength` size.
-    For more information, see the example below. **Default:** `3`.
+    `breakLength`. Short array elements are also grouped together. For more
+    information, see the example below. **Default:** `3`.
   * `sorted` {boolean|Function} If set to `true` or a function, all properties
     of an object, and `Set` and `Map` entries are sorted in the resulting
     string. If set to `true` the [default sort][] is used. If set to a function,
@@ -651,8 +650,8 @@ const util = require('util');
 
 const o = {
   a: [1, 2, [[
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ' +
-      'eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    'Lorem ipsum dolor sit amet,\nconsectetur adipiscing elit, sed do ' +
+      'eiusmod \ntempor incididunt ut labore et dolore magna aliqua.',
     'test',
     'foo']], 4],
   b: new Map([['za', 1], ['zb', 'test']])
@@ -662,13 +661,13 @@ console.log(util.inspect(o, { compact: true, depth: 5, breakLength: 80 }));
 // { a:
 //   [ 1,
 //     2,
-//     [ [ 'Lorem ipsum dolor sit amet, consectetur [...]', // A long line
+//     [ [ 'Lorem ipsum dolor sit amet,\nconsectetur [...]', // A long line
 //           'test',
 //           'foo' ] ],
 //     4 ],
 //   b: Map(2) { 'za' => 1, 'zb' => 'test' } }
 
-// Setting `compact` to false changes the output to be more reader friendly.
+// Setting `compact` to false or an integer creates more reader friendly output.
 console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 
 // {
@@ -677,10 +676,9 @@ console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 //     2,
 //     [
 //       [
-//         'Lorem ipsum dolor sit amet, consectetur ' +
-//           'adipiscing elit, sed do eiusmod tempor ' +
-//           'incididunt ut labore et dolore magna ' +
-//           'aliqua.,
+//         'Lorem ipsum dolor sit amet,\n' +
+//           'consectetur adipiscing elit, sed do eiusmod \n' +
+//           'tempor incididunt ut labore et dolore magna aliqua.',
 //         'test',
 //         'foo'
 //       ]
@@ -695,8 +693,6 @@ console.log(util.inspect(o, { compact: false, depth: 5, breakLength: 80 }));
 
 // Setting `breakLength` to e.g. 150 will print the "Lorem ipsum" text in a
 // single line.
-// Reducing the `breakLength` will split the "Lorem ipsum" text in smaller
-// chunks.
 ```
 
 The `showHidden` option allows [`WeakMap`][] and [`WeakSet`][] entries to be
@@ -1113,6 +1109,21 @@ doSomething[kCustomPromisifiedSymbol] = (foo) => {
 };
 ```
 
+## `util.stripVTControlCharacters(str)`
+<!-- YAML
+added: v16.11.0
+-->
+
+* `str` {string}
+* Returns: {string}
+
+Returns `str` with any ANSI escape codes removed.
+
+```js
+console.log(util.stripVTControlCharacters('\u001B[4mvalue\u001B[0m'));
+// Prints "value"
+```
+
 ## Class: `util.TextDecoder`
 <!-- YAML
 added: v8.3.0
@@ -1310,7 +1321,7 @@ The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 
 ## `util.toUSVString(string)`
 <!-- YAML
-added: v14.18.0
+added: v16.8.0
 -->
 
 * `string` {string}
@@ -1322,6 +1333,10 @@ Unicode "replacement character" U+FFFD.
 ## `util.types`
 <!-- YAML
 added: v10.0.0
+changes:
+  - version: v15.3.0
+    pr-url: https://github.com/nodejs/node/pull/34055
+    description: Exposed as `require('util/types')`.
 -->
 
 `util.types` provides type checks for different kinds of built-in objects.
@@ -1332,6 +1347,8 @@ their prototype), and usually have the overhead of calling into C++.
 The result generally does not make any guarantees about what kinds of
 properties or behavior a value exposes in JavaScript. They are primarily
 useful for addon developers who prefer to do type checking in JavaScript.
+
+The API is accessible via `require('util').types` or `require('util/types')`.
 
 ### `util.types.isAnyArrayBuffer(value)`
 <!-- YAML
@@ -1493,6 +1510,16 @@ util.types.isBoxedPrimitive(Symbol('foo')); // Returns false
 util.types.isBoxedPrimitive(Object(Symbol('foo'))); // Returns true
 util.types.isBoxedPrimitive(Object(BigInt(5))); // Returns true
 ```
+
+### `util.types.isCryptoKey(value)`
+<!-- YAML
+added: v16.2.0
+-->
+
+* `value` {Object}
+* Returns: {boolean}
+
+Returns `true` if `value` is a {CryptoKey}, `false` otherwise.
 
 ### `util.types.isDataView(value)`
 <!-- YAML
@@ -1688,6 +1715,16 @@ util.types.isInt32Array(new ArrayBuffer());  // Returns false
 util.types.isInt32Array(new Int32Array());  // Returns true
 util.types.isInt32Array(new Float64Array());  // Returns false
 ```
+
+### `util.types.isKeyObject(value)`
+<!-- YAML
+added: v16.2.0
+-->
+
+* `value` {Object}
+* Returns: {boolean}
+
+Returns `true` if `value` is a {KeyObject}, `false` otherwise.
 
 ### `util.types.isMap(value)`
 <!-- YAML
@@ -2479,22 +2516,22 @@ const util = require('util');
 util.log('Timestamped message.');
 ```
 
-[Common System Errors]: errors.md#errors_common_system_errors
-[Custom inspection functions on objects]: #util_custom_inspection_functions_on_objects
-[Custom promisified functions]: #util_custom_promisified_functions
-[Customizing `util.inspect` colors]: #util_customizing_util_inspect_colors
+[Common System Errors]: errors.md#common-system-errors
+[Custom inspection functions on objects]: #custom-inspection-functions-on-objects
+[Custom promisified functions]: #custom-promisified-functions
+[Customizing `util.inspect` colors]: #customizing-utilinspect-colors
 [Internationalization]: intl.md
 [Module Namespace Object]: https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects
 [WHATWG Encoding Standard]: https://encoding.spec.whatwg.org/
-[`'uncaughtException'`]: process.md#process_event_uncaughtexception
-[`'warning'`]: process.md#process_event_warning
+[`'uncaughtException'`]: process.md#event-uncaughtexception
+[`'warning'`]: process.md#event-warning
 [`Array.isArray()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
 [`ArrayBuffer.isView()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView
 [`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-[`Buffer.isBuffer()`]: buffer.md#buffer_static_method_buffer_isbuffer_obj
+[`Buffer.isBuffer()`]: buffer.md#static-method-bufferisbufferobj
 [`DataView`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 [`Date`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
-[`Error`]: errors.md#errors_class_error
+[`Error`]: errors.md#class-error
 [`Float32Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array
 [`Float64Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array
 [`Int16Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array
@@ -2515,24 +2552,24 @@ util.log('Timestamped message.');
 [`WeakMap`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
 [`WeakSet`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet
 [`WebAssembly.Module`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module
-[`assert.deepStrictEqual()`]: assert.md#assert_assert_deepstrictequal_actual_expected_message
-[`console.error()`]: console.md#console_console_error_data_args
-[`napi_create_external()`]: n-api.md#n_api_napi_create_external
+[`assert.deepStrictEqual()`]: assert.md#assertdeepstrictequalactual-expected-message
+[`console.error()`]: console.md#consoleerrordata-args
+[`napi_create_external()`]: n-api.md#napi_create_external
 [`target` and `handler`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#Terminology
-[`tty.hasColors()`]: tty.md#tty_writestream_hascolors_count_env
-[`util.format()`]: #util_util_format_format_args
-[`util.inspect()`]: #util_util_inspect_object_options
-[`util.promisify()`]: #util_util_promisify_original
-[`util.types.isAnyArrayBuffer()`]: #util_util_types_isanyarraybuffer_value
-[`util.types.isArrayBuffer()`]: #util_util_types_isarraybuffer_value
-[`util.types.isDate()`]: #util_util_types_isdate_value
-[`util.types.isNativeError()`]: #util_util_types_isnativeerror_value
-[`util.types.isSharedArrayBuffer()`]: #util_util_types_issharedarraybuffer_value
+[`tty.hasColors()`]: tty.md#writestreamhascolorscount-env
+[`util.format()`]: #utilformatformat-args
+[`util.inspect()`]: #utilinspectobject-options
+[`util.promisify()`]: #utilpromisifyoriginal
+[`util.types.isAnyArrayBuffer()`]: #utiltypesisanyarraybuffervalue
+[`util.types.isArrayBuffer()`]: #utiltypesisarraybuffervalue
+[`util.types.isDate()`]: #utiltypesisdatevalue
+[`util.types.isNativeError()`]: #utiltypesisnativeerrorvalue
+[`util.types.isSharedArrayBuffer()`]: #utiltypesissharedarraybuffervalue
 [async function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function
 [compare function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters
 [constructor]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/constructor
 [default sort]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 [global symbol registry]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/for
-[list of deprecated APIS]: deprecations.md#deprecations_list_of_deprecated_apis
+[list of deprecated APIS]: deprecations.md#list-of-deprecated-apis
 [semantically incompatible]: https://github.com/nodejs/node/issues/4179
-[util.inspect.custom]: #util_util_inspect_custom
+[util.inspect.custom]: #utilinspectcustom

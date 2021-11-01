@@ -1,6 +1,7 @@
 # Deprecated APIs
 
 <!--introduced_in=v7.7.0-->
+
 <!-- type=misc -->
 
 Node.js APIs might be deprecated for any of the following reasons:
@@ -22,7 +23,7 @@ with [`--pending-deprecation`][] flag (or its alternative,
 `NODE_PENDING_DEPRECATION=1` environment variable), similarly to Runtime
 deprecations below. Documentation-only deprecations that support that flag
 are explicitly labeled as such in the
-[list of Deprecated APIs](#deprecations_list_of_deprecated_apis).
+[list of Deprecated APIs](#list-of-deprecated-apis).
 
 A Runtime deprecation will, by default, generate a process warning that will
 be printed to `stderr` the first time the deprecated API is used. When the
@@ -426,16 +427,20 @@ See [`Intl.Segmenter`](https://github.com/tc39/proposal-intl-segmenter).
 ### DEP0018: Unhandled promise rejections
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/35316
+    description: End-of-Life.
   - version: v7.0.0
     pr-url: https://github.com/nodejs/node/pull/8217
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-Unhandled promise rejections are deprecated. In the future, promise rejections
-that are not handled will terminate the Node.js process with a non-zero exit
-code.
+Unhandled promise rejections are deprecated. By default, promise rejections
+that are not handled terminate the Node.js process with a non-zero exit
+code. To change the way Node.js treats unhandled rejections, use the
+[`--unhandled-rejections`][] command-line option.
 
 ### DEP0019: `require('.')` resolved outside directory
 <!-- YAML
@@ -461,6 +466,9 @@ This behavior has been removed.
 ### DEP0020: `Server.connections`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33647
+    description: Server.connections has been removed.
   - version:
     - v6.12.0
     - v4.8.6
@@ -471,10 +479,10 @@ changes:
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-The [`Server.connections`][] property is deprecated. Please use the
-[`Server.getConnections()`][] method instead.
+The `Server.connections` property was deprecated in Node.js v0.9.7 and has
+been removed. Please use the [`Server.getConnections()`][] method instead.
 
 ### DEP0021: `Server.listenFD`
 <!-- YAML
@@ -824,12 +832,15 @@ The [`require.extensions`][] property is deprecated.
 ### DEP0040: `punycode` module
 <!-- YAML
 changes:
+  - version: v16.6.0
+    pr-url: https://github.com/nodejs/node/pull/38444
+    description: Added support for `--pending-deprecation`.
   - version: v7.0.0
     pr-url: https://github.com/nodejs/node/pull/7941
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Documentation-only (supports [`--pending-deprecation`][])
 
 The [`punycode`][] module is deprecated. Please use a userland alternative
 instead.
@@ -1368,12 +1379,15 @@ an officially supported API.
 ### DEP0068: `node debug`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33648
+    description: The legacy `node debug` command was removed.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11441
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 `node debug` corresponds to the legacy CLI debugger which has been replaced with
 a V8-inspector based CLI debugger available through `node inspect`.
@@ -1474,12 +1488,15 @@ code, no replacement API is provided.
 ### DEP0074: `REPLServer.bufferedCommand`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33286
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/13687
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 The `REPLServer.bufferedCommand` property was deprecated in favor of
 [`REPLServer.clearBufferedCommand()`][].
@@ -1487,12 +1504,15 @@ The `REPLServer.bufferedCommand` property was deprecated in favor of
 ### DEP0075: `REPLServer.parseREPLKeyword()`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33286
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/14223
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 `REPLServer.parseREPLKeyword()` was removed from userland visibility.
 
@@ -1545,12 +1565,15 @@ supported API.
 ### DEP0078: `REPLServer.turnOffEditorMode()`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33286
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/15136
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 `REPLServer.turnOffEditorMode()` was removed from userland visibility.
 
@@ -1606,12 +1629,15 @@ file descriptors.
 ### DEP0082: `REPLServer.prototype.memory()`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33286
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/16242
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 `REPLServer.prototype.memory()` is only necessary for the internal mechanics of
 the `REPLServer` itself. Do not use this function.
@@ -2030,12 +2056,15 @@ expose values under these names.
 ### DEP0109: `http`, `https`, and `tls` support for invalid URLs
 <!-- YAML
 changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/36853
+    description: End-of-Life.
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/20270
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 Some previously supported (but strictly invalid) URLs were accepted through the
 [`http.request()`][], [`http.get()`][], [`https.request()`][],
@@ -2148,7 +2177,7 @@ future release.
 ### DEP0116: Legacy URL API
 <!-- YAML
 changes:
-  - version: v14.17.0
+  - version: v15.13.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -2272,12 +2301,15 @@ Setting the TLS ServerName to an IP address is not permitted by
 ### DEP0124: using `REPLServer.rli`
 <!-- YAML
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33286
+    description: End-of-Life.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26260
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 This property is a reference to the instance itself.
 
@@ -2326,12 +2358,15 @@ with no performance impact since Node.js 10.
 ### DEP0128: modules with an invalid `main` entry and an `index.js` file
 <!-- YAML
 changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37204
+    description: Runtime deprecation.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26823
     description: Documentation-only.
 -->
 
-Type: Documentation-only (supports [`--pending-deprecation`][])
+Type: Runtime
 
 Modules that have an invalid `main` entry (e.g., `./does-not-exist.js`) and
 also have an `index.js` file in the top level directory will resolve the
@@ -2358,6 +2393,9 @@ instead.
 ### DEP0130: `Module.createRequireFromPath()`
 <!-- YAML
 changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37201
+    description: End-of-life.
   - version: v13.0.0
     pr-url: https://github.com/nodejs/node/pull/27951
     description: Runtime deprecation.
@@ -2366,10 +2404,9 @@ changes:
     description: Documentation-only.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-Module.createRequireFromPath() is deprecated. Please use
-[`module.createRequire()`][] instead.
+Use [`module.createRequire()`][] instead.
 
 ### DEP0131: Legacy HTTP parser
 <!-- YAML
@@ -2377,6 +2414,9 @@ changes:
   - version: v13.0.0
     pr-url: https://github.com/nodejs/node/pull/29589
     description: This feature has been removed.
+  - version: v12.22.0
+    pr-url: https://github.com/nodejs/node/pull/37603
+    description: Runtime deprecation.
   - version: v12.3.0
     pr-url: https://github.com/nodejs/node/pull/27498
     description: Documentation-only.
@@ -2461,7 +2501,7 @@ is flushed.
 Use [`response.writableFinished`][] or [`response.writableEnded`][]
 accordingly instead to avoid the ambiguity.
 
-To maintain existing behaviour `response.finished` should be replaced with
+To maintain existing behavior `response.finished` should be replaced with
 `response.writableEnded`.
 
 ### DEP0137: Closing fs.FileHandle on garbage collection
@@ -2590,7 +2630,7 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Documentation-only (supports [`--pending-deprecation`][])
 
 A CommonJS module can access the first module that required it using
 `module.parent`. This feature is deprecated because it does not work
@@ -2642,27 +2682,86 @@ The [`crypto.Certificate()` constructor][] is deprecated. Use
 ### DEP0147: `fs.rmdir(path, { recursive: true })`
 <!-- YAML
 changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37302
+    description: Runtime deprecation.
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/35562
+    description: Runtime deprecation for permissive behavior.
   - version: v14.14.0
     pr-url: https://github.com/nodejs/node/pull/35579
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime
 
-In future versions of Node.js, `fs.rmdir(path, { recursive: true })` will throw
-on nonexistent paths, or when given a file as a target.
-Use `fs.rm(path, { recursive: true, force: true })` instead.
+In future versions of Node.js, `recursive` option will be ignored for
+`fs.rmdir`, `fs.rmdirSync`, and `fs.promises.rmdir`.
+
+Use `fs.rm(path, { recursive: true, force: true })`,
+`fs.rmSync(path, { recursive: true, force: true })` or
+`fs.promises.rm(path, { recursive: true, force: true })` instead.
+
+### DEP0148: Folder mappings in `"exports"` (trailing `"/"`)
+<!-- YAML
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37215
+    description: Runtime deprecation.
+  - version: v15.1.0
+    pr-url: https://github.com/nodejs/node/pull/35747
+    description: Runtime deprecation for self-referencing imports.
+  - version: v14.13.0
+    pr-url: https://github.com/nodejs/node/pull/34718
+    description: Documentation-only deprecation.
+-->
+
+Type: Runtime
+
+Using a trailing `"/"` to define
+[subpath folder mappings][] in the [subpath exports][] or
+[subpath imports][] fields is deprecated. Use [subpath patterns][] instead.
+
+### DEP0149: `http.IncomingMessage#connection`
+<!-- YAML
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/33768
+    description: Documentation-only deprecation.
+ -->
+
+Type: Documentation-only.
+
+Prefer [`message.socket`][] over [`message.connection`][].
+
+### DEP0150: Changing the value of `process.config`
+<!-- YAML
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/36902
+    description: Runtime deprecation.
+-->
+
+Type: Runtime
+
+The `process.config` property is intended to provide access to configuration
+settings set when the Node.js binary was compiled. However, the property has
+been mutable by user code making it impossible to rely on. The ability to
+change the value has been deprecated and will be disabled in the future.
 
 ### DEP0151: Main index lookup and extension searching
 <!-- YAML
 changes:
-  - version: v14.18.0
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37206
+    description: Runtime deprecation.
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/36918
     description: Documentation-only deprecation
                  with `--pending-deprecation` support.
 -->
 
-Type: Documentation-only (supports [`--pending-deprecation`][])
+Type: Runtime
 
 Previously, `index.js` and extension searching lookups would apply to
 `import 'pkg'` main entry point resolution, even when resolving ES modules.
@@ -2670,128 +2769,220 @@ Previously, `index.js` and extension searching lookups would apply to
 With this deprecation, all ES module main entry point resolutions require
 an explicit [`"exports"` or `"main"` entry][] with the exact file extension.
 
-[Legacy URL API]: url.md#url_legacy_url_api
+### DEP0152: Extension PerformanceEntry properties
+<!-- YAML
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37136
+    description: Runtime deprecation.
+-->
+
+Type: Runtime
+
+The `'gc'`, `'http2'`, and `'http'` {PerformanceEntry} object types have
+additional properties assigned to them that provide additional information.
+These properties are now available within the standard `detail` property
+of the `PerformanceEntry` object. The existing accessors have been
+deprecated and should no longer be used.
+
+### DEP0153: `dns.lookup` and `dnsPromises.lookup` options type coercion
+<!-- YAML
+changes:
+  - version: v16.8.0
+    pr-url: https://github.com/nodejs/node/pull/38906
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Using a non-nullish non-integer value for `family` option, a non-nullish
+non-number value for `hints` option, a non-nullish non-boolean value for `all`
+option, or a non-nullish non-boolean value for `verbatim` option in
+[`dns.lookup()`][] and [`dnsPromises.lookup()`][] is deprecated.
+
+### DEP0154: RSA-PSS generate key pair options
+<!-- YAML
+changes:
+  - version: v16.10.0
+    pr-url: https://github.com/nodejs/node/pull/39927
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only (supports [`--pending-deprecation`][])
+
+The `'hash'` and `'mgf1Hash'` options are replaced with `'hashAlgorithm'`
+and `'mgf1HashAlgorithm'`.
+
+### DEP0155: Trailing slashes in pattern specifier resolutions
+<!-- YAML
+changes:
+  - version: v16.10.0
+    pr-url: https://github.com/nodejs/node/pull/40039
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
+-->
+
+Type: Documentation-only (supports [`--pending-deprecation`][])
+
+The remapping of specifiers ending in `"/"` like `import 'pkg/x/'` is deprecated
+for package `"exports"` and `"imports"` pattern resolutions.
+
+### DEP0156: `.aborted` property and `'abort'`, `'aborted'` event in `http`
+<!-- YAML
+changes:
+  - version: v16.12.0
+    pr-url: https://github.com/nodejs/node/pull/36670
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+Move to {Stream} API instead, as the [`http.ClientRequest`][],
+[`http.ServerResponse`][], and [`http.IncomingMessage`][] are all stream-based.
+Check `stream.destroyed` instead of the `.aborted` property, and listen for
+`'close'` instead of `'abort'`, `'aborted'` event.
+
+The `.aborted` property and `'abort'` event are only useful for detecting
+`.abort()` calls. For closing a request early, use the Stream
+`.destroy([error])` then check the `.destroyed` property and `'close'` event
+should have the same effect. The receiving end should also check the
+[`readable.readableEnded`][] value on [`http.IncomingMessage`][] to get whether
+it was an aborted or graceful destroy.
+
+[Legacy URL API]: url.md#legacy-url-api
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
-[WHATWG URL API]: url.md#url_the_whatwg_url_api
-[`"exports"` or `"main"` entry]: packages.md#packages_main_entry_point_export
-[`--pending-deprecation`]: cli.md#cli_pending_deprecation
-[`--throw-deprecation`]: cli.md#cli_throw_deprecation
-[`Buffer.allocUnsafeSlow(size)`]: buffer.md#buffer_static_method_buffer_allocunsafeslow_size
-[`Buffer.from(array)`]: buffer.md#buffer_static_method_buffer_from_array
-[`Buffer.from(buffer)`]: buffer.md#buffer_static_method_buffer_from_buffer
-[`Buffer.isBuffer()`]: buffer.md#buffer_static_method_buffer_isbuffer_obj
-[`Cipher`]: crypto.md#crypto_class_cipher
-[`Decipher`]: crypto.md#crypto_class_decipher
-[`REPLServer.clearBufferedCommand()`]: repl.md#repl_replserver_clearbufferedcommand
-[`ReadStream.open()`]: fs.md#fs_class_fs_readstream
-[`Server.connections`]: net.md#net_server_connections
-[`Server.getConnections()`]: net.md#net_server_getconnections_callback
-[`Server.listen({fd: <number>})`]: net.md#net_server_listen_handle_backlog_callback
-[`SlowBuffer`]: buffer.md#buffer_class_slowbuffer
-[`WriteStream.open()`]: fs.md#fs_class_fs_writestream
+[WHATWG URL API]: url.md#the-whatwg-url-api
+[`"exports"` or `"main"` entry]: packages.md#main-entry-point-export
+[`--pending-deprecation`]: cli.md#--pending-deprecation
+[`--throw-deprecation`]: cli.md#--throw-deprecation
+[`--unhandled-rejections`]: cli.md#--unhandled-rejectionsmode
+[`Buffer.allocUnsafeSlow(size)`]: buffer.md#static-method-bufferallocunsafeslowsize
+[`Buffer.from(array)`]: buffer.md#static-method-bufferfromarray
+[`Buffer.from(buffer)`]: buffer.md#static-method-bufferfrombuffer
+[`Buffer.isBuffer()`]: buffer.md#static-method-bufferisbufferobj
+[`Cipher`]: crypto.md#class-cipher
+[`Decipher`]: crypto.md#class-decipher
+[`REPLServer.clearBufferedCommand()`]: repl.md#replserverclearbufferedcommand
+[`ReadStream.open()`]: fs.md#class-fsreadstream
+[`Server.getConnections()`]: net.md#servergetconnectionscallback
+[`Server.listen({fd: <number>})`]: net.md#serverlistenhandle-backlog-callback
+[`SlowBuffer`]: buffer.md#class-slowbuffer
+[`WriteStream.open()`]: fs.md#class-fswritestream
 [`assert`]: assert.md
-[`asyncResource.runInAsyncScope()`]: async_hooks.md#async_hooks_asyncresource_runinasyncscope_fn_thisarg_args
+[`asyncResource.runInAsyncScope()`]: async_context.md#asyncresourceruninasyncscopefn-thisarg-args
 [`child_process`]: child_process.md
-[`clearInterval()`]: timers.md#timers_clearinterval_timeout
-[`clearTimeout()`]: timers.md#timers_cleartimeout_timeout
-[`console.error()`]: console.md#console_console_error_data_args
-[`console.log()`]: console.md#console_console_log_data_args
-[`crypto.Certificate()` constructor]: crypto.md#crypto_legacy_api
-[`crypto.DEFAULT_ENCODING`]: crypto.md#crypto_crypto_default_encoding
-[`crypto.createCipher()`]: crypto.md#crypto_crypto_createcipher_algorithm_password_options
-[`crypto.createCipheriv()`]: crypto.md#crypto_crypto_createcipheriv_algorithm_key_iv_options
-[`crypto.createDecipher()`]: crypto.md#crypto_crypto_createdecipher_algorithm_password_options
-[`crypto.createDecipheriv()`]: crypto.md#crypto_crypto_createdecipheriv_algorithm_key_iv_options
-[`crypto.fips`]: crypto.md#crypto_crypto_fips
-[`crypto.pbkdf2()`]: crypto.md#crypto_crypto_pbkdf2_password_salt_iterations_keylen_digest_callback
-[`crypto.randomBytes()`]: crypto.md#crypto_crypto_randombytes_size_callback
-[`crypto.scrypt()`]: crypto.md#crypto_crypto_scrypt_password_salt_keylen_options_callback
-[`decipher.final()`]: crypto.md#crypto_decipher_final_outputencoding
-[`decipher.setAuthTag()`]: crypto.md#crypto_decipher_setauthtag_buffer
+[`clearInterval()`]: timers.md#clearintervaltimeout
+[`clearTimeout()`]: timers.md#cleartimeouttimeout
+[`console.error()`]: console.md#consoleerrordata-args
+[`console.log()`]: console.md#consolelogdata-args
+[`crypto.Certificate()` constructor]: crypto.md#legacy-api
+[`crypto.DEFAULT_ENCODING`]: crypto.md#cryptodefault_encoding
+[`crypto.createCipher()`]: crypto.md#cryptocreatecipheralgorithm-password-options
+[`crypto.createCipheriv()`]: crypto.md#cryptocreatecipherivalgorithm-key-iv-options
+[`crypto.createDecipher()`]: crypto.md#cryptocreatedecipheralgorithm-password-options
+[`crypto.createDecipheriv()`]: crypto.md#cryptocreatedecipherivalgorithm-key-iv-options
+[`crypto.fips`]: crypto.md#cryptofips
+[`crypto.pbkdf2()`]: crypto.md#cryptopbkdf2password-salt-iterations-keylen-digest-callback
+[`crypto.randomBytes()`]: crypto.md#cryptorandombytessize-callback
+[`crypto.scrypt()`]: crypto.md#cryptoscryptpassword-salt-keylen-options-callback
+[`decipher.final()`]: crypto.md#decipherfinaloutputencoding
+[`decipher.setAuthTag()`]: crypto.md#deciphersetauthtagbuffer-encoding
+[`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
+[`dnsPromises.lookup()`]: dns.md#dnspromiseslookuphostname-options
 [`domain`]: domain.md
-[`ecdh.setPublicKey()`]: crypto.md#crypto_ecdh_setpublickey_publickey_encoding
-[`emitter.listenerCount(eventName)`]: events.md#events_emitter_listenercount_eventname
-[`events.listenerCount(emitter, eventName)`]: events.md#events_events_listenercount_emitter_eventname
-[`fs.FileHandle`]: fs.md#fs_class_filehandle
-[`fs.access()`]: fs.md#fs_fs_access_path_mode_callback
-[`fs.createReadStream()`]: fs.md#fs_fs_createreadstream_path_options
-[`fs.createWriteStream()`]: fs.md#fs_fs_createwritestream_path_options
-[`fs.exists(path, callback)`]: fs.md#fs_fs_exists_path_callback
-[`fs.lchmod(path, mode, callback)`]: fs.md#fs_fs_lchmod_path_mode_callback
-[`fs.lchmodSync(path, mode)`]: fs.md#fs_fs_lchmodsync_path_mode
-[`fs.lchown(path, uid, gid, callback)`]: fs.md#fs_fs_lchown_path_uid_gid_callback
-[`fs.lchownSync(path, uid, gid)`]: fs.md#fs_fs_lchownsync_path_uid_gid
-[`fs.read()`]: fs.md#fs_fs_read_fd_buffer_offset_length_position_callback
-[`fs.readSync()`]: fs.md#fs_fs_readsync_fd_buffer_offset_length_position
-[`fs.stat()`]: fs.md#fs_fs_stat_path_options_callback
-[`http.get()`]: http.md#http_http_get_options_callback
-[`http.request()`]: http.md#http_http_request_options_callback
-[`https.get()`]: https.md#https_https_get_options_callback
-[`https.request()`]: https.md#https_https_request_options_callback
-[`module.createRequire()`]: module.md#module_module_createrequire_filename
-[`os.networkInterfaces()`]: os.md#os_os_networkinterfaces
-[`os.tmpdir()`]: os.md#os_os_tmpdir
-[`process.env`]: process.md#process_process_env
-[`process.mainModule`]: process.md#process_process_mainmodule
+[`ecdh.setPublicKey()`]: crypto.md#ecdhsetpublickeypublickey-encoding
+[`emitter.listenerCount(eventName)`]: events.md#emitterlistenercounteventname
+[`events.listenerCount(emitter, eventName)`]: events.md#eventslistenercountemitter-eventname
+[`fs.FileHandle`]: fs.md#class-filehandle
+[`fs.access()`]: fs.md#fsaccesspath-mode-callback
+[`fs.createReadStream()`]: fs.md#fscreatereadstreampath-options
+[`fs.createWriteStream()`]: fs.md#fscreatewritestreampath-options
+[`fs.exists(path, callback)`]: fs.md#fsexistspath-callback
+[`fs.lchmod(path, mode, callback)`]: fs.md#fslchmodpath-mode-callback
+[`fs.lchmodSync(path, mode)`]: fs.md#fslchmodsyncpath-mode
+[`fs.lchown(path, uid, gid, callback)`]: fs.md#fslchownpath-uid-gid-callback
+[`fs.lchownSync(path, uid, gid)`]: fs.md#fslchownsyncpath-uid-gid
+[`fs.read()`]: fs.md#fsreadfd-buffer-offset-length-position-callback
+[`fs.readSync()`]: fs.md#fsreadsyncfd-buffer-offset-length-position
+[`fs.stat()`]: fs.md#fsstatpath-options-callback
+[`http.ClientRequest`]: http.md#class-httpclientrequest
+[`http.IncomingMessage`]: http.md#class-httpincomingmessage
+[`http.ServerResponse`]: http.md#class-httpserverresponse
+[`http.get()`]: http.md#httpgetoptions-callback
+[`http.request()`]: http.md#httprequestoptions-callback
+[`https.get()`]: https.md#httpsgetoptions-callback
+[`https.request()`]: https.md#httpsrequestoptions-callback
+[`message.connection`]: http.md#messageconnection
+[`message.socket`]: http.md#messagesocket
+[`module.createRequire()`]: module.md#modulecreaterequirefilename
+[`os.networkInterfaces()`]: os.md#osnetworkinterfaces
+[`os.tmpdir()`]: os.md#ostmpdir
+[`process.env`]: process.md#processenv
+[`process.mainModule`]: process.md#processmainmodule
 [`punycode`]: punycode.md
-[`request.abort()`]: http.md#http_request_abort
-[`request.connection`]: http.md#http_request_connection
-[`request.destroy()`]: http.md#http_request_destroy_error
-[`request.socket`]: http.md#http_request_socket
-[`require.extensions`]: modules.md#modules_require_extensions
-[`require.main`]: modules.md#modules_accessing_the_main_module
-[`response.connection`]: http.md#http_response_connection
-[`response.end()`]: http.md#http_response_end_data_encoding_callback
-[`response.finished`]: http.md#http_response_finished
-[`response.socket`]: http.md#http_response_socket
-[`response.writableEnded`]: http.md#http_response_writableended
-[`response.writableFinished`]: http.md#http_response_writablefinished
-[`script.createCachedData()`]: vm.md#vm_script_createcacheddata
-[`setInterval()`]: timers.md#timers_setinterval_callback_delay_args
-[`setTimeout()`]: timers.md#timers_settimeout_callback_delay_args
-[`socket.bufferSize`]: net.md#net_socket_buffersize
-[`timeout.ref()`]: timers.md#timers_timeout_ref
-[`timeout.refresh()`]: timers.md#timers_timeout_refresh
-[`timeout.unref()`]: timers.md#timers_timeout_unref
-[`tls.CryptoStream`]: tls.md#tls_class_tls_cryptostream
-[`tls.SecureContext`]: tls.md#tls_tls_createsecurecontext_options
-[`tls.SecurePair`]: tls.md#tls_class_tls_securepair
-[`tls.TLSSocket`]: tls.md#tls_class_tls_tlssocket
-[`tls.checkServerIdentity()`]: tls.md#tls_tls_checkserveridentity_hostname_cert
-[`tls.createSecureContext()`]: tls.md#tls_tls_createsecurecontext_options
-[`url.format()`]: url.md#url_url_format_urlobject
-[`url.parse()`]: url.md#url_url_parse_urlstring_parsequerystring_slashesdenotehost
-[`url.resolve()`]: url.md#url_url_resolve_from_to
-[`util._extend()`]: util.md#util_util_extend_target_source
-[`util.getSystemErrorName()`]: util.md#util_util_getsystemerrorname_err
-[`util.inspect()`]: util.md#util_util_inspect_object_options
-[`util.inspect.custom`]: util.md#util_util_inspect_custom
-[`util.isArray()`]: util.md#util_util_isarray_object
-[`util.isBoolean()`]: util.md#util_util_isboolean_object
-[`util.isBuffer()`]: util.md#util_util_isbuffer_object
-[`util.isDate()`]: util.md#util_util_isdate_object
-[`util.isError()`]: util.md#util_util_iserror_object
-[`util.isFunction()`]: util.md#util_util_isfunction_object
-[`util.isNull()`]: util.md#util_util_isnull_object
-[`util.isNullOrUndefined()`]: util.md#util_util_isnullorundefined_object
-[`util.isNumber()`]: util.md#util_util_isnumber_object
-[`util.isObject()`]: util.md#util_util_isobject_object
-[`util.isPrimitive()`]: util.md#util_util_isprimitive_object
-[`util.isRegExp()`]: util.md#util_util_isregexp_object
-[`util.isString()`]: util.md#util_util_isstring_object
-[`util.isSymbol()`]: util.md#util_util_issymbol_object
-[`util.isUndefined()`]: util.md#util_util_isundefined_object
-[`util.log()`]: util.md#util_util_log_string
-[`util.types`]: util.md#util_util_types
+[`readable.readableEnded`]: stream.md#readablereadableended
+[`request.abort()`]: http.md#requestabort
+[`request.connection`]: http.md#requestconnection
+[`request.destroy()`]: http.md#requestdestroyerror
+[`request.socket`]: http.md#requestsocket
+[`require.extensions`]: modules.md#requireextensions
+[`require.main`]: modules.md#accessing-the-main-module
+[`response.connection`]: http.md#responseconnection
+[`response.end()`]: http.md#responseenddata-encoding-callback
+[`response.finished`]: http.md#responsefinished
+[`response.socket`]: http.md#responsesocket
+[`response.writableEnded`]: http.md#responsewritableended
+[`response.writableFinished`]: http.md#responsewritablefinished
+[`script.createCachedData()`]: vm.md#scriptcreatecacheddata
+[`setInterval()`]: timers.md#setintervalcallback-delay-args
+[`setTimeout()`]: timers.md#settimeoutcallback-delay-args
+[`socket.bufferSize`]: net.md#socketbuffersize
+[`timeout.ref()`]: timers.md#timeoutref
+[`timeout.refresh()`]: timers.md#timeoutrefresh
+[`timeout.unref()`]: timers.md#timeoutunref
+[`tls.CryptoStream`]: tls.md#class-tlscryptostream
+[`tls.SecureContext`]: tls.md#tlscreatesecurecontextoptions
+[`tls.SecurePair`]: tls.md#class-tlssecurepair
+[`tls.TLSSocket`]: tls.md#class-tlstlssocket
+[`tls.checkServerIdentity()`]: tls.md#tlscheckserveridentityhostname-cert
+[`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions
+[`url.format()`]: url.md#urlformaturlobject
+[`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
+[`url.resolve()`]: url.md#urlresolvefrom-to
+[`util._extend()`]: util.md#util_extendtarget-source
+[`util.getSystemErrorName()`]: util.md#utilgetsystemerrornameerr
+[`util.inspect()`]: util.md#utilinspectobject-options
+[`util.inspect.custom`]: util.md#utilinspectcustom
+[`util.isArray()`]: util.md#utilisarrayobject
+[`util.isBoolean()`]: util.md#utilisbooleanobject
+[`util.isBuffer()`]: util.md#utilisbufferobject
+[`util.isDate()`]: util.md#utilisdateobject
+[`util.isError()`]: util.md#utiliserrorobject
+[`util.isFunction()`]: util.md#utilisfunctionobject
+[`util.isNull()`]: util.md#utilisnullobject
+[`util.isNullOrUndefined()`]: util.md#utilisnullorundefinedobject
+[`util.isNumber()`]: util.md#utilisnumberobject
+[`util.isObject()`]: util.md#utilisobjectobject
+[`util.isPrimitive()`]: util.md#utilisprimitiveobject
+[`util.isRegExp()`]: util.md#utilisregexpobject
+[`util.isString()`]: util.md#utilisstringobject
+[`util.isSymbol()`]: util.md#utilissymbolobject
+[`util.isUndefined()`]: util.md#utilisundefinedobject
+[`util.log()`]: util.md#utillogstring
+[`util.types`]: util.md#utiltypes
 [`util`]: util.md
-[`worker.exitedAfterDisconnect`]: cluster.md#cluster_worker_exitedafterdisconnect
-[`worker.terminate()`]: worker_threads.md#worker_threads_worker_terminate
-[`writable.writableLength`]: stream.md#stream_writable_writablelength
-[`zlib.bytesWritten`]: zlib.md#zlib_zlib_byteswritten
-[alloc]: buffer.md#buffer_static_method_buffer_alloc_size_fill_encoding
-[alloc_unsafe_size]: buffer.md#buffer_static_method_buffer_allocunsafe_size
-[from_arraybuffer]: buffer.md#buffer_static_method_buffer_from_arraybuffer_byteoffset_length
-[from_string_encoding]: buffer.md#buffer_static_method_buffer_from_string_encoding
-[legacy `urlObject`]: url.md#url_legacy_urlobject
-[static methods of `crypto.Certificate()`]: crypto.md#crypto_class_certificate
+[`worker.exitedAfterDisconnect`]: cluster.md#workerexitedafterdisconnect
+[`worker.terminate()`]: worker_threads.md#workerterminate
+[`writable.writableLength`]: stream.md#writablewritablelength
+[`zlib.bytesWritten`]: zlib.md#zlibbyteswritten
+[alloc]: buffer.md#static-method-bufferallocsize-fill-encoding
+[alloc_unsafe_size]: buffer.md#static-method-bufferallocunsafesize
+[from_arraybuffer]: buffer.md#static-method-bufferfromarraybuffer-byteoffset-length
+[from_string_encoding]: buffer.md#static-method-bufferfromstring-encoding
+[legacy `urlObject`]: url.md#legacy-urlobject
+[static methods of `crypto.Certificate()`]: crypto.md#class-certificate
+[subpath exports]: packages.md#subpath-exports
+[subpath folder mappings]: packages.md#subpath-folder-mappings
+[subpath imports]: packages.md#subpath-imports
+[subpath patterns]: packages.md#subpath-patterns

@@ -1,6 +1,7 @@
 # Modules: `module` API
 
 <!--introduced_in=v12.20.0-->
+
 <!-- YAML
 added: v0.3.7
 -->
@@ -57,26 +58,6 @@ const require = createRequire(import.meta.url);
 
 // sibling-module.js is a CommonJS module.
 const siblingModule = require('./sibling-module');
-```
-
-### `module.createRequireFromPath(filename)`
-<!-- YAML
-added: v10.12.0
-deprecated: v12.2.0
--->
-
-> Stability: 0 - Deprecated: Please use [`createRequire()`][] instead.
-
-* `filename` {string} Filename to be used to construct the relative require
-  function.
-* Returns: {require} Require function
-
-```js
-const { createRequireFromPath } = require('module');
-const requireUtil = createRequireFromPath('../src/utils/');
-
-// Require `../src/utils/some-tool`
-requireUtil('./some-tool');
 ```
 
 ### `module.syncBuiltinESMExports()`
@@ -211,10 +192,9 @@ consists of the following keys:
 [CommonJS]: modules.md
 [ES Modules]: esm.md
 [Source map v3 format]: https://sourcemaps.info/spec.html#h.mofvlxcwqzej
-[`--enable-source-maps`]: cli.md#cli_enable_source_maps
-[`NODE_V8_COVERAGE=dir`]: cli.md#cli_node_v8_coverage_dir
-[`SourceMap`]: #module_class_module_sourcemap
-[`createRequire()`]: #module_module_createrequire_filename
-[`module`]: modules.md#modules_the_module_object
-[module wrapper]: modules.md#modules_the_module_wrapper
+[`--enable-source-maps`]: cli.md#--enable-source-maps
+[`NODE_V8_COVERAGE=dir`]: cli.md#node_v8_coveragedir
+[`SourceMap`]: #class-modulesourcemap
+[`module`]: modules.md#the-module-object
+[module wrapper]: modules.md#the-module-wrapper
 [source map include directives]: https://sourcemaps.info/spec.html#h.lmz475t4mvbx

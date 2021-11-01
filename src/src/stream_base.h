@@ -4,7 +4,6 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include "env.h"
-#include "allocated_buffer.h"
 #include "async_wrap.h"
 #include "node.h"
 #include "util.h"
@@ -19,6 +18,7 @@ class ShutdownWrap;
 class WriteWrap;
 class StreamBase;
 class StreamResource;
+class ExternalReferenceRegistry;
 
 struct StreamWriteResult {
   bool async;
@@ -89,7 +89,7 @@ class ShutdownWrap : public StreamReq {
 
 class WriteWrap : public StreamReq {
  public:
-  inline void SetAllocatedStorage(AllocatedBuffer&& storage);
+  inline void SetBackingStore(std::unique_ptr<v8::BackingStore> bs);
 
   inline WriteWrap(
       StreamBase* stream,
@@ -104,7 +104,7 @@ class WriteWrap : public StreamReq {
   void OnDone(int status) override;
 
  private:
-  AllocatedBuffer storage_;
+  std::unique_ptr<v8::BackingStore> backing_store_;
 };
 
 
@@ -308,7 +308,7 @@ class StreamBase : public StreamResource {
 
   static void AddMethods(Environment* env,
                          v8::Local<v8::FunctionTemplate> target);
-
+  static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
   virtual bool IsAlive() = 0;
   virtual bool IsClosing() = 0;
   virtual bool IsIPCPipe();

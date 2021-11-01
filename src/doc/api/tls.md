@@ -370,6 +370,48 @@ The first 3 are enabled by default. The last 2 `CCM`-based suites are supported
 by TLSv1.3 because they may be more performant on constrained systems, but they
 are not enabled by default since they offer less security.
 
+## X509 Certificate Error codes
+
+Multiple functions can fail due to certificate errors that are reported by
+OpenSSL. In such a case, the function provides an {Error} via its callback that
+has the property `code` which can take one of the following values:
+
+<!--
+values are taken from src/crypto/crypto_common.cc
+description are taken from deps/openssl/openssl/crypto/x509/x509_txt.c
+-->
+* `'UNABLE_TO_GET_ISSUER_CERT'`: Unable to get issuer certificate.
+* `'UNABLE_TO_GET_CRL'`: Unable to get certificate CRL.
+* `'UNABLE_TO_DECRYPT_CERT_SIGNATURE'`: Unable to decrypt certificate's
+  signature.
+* `'UNABLE_TO_DECRYPT_CRL_SIGNATURE'`: Unable to decrypt CRL's signature.
+* `'UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY'`: Unable to decode issuer public key.
+* `'CERT_SIGNATURE_FAILURE'`: Certificate signature failure.
+* `'CRL_SIGNATURE_FAILURE'`: CRL signature failure.
+* `'CERT_NOT_YET_VALID'`: Certificate is not yet valid.
+* `'CERT_HAS_EXPIRED'`: Certificate has expired.
+* `'CRL_NOT_YET_VALID'`: CRL is not yet valid.
+* `'CRL_HAS_EXPIRED'`: CRL has expired.
+* `'ERROR_IN_CERT_NOT_BEFORE_FIELD'`: Format error in certificate's notBefore
+  field.
+* `'ERROR_IN_CERT_NOT_AFTER_FIELD'`: Format error in certificate's notAfter
+  field.
+* `'ERROR_IN_CRL_LAST_UPDATE_FIELD'`: Format error in CRL's lastUpdate field.
+* `'ERROR_IN_CRL_NEXT_UPDATE_FIELD'`: Format error in CRL's nextUpdate field.
+* `'OUT_OF_MEM'`: Out of memory.
+* `'DEPTH_ZERO_SELF_SIGNED_CERT'`: Self signed certificate.
+* `'SELF_SIGNED_CERT_IN_CHAIN'`: Self signed certificate in certificate chain.
+* `'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'`: Unable to get local issuer certificate.
+* `'UNABLE_TO_VERIFY_LEAF_SIGNATURE'`: Unable to verify the first certificate.
+* `'CERT_CHAIN_TOO_LONG'`: Certificate chain too long.
+* `'CERT_REVOKED'`: Certificate revoked.
+* `'INVALID_CA'`: Invalid CA certificate.
+* `'PATH_LENGTH_EXCEEDED'`: Path length constraint exceeded.
+* `'INVALID_PURPOSE'`: Unsupported certificate purpose.
+* `'CERT_UNTRUSTED'`: Certificate not trusted.
+* `'CERT_REJECTED'`: Certificate rejected.
+* `'HOSTNAME_MISMATCH'`: Hostname mismatch.
+
 ## Class: `tls.CryptoStream`
 <!-- YAML
 added: v0.3.4
@@ -411,7 +453,7 @@ The `'secure'` event is emitted by the `SecurePair` object once a secure
 connection has been established.
 
 As with checking for the server
-[`'secureConnection'`](#tls_event_secureconnection)
+[`'secureConnection'`]()
 event, `pair.cleartext.authorized` should be inspected to confirm whether the
 certificate used is properly authorized.
 
@@ -627,6 +669,9 @@ added: v0.5.3
 The `server.addContext()` method adds a secure context that will be used if
 the client request's SNI name matches the supplied `hostname` (or wildcard).
 
+When there are multiple matching contexts, the most recently added one is
+used.
+
 ### `server.address()`
 <!-- YAML
 added: v0.6.0
@@ -651,18 +696,6 @@ The `server.close()` method stops the server from accepting new connections.
 
 This function operates asynchronously. The `'close'` event will be emitted
 when the server has no more open connections.
-
-### `server.connections`
-<!-- YAML
-added: v0.3.2
-deprecated: v0.9.7
--->
-
-> Stability: 0 - Deprecated: Use [`server.getConnections()`][] instead.
-
-* {number}
-
-Returns the current number of concurrent connections on the server.
 
 ### `server.getTicketKeys()`
 <!-- YAML
@@ -917,6 +950,41 @@ added: v0.11.4
 Always returns `true`. This may be used to distinguish TLS sockets from regular
 `net.Socket` instances.
 
+### `tlsSocket.exportKeyingMaterial(length, label[, context])`
+<!-- YAML
+added:
+ - v13.10.0
+ - v12.17.0
+-->
+
+* `length` {number} number of bytes to retrieve from keying material
+* `label` {string} an application specific label, typically this will be a
+  value from the
+  [IANA Exporter Label Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#exporter-labels).
+* `context` {Buffer} Optionally provide a context.
+
+* Returns: {Buffer} requested bytes of the keying material
+
+Keying material is used for validations to prevent different kind of attacks in
+network protocols, for example in the specifications of IEEE 802.1X.
+
+Example
+
+```js
+const keyingMaterial = tlsSocket.exportKeyingMaterial(
+  128,
+  'client finished');
+
+/**
+ Example return value of keyingMaterial:
+ <Buffer 76 26 af 99 c5 56 8e 42 09 91 ef 9f 93 cb ad 6c 7b 65 f8 53 f1 d8 d9
+    12 5a 33 b8 b5 25 df 7b 37 9f e0 e2 4f b8 67 83 a3 2f cd 5d 41 42 4c 91
+    74 ef 2c ... 78 more bytes>
+*/
+```
+See the OpenSSL [`SSL_export_keying_material`][] documentation for more
+information.
+
 ### `tlsSocket.getCertificate()`
 <!-- YAML
 added: v11.2.0
@@ -1126,6 +1194,18 @@ provided by SSL/TLS is not desired or is not enough.
 Corresponds to the `SSL_get_peer_finished` routine in OpenSSL and may be used
 to implement the `tls-unique` channel binding from [RFC 5929][].
 
+### `tlsSocket.getPeerX509Certificate()`
+<!-- YAML
+added: v15.9.0
+-->
+
+* Returns: {X509Certificate}
+
+Returns the peer certificate as an {X509Certificate} object.
+
+If there is no peer certificate, or the socket has been destroyed,
+`undefined` will be returned.
+
 ### `tlsSocket.getProtocol()`
 <!-- YAML
 added: v5.7.0
@@ -1177,39 +1257,6 @@ See
 [SSL_get_shared_sigalgs](https://www.openssl.org/docs/man1.1.1/man3/SSL_get_shared_sigalgs.html)
 for more information.
 
-### `tlsSocket.exportKeyingMaterial(length, label[, context])`
-<!-- YAML
-added: v13.10.0
--->
-
-* `length` {number} number of bytes to retrieve from keying material
-* `label` {string} an application specific label, typically this will be a
-  value from the
-  [IANA Exporter Label Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#exporter-labels).
-* `context` {Buffer} Optionally provide a context.
-
-* Returns: {Buffer} requested bytes of the keying material
-
-Keying material is used for validations to prevent different kind of attacks in
-network protocols, for example in the specifications of IEEE 802.1X.
-
-Example
-
-```js
-const keyingMaterial = tlsSocket.exportKeyingMaterial(
-  128,
-  'client finished');
-
-/**
- Example return value of keyingMaterial:
- <Buffer 76 26 af 99 c5 56 8e 42 09 91 ef 9f 93 cb ad 6c 7b 65 f8 53 f1 d8 d9
-    12 5a 33 b8 b5 25 df 7b 37 9f e0 e2 4f b8 67 83 a3 2f cd 5d 41 42 4c 91
-    74 ef 2c ... 78 more bytes>
-*/
-```
-See the OpenSSL [`SSL_export_keying_material`][] documentation for more
-information.
-
 ### `tlsSocket.getTLSTicket()`
 <!-- YAML
 added: v0.11.4
@@ -1223,6 +1270,18 @@ For a client, returns the TLS session ticket if one is available, or
 It may be useful for debugging.
 
 See [Session Resumption][] for more information.
+
+### `tlsSocket.getX509Certificate()`
+<!-- YAML
+added: v15.9.0
+-->
+
+* Returns: {X509Certificate}
+
+Returns the local certificate as an {X509Certificate} object.
+
+If there is no local certificate, or the socket has been destroyed,
+`undefined` will be returned.
 
 ### `tlsSocket.isSessionReused()`
 <!-- YAML
@@ -1357,10 +1416,12 @@ being issued by trusted CA (`options.ca`).
 <!-- YAML
 added: v0.11.3
 changes:
-  - version: v14.18.0
+  - version: v15.1.0
     pr-url: https://github.com/nodejs/node/pull/35753
     description: Added `onread` option.
-  - version: v14.1.0
+  - version:
+    - v14.1.0
+    - v13.14.0
     pr-url: https://github.com/nodejs/node/pull/32786
     description: The `highWaterMark` option is accepted now.
   - version:
@@ -1432,6 +1493,7 @@ changes:
       or `null` to stop the negotiation process. `psk` must be
       compatible with the selected cipher's digest.
       `identity` must use UTF-8 encoding.
+
     When negotiating TLS-PSK (pre-shared keys), this function is called
     with optional identity `hint` provided by the server or `null`
     in case of TLS 1.3 where `hint` was removed.
@@ -1715,7 +1777,7 @@ changes:
     **Default:** none, see `minVersion`.
   * `sessionIdContext` {string} Opaque identifier used by servers to ensure
     session state is not shared between applications. Unused by clients.
-  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudo-random
+  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudorandom
     data. See [Session Resumption][] for more information.
   * `sessionTimeout` {number} The number of seconds after which a TLS session
     created by the server will no longer be resumable. See
@@ -1858,7 +1920,7 @@ changes:
     If `callback` is called with a falsy `ctx` argument, the default secure
     context of the server will be used. If `SNICallback` wasn't provided the
     default callback with high-level API will be used (see below).
-  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudo-random
+  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudorandom
     data. See [Session Resumption][] for more information.
   * `pskCallback` {Function}
     * socket: {tls.TLSSocket} the server [`tls.TLSSocket`][] instance for
@@ -1867,6 +1929,7 @@ changes:
     * Returns: {Buffer|TypedArray|DataView} pre-shared key that must either be
       a buffer or `null` to stop the negotiation process. Returned PSK must be
       compatible with the selected cipher's digest.
+
     When negotiating TLS-PSK (pre-shared keys), this function is called
     with the identity provided by the client.
     If the return value is `null` the negotiation process will stop and an
@@ -2002,56 +2065,55 @@ added: v11.4.0
 [ECDHE]: https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman
 [Mozilla's publicly trusted list of CAs]: https://hg.mozilla.org/mozilla-central/raw-file/tip/security/nss/lib/ckfw/builtins/certdata.txt
 [OCSP request]: https://en.wikipedia.org/wiki/OCSP_stapling
-[OpenSSL Options]: crypto.md#crypto_openssl_options
+[OpenSSL Options]: crypto.md#openssl-options
 [RFC 2246]: https://www.ietf.org/rfc/rfc2246.txt
 [RFC 4086]: https://tools.ietf.org/html/rfc4086
 [RFC 4279]: https://tools.ietf.org/html/rfc4279
 [RFC 5077]: https://tools.ietf.org/html/rfc5077
 [RFC 5929]: https://tools.ietf.org/html/rfc5929
 [SSL_METHODS]: https://www.openssl.org/docs/man1.1.1/man7/ssl.html#Dealing-with-Protocol-Methods
-[Session Resumption]: #tls_session_resumption
-[Stream]: stream.md#stream_stream
+[Session Resumption]: #session-resumption
+[Stream]: stream.md#stream
 [TLS recommendations]: https://wiki.mozilla.org/Security/Server_Side_TLS
-[`'newSession'`]: #tls_event_newsession
-[`'resumeSession'`]: #tls_event_resumesession
-[`'secureConnect'`]: #tls_event_secureconnect
-[`'secureConnection'`]: #tls_event_secureconnection
-[`'session'`]: #tls_event_session
-[`--tls-cipher-list`]: cli.md#cli_tls_cipher_list_list
-[`Duplex`]: stream.md#stream_class_stream_duplex
-[`NODE_OPTIONS`]: cli.md#cli_node_options_options
+[`'newSession'`]: #event-newsession
+[`'resumeSession'`]: #event-resumesession
+[`'secureConnect'`]: #event-secureconnect
+[`'secureConnection'`]: #event-secureconnection
+[`'session'`]: #event-session
+[`--tls-cipher-list`]: cli.md#--tls-cipher-listlist
+[`Duplex`]: stream.md#class-streamduplex
+[`NODE_OPTIONS`]: cli.md#node_optionsoptions
 [`SSL_export_keying_material`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_export_keying_material.html
 [`SSL_get_version`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
-[`crypto.getCurves()`]: crypto.md#crypto_crypto_getcurves
-[`net.Server.address()`]: net.md#net_server_address
-[`net.Server`]: net.md#net_class_net_server
-[`net.Socket`]: net.md#net_class_net_socket
-[`net.createServer()`]: net.md#net_net_createserver_options_connectionlistener
-[`server.addContext()`]: #tls_server_addcontext_hostname_context
-[`server.getConnections()`]: net.md#net_server_getconnections_callback
-[`server.getTicketKeys()`]: #tls_server_getticketkeys
-[`server.listen()`]: net.md#net_server_listen
-[`server.setTicketKeys()`]: #tls_server_setticketkeys_keys
-[`socket.connect()`]: net.md#net_socket_connect_options_connectlistener
-[`tls.DEFAULT_ECDH_CURVE`]: #tls_tls_default_ecdh_curve
-[`tls.DEFAULT_MAX_VERSION`]: #tls_tls_default_max_version
-[`tls.DEFAULT_MIN_VERSION`]: #tls_tls_default_min_version
-[`tls.Server`]: #tls_class_tls_server
-[`tls.TLSSocket.enableTrace()`]: #tls_tlssocket_enabletrace
-[`tls.TLSSocket.getPeerCertificate()`]: #tls_tlssocket_getpeercertificate_detailed
-[`tls.TLSSocket.getSession()`]: #tls_tlssocket_getsession
-[`tls.TLSSocket.getTLSTicket()`]: #tls_tlssocket_gettlsticket
-[`tls.TLSSocket`]: #tls_class_tls_tlssocket
-[`tls.connect()`]: #tls_tls_connect_options_callback
-[`tls.createSecureContext()`]: #tls_tls_createsecurecontext_options
-[`tls.createSecurePair()`]: #tls_tls_createsecurepair_context_isserver_requestcert_rejectunauthorized_options
-[`tls.createServer()`]: #tls_tls_createserver_options_secureconnectionlistener
-[`tls.getCiphers()`]: #tls_tls_getciphers
-[`tls.rootCertificates`]: #tls_tls_rootcertificates
+[`crypto.getCurves()`]: crypto.md#cryptogetcurves
+[`net.Server.address()`]: net.md#serveraddress
+[`net.Server`]: net.md#class-netserver
+[`net.Socket`]: net.md#class-netsocket
+[`net.createServer()`]: net.md#netcreateserveroptions-connectionlistener
+[`server.addContext()`]: #serveraddcontexthostname-context
+[`server.getTicketKeys()`]: #servergetticketkeys
+[`server.listen()`]: net.md#serverlisten
+[`server.setTicketKeys()`]: #serversetticketkeyskeys
+[`socket.connect()`]: net.md#socketconnectoptions-connectlistener
+[`tls.DEFAULT_ECDH_CURVE`]: #tlsdefault_ecdh_curve
+[`tls.DEFAULT_MAX_VERSION`]: #tlsdefault_max_version
+[`tls.DEFAULT_MIN_VERSION`]: #tlsdefault_min_version
+[`tls.Server`]: #class-tlsserver
+[`tls.TLSSocket.enableTrace()`]: #tlssocketenabletrace
+[`tls.TLSSocket.getPeerCertificate()`]: #tlssocketgetpeercertificatedetailed
+[`tls.TLSSocket.getSession()`]: #tlssocketgetsession
+[`tls.TLSSocket.getTLSTicket()`]: #tlssocketgettlsticket
+[`tls.TLSSocket`]: #class-tlstlssocket
+[`tls.connect()`]: #tlsconnectoptions-callback
+[`tls.createSecureContext()`]: #tlscreatesecurecontextoptions
+[`tls.createSecurePair()`]: #tlscreatesecurepaircontext-isserver-requestcert-rejectunauthorized-options
+[`tls.createServer()`]: #tlscreateserveroptions-secureconnectionlistener
+[`tls.getCiphers()`]: #tlsgetciphers
+[`tls.rootCertificates`]: #tlsrootcertificates
 [asn1.js]: https://www.npmjs.com/package/asn1.js
-[certificate object]: #tls_certificate_object
+[certificate object]: #certificate-object
 [cipher list format]: https://www.openssl.org/docs/man1.1.1/man1/ciphers.html#CIPHER-LIST-FORMAT
 [forward secrecy]: https://en.wikipedia.org/wiki/Perfect_forward_secrecy
-[modifying the default cipher suite]: #tls_modifying_the_default_tls_cipher_suite
-[perfect forward secrecy]: #tls_perfect_forward_secrecy
+[modifying the default cipher suite]: #modifying-the-default-tls-cipher-suite
+[perfect forward secrecy]: #perfect-forward-secrecy
 [specific attacks affecting larger AES key sizes]: https://www.schneier.com/blog/archives/2009/07/another_new_aes.html

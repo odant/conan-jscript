@@ -11,6 +11,7 @@
 <hr class="line"/>
 
 * [Assertion testing](assert.md)
+* [Async_context](async_context.md)
 * [Async hooks](async_hooks.md)
 * [Buffer](buffer.md)
 * [C++ addons](addons.md)
@@ -20,6 +21,7 @@
 * [Cluster](cluster.md)
 * [Command-line options](cli.md)
 * [Console](console.md)
+* [Corepack](corepack.md)
 * [Crypto](crypto.md)
 * [Debugger](debugger.md)
 * [Deprecated APIs](deprecations.md)
@@ -62,6 +64,8 @@
 * [V8](v8.md)
 * [VM](vm.md)
 * [WASI](wasi.md)
+* [Web Crypto API](webcrypto.md)
+* [Web Streams API](webstreams.md)
 * [Worker threads](worker_threads.md)
 * [Zlib](zlib.md)
 

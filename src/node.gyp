@@ -36,17 +36,17 @@
       '<@(node_library_files)',
     ],
     'deps_files': [
-      'deps/v8/tools/splaytree.js',
-      'deps/v8/tools/codemap.js',
-      'deps/v8/tools/consarray.js',
-      'deps/v8/tools/csvparser.js',
-      'deps/v8/tools/profile.js',
-      'deps/v8/tools/profile_view.js',
-      'deps/v8/tools/logreader.js',
-      'deps/v8/tools/arguments.js',
-      'deps/v8/tools/tickprocessor.js',
-      'deps/v8/tools/SourceMap.js',
-      'deps/v8/tools/tickprocessor-driver.js',
+      'deps/v8/tools/splaytree.mjs',
+      'deps/v8/tools/codemap.mjs',
+      'deps/v8/tools/consarray.mjs',
+      'deps/v8/tools/csvparser.mjs',
+      'deps/v8/tools/profile.mjs',
+      'deps/v8/tools/profile_view.mjs',
+      'deps/v8/tools/logreader.mjs',
+      'deps/v8/tools/arguments.mjs',
+      'deps/v8/tools/tickprocessor.mjs',
+      'deps/v8/tools/sourcemap.mjs',
+      'deps/v8/tools/tickprocessor-driver.mjs',
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
       'deps/cjs-module-lexer/lexer.js',
@@ -236,6 +236,19 @@
             'OTHER_LDFLAGS': [ '-Wl,-rpath,@loader_path', ],
           },
         }],
+        [ 'enable_lto=="true"', {
+          'xcode_settings': {
+            'OTHER_LDFLAGS': [
+              # man ld -export_dynamic:
+              # Preserves all global symbols in main executables during LTO.
+              # Without this option, Link Time Optimization is allowed to
+              # inline and remove global functions. This option is used when
+              # a main executable may load a plug-in which requires certain
+              # symbols from the main executable.
+              '-Wl,-export_dynamic',
+            ],
+          },
+        }],
         ['OS=="win"', {
           'libraries': [
             'Dbghelp.lib',
@@ -351,6 +364,7 @@
       'sources': [
         'src/api/async_resource.cc',
         'src/api/callback.cc',
+        'src/api/embed_helpers.cc',
         'src/api/encoding.cc',
         'src/api/environment.cc',
         'src/api/exceptions.cc',
@@ -387,6 +401,7 @@
         'src/node_dir.cc',
         'src/node_env_var.cc',
         'src/node_errors.cc',
+        'src/node_external_reference.cc',
         'src/node_file.cc',
         'src/node_http_parser.cc',
         'src/node_http2.cc',
@@ -408,6 +423,7 @@
         'src/node_report_module.cc',
         'src/node_report_utils.cc',
         'src/node_serdes.cc',
+        'src/node_snapshotable.cc',
         'src/node_sockaddr.cc',
         'src/node_stat_watcher.cc',
         'src/node_symbols.cc',
@@ -484,6 +500,7 @@
         'src/node_contextify.h',
         'src/node_dir.h',
         'src/node_errors.h',
+        'src/node_external_reference.h',
         'src/node_file.h',
         'src/node_file-inl.h',
         'src/node_http_common.h',
@@ -511,6 +528,7 @@
         'src/node_report.h',
         'src/node_revert.h',
         'src/node_root_certs.h',
+        'src/node_snapshotable.h',
         'src/node_sockaddr.h',
         'src/node_sockaddr-inl.h',
         'src/node_stat_watcher.h',
@@ -691,18 +709,58 @@
         } ],
         [ 'node_use_openssl=="true"', {
           'sources': [
+            'src/crypto/crypto_aes.cc',
+            'src/crypto/crypto_bio.cc',
+            'src/crypto/crypto_common.cc',
+            'src/crypto/crypto_dsa.cc',
+            'src/crypto/crypto_hkdf.cc',
+            'src/crypto/crypto_pbkdf2.cc',
+            'src/crypto/crypto_sig.cc',
+            'src/crypto/crypto_timing.cc',
+            'src/crypto/crypto_cipher.cc',
+            'src/crypto/crypto_context.cc',
+            'src/crypto/crypto_ec.cc',
+            'src/crypto/crypto_hmac.cc',
+            'src/crypto/crypto_random.cc',
+            'src/crypto/crypto_rsa.cc',
+            'src/crypto/crypto_spkac.cc',
+            'src/crypto/crypto_util.cc',
+            'src/crypto/crypto_clienthello.cc',
+            'src/crypto/crypto_dh.cc',
+            'src/crypto/crypto_hash.cc',
+            'src/crypto/crypto_keys.cc',
+            'src/crypto/crypto_keygen.cc',
+            'src/crypto/crypto_scrypt.cc',
+            'src/crypto/crypto_tls.cc',
+            'src/crypto/crypto_aes.cc',
+            'src/crypto/crypto_x509.cc',
+            'src/crypto/crypto_bio.h',
+            'src/crypto/crypto_clienthello-inl.h',
+            'src/crypto/crypto_dh.h',
+            'src/crypto/crypto_groups.h',
+            'src/crypto/crypto_hmac.h',
+            'src/crypto/crypto_rsa.h',
+            'src/crypto/crypto_spkac.h',
+            'src/crypto/crypto_util.h',
+            'src/crypto/crypto_cipher.h',
+            'src/crypto/crypto_common.h',
+            'src/crypto/crypto_dsa.h',
+            'src/crypto/crypto_hash.h',
+            'src/crypto/crypto_keys.h',
+            'src/crypto/crypto_keygen.h',
+            'src/crypto/crypto_scrypt.h',
+            'src/crypto/crypto_tls.h',
+            'src/crypto/crypto_clienthello.h',
+            'src/crypto/crypto_context.h',
+            'src/crypto/crypto_ec.h',
+            'src/crypto/crypto_hkdf.h',
+            'src/crypto/crypto_pbkdf2.h',
+            'src/crypto/crypto_sig.h',
+            'src/crypto/crypto_random.h',
+            'src/crypto/crypto_timing.h',
+            'src/crypto/crypto_x509.h',
             'src/node_crypto.cc',
-            'src/node_crypto_common.cc',
-            'src/node_crypto_bio.cc',
-            'src/node_crypto_clienthello.cc',
-            'src/node_crypto.h',
-            'src/node_crypto_common.h',
-            'src/node_crypto_bio.h',
-            'src/node_crypto_clienthello.h',
-            'src/node_crypto_clienthello-inl.h',
-            'src/node_crypto_groups.h',
-            'src/tls_wrap.cc',
-            'src/tls_wrap.h'
+            'src/node_crypto.h'
           ],
         }],
         [ 'OS in "linux freebsd mac solaris" and '
@@ -1078,6 +1136,9 @@
           'defines': [
             'HAVE_OPENSSL=1',
           ],
+          'sources': [
+            'test/cctest/test_node_crypto.cc',
+          ]
         }],
         ['v8_enable_inspector==1', {
           'sources': [
@@ -1278,8 +1339,6 @@
         'src/node_snapshot_stub.cc',
         'src/node_code_cache_stub.cc',
         'tools/snapshot/node_mksnapshot.cc',
-        'tools/snapshot/snapshot_builder.cc',
-        'tools/snapshot/snapshot_builder.h',
       ],
 
       'conditions': [

@@ -1,6 +1,7 @@
 # Errors
 
 <!--introduced_in=v4.0.0-->
+
 <!--type=misc-->
 
 Applications running in Node.js will generally experience four categories of
@@ -615,7 +616,7 @@ A human-readable string describing the reason for the error.
 <a id="ABORT_ERR"></a>
 ### `ABORT_ERR`
 <!-- YAML
-added: v14.17.0
+added: v15.0.0
 -->
 Used when an operation has been aborted (typically using an `AbortController`).
 
@@ -717,12 +718,12 @@ STDERR/STDOUT, and the data's length is longer than the `maxBuffer` option.
 <a id="ERR_CLOSED_MESSAGE_PORT"></a>
 ### `ERR_CLOSED_MESSAGE_PORT`
 <!--
-added: v14.17.1
+added: v16.2.0
 changes:
   - version: 11.12.0
     pr-url: https://github.com/nodejs/node/pull/26487
     description: The error message was removed.
-  - version: v14.17.1
+  - version: v16.2.0
     pr-url: https://github.com/nodejs/node/pull/38510
     description: The error message was reintroduced.
 -->
@@ -756,11 +757,6 @@ The vm context passed into the API is not yet initialized. This could happen
 when an error occurs (and is caught) during the creation of the
 context, for example, when the allocation fails or the maximum call stack
 size is reached when the context is created.
-
-<a id="ERR_CPU_USAGE"></a>
-### `ERR_CPU_USAGE`
-
-The native call from `process.cpuUsage` could not be processed.
 
 <a id="ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED"></a>
 ### `ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED`
@@ -820,21 +816,145 @@ The given crypto keys are incompatible with the attempted operation.
 
 The selected public or private key encoding is incompatible with other options.
 
+<a id="ERR_CRYPTO_INITIALIZATION_FAILED"></a>
+### `ERR_CRYPTO_INITIALIZATION_FAILED`
+<!-- YAML
+added: v15.0.0
+-->
+
+Initialization of the crypto subsystem failed.
+
+<a id="ERR_CRYPTO_INVALID_AUTH_TAG"></a>
+### `ERR_CRYPTO_INVALID_AUTH_TAG`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid authentication tag was provided.
+
+<a id="ERR_CRYPTO_INVALID_COUNTER"></a>
+### `ERR_CRYPTO_INVALID_COUNTER`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid counter was provided for a counter-mode cipher.
+
+<a id="ERR_CRYPTO_INVALID_CURVE"></a>
+### `ERR_CRYPTO_INVALID_CURVE`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid elliptic-curve was provided.
+
 <a id="ERR_CRYPTO_INVALID_DIGEST"></a>
 ### `ERR_CRYPTO_INVALID_DIGEST`
 
 An invalid [crypto digest algorithm][] was specified.
+
+<a id="ERR_CRYPTO_INVALID_IV"></a>
+### `ERR_CRYPTO_INVALID_IV`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid initialization vector was provided.
+
+<a id="ERR_CRYPTO_INVALID_JWK"></a>
+### `ERR_CRYPTO_INVALID_JWK`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid JSON Web Key was provided.
 
 <a id="ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE"></a>
 ### `ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE`
 
 The given crypto key object's type is invalid for the attempted operation.
 
+<a id="ERR_CRYPTO_INVALID_KEYLEN"></a>
+### `ERR_CRYPTO_INVALID_KEYLEN`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid key length was provided.
+
+<a id="ERR_CRYPTO_INVALID_KEYPAIR"></a>
+### `ERR_CRYPTO_INVALID_KEYPAIR`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid key pair was provided.
+
+<a id="ERR_CRYPTO_INVALID_KEYTYPE"></a>
+### `ERR_CRYPTO_INVALID_KEYTYPE`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid key type was provided.
+
+<a id="ERR_CRYPTO_INVALID_MESSAGELEN"></a>
+### `ERR_CRYPTO_INVALID_MESSAGELEN`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid message length was provided.
+
+<a id="ERR_CRYPTO_INVALID_SCRYPT_PARAMS"></a>
+### `ERR_CRYPTO_INVALID_SCRYPT_PARAMS`
+<!-- YAML
+added: v15.0.0
+-->
+
+Invalid scrypt algorithm parameters were provided.
+
 <a id="ERR_CRYPTO_INVALID_STATE"></a>
 ### `ERR_CRYPTO_INVALID_STATE`
 
 A crypto method was used on an object that was in an invalid state. For
 instance, calling [`cipher.getAuthTag()`][] before calling `cipher.final()`.
+
+<a id="ERR_CRYPTO_INVALID_TAG_LENGTH"></a>
+### `ERR_CRYPTO_INVALID_TAG_LENGTH`
+<!-- YAML
+added: v15.0.0
+-->
+
+An invalid authentication tag length was provided.
+
+<a id="ERR_CRYPTO_JOB_INIT_FAILED"></a>
+### `ERR_CRYPTO_JOB_INIT_FAILED`
+<!-- YAML
+added: v15.0.0
+-->
+
+Initialization of an asynchronous crypto operation failed.
+
+<a id="ERR_CRYPTO_JWK_UNSUPPORTED_CURVE"></a>
+### `ERR_CRYPTO_JWK_UNSUPPORTED_CURVE`
+
+Key's Elliptic Curve is not registered for use in the
+[JSON Web Key Elliptic Curve Registry][].
+
+<a id="ERR_CRYPTO_JWK_UNSUPPORTED_KEY_TYPE"></a>
+### `ERR_CRYPTO_JWK_UNSUPPORTED_KEY_TYPE`
+
+Key's Asymmetric Key Type is not registered for use in the
+[JSON Web Key Types Registry][].
+
+<a id="ERR_CRYPTO_OPERATION_FAILED"></a>
+### `ERR_CRYPTO_OPERATION_FAILED`
+<!-- YAML
+added: v15.0.0
+-->
+
+A crypto operation failed for an otherwise unspecified reason.
 
 <a id="ERR_CRYPTO_PBKDF2_ERROR"></a>
 ### `ERR_CRYPTO_PBKDF2_ERROR`
@@ -876,18 +996,18 @@ An unknown cipher was specified.
 An unknown Diffie-Hellman group name was given. See
 [`crypto.getDiffieHellman()`][] for a list of valid group names.
 
-<a id="ERR_DLOPEN_FAILED"></a>
-### `ERR_DLOPEN_FAILED`
+<a id="ERR_CRYPTO_UNSUPPORTED_OPERATION"></a>
+### `ERR_CRYPTO_UNSUPPORTED_OPERATION`
 <!-- YAML
-added: v14.18.0
+added: v15.0.0
 -->
 
-A call to `process.dlopen()` failed.
+An attempt to invoke an unsupported crypto operation was made.
 
 <a id="ERR_DEBUGGER_ERROR"></a>
 ### `ERR_DEBUGGER_ERROR`
 <!-- YAML
-added: v14.17.4
+added: v16.4.0
 -->
 
 An error occurred with the [debugger][].
@@ -895,10 +1015,26 @@ An error occurred with the [debugger][].
 <a id="ERR_DEBUGGER_STARTUP_ERROR"></a>
 ### `ERR_DEBUGGER_STARTUP_ERROR`
 <!-- YAML
-added: v14.17.4
+added: v16.4.0
 -->
 
 The [debugger][] timed out waiting for the required host/port to be free.
+
+<a id="ERR_DLOPEN_DISABLED"></a>
+### `ERR_DLOPEN_DISABLED`
+<!-- YAML
+added: v16.10.0
+-->
+
+Loading native addons has been disabled using [`--no-addons`][].
+
+<a id="ERR_DLOPEN_FAILED"></a>
+### `ERR_DLOPEN_FAILED`
+<!-- YAML
+added: v15.0.0
+-->
+
+A call to `process.dlopen()` failed.
 
 <a id="ERR_DIR_CLOSED"></a>
 ### `ERR_DIR_CLOSED`
@@ -980,6 +1116,74 @@ added: v14.0.0
 Used when a feature that is not available
 to the current platform which is running Node.js is used.
 
+<a id="ERR_FS_CP_DIR_TO_NON_DIR"></a>
+### `ERR_FS_CP_DIR_TO_NON_DIR`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy a directory to a non-directory (file, symlink,
+etc.) using [`fs.cp()`][].
+
+<a id="ERR_FS_CP_EEXIST"></a>
+### `ERR_FS_CP_EEXIST`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy over a file that already existed with
+[`fs.cp()`][], with the `force` and `errorOnExist` set to `true`.
+
+<a id="ERR_FS_CP_EINVAL"></a>
+### `ERR_FS_CP_EINVAL`
+<!--
+added: v16.7.0
+-->
+
+When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
+
+<a id="ERR_FS_CP_FIFO_PIPE"></a>
+### `ERR_FS_CP_FIFO_PIPE`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy a named pipe with [`fs.cp()`][].
+
+<a id="ERR_FS_CP_NON_DIR_TO_DIR"></a>
+### `ERR_FS_CP_NON_DIR_TO_DIR`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy a non-directory (file, symlink, etc.) to a directory
+using [`fs.cp()`][].
+
+<a id="ERR_FS_CP_SOCKET"></a>
+### `ERR_FS_CP_SOCKET`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy to a socket with [`fs.cp()`][].
+
+<a id="ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY"></a>
+### `ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY`
+<!--
+added: v16.7.0
+-->
+
+When using [`fs.cp()`][], a symlink in `dest` pointed to a subdirectory
+of `src`.
+
+<a id="ERR_FS_CP_UNKNOWN"></a>
+### `ERR_FS_CP_UNKNOWN`
+<!--
+added: v16.7.0
+-->
+
+An attempt was made to copy to an unknown file type with [`fs.cp()`][].
+
 <a id="ERR_FS_EISDIR"></a>
 ### `ERR_FS_EISDIR`
 
@@ -1011,6 +1215,16 @@ An invalid HTTP header value was specified.
 ### `ERR_HTTP_INVALID_STATUS_CODE`
 
 Status code was outside the regular status code range (100-999).
+
+<a id="ERR_HTTP_REQUEST_TIMEOUT"></a>
+### `ERR_HTTP_REQUEST_TIMEOUT`
+
+The client has not sent the entire request within the allowed time.
+
+<a id="ERR_HTTP_SOCKET_ENCODING"></a>
+### `ERR_HTTP_SOCKET_ENCODING`
+
+Changing the socket encoding is not allowed per [RFC 7230 Section 3][].
 
 <a id="ERR_HTTP_TRAILER_INVALID"></a>
 ### `ERR_HTTP_TRAILER_INVALID`
@@ -1259,6 +1473,15 @@ When setting the priority for an HTTP/2 stream, the stream may be marked as
 a dependency for a parent stream. This error code is used when an attempt is
 made to mark a stream and dependent of itself.
 
+<a id="ERR_HTTP2_TOO_MANY_INVALID_FRAMES"></a>
+### `ERR_HTTP2_TOO_MANY_INVALID_FRAMES`
+<!--
+added: v15.14.0
+-->
+
+The limit of acceptable invalid HTTP/2 protocol frames sent by the peer,
+as specified through the `maxSessionInvalidFrames` option, has been exceeded.
+
 <a id="ERR_HTTP2_TRAILERS_ALREADY_SENT"></a>
 ### `ERR_HTTP2_TRAILERS_ALREADY_SENT`
 
@@ -1277,6 +1500,11 @@ is set for the `Http2Stream`.
 
 `http2.connect()` was passed a URL that uses any protocol other than `http:` or
 `https:`.
+
+<a id="ERR_ILLEGAL_CONSTRUCTOR"></a>
+### `ERR_ILLEGAL_CONSTRUCTOR`
+
+An attempt was made to construct an object using a non-public constructor.
 
 <a id="ERR_INCOMPATIBLE_OPTION_PAIR"></a>
 ### `ERR_INCOMPATIBLE_OPTION_PAIR`
@@ -1432,7 +1660,7 @@ An IP address is not valid.
 <a id="ERR_INVALID_MODULE"></a>
 ### `ERR_INVALID_MODULE`
 <!-- YAML
-added: v14.18.0
+added: v15.0.0
 -->
 
 An attempt was made to load a module that does not exist or was otherwise not
@@ -1444,20 +1672,10 @@ valid.
 The imported module string is an invalid URL, package name, or package subpath
 specifier.
 
-<a id="ERR_INVALID_OPT_VALUE"></a>
-### `ERR_INVALID_OPT_VALUE`
-
-An invalid or unexpected value was passed in an options object.
-
-<a id="ERR_INVALID_OPT_VALUE_ENCODING"></a>
-### `ERR_INVALID_OPT_VALUE_ENCODING`
-
-An invalid or unknown file encoding was passed.
-
 <a id="ERR_INVALID_PACKAGE_CONFIG"></a>
 ### `ERR_INVALID_PACKAGE_CONFIG`
 
-An invalid [`package.json`][] file was found which failed parsing.
+An invalid [`package.json`][] file failed parsing.
 
 <a id="ERR_INVALID_PACKAGE_TARGET"></a>
 ### `ERR_INVALID_PACKAGE_TARGET`
@@ -1505,6 +1723,16 @@ type for one of its returned object properties on execution.
 
 Thrown in case a function option does not return an expected value
 type on execution, such as when a function is expected to return a promise.
+
+<a id="ERR_INVALID_STATE"></a>
+### `ERR_INVALID_STATE`
+<!-- YAML
+added: v15.0.0
+-->
+
+Indicates that an operation cannot be completed due to an invalid state.
+For instance, an object may have already been destroyed, or may be
+performing another operation.
 
 <a id="ERR_INVALID_SYNC_FORK_INPUT"></a>
 ### `ERR_INVALID_SYNC_FORK_INPUT`
@@ -1649,7 +1877,9 @@ failed.
 <a id="ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE"></a>
 ### `ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE`
 <!-- YAML
-added: v14.5.0
+added:
+  - v14.5.0
+  - v12.19.0
 -->
 
 A message posted to a [`MessagePort`][] could not be deserialized in the target
@@ -1671,13 +1901,6 @@ strict compliance with the API specification (which in some cases may accept
 `func(undefined)` and `func()` are treated identically, and the
 [`ERR_INVALID_ARG_TYPE`][] error code may be used instead.
 
-<a id="ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST"></a>
-### `ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`
-
-An object that needs to be explicitly listed in the `transferList` argument
-is in the object passed to a `postMessage()` call, but is not provided
-in the `transferList` for that call. Usually, this is a `MessagePort`.
-
 <a id="ERR_MISSING_OPTION"></a>
 ### `ERR_MISSING_OPTION`
 
@@ -1695,6 +1918,21 @@ An attempt was made to read an encrypted key without specifying a passphrase.
 The V8 platform used by this instance of Node.js does not support creating
 Workers. This is caused by lack of embedder support for Workers. In particular,
 this error will not occur with standard builds of Node.js.
+
+<a id="ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST"></a>
+### `ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`
+<!-- YAML
+added: v15.0.0
+-->
+
+An object that needs to be explicitly listed in the `transferList` argument
+is in the object passed to a [`postMessage()`][] call, but is not provided
+in the `transferList` for that call. Usually, this is a `MessagePort`.
+
+In Node.js versions prior to v15.0.0, the error code being used here was
+[`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`][]. However, the set of
+transferable object types has been expanded to cover more types than
+`MessagePort`.
 
 <a id="ERR_MODULE_NOT_FOUND"></a>
 ### `ERR_MODULE_NOT_FOUND`
@@ -1777,12 +2015,6 @@ compiled with ICU support.
 
 A non-context-aware native addon was loaded in a process that disallows them.
 
-<a id="ERR_OPERATION_FAILED"></a>
-### `ERR_OPERATION_FAILED`
-
-An operation failed. This is typically used to signal the general failure of an
-asynchronous operation.
-
 <a id="ERR_OUT_OF_RANGE"></a>
 ### `ERR_OUT_OF_RANGE`
 
@@ -1800,6 +2032,16 @@ package specifier mapping.
 The `package.json` [`"exports"`][] field does not export the requested subpath.
 Because exports are encapsulated, private internal modules that are not exported
 cannot be imported through the package resolution, unless using an absolute URL.
+
+<a id="ERR_PERFORMANCE_INVALID_TIMESTAMP"></a>
+### `ERR_PERFORMANCE_INVALID_TIMESTAMP`
+
+An invalid timestamp value was provided for a performance mark or measure.
+
+<a id="ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS"></a>
+### `ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS`
+
+Invalid options were provided for a performance measure.
 
 <a id="ERR_PROTO_ACCESS"></a>
 ### `ERR_PROTO_ACCESS`
@@ -2269,12 +2511,6 @@ nor a relative path starting with `./` or `../`.
 
 All attempts at serializing an uncaught exception from a worker thread failed.
 
-<a id="ERR_WORKER_UNSUPPORTED_EXTENSION"></a>
-### `ERR_WORKER_UNSUPPORTED_EXTENSION`
-
-The pathname used for the main script of a worker has an
-unknown file extension.
-
 <a id="ERR_WORKER_UNSUPPORTED_OPERATION"></a>
 ### `ERR_WORKER_UNSUPPORTED_OPERATION`
 
@@ -2294,11 +2530,11 @@ changes:
      - v10.15.0
     commit: 186035243fad247e3955f
     pr-url: https://github.com/nodejs-private/node-private/pull/143
-    description: Max header size in `http_parser` was set to 8KB.
+    description: Max header size in `http_parser` was set to 8 KB.
 -->
 
 Too much HTTP header data was received. In order to protect against malicious or
-malconfigured clients, if more than 8KB of HTTP header data is received then
+malconfigured clients, if more than 8 KB of HTTP header data is received then
 HTTP parsing will abort without a request or response object being created, and
 an `Error` with this code will be emitted.
 
@@ -2409,11 +2645,6 @@ removed: v10.0.0
 Used when an invalid character is found in an HTTP response status message
 (reason phrase).
 
-<a id="ERR_HTTP_REQUEST_TIMEOUT"></a>
-### `ERR_HTTP_REQUEST_TIMEOUT`
-
-The client has not sent the entire request within the allowed time.
-
 <a id="ERR_INDEX_OUT_OF_RANGE"></a>
 ### `ERR_INDEX_OUT_OF_RANGE`
 <!-- YAML
@@ -2421,6 +2652,34 @@ The client has not sent the entire request within the allowed time.
   removed: v11.0.0
 -->
 A given index was out of the accepted range (e.g. negative offsets).
+
+<a id="ERR_INVALID_OPT_VALUE"></a>
+### `ERR_INVALID_OPT_VALUE`
+<!-- YAML
+added: v8.0.0
+removed: v15.0.0
+-->
+
+An invalid or unexpected value was passed in an options object.
+
+<a id="ERR_INVALID_OPT_VALUE_ENCODING"></a>
+### `ERR_INVALID_OPT_VALUE_ENCODING`
+<!-- YAML
+added: v9.0.0
+removed: v15.0.0
+-->
+
+An invalid or unknown file encoding was passed.
+
+<a id="ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST"></a>
+### `ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`
+<!-- YAML
+removed: v15.0.0
+-->
+
+This error code was replaced by [`ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`][]
+in Node.js v15.0.0, because it is no longer accurate as other types of
+transferable objects also exist now.
 
 <a id="ERR_NAPI_CONS_PROTOTYPE_OBJECT"></a>
 ### `ERR_NAPI_CONS_PROTOTYPE_OBJECT`
@@ -2436,6 +2695,15 @@ Used by the `Node-API` when `Constructor.prototype` is not an object.
 
 A Node.js API was called in an unsupported manner, such as
 `Buffer.write(string, encoding, offset[, length])`.
+
+<a id="ERR_OPERATION_FAILED"></a>
+### `ERR_OPERATION_FAILED`
+<!-- YAML
+added: v15.0.0
+-->
+
+An operation failed. This is typically used to signal the general failure
+of an asynchronous operation.
 
 <a id="ERR_OUTOFMEMORY"></a>
 ### `ERR_OUTOFMEMORY`
@@ -2569,6 +2837,16 @@ Used when a given value is out of the accepted range.
 
 The module must be successfully linked before instantiation.
 
+<a id="ERR_WORKER_UNSUPPORTED_EXTENSION"></a>
+### `ERR_WORKER_UNSUPPORTED_EXTENSION`
+<!-- YAML
+added: v11.0.0
+removed: v16.9.0
+-->
+
+The pathname used for the main script of a worker has an
+unknown file extension.
+
 <a id="ERR_ZLIB_BINDING_CLOSED"></a>
 ### `ERR_ZLIB_BINDING_CLOSED`
 <!-- YAML
@@ -2579,78 +2857,94 @@ removed: v10.0.0
 Used when an attempt is made to use a `zlib` object after it has already been
 closed.
 
+<a id="ERR_CPU_USAGE"></a>
+### `ERR_CPU_USAGE`
+<!-- YAML
+removed: v15.0.0
+-->
+
+The native call from `process.cpuUsage` could not be processed.
+
 [ES Module]: esm.md
-[ICU]: intl.md#intl_internationalization_support
+[ICU]: intl.md#internationalization-support
+[JSON Web Key Elliptic Curve Registry]: https://www.iana.org/assignments/jose/jose.xhtml#web-key-elliptic-curve
+[JSON Web Key Types Registry]: https://www.iana.org/assignments/jose/jose.xhtml#web-key-types
 [Node.js error codes]: #nodejs-error-codes
+[RFC 7230 Section 3]: https://tools.ietf.org/html/rfc7230#section-3
 [Subresource Integrity specification]: https://www.w3.org/TR/SRI/#the-integrity-attribute
 [V8's stack trace API]: https://github.com/v8/v8/wiki/Stack-Trace-API
-[WHATWG Supported Encodings]: util.md#util_whatwg_supported_encodings
-[WHATWG URL API]: url.md#url_the_whatwg_url_api
-[`"exports"`]: packages.md#packages_exports
-[`"imports"`]: packages.md#packages_imports
-[`'uncaughtException'`]: process.md#process_event_uncaughtexception
-[`--disable-proto=throw`]: cli.md#cli_disable_proto_mode
-[`--force-fips`]: cli.md#cli_force_fips
-[`Class: assert.AssertionError`]: assert.md#assert_class_assert_assertionerror
-[`ERR_INVALID_ARG_TYPE`]: #ERR_INVALID_ARG_TYPE
-[`EventEmitter`]: events.md#events_class_eventemitter
-[`MessagePort`]: worker_threads.md#worker_threads_class_messageport
+[WHATWG Supported Encodings]: util.md#whatwg-supported-encodings
+[WHATWG URL API]: url.md#the-whatwg-url-api
+[`"exports"`]: packages.md#exports
+[`"imports"`]: packages.md#imports
+[`'uncaughtException'`]: process.md#event-uncaughtexception
+[`--disable-proto=throw`]: cli.md#--disable-protomode
+[`--force-fips`]: cli.md#--force-fips
+[`--no-addons`]: cli.md#--no-addons
+[`Class: assert.AssertionError`]: assert.md#class-assertassertionerror
+[`ERR_INVALID_ARG_TYPE`]: #err_invalid_arg_type
+[`ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`]: #err_missing_message_port_in_transfer_list
+[`ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST`]: #err_missing_transferable_in_transfer_list
+[`EventEmitter`]: events.md#class-eventemitter
+[`MessagePort`]: worker_threads.md#class-messageport
 [`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
 [`Object.setPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/setPrototypeOf
 [`REPL`]: repl.md
-[`Writable`]: stream.md#stream_class_stream_writable
+[`Writable`]: stream.md#class-streamwritable
 [`child_process`]: child_process.md
-[`cipher.getAuthTag()`]: crypto.md#crypto_cipher_getauthtag
-[`crypto.getDiffieHellman()`]: crypto.md#crypto_crypto_getdiffiehellman_groupname
-[`crypto.scrypt()`]: crypto.md#crypto_crypto_scrypt_password_salt_keylen_options_callback
-[`crypto.scryptSync()`]: crypto.md#crypto_crypto_scryptsync_password_salt_keylen_options
-[`crypto.timingSafeEqual()`]: crypto.md#crypto_crypto_timingsafeequal_a_b
-[`dgram.connect()`]: dgram.md#dgram_socket_connect_port_address_callback
-[`dgram.createSocket()`]: dgram.md#dgram_dgram_createsocket_options_callback
-[`dgram.disconnect()`]: dgram.md#dgram_socket_disconnect
-[`dgram.remoteAddress()`]: dgram.md#dgram_socket_remoteaddress
+[`cipher.getAuthTag()`]: crypto.md#ciphergetauthtag
+[`crypto.getDiffieHellman()`]: crypto.md#cryptogetdiffiehellmangroupname
+[`crypto.scrypt()`]: crypto.md#cryptoscryptpassword-salt-keylen-options-callback
+[`crypto.scryptSync()`]: crypto.md#cryptoscryptsyncpassword-salt-keylen-options
+[`crypto.timingSafeEqual()`]: crypto.md#cryptotimingsafeequala-b
+[`dgram.connect()`]: dgram.md#socketconnectport-address-callback
+[`dgram.createSocket()`]: dgram.md#dgramcreatesocketoptions-callback
+[`dgram.disconnect()`]: dgram.md#socketdisconnect
+[`dgram.remoteAddress()`]: dgram.md#socketremoteaddress
 [`errno`(3) man page]: https://man7.org/linux/man-pages/man3/errno.3.html
-[`fs.Dir`]: fs.md#fs_class_fs_dir
-[`fs.readFileSync`]: fs.md#fs_fs_readfilesync_path_options
-[`fs.readdir`]: fs.md#fs_fs_readdir_path_options_callback
-[`fs.symlink()`]: fs.md#fs_fs_symlink_target_path_type_callback
-[`fs.symlinkSync()`]: fs.md#fs_fs_symlinksync_target_path_type
-[`fs.unlink`]: fs.md#fs_fs_unlink_path_callback
+[`fs.Dir`]: fs.md#class-fsdir
+[`fs.cp()`]: fs.md#fscpsrc-dest-options-callback
+[`fs.readFileSync`]: fs.md#fsreadfilesyncpath-options
+[`fs.readdir`]: fs.md#fsreaddirpath-options-callback
+[`fs.symlink()`]: fs.md#fssymlinktarget-path-type-callback
+[`fs.symlinkSync()`]: fs.md#fssymlinksynctarget-path-type
+[`fs.unlink`]: fs.md#fsunlinkpath-callback
 [`fs`]: fs.md
-[`hash.digest()`]: crypto.md#crypto_hash_digest_encoding
-[`hash.update()`]: crypto.md#crypto_hash_update_data_inputencoding
+[`hash.digest()`]: crypto.md#hashdigestencoding
+[`hash.update()`]: crypto.md#hashupdatedata-inputencoding
 [`http`]: http.md
 [`https`]: https.md
 [`libuv Error handling`]: https://docs.libuv.org/en/v1.x/errors.html
 [`net`]: net.md
-[`new URL(input)`]: url.md#url_new_url_input_base
-[`new URLSearchParams(iterable)`]: url.md#url_new_urlsearchparams_iterable
-[`package.json`]: packages.md#packages_node_js_package_json_field_definitions
-[`process.on('exit')`]: process.md#process_event_exit
-[`process.send()`]: process.md#process_process_send_message_sendhandle_options_callback
-[`process.setUncaughtExceptionCaptureCallback()`]: process.md#process_process_setuncaughtexceptioncapturecallback_fn
-[`readable._read()`]: stream.md#stream_readable_read_size_1
-[`require('crypto').setEngine()`]: crypto.md#crypto_crypto_setengine_engine_flags
-[`require()`]: modules.md#modules_require_id
-[`server.close()`]: net.md#net_server_close_callback
-[`server.listen()`]: net.md#net_server_listen
-[`sign.sign()`]: crypto.md#crypto_sign_sign_privatekey_outputencoding
-[`stream.pipe()`]: stream.md#stream_readable_pipe_destination_options
-[`stream.push()`]: stream.md#stream_readable_push_chunk_encoding
-[`stream.unshift()`]: stream.md#stream_readable_unshift_chunk_encoding
-[`stream.write()`]: stream.md#stream_writable_write_chunk_encoding_callback
-[`subprocess.kill()`]: child_process.md#child_process_subprocess_kill_signal
-[`subprocess.send()`]: child_process.md#child_process_subprocess_send_message_sendhandle_options_callback
-[`util.getSystemErrorName(error.errno)`]: util.md#util_util_getsystemerrorname_err
+[`new URL(input)`]: url.md#new-urlinput-base
+[`new URLSearchParams(iterable)`]: url.md#new-urlsearchparamsiterable
+[`package.json`]: packages.md#nodejs-packagejson-field-definitions
+[`postMessage()`]: worker_threads.md#portpostmessagevalue-transferlist
+[`process.on('exit')`]: process.md#event-exit
+[`process.send()`]: process.md#processsendmessage-sendhandle-options-callback
+[`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn
+[`readable._read()`]: stream.md#readable_readsize
+[`require('crypto').setEngine()`]: crypto.md#cryptosetengineengine-flags
+[`require()`]: modules.md#requireid
+[`server.close()`]: net.md#serverclosecallback
+[`server.listen()`]: net.md#serverlisten
+[`sign.sign()`]: crypto.md#signsignprivatekey-outputencoding
+[`stream.pipe()`]: stream.md#readablepipedestination-options
+[`stream.push()`]: stream.md#readablepushchunk-encoding
+[`stream.unshift()`]: stream.md#readableunshiftchunk-encoding
+[`stream.write()`]: stream.md#writablewritechunk-encoding-callback
+[`subprocess.kill()`]: child_process.md#subprocesskillsignal
+[`subprocess.send()`]: child_process.md#subprocesssendmessage-sendhandle-options-callback
+[`util.getSystemErrorName(error.errno)`]: util.md#utilgetsystemerrornameerr
 [`zlib`]: zlib.md
-[crypto digest algorithm]: crypto.md#crypto_crypto_gethashes
+[crypto digest algorithm]: crypto.md#cryptogethashes
 [debugger]: debugger.md
-[define a custom subpath]: packages.md#packages_subpath_exports
+[define a custom subpath]: packages.md#subpath-exports
 [domains]: domain.md
-[event emitter-based]: events.md#events_class_eventemitter
+[event emitter-based]: events.md#class-eventemitter
 [file descriptors]: https://en.wikipedia.org/wiki/File_descriptor
 [policy]: policy.md
-[self-reference a package using its name]: packages.md#packages_self_referencing_a_package_using_its_name
+[self-reference a package using its name]: packages.md#self-referencing-a-package-using-its-name
 [stream-based]: stream.md
 [syscall]: https://man7.org/linux/man-pages/man2/syscalls.2.html
 [try-catch]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch

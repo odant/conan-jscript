@@ -9,7 +9,7 @@ deprecated: v7.0.0
 
 <!-- source_link=lib/punycode.js -->
 
-**The version of the punycode module bundled in Node.js is being deprecated**.
+**The version of the punycode module bundled in Node.js is being deprecated.**
 In a future major version of Node.js this module will be removed. Users
 currently depending on the `punycode` module should switch to using the
 userland-provided [Punycode.js][] module instead. For punycode-based URL
@@ -152,5 +152,5 @@ Returns a string identifying the current [Punycode.js][] version number.
 
 [Punycode]: https://tools.ietf.org/html/rfc3492
 [Punycode.js]: https://github.com/bestiejs/punycode.js
-[WHATWG URL API]: url.md#url_the_whatwg_url_api
-[`url.domainToASCII`]: url.md#url_url_domaintoascii_domain
+[WHATWG URL API]: url.md#the-whatwg-url-api
+[`url.domainToASCII`]: url.md#urldomaintoasciidomain

@@ -813,7 +813,7 @@ regular `'error'` listener is installed.
 ## `events.getEventListeners(emitterOrTarget, eventName)`
 <!-- YAML
 added:
- - v14.17.0
+ - v15.2.0
 -->
 * `emitterOrTarget` {EventEmitter|EventTarget}
 * `eventName` {string|symbol}
@@ -850,7 +850,7 @@ added:
  - v11.13.0
  - v10.16.0
 changes:
-  - version: v14.17.0
+  - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/34912
     description: The `signal` option is supported now.
 -->
@@ -1115,7 +1115,7 @@ process.nextTick(() => ac.abort());
 
 ## `events.setMaxListeners(n[, ...eventTargets])`
 <!-- YAML
-added: v14.17.0
+added: v15.4.0
 -->
 
 * `n` {number} A non-negative number. The maximum number of listeners per
@@ -1140,17 +1140,24 @@ setMaxListeners(5, target, emitter);
 ## `EventTarget` and `Event` API
 <!-- YAML
 added: v14.5.0
+changes:
+  - version: v16.0.0
+    pr-url: https://github.com/nodejs/node/pull/37237
+    description: changed EventTarget error handling.
+  - version: v15.4.0
+    pr-url: https://github.com/nodejs/node/pull/35949
+    description: No longer experimental.
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/35496
+    description:
+      The `EventTarget` and `Event` classes are now available as globals.
 -->
-
-> Stability: 1 - Experimental
 
 The `EventTarget` and `Event` objects are a Node.js-specific implementation
 of the [`EventTarget` Web API][] that are exposed by some Node.js core APIs.
-Neither the `EventTarget` nor `Event` classes are available for end
-user code to create.
 
 ```js
-const target = getEventTargetSomehow();
+const target = new EventTarget();
 
 target.addEventListener('foo', (event) => {
   console.log('foo event happened!');
@@ -1236,7 +1243,7 @@ const handler4 = {
   }
 };
 
-const target = getEventTargetSomehow();
+const target = new EventTarget();
 
 target.addEventListener('foo', handler1);
 target.addEventListener('foo', handler2);
@@ -1266,6 +1273,10 @@ be aligned with the new behavior.
 ### Class: `Event`
 <!-- YAML
 added: v14.5.0
+changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/35496
+    description: The `Event` class is now available through the global object.
 -->
 
 The `Event` object is an adaptation of the [`Event` Web API][]. Instances
@@ -1419,6 +1430,11 @@ The event type identifier.
 ### Class: `EventTarget`
 <!-- YAML
 added: v14.5.0
+changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/35496
+    description:
+      The `EventTarget` class is now available through the global object.
 -->
 
 #### `eventTarget.addEventListener(type, listener[, options])`
@@ -1452,7 +1468,7 @@ a `listener`. Any individual `listener` may be added once with
 ```js
 function handler(event) {}
 
-const target = getEventTargetSomehow();
+const target = new EventTarget();
 target.addEventListener('foo', handler, { capture: true });  // first
 target.addEventListener('foo', handler, { capture: false }); // second
 
@@ -1608,20 +1624,20 @@ and `removeEventListener()` is that `removeListener()` will return a reference
 to the `EventTarget`.
 
 [WHATWG-EventTarget]: https://dom.spec.whatwg.org/#interface-eventtarget
-[`--trace-warnings`]: cli.md#cli_trace_warnings
+[`--trace-warnings`]: cli.md#--trace-warnings
 [`EventTarget` Web API]: https://dom.spec.whatwg.org/#eventtarget
-[`EventTarget` error handling]: #events_eventtarget_error_handling
+[`EventTarget` error handling]: #eventtarget-error-handling
 [`Event` Web API]: https://dom.spec.whatwg.org/#event
 [`domain`]: domain.md
-[`emitter.listenerCount()`]: #events_emitter_listenercount_eventname
-[`emitter.removeListener()`]: #events_emitter_removelistener_eventname_listener
-[`emitter.setMaxListeners(n)`]: #events_emitter_setmaxlisteners_n
-[`events.defaultMaxListeners`]: #events_events_defaultmaxlisteners
-[`fs.ReadStream`]: fs.md#fs_class_fs_readstream
-[`net.Server`]: net.md#net_class_net_server
-[`process.on('warning')`]: process.md#process_event_warning
-[capturerejections]: #events_capture_rejections_of_promises
-[error]: #events_error_events
-[rejection]: #events_emitter_symbol_for_nodejs_rejection_err_eventname_args
-[rejectionsymbol]: #events_events_capturerejectionsymbol
+[`emitter.listenerCount()`]: #emitterlistenercounteventname
+[`emitter.removeListener()`]: #emitterremovelistenereventname-listener
+[`emitter.setMaxListeners(n)`]: #emittersetmaxlistenersn
+[`events.defaultMaxListeners`]: #eventsdefaultmaxlisteners
+[`fs.ReadStream`]: fs.md#class-fsreadstream
+[`net.Server`]: net.md#class-netserver
+[`process.on('warning')`]: process.md#event-warning
+[capturerejections]: #capture-rejections-of-promises
+[error]: #error-events
+[rejection]: #emittersymbolfornodejsrejectionerr-eventname-args
+[rejectionsymbol]: #eventscapturerejectionsymbol
 [stream]: stream.md

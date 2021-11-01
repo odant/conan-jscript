@@ -10,7 +10,30 @@
 
 The `dgram` module provides an implementation of UDP datagram sockets.
 
-```js
+```mjs
+import dgram from 'dgram';
+
+const server = dgram.createSocket('udp4');
+
+server.on('error', (err) => {
+  console.log(`server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on('message', (msg, rinfo) => {
+  console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+
+server.on('listening', () => {
+  const address = server.address();
+  console.log(`server listening ${address.address}:${address.port}`);
+});
+
+server.bind(41234);
+// Prints: server listening 0.0.0.0:41234
+```
+
+```cjs
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
@@ -123,10 +146,26 @@ When sharing a UDP socket across multiple `cluster` workers, the
 `socket.addMembership()` function must be called only once or an
 `EADDRINUSE` error will occur:
 
-```js
+```mjs
+import cluster from 'cluster';
+import dgram from 'dgram';
+
+if (cluster.isPrimary) {
+  cluster.fork(); // Works ok.
+  cluster.fork(); // Fails with EADDRINUSE.
+} else {
+  const s = dgram.createSocket('udp4');
+  s.bind(1234, () => {
+    s.addMembership('224.0.0.114');
+  });
+}
+```
+
+```cjs
 const cluster = require('cluster');
 const dgram = require('dgram');
-if (cluster.isMaster) {
+
+if (cluster.isPrimary) {
   cluster.fork(); // Works ok.
   cluster.fork(); // Fails with EADDRINUSE.
 } else {
@@ -205,7 +244,30 @@ attempting to bind with a closed socket), an [`Error`][] may be thrown.
 
 Example of a UDP server listening on port 41234:
 
-```js
+```mjs
+import dgram from 'dgram';
+
+const server = dgram.createSocket('udp4');
+
+server.on('error', (err) => {
+  console.log(`server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on('message', (msg, rinfo) => {
+  console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+
+server.on('listening', () => {
+  const address = server.address();
+  console.log(`server listening ${address.address}:${address.port}`);
+});
+
+server.bind(41234);
+// Prints: server listening 0.0.0.0:41234
+```
+
+```cjs
 const dgram = require('dgram');
 const server = dgram.createSocket('udp4');
 
@@ -406,7 +468,9 @@ if the socket is not connected.
 <!-- YAML
 added: v0.1.99
 changes:
-  - version: v14.5.0
+  - version:
+    - v14.5.0
+    - v12.19.0
     pr-url: https://github.com/nodejs/node/pull/22413
     description: The `msg` parameter can now be any `TypedArray` or `DataView`.
   - version: v12.0.0
@@ -478,8 +542,21 @@ This method throws [`ERR_SOCKET_BAD_PORT`][] if called on an unbound socket.
 
 Example of sending a UDP packet to a port on `localhost`;
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const message = Buffer.from('Some bytes');
+const client = dgram.createSocket('udp4');
+client.send(message, 41234, 'localhost', (err) => {
+  client.close();
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const message = Buffer.from('Some bytes');
 const client = dgram.createSocket('udp4');
 client.send(message, 41234, 'localhost', (err) => {
@@ -490,8 +567,22 @@ client.send(message, 41234, 'localhost', (err) => {
 Example of sending a UDP packet composed of multiple buffers to a port on
 `127.0.0.1`;
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const buf1 = Buffer.from('Some ');
+const buf2 = Buffer.from('bytes');
+const client = dgram.createSocket('udp4');
+client.send([buf1, buf2], 41234, (err) => {
+  client.close();
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const buf1 = Buffer.from('Some ');
 const buf2 = Buffer.from('bytes');
 const client = dgram.createSocket('udp4');
@@ -508,8 +599,23 @@ however, sending multiple buffers is faster.
 Example of sending a UDP packet using a socket connected to a port on
 `localhost`:
 
-```js
+```mjs
+import dgram from 'dgram';
+import { Buffer } from 'buffer';
+
+const message = Buffer.from('Some bytes');
+const client = dgram.createSocket('udp4');
+client.connect(41234, 'localhost', (err) => {
+  client.send(message, (err) => {
+    client.close();
+  });
+});
+```
+
+```cjs
 const dgram = require('dgram');
+const { Buffer } = require('buffer');
+
 const message = Buffer.from('Some bytes');
 const client = dgram.createSocket('udp4');
 client.connect(41234, 'localhost', (err) => {
@@ -733,7 +839,7 @@ chained.
 <!-- YAML
 added: v0.11.13
 changes:
-  - version: v14.17.0
+  - version: v15.8.0
     pr-url: https://github.com/nodejs/node/pull/37026
     description: AbortSignal support was added.
   - version: v11.4.0
@@ -806,19 +912,19 @@ and `udp6` sockets). The bound address and port can be retrieved using
 
 [IPv6 Zone Indices]: https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
 [RFC 4007]: https://tools.ietf.org/html/rfc4007
-[`'close'`]: #dgram_event_close
-[`ERR_SOCKET_BAD_PORT`]: errors.md#errors_err_socket_bad_port
-[`ERR_SOCKET_BUFFER_SIZE`]: errors.md#errors_err_socket_buffer_size
-[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#errors_err_socket_dgram_is_connected
-[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.md#errors_err_socket_dgram_not_connected
-[`Error`]: errors.md#errors_class_error
-[`System Error`]: errors.md#errors_class_systemerror
-[`close()`]: #dgram_socket_close_callback
+[`'close'`]: #event-close
+[`ERR_SOCKET_BAD_PORT`]: errors.md#err_socket_bad_port
+[`ERR_SOCKET_BUFFER_SIZE`]: errors.md#err_socket_buffer_size
+[`ERR_SOCKET_DGRAM_IS_CONNECTED`]: errors.md#err_socket_dgram_is_connected
+[`ERR_SOCKET_DGRAM_NOT_CONNECTED`]: errors.md#err_socket_dgram_not_connected
+[`Error`]: errors.md#class-error
+[`System Error`]: errors.md#class-systemerror
+[`close()`]: #socketclosecallback
 [`cluster`]: cluster.md
-[`connect()`]: #dgram_socket_connect_port_address_callback
-[`dgram.createSocket()`]: #dgram_dgram_createsocket_options_callback
-[`dns.lookup()`]: dns.md#dns_dns_lookup_hostname_options_callback
-[`socket.address().address`]: #dgram_socket_address
-[`socket.address().port`]: #dgram_socket_address
-[`socket.bind()`]: #dgram_socket_bind_port_address_callback
-[byte length]: buffer.md#buffer_static_method_buffer_bytelength_string_encoding
+[`connect()`]: #socketconnectport-address-callback
+[`dgram.createSocket()`]: #dgramcreatesocketoptions-callback
+[`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
+[`socket.address().address`]: #socketaddress
+[`socket.address().port`]: #socketaddress
+[`socket.bind()`]: #socketbindport-address-callback
+[byte length]: buffer.md#static-method-bufferbytelengthstring-encoding
