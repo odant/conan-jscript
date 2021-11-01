@@ -2,7 +2,7 @@ diff --git a/src/common.gypi b/src/common.gypi
 index e610650a0..e3aa0ba46 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
-@@ -275,6 +275,7 @@
+@@ -277,6 +277,7 @@
          'SuppressStartupBanner': 'true',
          'WarnAsError': 'false',
          'WarningLevel': 3,                    # /W3
@@ -10,20 +10,20 @@ index e610650a0..e3aa0ba46 100644
        },
        'VCLinkerTool': {
          'target_conditions': [
-@@ -381,7 +382,7 @@
+@@ -386,7 +387,7 @@
        }],
        [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
          'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
--        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++1y' ],
+-        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++14' ],
 +        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++17' ],
          'defines': [ '__STDC_FORMAT_MACROS' ],
          'ldflags': [ '-rdynamic' ],
          'target_conditions': [
-@@ -526,7 +527,7 @@
+@@ -530,7 +531,7 @@
            ['clang==1', {
              'xcode_settings': {
                'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
--              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++1y',  # -std=gnu++1y
+-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++14',  # -std=gnu++14
 +              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++17',  # -std=gnu++17
                'CLANG_CXX_LIBRARY': 'libc++',
              },
@@ -32,32 +32,34 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -605,6 +605,11 @@ parser.add_option('--ninja',
-     dest='use_ninja',
+@@ -691,6 +691,12 @@ parser.add_argument('--ninja',
+     default=None,
      help='generate build files for use with Ninja')
  
-+parser.add_option('--cmake',
++parser.add_argument('--cmake',
 +    action='store_true',
 +    dest='use_cmake',
++    default=None,
 +    help='generate build files for use with CMake')
 +
- parser.add_option('--enable-asan',
+ parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -696,6 +701,12 @@ parser.add_option('-C',
-     dest='compile_commands_json',
-     help=optparse.SUPPRESS_HELP)
+@@ -782,6 +788,13 @@ parser.add_option('-C',
+     default=None,
+     help=argparse.SUPPRESS)
  
 +# Custom output name
-+parser.add_option('--node_core_target_name',
++parser.add_argument('--node_core_target_name',
 +    action='store',
 +    dest='node_core_target_name',
++    default=None,
 +    help='custom output name')
 +
- (options, args) = parser.parse_args()
+ (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1250,6 +1261,8 @@ def configure_node(o):
+@@ -1343,6 +1356,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -66,7 +68,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -1875,6 +1888,9 @@ if options.prefix:
+@@ -1975,6 +1990,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -76,7 +78,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -1897,6 +1913,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -1997,6 +2015,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja']
@@ -123,7 +125,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -329,6 +326,36 @@
+@@ -342,6 +339,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -160,7 +162,7 @@ index f18a0d58a..c187559b1 100644
        ],
      }, # node_core_target_name
      {
-@@ -348,6 +375,12 @@
+@@ -361,6 +388,12 @@
          'deps/uvwasi/uvwasi.gyp:uvwasi',
        ],
  
@@ -173,7 +175,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -604,6 +637,13 @@
+@@ -622,6 +655,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -187,7 +189,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -621,6 +661,7 @@
+@@ -639,6 +679,7 @@
              'Dbghelp',
              'Psapi',
              'Ws2_32',
@@ -195,7 +197,7 @@ index f18a0d58a..c187559b1 100644
            ],
          }],
          [ 'node_use_etw=="true"', {
-@@ -1187,121 +1228,6 @@
+@@ -1248,119 +1289,6 @@
          }],
        ]
      }, # overlapped-checker
@@ -290,8 +292,6 @@ index f18a0d58a..c187559b1 100644
 -        'src/node_snapshot_stub.cc',
 -        'src/node_code_cache_stub.cc',
 -        'tools/snapshot/node_mksnapshot.cc',
--        'tools/snapshot/snapshot_builder.cc',
--        'tools/snapshot/snapshot_builder.h',
 -      ],
 -
 -      'conditions': [
@@ -392,7 +392,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1122,3 +1122,5 @@ void Initialize() {}
+@@ -1162,3 +1162,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -403,13 +403,13 @@ index 0f72abc0b..4375a1415 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 14
- #define NODE_MINOR_VERSION 18
- #define NODE_PATCH_VERSION 1
+ #define NODE_MAJOR_VERSION 16
+ #define NODE_MINOR_VERSION 13
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
- #define NODE_VERSION_LTS_CODENAME "Fermium"
+ #define NODE_VERSION_LTS_CODENAME "Gallium"
 @@ -52,16 +53,31 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
                            NODE_STRINGIFY(NODE_PATCH_VERSION)     \
@@ -484,7 +484,7 @@ diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gy
 index f5ceacfca..53c9a3151 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
-@@ -1045,17 +1045,6 @@ def WriteTarget(
+@@ -1039,17 +1039,6 @@ def WriteTarget(
          if ldflags is not None:
              SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
  
@@ -506,7 +506,7 @@ diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
 index 48ec392b6..73c3f072f 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
-@@ -1027,6 +1027,13 @@
+@@ -1094,6 +1094,13 @@
                '-lrt'
              ],
            },
