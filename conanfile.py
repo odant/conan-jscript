@@ -132,25 +132,29 @@ class JScriptConan(ConanFile):
         elif self.options.cmake:
             flags.append("--cmake")
         #
-        env = {}
+        env = { }
         if self.settings.os == "Linux":
             env["LD_LIBRARY_PATH"] = openssl_libpath
             ld_env_path = os.environ.get("LD_LIBRARY_PATH")
             if ld_env_path is not None:
                 env["LD_LIBRARY_PATH"] += ":" + ld_env_path
         if self.settings.compiler == "Visual Studio":
-            env = tools.vcvars_dict(self.settings, force=True)
-            if not "GYP_MSVS_VERSION" in os.environ:
-                env["GYP_MSVS_VERSION"] = "2019"
-                env["PLATFORM_TOOLSET"] = "v142"
+            env = tools.vcvars_dict(self, force=True)
+            if not "PATH" in env:
+                env["PATH"] = []
+            versions = { "15":"2017", "16":"2019", "17":"2022" }
+            toolsets = { "15":"v141", "16":"v142", "17":"v143" }
+            compilerVersion = str(self.settings.compiler.version)
+            env["GYP_MSVS_VERSION"] = versions[compilerVersion]
+            env["PLATFORM_TOOLSET"] = toolsets[compilerVersion] if not self.settings.compiler.toolset or self.settings.compiler.toolset is None else str(self.settings.compiler.toolset)
             # Explicit use external Ninja
             if self.options.ninja:
                 ninja_binpath = self.deps_cpp_info["ninja"].bin_paths[0].replace("\\", "/")
-                env["Path"].insert(0, ninja_binpath)
+                env["PATH"].append(ninja_binpath)
             # OpenSSL DLL in PATH for run tests
             if self.options.with_unit_tests:
                 openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
-                env["Path"].insert(0, openssl_binpath)
+                env["PATH"].append(openssl_binpath)
         if self.settings.compiler == "gcc":
             env["CFLAGS"] = "-Wno-unused-but-set-parameter"
             env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
