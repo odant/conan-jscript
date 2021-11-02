@@ -157,7 +157,7 @@ public:
   std::condition_variable _state_cv;
 
 private:
-  DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(int*);
+  DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(int*, const EnvSerializeInfo* env_info);
 
   void addSetStates(v8::Local<v8::Context>);
   void addSetState(v8::Local<v8::Context> context, const char* name, const state_t state);
@@ -238,6 +238,7 @@ void JSInstanceImpl::StartNodeInstance() {
   auto autoResetState = createAutoReset(state_t::STOP);
 
   v8::Isolate::CreateParams params;
+  const EnvSerializeInfo* env_info = nullptr;
   auto allocator = ArrayBufferAllocator::Create();
   MultiIsolatePlatform* platform = per_process::v8_platform.Platform();
 
@@ -269,6 +270,9 @@ void JSInstanceImpl::StartNodeInstance() {
     // complete.
     SetIsolateErrorHandlers(_isolate, s);
   }
+  
+  isolate_data_->max_young_gen_size =
+      params.constraints.max_young_generation_size_in_bytes();
 
   // Following code from NodeMainInstance::Run
 
@@ -278,14 +282,14 @@ void JSInstanceImpl::StartNodeInstance() {
     v8::Isolate::Scope isolateScope{_isolate};
     v8::HandleScope handleScope{_isolate};
 
-    auto env = this->CreateEnvironment(&exit_code);
+    auto env = this->CreateEnvironment(&exit_code, env_info);
     CHECK(env);
     _env = env.get();
 
     v8::Local<v8::Context> context = env->context();
     v8::Context::Scope contextScope{context};
     if (exit_code == 0) {
-      LoadEnvironment(env.get());
+      LoadEnvironment(env.get(), StartExecutionCallback{});
       this->overrideConsole(context);
 
       env->set_trace_sync_io(env->options()->trace_sync_io);
@@ -296,19 +300,19 @@ void JSInstanceImpl::StartNodeInstance() {
         env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
 
         do {
+          if (env->is_stopping()) break;
           uv_run(env->event_loop(), UV_RUN_DEFAULT);
+          if (env->is_stopping()) break;
 
           per_process::v8_platform.DrainVMTasks(_isolate);
-
 
           more = uv_loop_alive(env->event_loop());
           if (more && !env->is_stopping()) {
             continue;
           }
 
-          if (!uv_loop_alive(env->event_loop())) {
-            EmitBeforeExit(env.get());
-          }
+          if (EmitProcessBeforeExit(env.get()).IsNothing())
+            break;
 
           // Emit `beforeExit` if the loop became alive either after emitting
           // event, or after running some callbacks.
@@ -344,7 +348,7 @@ void JSInstanceImpl::StartNodeInstance() {
 }
 
 DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
-      int* exit_code) {
+      int* exit_code, const EnvSerializeInfo* env_info) {
     *exit_code = 0;  // Reset the exit code to 0
 
     v8::HandleScope handle_scope(_isolate);
@@ -357,49 +361,68 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
 
     const size_t kNodeContextIndex = 0;
     v8::Local<v8::Context> context;
+    DeleteFnPtr<Environment, FreeEnvironment> env;
+    
     if (deserialize_mode_) {
-      context = v8::Context::FromSnapshot(_isolate, kNodeContextIndex).ToLocalChecked();
-      InitializeContextRuntime(context);
+      env.reset(new Environment(isolate_data_.get(),
+                                _isolate,
+                                args,
+                                exec_args,
+                                env_info,
+                                EnvironmentFlags::kDefaultFlags,
+                                {}));
+      context = v8::Context::FromSnapshot(_isolate,
+                                      kNodeContextIndex,
+                                      {DeserializeNodeInternalFields, env.get()})
+                    .ToLocalChecked();
+
+      CHECK(!context.IsEmpty());
+      v8::Context::Scope context_scope(context);
+      CHECK(InitializeContextRuntime(context).IsJust());
       SetIsolateErrorHandlers(_isolate, {});
+      env->InitializeMainContext(context, env_info);
+#if HAVE_INSPECTOR
+      //env->InitializeInspector({});
+#endif
+      env->DoneBootstrapping();
     }
     else {
       context = NewContext(_isolate);
-    }
-    CHECK(!context.IsEmpty());
+      CHECK(!context.IsEmpty());
 
-    v8::Context::Scope context_scope(context);
+      v8::Context::Scope context_scope(context);
 
-    DeleteFnPtr<Environment, FreeEnvironment> env{ new Environment(
-        isolate_data_.get(),
-        context,
-        args,
-        exec_args,
-        static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
+      env.reset(
+        new Environment(
+          isolate_data_.get(),
+          context,
+          args,
+          exec_args,
+          nullptr,
+          static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
                                              EnvironmentFlags::kDefaultFlags     | 
                                              EnvironmentFlags::kOwnsProcessState |
                                              EnvironmentFlags::kOwnsInspector),
-        ThreadId{})
-    };
+          ThreadId{}
+        )
+      );
 
-    addSetStates(context);
+      addSetStates(context);
 
-    const std::string defaultOriginName{ "DEFAULTORIGIN" };
-    addGlobalStringValue(context, defaultOriginName, defaultOrigin);
+      const std::string defaultOriginName{ "DEFAULTORIGIN" };
+      addGlobalStringValue(context, defaultOriginName, defaultOrigin);
 
-    const std::string externalOriginName{ "EXTERNALORIGIN" };
-    addGlobalStringValue(context, externalOriginName, externalOrigin);
+      const std::string externalOriginName{ "EXTERNALORIGIN" };
+      addGlobalStringValue(context, externalOriginName, externalOrigin);
 
-    // TODO(joyeecheung): when we snapshot the bootstrapped context,
-    // the inspector and diagnostics setup should after after deserialization.
+      // TODO(joyeecheung): when we snapshot the bootstrapped context,
+      // the inspector and diagnostics setup should after after deserialization.
 #if HAVE_INSPECTOR
-    //*exit_code = env->InitializeInspector({});
+      //env->InitializeInspector({});
 #endif
-    if (*exit_code != 0) {
-      return env;
-    }
-
-    if (env->RunBootstrapping().IsEmpty()) {
-      *exit_code = 1;
+      if (env->RunBootstrapping().IsEmpty()) {
+        return nullptr;
+      }
     }
 
     return env;
