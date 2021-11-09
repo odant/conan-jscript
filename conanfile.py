@@ -54,6 +54,7 @@ class JScriptConan(ConanFile):
     def configure(self):
         if self.settings.os != "Windows":
             del self.options.dll_sign
+            self.options.ninja = True
 
     def requirements(self):
         self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
