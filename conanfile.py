@@ -182,7 +182,8 @@ class JScriptConan(ConanFile):
                 cmake.build()
             elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
                 msbuild = MSBuild(self)
-                msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"})
+                defines = { "WINVER": "0x0601", "_WIN32_WINNT": "0x0601", "NTDDI_VERSION": "0x06010000" }
+                msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"}, definitions=defines)
             else:
                 self.run("make -j %s" % tools.cpu_count())
             # Tests
