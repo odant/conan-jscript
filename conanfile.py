@@ -34,7 +34,8 @@ class JScriptConan(ConanFile):
         "oda.patch",
         "experimental.patch",
         "use_nodepath_for_esm.patch",
-        "libuv_win7support.patch"
+        "libuv_win7support.patch",
+        "fix_vs2022_build.patch"
     ]
     exports_sources = [
         "src/*",

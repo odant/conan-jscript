@@ -1,0 +1,26 @@
+diff --git a/src/deps/v8/src/objects/fixed-array-inl.h b/src/deps/v8/src/objects/fixed-array-inl.h
+index dbf0222b8..63da478c1 100644
+--- a/src/deps/v8/src/objects/fixed-array-inl.h
++++ b/src/deps/v8/src/objects/fixed-array-inl.h
+@@ -84,7 +84,7 @@ bool FixedArray::is_the_hole(Isolate* isolate, int index) {
+   return get(isolate, index).IsTheHole(isolate);
+ }
+ 
+-#if !defined(_WIN32) || (defined(_WIN64) && _MSC_VER < 1930 && __cplusplus < 201703L)
++#if !defined(_WIN32) || (defined(_WIN64) && _MSC_VER < 1940 && __cplusplus < 201703L)
+ void FixedArray::set(int index, Smi value) {
+   DCHECK_NE(map(), GetReadOnlyRoots().fixed_cow_array_map());
+   DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
+diff --git a/src/deps/v8/src/objects/fixed-array.h b/src/deps/v8/src/objects/fixed-array.h
+index 6b0ac5d9a..247a4dd30 100644
+--- a/src/deps/v8/src/objects/fixed-array.h
++++ b/src/deps/v8/src/objects/fixed-array.h
+@@ -134,7 +134,7 @@ class FixedArray
+   inline bool is_the_hole(Isolate* isolate, int index);
+ 
+   // Setter that doesn't need write barrier.
+-#if !defined(_WIN32) || (defined(_WIN64) && _MSC_VER < 1930 && __cplusplus < 201703L)
++#if !defined(_WIN32) || (defined(_WIN64) && _MSC_VER < 1940 && __cplusplus < 201703L)
+   inline void set(int index, Smi value);
+ #else
+   inline void set(int index, Smi value) {
