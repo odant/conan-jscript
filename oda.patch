@@ -2,15 +2,16 @@ diff --git a/src/common.gypi b/src/common.gypi
 index e610650a0..e3aa0ba46 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
-@@ -277,6 +277,7 @@
-         'SuppressStartupBanner': 'true',
-         'WarnAsError': 'false',
-         'WarningLevel': 3,                    # /W3
-+        'AdditionalOptions': [ '/std:c++17', ],
-       },
-       'VCLinkerTool': {
-         'target_conditions': [
-@@ -386,7 +387,7 @@
+@@ -268,7 +268,7 @@
+     ],
+     'msvs_settings': {
+       'VCCLCompilerTool': {
+-        'AdditionalOptions': ['/Zc:__cplusplus'],
++        'AdditionalOptions': ['/Zc:__cplusplus','/std:c++17'],
+         'BufferSecurityCheck': 'true',
+         'DebugInformationFormat': 1,          # /Z7 embed info in .obj files
+         'ExceptionHandling': 0,               # /EHsc
+@@ -386,7 +386,7 @@
        }],
        [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
          'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
@@ -19,7 +20,7 @@ index e610650a0..e3aa0ba46 100644
          'defines': [ '__STDC_FORMAT_MACROS' ],
          'ldflags': [ '-rdynamic' ],
          'target_conditions': [
-@@ -530,7 +531,7 @@
+@@ -530,7 +530,7 @@
            ['clang==1', {
              'xcode_settings': {
                'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
