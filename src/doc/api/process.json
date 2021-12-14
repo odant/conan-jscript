@@ -7,7 +7,7 @@
       "name": "Process",
       "introduced_in": "v0.10.0",
       "type": "global",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/process.js\">lib/process.js</a></p>\n<p>The <code>process</code> object provides information about, and control over, the current\nNode.js process. While it is available as a global, it is recommended to\nexplicitly access it via require or import:</p>\n<pre><code class=\"language-mjs\">import process from 'process';\n</code></pre>\n<pre><code class=\"language-cjs\">const process = require('process');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/process.js\">lib/process.js</a></p>\n<p>The <code>process</code> object provides information about, and control over, the current\nNode.js process. While it is available as a global, it is recommended to\nexplicitly access it via require or import:</p>\n<pre><code class=\"language-mjs\">import process from 'process';\n</code></pre>\n<pre><code class=\"language-cjs\">const process = require('process');\n</code></pre>",
       "modules": [
         {
           "textRaw": "Process events",
@@ -327,7 +327,7 @@
               "name": "SIGINT, SIGHUP, etc.",
               "type": "event",
               "params": [],
-              "desc": "<p>Signal events will be emitted when the Node.js process receives a signal. Please\nrefer to <a href=\"http://man7.org/linux/man-pages/man7/signal.7.html\"><code>signal(7)</code></a> for a listing of standard POSIX signal names such as\n<code>'SIGINT'</code>, <code>'SIGHUP'</code>, etc.</p>\n<p>Signals are not available on <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> threads.</p>\n<p>The signal handler will receive the signal's name (<code>'SIGINT'</code>,\n<code>'SIGTERM'</code>, etc.) as the first argument.</p>\n<p>The name of each event will be the uppercase common name for the signal (e.g.\n<code>'SIGINT'</code> for <code>SIGINT</code> signals).</p>\n<pre><code class=\"language-mjs\">import process from 'process';\n\n// Begin reading from stdin so the process does not exit.\nprocess.stdin.resume();\n\nprocess.on('SIGINT', () => {\n  console.log('Received SIGINT. Press Control-D to exit.');\n});\n\n// Using a single function to handle multiple signals\nfunction handle(signal) {\n  console.log(`Received ${signal}`);\n}\n\nprocess.on('SIGINT', handle);\nprocess.on('SIGTERM', handle);\n</code></pre>\n<pre><code class=\"language-cjs\">const process = require('process');\n\n// Begin reading from stdin so the process does not exit.\nprocess.stdin.resume();\n\nprocess.on('SIGINT', () => {\n  console.log('Received SIGINT. Press Control-D to exit.');\n});\n\n// Using a single function to handle multiple signals\nfunction handle(signal) {\n  console.log(`Received ${signal}`);\n}\n\nprocess.on('SIGINT', handle);\nprocess.on('SIGTERM', handle);\n</code></pre>\n<ul>\n<li><code>'SIGUSR1'</code> is reserved by Node.js to start the <a href=\"debugger.html\">debugger</a>. It's possible to\ninstall a listener but doing so might interfere with the debugger.</li>\n<li><code>'SIGTERM'</code> and <code>'SIGINT'</code> have default handlers on non-Windows platforms that\nreset the terminal mode before exiting with code <code>128 + signal number</code>. If one\nof these signals has a listener installed, its default behavior will be\nremoved (Node.js will no longer exit).</li>\n<li><code>'SIGPIPE'</code> is ignored by default. It can have a listener installed.</li>\n<li><code>'SIGHUP'</code> is generated on Windows when the console window is closed, and on\nother platforms under various similar conditions. See <a href=\"http://man7.org/linux/man-pages/man7/signal.7.html\"><code>signal(7)</code></a>. It can have a\nlistener installed, however Node.js will be unconditionally terminated by\nWindows about 10 seconds later. On non-Windows platforms, the default\nbehavior of <code>SIGHUP</code> is to terminate Node.js, but once a listener has been\ninstalled its default behavior will be removed.</li>\n<li><code>'SIGTERM'</code> is not supported on Windows, it can be listened on.</li>\n<li><code>'SIGINT'</code> from the terminal is supported on all platforms, and can usually be\ngenerated with <kbd>Ctrl</kbd>+<kbd>C</kbd> (though this may be configurable).\nIt is not generated when <a href=\"tty.html#readstreamsetrawmodemode\">terminal raw mode</a> is enabled and\n<kbd>Ctrl</kbd>+<kbd>C</kbd> is used.</li>\n<li><code>'SIGBREAK'</code> is delivered on Windows when <kbd>Ctrl</kbd>+<kbd>Break</kbd> is\npressed. On non-Windows platforms, it can be listened on, but there is no way\nto send or generate it.</li>\n<li><code>'SIGWINCH'</code> is delivered when the console has been resized. On Windows, this\nwill only happen on write to the console when the cursor is being moved, or\nwhen a readable tty is used in raw mode.</li>\n<li><code>'SIGKILL'</code> cannot have a listener installed, it will unconditionally\nterminate Node.js on all platforms.</li>\n<li><code>'SIGSTOP'</code> cannot have a listener installed.</li>\n<li><code>'SIGBUS'</code>, <code>'SIGFPE'</code>, <code>'SIGSEGV'</code> and <code>'SIGILL'</code>, when not raised\nartificially using <a href=\"http://man7.org/linux/man-pages/man2/kill.2.html\"><code>kill(2)</code></a>, inherently leave the process in a state from\nwhich it is not safe to call JS listeners. Doing so might cause the process\nto stop responding.</li>\n<li><code>0</code> can be sent to test for the existence of a process, it has no effect if\nthe process exists, but will throw an error if the process does not exist.</li>\n</ul>\n<p>Windows does not support signals so has no equivalent to termination by signal,\nbut Node.js offers some emulation with <a href=\"#processkillpid-signal\"><code>process.kill()</code></a>, and\n<a href=\"child_process.html#subprocesskillsignal\"><code>subprocess.kill()</code></a>:</p>\n<ul>\n<li>Sending <code>SIGINT</code>, <code>SIGTERM</code>, and <code>SIGKILL</code> will cause the unconditional\ntermination of the target process, and afterwards, subprocess will report that\nthe process was terminated by signal.</li>\n<li>Sending signal <code>0</code> can be used as a platform independent way to test for the\nexistence of a process.</li>\n</ul>"
+              "desc": "<p>Signal events will be emitted when the Node.js process receives a signal. Please\nrefer to <a href=\"http://man7.org/linux/man-pages/man7/signal.7.html\"><code>signal(7)</code></a> for a listing of standard POSIX signal names such as\n<code>'SIGINT'</code>, <code>'SIGHUP'</code>, etc.</p>\n<p>Signals are not available on <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> threads.</p>\n<p>The signal handler will receive the signal's name (<code>'SIGINT'</code>,\n<code>'SIGTERM'</code>, etc.) as the first argument.</p>\n<p>The name of each event will be the uppercase common name for the signal (e.g.\n<code>'SIGINT'</code> for <code>SIGINT</code> signals).</p>\n<pre><code class=\"language-mjs\">import process from 'process';\n\n// Begin reading from stdin so the process does not exit.\nprocess.stdin.resume();\n\nprocess.on('SIGINT', () => {\n  console.log('Received SIGINT. Press Control-D to exit.');\n});\n\n// Using a single function to handle multiple signals\nfunction handle(signal) {\n  console.log(`Received ${signal}`);\n}\n\nprocess.on('SIGINT', handle);\nprocess.on('SIGTERM', handle);\n</code></pre>\n<pre><code class=\"language-cjs\">const process = require('process');\n\n// Begin reading from stdin so the process does not exit.\nprocess.stdin.resume();\n\nprocess.on('SIGINT', () => {\n  console.log('Received SIGINT. Press Control-D to exit.');\n});\n\n// Using a single function to handle multiple signals\nfunction handle(signal) {\n  console.log(`Received ${signal}`);\n}\n\nprocess.on('SIGINT', handle);\nprocess.on('SIGTERM', handle);\n</code></pre>\n<ul>\n<li><code>'SIGUSR1'</code> is reserved by Node.js to start the <a href=\"debugger.html\">debugger</a>. It's possible to\ninstall a listener but doing so might interfere with the debugger.</li>\n<li><code>'SIGTERM'</code> and <code>'SIGINT'</code> have default handlers on non-Windows platforms that\nreset the terminal mode before exiting with code <code>128 + signal number</code>. If one\nof these signals has a listener installed, its default behavior will be\nremoved (Node.js will no longer exit).</li>\n<li><code>'SIGPIPE'</code> is ignored by default. It can have a listener installed.</li>\n<li><code>'SIGHUP'</code> is generated on Windows when the console window is closed, and on\nother platforms under various similar conditions. See <a href=\"http://man7.org/linux/man-pages/man7/signal.7.html\"><code>signal(7)</code></a>. It can have a\nlistener installed, however Node.js will be unconditionally terminated by\nWindows about 10 seconds later. On non-Windows platforms, the default\nbehavior of <code>SIGHUP</code> is to terminate Node.js, but once a listener has been\ninstalled its default behavior will be removed.</li>\n<li><code>'SIGTERM'</code> is not supported on Windows, it can be listened on.</li>\n<li><code>'SIGINT'</code> from the terminal is supported on all platforms, and can usually be\ngenerated with <kbd>Ctrl</kbd>+<kbd>C</kbd> (though this may be configurable).\nIt is not generated when <a href=\"tty.html#readstreamsetrawmodemode\">terminal raw mode</a> is enabled\nand <kbd>Ctrl</kbd>+<kbd>C</kbd> is used.</li>\n<li><code>'SIGBREAK'</code> is delivered on Windows when <kbd>Ctrl</kbd>+<kbd>Break</kbd> is\npressed. On non-Windows platforms, it can be listened on, but there is no way\nto send or generate it.</li>\n<li><code>'SIGWINCH'</code> is delivered when the console has been resized. On Windows, this\nwill only happen on write to the console when the cursor is being moved, or\nwhen a readable tty is used in raw mode.</li>\n<li><code>'SIGKILL'</code> cannot have a listener installed, it will unconditionally\nterminate Node.js on all platforms.</li>\n<li><code>'SIGSTOP'</code> cannot have a listener installed.</li>\n<li><code>'SIGBUS'</code>, <code>'SIGFPE'</code>, <code>'SIGSEGV'</code> and <code>'SIGILL'</code>, when not raised\nartificially using <a href=\"http://man7.org/linux/man-pages/man2/kill.2.html\"><code>kill(2)</code></a>, inherently leave the process in a state from\nwhich it is not safe to call JS listeners. Doing so might cause the process\nto stop responding.</li>\n<li><code>0</code> can be sent to test for the existence of a process, it has no effect if\nthe process exists, but will throw an error if the process does not exist.</li>\n</ul>\n<p>Windows does not support signals so has no equivalent to termination by signal,\nbut Node.js offers some emulation with <a href=\"#processkillpid-signal\"><code>process.kill()</code></a>, and\n<a href=\"child_process.html#subprocesskillsignal\"><code>subprocess.kill()</code></a>:</p>\n<ul>\n<li>Sending <code>SIGINT</code>, <code>SIGTERM</code>, and <code>SIGKILL</code> will cause the unconditional\ntermination of the target process, and afterwards, subprocess will report that\nthe process was terminated by signal.</li>\n<li>Sending signal <code>0</code> can be used as a platform independent way to test for the\nexistence of a process.</li>\n</ul>"
             }
           ],
           "type": "module",
@@ -527,11 +527,11 @@
                   "type": "Object",
                   "options": [
                     {
-                      "textRaw": "`type` {string} When `warning` is a `String`, `type` is the name to use for the *type* of warning being emitted. **Default:** `'Warning'`.",
+                      "textRaw": "`type` {string} When `warning` is a `String`, `type` is the name to use for the _type_ of warning being emitted. **Default:** `'Warning'`.",
                       "name": "type",
                       "type": "string",
                       "default": "`'Warning'`",
-                      "desc": "When `warning` is a `String`, `type` is the name to use for the *type* of warning being emitted."
+                      "desc": "When `warning` is a `String`, `type` is the name to use for the _type_ of warning being emitted."
                     },
                     {
                       "textRaw": "`code` {string} A unique identifier for the warning instance being emitted.",
@@ -579,11 +579,11 @@
                   "desc": "The warning to emit."
                 },
                 {
-                  "textRaw": "`type` {string} When `warning` is a `String`, `type` is the name to use for the *type* of warning being emitted. **Default:** `'Warning'`.",
+                  "textRaw": "`type` {string} When `warning` is a `String`, `type` is the name to use for the _type_ of warning being emitted. **Default:** `'Warning'`.",
                   "name": "type",
                   "type": "string",
                   "default": "`'Warning'`",
-                  "desc": "When `warning` is a `String`, `type` is the name to use for the *type* of warning being emitted."
+                  "desc": "When `warning` is a `String`, `type` is the name to use for the _type_ of warning being emitted."
                 },
                 {
                   "textRaw": "`code` {string} A unique identifier for the warning instance being emitted.",
@@ -711,9 +711,9 @@
           "signatures": [
             {
               "return": {
-                "textRaw": "Returns: {integer[]}",
+                "textRaw": "Returns: {integer\\[]}",
                 "name": "return",
-                "type": "integer[]"
+                "type": "integer\\[]"
               },
               "params": []
             }
@@ -779,15 +779,15 @@
           "signatures": [
             {
               "return": {
-                "textRaw": "Returns: {integer[]}",
+                "textRaw": "Returns: {integer\\[]}",
                 "name": "return",
-                "type": "integer[]"
+                "type": "integer\\[]"
               },
               "params": [
                 {
-                  "textRaw": "`time` {integer[]} The result of a previous call to `process.hrtime()`",
+                  "textRaw": "`time` {integer\\[]} The result of a previous call to `process.hrtime()`",
                   "name": "time",
-                  "type": "integer[]",
+                  "type": "integer\\[]",
                   "desc": "The result of a previous call to `process.hrtime()`"
                 }
               ]
@@ -1267,9 +1267,9 @@
             {
               "params": [
                 {
-                  "textRaw": "`groups` {integer[]}",
+                  "textRaw": "`groups` {integer\\[]}",
                   "name": "groups",
-                  "type": "integer[]"
+                  "type": "integer\\[]"
                 }
               ]
             }
@@ -1447,8 +1447,8 @@
           "desc": "<p>The operating system CPU architecture for which the Node.js binary was compiled.\nPossible values are: <code>'arm'</code>, <code>'arm64'</code>, <code>'ia32'</code>, <code>'mips'</code>,<code>'mipsel'</code>, <code>'ppc'</code>,\n<code>'ppc64'</code>, <code>'s390'</code>, <code>'s390x'</code>, <code>'x32'</code>, and <code>'x64'</code>.</p>\n<pre><code class=\"language-mjs\">import { arch } from 'process';\n\nconsole.log(`This processor architecture is ${arch}`);\n</code></pre>\n<pre><code class=\"language-cjs\">const { arch } = require('process');\n\nconsole.log(`This processor architecture is ${process.arch}`);\n</code></pre>"
         },
         {
-          "textRaw": "`argv` {string[]}",
-          "type": "string[]",
+          "textRaw": "`argv` {string\\[]}",
+          "type": "string\\[]",
           "name": "argv",
           "meta": {
             "added": [
@@ -1590,8 +1590,8 @@
           "desc": "<p>The <code>process.env</code> property returns an object containing the user environment.\nSee <a href=\"http://man7.org/linux/man-pages/man7/environ.7.html\"><code>environ(7)</code></a>.</p>\n<p>An example of this object looks like:</p>\n<!-- eslint-skip -->\n<pre><code class=\"language-js\">{\n  TERM: 'xterm-256color',\n  SHELL: '/usr/local/bin/bash',\n  USER: 'maciej',\n  PATH: '~/.bin/:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin',\n  PWD: '/Users/maciej',\n  EDITOR: 'vim',\n  SHLVL: '1',\n  HOME: '/Users/maciej',\n  LOGNAME: 'maciej',\n  _: '/usr/local/bin/node'\n}\n</code></pre>\n<p>It is possible to modify this object, but such modifications will not be\nreflected outside the Node.js process, or (unless explicitly requested)\nto other <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> threads.\nIn other words, the following example would not work:</p>\n<pre><code class=\"language-console\">$ node -e 'process.env.foo = \"bar\"' &#x26;&#x26; echo $foo\n</code></pre>\n<p>While the following will:</p>\n<pre><code class=\"language-mjs\">import { env } from 'process';\n\nenv.foo = 'bar';\nconsole.log(env.foo);\n</code></pre>\n<pre><code class=\"language-cjs\">const { env } = require('process');\n\nenv.foo = 'bar';\nconsole.log(env.foo);\n</code></pre>\n<p>Assigning a property on <code>process.env</code> will implicitly convert the value\nto a string. <strong>This behavior is deprecated.</strong> Future versions of Node.js may\nthrow an error when the value is not a string, number, or boolean.</p>\n<pre><code class=\"language-mjs\">import { env } from 'process';\n\nenv.test = null;\nconsole.log(env.test);\n// => 'null'\nenv.test = undefined;\nconsole.log(env.test);\n// => 'undefined'\n</code></pre>\n<pre><code class=\"language-cjs\">const { env } = require('process');\n\nenv.test = null;\nconsole.log(env.test);\n// => 'null'\nenv.test = undefined;\nconsole.log(env.test);\n// => 'undefined'\n</code></pre>\n<p>Use <code>delete</code> to delete a property from <code>process.env</code>.</p>\n<pre><code class=\"language-mjs\">import { env } from 'process';\n\nenv.TEST = 1;\ndelete env.TEST;\nconsole.log(env.TEST);\n// => undefined\n</code></pre>\n<pre><code class=\"language-cjs\">const { env } = require('process');\n\nenv.TEST = 1;\ndelete env.TEST;\nconsole.log(env.TEST);\n// => undefined\n</code></pre>\n<p>On Windows operating systems, environment variables are case-insensitive.</p>\n<pre><code class=\"language-mjs\">import { env } from 'process';\n\nenv.TEST = 1;\nconsole.log(env.test);\n// => 1\n</code></pre>\n<pre><code class=\"language-cjs\">const { env } = require('process');\n\nenv.TEST = 1;\nconsole.log(env.test);\n// => 1\n</code></pre>\n<p>Unless explicitly specified when creating a <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> instance,\neach <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> thread has its own copy of <code>process.env</code>, based on its\nparent thread’s <code>process.env</code>, or whatever was specified as the <code>env</code> option\nto the <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> constructor. Changes to <code>process.env</code> will not be visible\nacross <a href=\"worker_threads.html#class-worker\"><code>Worker</code></a> threads, and only the main thread can make changes that\nare visible to the operating system or to native add-ons.</p>"
         },
         {
-          "textRaw": "`execArgv` {string[]}",
-          "type": "string[]",
+          "textRaw": "`execArgv` {string\\[]}",
+          "type": "string\\[]",
           "name": "execArgv",
           "meta": {
             "added": [

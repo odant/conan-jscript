@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/http.js\">lib/http.js</a></p>\n<p>To use the HTTP server and client one must <code>require('http')</code>.</p>\n<p>The HTTP interfaces in Node.js are designed to support many features\nof the protocol which have been traditionally difficult to use.\nIn particular, large, possibly chunk-encoded, messages. The interface is\ncareful to never buffer entire requests or responses, so the\nuser is able to stream data.</p>\n<p>HTTP message headers are represented by an object like this:</p>\n<!-- eslint-skip -->\n<pre><code class=\"language-js\">{ 'content-length': '123',\n  'content-type': 'text/plain',\n  'connection': 'keep-alive',\n  'host': 'mysite.com',\n  'accept': '*/*' }\n</code></pre>\n<p>Keys are lowercased. Values are not modified.</p>\n<p>In order to support the full spectrum of possible HTTP applications, the Node.js\nHTTP API is very low-level. It deals with stream handling and message\nparsing only. It parses a message into headers and body but it does not\nparse the actual headers or the body.</p>\n<p>See <a href=\"#messageheaders\"><code>message.headers</code></a> for details on how duplicate headers are handled.</p>\n<p>The raw headers as they were received are retained in the <code>rawHeaders</code>\nproperty, which is an array of <code>[key, value, key2, value2, ...]</code>. For\nexample, the previous message header object might have a <code>rawHeaders</code>\nlist like the following:</p>\n<!-- eslint-disable semi -->\n<pre><code class=\"language-js\">[ 'ConTent-Length', '123456',\n  'content-LENGTH', '123',\n  'content-type', 'text/plain',\n  'CONNECTION', 'keep-alive',\n  'Host', 'mysite.com',\n  'accepT', '*/*' ]\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/http.js\">lib/http.js</a></p>\n<p>To use the HTTP server and client one must <code>require('http')</code>.</p>\n<p>The HTTP interfaces in Node.js are designed to support many features\nof the protocol which have been traditionally difficult to use.\nIn particular, large, possibly chunk-encoded, messages. The interface is\ncareful to never buffer entire requests or responses, so the\nuser is able to stream data.</p>\n<p>HTTP message headers are represented by an object like this:</p>\n<!-- eslint-skip -->\n<pre><code class=\"language-js\">{ 'content-length': '123',\n  'content-type': 'text/plain',\n  'connection': 'keep-alive',\n  'host': 'mysite.com',\n  'accept': '*/*' }\n</code></pre>\n<p>Keys are lowercased. Values are not modified.</p>\n<p>In order to support the full spectrum of possible HTTP applications, the Node.js\nHTTP API is very low-level. It deals with stream handling and message\nparsing only. It parses a message into headers and body but it does not\nparse the actual headers or the body.</p>\n<p>See <a href=\"#messageheaders\"><code>message.headers</code></a> for details on how duplicate headers are handled.</p>\n<p>The raw headers as they were received are retained in the <code>rawHeaders</code>\nproperty, which is an array of <code>[key, value, key2, value2, ...]</code>. For\nexample, the previous message header object might have a <code>rawHeaders</code>\nlist like the following:</p>\n<!-- eslint-disable semi -->\n<pre><code class=\"language-js\">[ 'ConTent-Length', '123456',\n  'content-LENGTH', '123',\n  'content-type', 'text/plain',\n  'CONNECTION', 'keep-alive',\n  'Host', 'mysite.com',\n  'accepT', '*/*' ]\n</code></pre>",
       "classes": [
         {
           "textRaw": "Class: `http.Agent`",
@@ -312,11 +312,11 @@
                       "desc": "Maximum number of sockets allowed for all hosts in total. Each request will use a new socket until the maximum is reached."
                     },
                     {
-                      "textRaw": "`maxFreeSockets` {number} Maximum number of sockets to leave open in a free state. Only relevant if `keepAlive` is set to `true`. **Default:** `256`.",
+                      "textRaw": "`maxFreeSockets` {number} Maximum number of sockets per host to leave open in a free state. Only relevant if `keepAlive` is set to `true`. **Default:** `256`.",
                       "name": "maxFreeSockets",
                       "type": "number",
                       "default": "`256`",
-                      "desc": "Maximum number of sockets to leave open in a free state. Only relevant if `keepAlive` is set to `true`."
+                      "desc": "Maximum number of sockets per host to leave open in a free state. Only relevant if `keepAlive` is set to `true`."
                     },
                     {
                       "textRaw": "`scheduling` {string} Scheduling strategy to apply when picking the next free socket to use. It can be `'fifo'` or `'lifo'`. The main difference between the two scheduling strategies is that `'lifo'` selects the most recently used socket, while `'fifo'` selects the least recently used socket. In case of a low rate of request per second, the `'lifo'` scheduling will lower the risk of picking a socket that might have been closed by the server due to inactivity. In case of a high rate of request per second, the `'fifo'` scheduling will maximize the number of open sockets, while the `'lifo'` scheduling will keep it as low as possible. **Default:** `'lifo'`.",
@@ -457,9 +457,9 @@
                       "type": "Object"
                     },
                     {
-                      "textRaw": "`rawHeaders` {string[]}",
+                      "textRaw": "`rawHeaders` {string\\[]}",
                       "name": "rawHeaders",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ]
                 }
@@ -723,9 +723,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {string[]}",
+                    "textRaw": "Returns: {string\\[]}",
                     "name": "return",
-                    "type": "string[]"
+                    "type": "string\\[]"
                   },
                   "params": []
                 }
@@ -1671,9 +1671,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {string[]}",
+                    "textRaw": "Returns: {string\\[]}",
                     "name": "return",
-                    "type": "string[]"
+                    "type": "string\\[]"
                   },
                   "params": []
                 }
@@ -2253,8 +2253,8 @@
               "desc": "<p><strong>Only valid for request obtained from <a href=\"#class-httpserver\"><code>http.Server</code></a>.</strong></p>\n<p>The request method as a string. Read only. Examples: <code>'GET'</code>, <code>'DELETE'</code>.</p>"
             },
             {
-              "textRaw": "`rawHeaders` {string[]}",
-              "type": "string[]",
+              "textRaw": "`rawHeaders` {string\\[]}",
+              "type": "string\\[]",
               "name": "rawHeaders",
               "meta": {
                 "added": [
@@ -2265,8 +2265,8 @@
               "desc": "<p>The raw request/response headers list exactly as they were received.</p>\n<p>The keys and values are in the same list. It is <em>not</em> a\nlist of tuples. So, the even-numbered offsets are key values, and the\nodd-numbered offsets are the associated values.</p>\n<p>Header names are not lowercased, and duplicates are not merged.</p>\n<pre><code class=\"language-js\">// Prints something like:\n//\n// [ 'user-agent',\n//   'this is invalid because there can be only one',\n//   'User-Agent',\n//   'curl/7.22.0',\n//   'Host',\n//   '127.0.0.1:8000',\n//   'ACCEPT',\n//   '*/*' ]\nconsole.log(request.rawHeaders);\n</code></pre>"
             },
             {
-              "textRaw": "`rawTrailers` {string[]}",
-              "type": "string[]",
+              "textRaw": "`rawTrailers` {string\\[]}",
+              "type": "string\\[]",
               "name": "rawTrailers",
               "meta": {
                 "added": [
@@ -2636,9 +2636,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns {string[]}",
+                    "textRaw": "Returns {string\\[]}",
                     "name": "return",
-                    "type": "string[]"
+                    "type": "string\\[]"
                   },
                   "params": []
                 }
@@ -2978,8 +2978,8 @@
       ],
       "properties": [
         {
-          "textRaw": "`METHODS` {string[]}",
-          "type": "string[]",
+          "textRaw": "`METHODS` {string\\[]}",
+          "type": "string\\[]",
           "name": "METHODS",
           "meta": {
             "added": [

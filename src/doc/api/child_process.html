@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Child process | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Child process | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="child_process" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/child_process.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/child_process.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/child_process.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/child_process.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/child_process.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/child_process.html">13.x</a></li>
@@ -216,7 +216,7 @@
         <h2>Child process<span><a class="mark" href="#child-process" id="child-process">#</a></span><a aria-hidden="true" class="legacy" id="child_process_child_process"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/child_process.js">lib/child_process.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/child_process.js">lib/child_process.js</a></p>
 <p>The <code>child_process</code> module provides the ability to spawn subprocesses in
 a manner that is similar, but not identical, to <a href="http://man7.org/linux/man-pages/man3/popen.3.html"><code>popen(3)</code></a>. This capability
 is primarily provided by the <a href="#child_processspawncommand-args-options"><code>child_process.spawn()</code></a> function:</p>
@@ -675,14 +675,9 @@ the error passed to the callback will be an <code>AbortError</code>:</p>
 </details>
 </div>
 <ul>
-<li>
-<p><code>command</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The command to run.</p>
-</li>
-<li>
-<p><code>args</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> List of string arguments.</p>
-</li>
-<li>
-<p><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a></p>
+<li><code>command</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The command to run.</li>
+<li><code>args</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> List of string arguments.</li>
+<li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
 <ul>
 <li><code>cwd</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="url.html#the-whatwg-url-api" class="type">&#x3C;URL></a> Current working directory of the child process.</li>
 <li><code>env</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> Environment key-value pairs. <strong>Default:</strong> <code>process.env</code>.</li>
@@ -715,9 +710,7 @@ is allowed to run. <strong>Default:</strong> <code>undefined</code>.</li>
 process will be killed by timeout or abort signal. <strong>Default:</strong> <code>'SIGTERM'</code>.</li>
 </ul>
 </li>
-<li>
-<p>Returns: <a href="child_process.html#class-childprocess" class="type">&#x3C;ChildProcess></a></p>
-</li>
+<li>Returns: <a href="child_process.html#class-childprocess" class="type">&#x3C;ChildProcess></a></li>
 </ul>
 <p>The <code>child_process.spawn()</code> method spawns a new process using the given
 <code>command</code>, with command-line arguments in <code>args</code>. If omitted, <code>args</code> defaults

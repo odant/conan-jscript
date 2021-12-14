@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Web Streams API | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Web Streams API | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="webstreams" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/webstreams.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/webstreams.html">16.x</a></li></ol>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/webstreams.html">16.x <b>LTS</b></a></li></ol>
     </li>
   
             <li class="edit_on_github"><a href="https://github.com/nodejs/node/edit/master/doc/api/webstreams.md">Edit on GitHub</a></li>
@@ -698,7 +698,8 @@ available.</p>
 </div>
 <p>The <code>ReadableStreamBYOBReader</code> is an alternative consumer for
 byte-oriented <a href="webstreams.md#class-readablestream" class="type">&#x3C;ReadableStream></a>'s (those that are created with
-<code>underlyingSource.type</code> set equal to <code>'bytes`` when the </code>ReadableStream` was created).</p>
+<code>underlyingSource.type</code> set equal to <code>'bytes'</code> when the
+<code>ReadableStream</code> was created).</p>
 <p>The <code>BYOB</code> is short for "bring your own buffer". This is a
 pattern that allows for more efficient reading of byte-oriented
 data that avoids extraneous copying.</p>
@@ -1201,9 +1202,9 @@ the transformation process.
 </ul>
 </li>
 <li><code>readableType</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types" class="type">&#x3C;any></a> the <code>readableType</code> option is reserved for future use
-and <em>must</em> be `undefined.</li>
+and <em>must</em> be <code>undefined</code>.</li>
 <li><code>writableType</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types" class="type">&#x3C;any></a> the <code>writableType</code> option is reserved for future use
-and <em>must</em> be `undefined.</li>
+and <em>must</em> be <code>undefined</code>.</li>
 </ul>
 </li>
 <li><code>writableStrategy</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>

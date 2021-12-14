@@ -6,7 +6,7 @@
       "textRaw": "V8",
       "name": "v8",
       "introduced_in": "v4.0.0",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/v8.js\">lib/v8.js</a></p>\n<p>The <code>v8</code> module exposes APIs that are specific to the version of <a href=\"https://developers.google.com/v8/\">V8</a>\nbuilt into the Node.js binary. It can be accessed using:</p>\n<pre><code class=\"language-js\">const v8 = require('v8');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/v8.js\">lib/v8.js</a></p>\n<p>The <code>v8</code> module exposes APIs that are specific to the version of <a href=\"https://developers.google.com/v8/\">V8</a>\nbuilt into the Node.js binary. It can be accessed using:</p>\n<pre><code class=\"language-js\">const v8 = require('v8');\n</code></pre>",
       "methods": [
         {
           "textRaw": "`v8.cachedDataVersionTag()`",
@@ -94,9 +94,9 @@
           "signatures": [
             {
               "return": {
-                "textRaw": "Returns: {Object[]}",
+                "textRaw": "Returns: {Object\\[]}",
                 "name": "return",
-                "type": "Object[]"
+                "type": "Object\\[]"
               },
               "params": []
             }
@@ -258,7 +258,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Uses a <a href=\"#class-v8defaultserializer\"><code>DefaultSerializer</code></a> to serialize <code>value</code> into a buffer.</p>"
+              "desc": "<p>Uses a <a href=\"#class-v8defaultserializer\"><code>DefaultSerializer</code></a> to serialize <code>value</code> into a buffer.</p>\n<p><a href=\"errors.html#err_buffer_too_large\"><code>ERR_BUFFER_TOO_LARGE</code></a> will be thrown when trying to\nserialize a huge object which requires buffer\nlarger than <a href=\"buffer.html#bufferconstantsmax_length\"><code>buffer.constants.MAX_LENGTH</code></a>.</p>"
             },
             {
               "textRaw": "`v8.deserialize(buffer)`",
@@ -611,9 +611,9 @@
                   "signatures": [
                     {
                       "return": {
-                        "textRaw": "Returns: {integer[]}",
+                        "textRaw": "Returns: {integer\\[]}",
                         "name": "return",
-                        "type": "integer[]"
+                        "type": "integer\\[]"
                       },
                       "params": []
                     }

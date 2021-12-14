@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Crypto | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Crypto | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="crypto" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/crypto.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/crypto.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/crypto.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/crypto.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/crypto.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/crypto.html">13.x</a></li>
@@ -352,7 +352,7 @@
         <h2>Crypto<span><a class="mark" href="#crypto" id="crypto">#</a></span><a aria-hidden="true" class="legacy" id="crypto_crypto"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/crypto.js">lib/crypto.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/crypto.js">lib/crypto.js</a></p>
 <p>The <code>crypto</code> module provides cryptographic functionality that includes a set of
 wrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>
 
@@ -5319,7 +5319,8 @@ the <code>crypto</code>, <code>tls</code>, and <code>https</code> modules and ar
     <td><code>SSL_OP_NO_TLSv1_3</code></td>
     <td>Instructs OpenSSL to turn off TLS v1.3</td>
   </tr>
-    <tr><td><code>SSL_OP_PKCS1_CHECK_1</code></td>
+  <tr>
+    <td><code>SSL_OP_PKCS1_CHECK_1</code></td>
     <td></td>
   </tr>
   <tr>
@@ -5344,7 +5345,8 @@ the <code>crypto</code>, <code>tls</code>, and <code>https</code> modules and ar
     <td>Instructs OpenSSL to always create a new key when using
     temporary/ephemeral ECDH parameters.</td>
   </tr>
-    <tr><td><code>SSL_OP_SSLEAY_080_CLIENT_DH_BUG</code></td>
+  <tr>
+    <td><code>SSL_OP_SSLEAY_080_CLIENT_DH_BUG</code></td>
     <td></td>
   </tr>
   <tr>

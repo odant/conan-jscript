@@ -30,7 +30,7 @@
       "introduced_in": "v8.4.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/http2.js\">lib/http2.js</a></p>\n<p>The <code>http2</code> module provides an implementation of the <a href=\"https://tools.ietf.org/html/rfc7540\">HTTP/2</a> protocol. It\ncan be accessed using:</p>\n<pre><code class=\"language-js\">const http2 = require('http2');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/http2.js\">lib/http2.js</a></p>\n<p>The <code>http2</code> module provides an implementation of the <a href=\"https://tools.ietf.org/html/rfc7540\">HTTP/2</a> protocol. It\ncan be accessed using:</p>\n<pre><code class=\"language-js\">const http2 = require('http2');\n</code></pre>",
       "modules": [
         {
           "textRaw": "Core API",
@@ -455,8 +455,8 @@
                   "desc": "<p>A prototype-less object describing the current local settings of this\n<code>Http2Session</code>. The local settings are local to <em>this</em> <code>Http2Session</code> instance.</p>"
                 },
                 {
-                  "textRaw": "`originSet` {string[]|undefined}",
-                  "type": "string[]|undefined",
+                  "textRaw": "`originSet` {string\\[]|undefined}",
+                  "type": "string\\[]|undefined",
                   "name": "originSet",
                   "meta": {
                     "added": [
@@ -914,9 +914,9 @@
                   },
                   "params": [
                     {
-                      "textRaw": "`origins` {string[]}",
+                      "textRaw": "`origins` {string\\[]}",
                       "name": "origins",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ],
                   "desc": "<p>The <code>'origin'</code> event is emitted whenever an <code>ORIGIN</code> frame is received by\nthe client. The event is emitted with an array of <code>origin</code> strings. The\n<code>http2session.originSet</code> will be updated to include the received\norigins.</p>\n<pre><code class=\"language-js\">const http2 = require('http2');\nconst client = http2.connect('https://example.org');\n\nclient.on('origin', (origins) => {\n  for (let n = 0; n &#x3C; origins.length; n++)\n    console.log(origins[n]);\n});\n</code></pre>\n<p>The <code>'origin'</code> event is only emitted when using a secure TLS connection.</p>"
@@ -952,10 +952,10 @@
                           "type": "Object",
                           "options": [
                             {
-                              "textRaw": "`endStream` {boolean} `true` if the `Http2Stream` *writable* side should be closed initially, such as when sending a `GET` request that should not expect a payload body.",
+                              "textRaw": "`endStream` {boolean} `true` if the `Http2Stream` _writable_ side should be closed initially, such as when sending a `GET` request that should not expect a payload body.",
                               "name": "endStream",
                               "type": "boolean",
-                              "desc": "`true` if the `Http2Stream` *writable* side should be closed initially, such as when sending a `GET` request that should not expect a payload body."
+                              "desc": "`true` if the `Http2Stream` _writable_ side should be closed initially, such as when sending a `GET` request that should not expect a payload body."
                             },
                             {
                               "textRaw": "`exclusive` {boolean} When `true` and `parent` identifies a parent Stream, the created stream is made the sole direct dependency of the parent, with all other existing dependents made a dependent of the newly created stream. **Default:** `false`.",
@@ -1287,8 +1287,8 @@
                   "desc": "<p>An object containing the outbound headers sent for this <code>Http2Stream</code>.</p>"
                 },
                 {
-                  "textRaw": "`sentInfoHeaders` {HTTP/2 Headers Object[]}",
-                  "type": "HTTP/2 Headers Object[]",
+                  "textRaw": "`sentInfoHeaders` {HTTP/2 Headers Object\\[]}",
+                  "type": "HTTP/2 Headers Object\\[]",
                   "name": "sentInfoHeaders",
                   "meta": {
                     "added": [
@@ -2839,9 +2839,9 @@
                           "desc": "Any [`tls.createServer()`][] options can be provided. For servers, the identity options (`pfx` or `key`/`cert`) are usually required."
                         },
                         {
-                          "textRaw": "`origins` {string[]} An array of origin strings to send within an `ORIGIN` frame immediately following creation of a new server `Http2Session`.",
+                          "textRaw": "`origins` {string\\[]} An array of origin strings to send within an `ORIGIN` frame immediately following creation of a new server `Http2Session`.",
                           "name": "origins",
-                          "type": "string[]",
+                          "type": "string\\[]",
                           "desc": "An array of origin strings to send within an `ORIGIN` frame immediately following creation of a new server `Http2Session`."
                         },
                         {
@@ -3312,8 +3312,8 @@
                   "desc": "<p>The request method as a string. Read-only. Examples: <code>'GET'</code>, <code>'DELETE'</code>.</p>"
                 },
                 {
-                  "textRaw": "`rawHeaders` {string[]}",
-                  "type": "string[]",
+                  "textRaw": "`rawHeaders` {string\\[]}",
+                  "type": "string\\[]",
                   "name": "rawHeaders",
                   "meta": {
                     "added": [
@@ -3324,8 +3324,8 @@
                   "desc": "<p>The raw request/response headers list exactly as they were received.</p>\n<p>The keys and values are in the same list. It is <em>not</em> a\nlist of tuples. So, the even-numbered offsets are key values, and the\nodd-numbered offsets are the associated values.</p>\n<p>Header names are not lowercased, and duplicates are not merged.</p>\n<pre><code class=\"language-js\">// Prints something like:\n//\n// [ 'user-agent',\n//   'this is invalid because there can be only one',\n//   'User-Agent',\n//   'curl/7.22.0',\n//   'Host',\n//   '127.0.0.1:8000',\n//   'ACCEPT',\n//   '*/*' ]\nconsole.log(request.rawHeaders);\n</code></pre>"
                 },
                 {
-                  "textRaw": "`rawTrailers` {string[]}",
-                  "type": "string[]",
+                  "textRaw": "`rawTrailers` {string\\[]}",
+                  "type": "string\\[]",
                   "name": "rawTrailers",
                   "meta": {
                     "added": [
@@ -3646,9 +3646,9 @@
                   "signatures": [
                     {
                       "return": {
-                        "textRaw": "Returns: {string[]}",
+                        "textRaw": "Returns: {string\\[]}",
                         "name": "return",
-                        "type": "string[]"
+                        "type": "string\\[]"
                       },
                       "params": []
                     }
@@ -3886,9 +3886,9 @@
                           "type": "string"
                         },
                         {
-                          "textRaw": "`value` {string|string[]}",
+                          "textRaw": "`value` {string|string\\[]}",
                           "name": "value",
-                          "type": "string|string[]"
+                          "type": "string|string\\[]"
                         }
                       ]
                     }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>File system | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>File system | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="fs" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/fs.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/fs.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/fs.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/fs.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/fs.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/fs.html">13.x</a></li>
@@ -472,7 +472,7 @@
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/fs.js">lib/fs.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/fs.js">lib/fs.js</a></p>
 <p>The <code>fs</code> module enables interacting with the file system in a
 way modeled on standard POSIX functions.</p>
 <p>To use the promise-based APIs:</p>
@@ -713,9 +713,9 @@ fd.<span class="hljs-title function_">createReadStream</span>({ <span class="hlj
 </ul>
 <p><code>options</code> may also include a <code>start</code> option to allow writing data at some
 position past the beginning of the file, allowed values are in the
-[0, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than replacing
-it may require the <code>flags</code> <code>open</code> option to be set to <code>r+</code> rather than the
-default <code>r</code>. The <code>encoding</code> can be any one of those accepted by <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a>.</p>
+[0, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than
+replacing it may require the <code>flags</code> <code>open</code> option to be set to <code>r+</code> rather than
+the default <code>r</code>. The <code>encoding</code> can be any one of those accepted by <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a>.</p>
 <p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>
 the file descriptor will be closed automatically. If <code>autoClose</code> is false,
 then the file descriptor won't be closed, even if there's an error.
@@ -1186,7 +1186,7 @@ exists, throw an error. <strong>Default:</strong> <code>false</code>.</li>
 <li><code>filter</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Function to filter copied files/directories. Return
 <code>true</code> to copy the item, <code>false</code> to ignore it. Can also return a <code>Promise</code>
 that resolves to <code>true</code> or <code>false</code> <strong>Default:</strong> <code>undefined</code>.</li>
-<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. _The copy
+<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. The copy
 operation will ignore errors if you set this to false and the destination
 exists. Use the <code>errorOnExist</code> option to change this behavior.
 <strong>Default:</strong> <code>true</code>.</li>
@@ -2340,7 +2340,7 @@ exists, throw an error. <strong>Default:</strong> <code>false</code>.</li>
 <li><code>filter</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Function to filter copied files/directories. Return
 <code>true</code> to copy the item, <code>false</code> to ignore it. Can also return a <code>Promise</code>
 that resolves to <code>true</code> or <code>false</code> <strong>Default:</strong> <code>undefined</code>.</li>
-<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. _The copy
+<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. The copy
 operation will ignore errors if you set this to false and the destination
 exists. Use the <code>errorOnExist</code> option to change this behavior.
 <strong>Default:</strong> <code>true</code>.</li>
@@ -2503,9 +2503,9 @@ file was created.</p>
 </ul>
 <p><code>options</code> may also include a <code>start</code> option to allow writing data at some
 position past the beginning of the file, allowed values are in the
-[0, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than replacing
-it may require the <code>flags</code> option to be set to <code>r+</code> rather than the default <code>w</code>.
-The <code>encoding</code> can be any one of those accepted by <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a>.</p>
+[0, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than
+replacing it may require the <code>flags</code> option to be set to <code>r+</code> rather than the
+default <code>w</code>. The <code>encoding</code> can be any one of those accepted by <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a>.</p>
 <p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>
 the file descriptor will be closed automatically. If <code>autoClose</code> is false,
 then the file descriptor won't be closed, even if there's an error.
@@ -3865,11 +3865,11 @@ require the destination path to be absolute. When using <code>'junction'</code>,
 <p>Relative targets are relative to the link’s parent directory.</p>
 <pre><code class="language-js mjs"><span class="hljs-keyword">import</span> { symlink } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs'</span>;
 
-<span class="hljs-title function_">symlink</span>(<span class="hljs-string">'./mew'</span>, <span class="hljs-string">'./example/mewtwo'</span>, callback);</code></pre>
-<p>The above example creates a symbolic link <code>mewtwo</code> in the <code>example</code> which points
-to <code>mew</code> in the same directory:</p>
-<pre><code class="language-bash">$ tree example/
-example/
+<span class="hljs-title function_">symlink</span>(<span class="hljs-string">'./mew'</span>, <span class="hljs-string">'./mewtwo'</span>, callback);</code></pre>
+<p>The above example creates a symbolic link <code>mewtwo</code> which points to <code>mew</code> in the
+same directory:</p>
+<pre><code class="language-bash">$ tree .
+.
 ├── mew
 └── mewtwo -> ./mew</code></pre>
 <h4><code>fs.truncate(path[, len], callback)</code><span><a class="mark" href="#fstruncatepath-len-callback" id="fstruncatepath-len-callback">#</a></span><a aria-hidden="true" class="legacy" id="fs_fs_truncate_path_len_callback"></a></h4>
@@ -4630,7 +4630,7 @@ copy-on-write, then the operation will fail.</li>
 exists, throw an error. <strong>Default:</strong> <code>false</code>.</li>
 <li><code>filter</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Function to filter copied files/directories. Return
 <code>true</code> to copy the item, <code>false</code> to ignore it. <strong>Default:</strong> <code>undefined</code></li>
-<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. _The copy
+<li><code>force</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> overwrite existing file or directory. The copy
 operation will ignore errors if you set this to false and the destination
 exists. Use the <code>errorOnExist</code> option to change this behavior.
 <strong>Default:</strong> <code>true</code>.</li>

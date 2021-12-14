@@ -51,6 +51,7 @@ modifications occur. To avoid surprises, use of an Experimental feature may need
 a command-line flag. Experimental features may also emit a [warning][].
 
 ## Stability overview
+
 <!-- STABILITY_OVERVIEW_SLOT_BEGIN -->
 | API | Stability |
 | --- | --------- |
@@ -96,6 +97,7 @@ a command-line flag. Experimental features may also emit a [warning][].
 <!-- STABILITY_OVERVIEW_SLOT_END -->
 
 ## JSON output
+
 <!-- YAML
 added: v0.6.12
 -->

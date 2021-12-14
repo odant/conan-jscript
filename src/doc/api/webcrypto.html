@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Web Crypto API | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Web Crypto API | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="webcrypto" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/webcrypto.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/webcrypto.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/webcrypto.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/webcrypto.html">15.x</a></li></ol>
     </li>
   
@@ -987,8 +987,7 @@ implementation and the APIs supported for each:</p>
 
 
 
-<table><thead><tr><th>Algorithm</th><th><code>generateKey</code></th><th><code>exportKey</code></th><th><code>importKey</code></th><th><code>encrypt</code></th><th><code>decrypt</code></th><th><code>wrapKey</code></th><th><code>unwrapKey</code></th><th><code>deriveBits</code></th><th><code>deriveKey</code></th><th><code>sign</code></th><th><code>verify</code></th><th><code>digest</code></th></tr></thead><tbody><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'AES-CTR'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-CBC'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-GCM'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-KW'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'HKDF'</code></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'SHA-1'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-256'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-384'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-512'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'NODE-DSA'</code><sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DH'</code><sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code><sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-ED448'</code><sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr></tbody></table>
-<p><sup>1</sup> Node.js-specific extension</p>
+<table><thead><tr><th>Algorithm</th><th><code>generateKey</code></th><th><code>exportKey</code></th><th><code>importKey</code></th><th><code>encrypt</code></th><th><code>decrypt</code></th><th><code>wrapKey</code></th><th><code>unwrapKey</code></th><th><code>deriveBits</code></th><th><code>deriveKey</code></th><th><code>sign</code></th><th><code>verify</code></th><th><code>digest</code></th></tr></thead><tbody><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'AES-CTR'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-CBC'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-GCM'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'AES-KW'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'HKDF'</code></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'SHA-1'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-256'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-384'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'SHA-512'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-2" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-3" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-4" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td></tr></tbody></table>
 </section><section><h3>Class: <code>Crypto</code><span><a class="mark" href="#class-crypto" id="class-crypto">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_class_crypto"></a></h3>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1283,8 +1282,7 @@ key may be used.</p>
 
 
 
-<table><thead><tr><th>Key Type</th><th><code>'encrypt'</code></th><th><code>'decrypt'</code></th><th><code>'sign'</code></th><th><code>'verify'</code></th><th><code>'deriveKey'</code></th><th><code>'deriveBits'</code></th><th><code>'wrapKey'</code></th><th><code>'unwrapKey'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'ECDSA'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'RSA-PSS'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-DSA'</code> <sup>1</sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code> <sup>1</sup></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code> <sup>1</sup></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code> <sup>1</sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED448'</code> <sup>1</sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr></tbody></table>
-<p><sup>1</sup> Node.js-specific extension.</p>
+<table><thead><tr><th>Key Type</th><th><code>'encrypt'</code></th><th><code>'decrypt'</code></th><th><code>'sign'</code></th><th><code>'verify'</code></th><th><code>'deriveKey'</code></th><th><code>'deriveBits'</code></th><th><code>'wrapKey'</code></th><th><code>'unwrapKey'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'ECDSA'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'RSA-PSS'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-5" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-6" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-7" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-8" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-9" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td></tr></tbody></table>
 </section><section><h3>Class: <code>CryptoKeyPair</code><span><a class="mark" href="#class-cryptokeypair" id="class-cryptokeypair">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_class_cryptokeypair"></a></h3>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1352,10 +1350,9 @@ an <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Gl
 <li><code>'ECDH'</code></li>
 <li><code>'HKDF'</code></li>
 <li><code>'PBKDF2'</code></li>
-<li><code>'NODE-DH'</code><sup>1</sup></li>
-<li><code>'NODE-SCRYPT'</code><sup>1</sup></li>
+<li><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-10" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-SCRYPT'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-11" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
-<p><sup>1</sup> Node.js-specific extension</p>
 <h4><code>subtle.deriveKey(algorithm, baseKey, derivedKeyAlgorithm, extractable, keyUsages)</code><span><a class="mark" href="#subtlederivekeyalgorithm-basekey-derivedkeyalgorithm-extractable-keyusages" id="subtlederivekeyalgorithm-basekey-derivedkeyalgorithm-extractable-keyusages">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_derivekey_algorithm_basekey_derivedkeyalgorithm_extractable_keyusages"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1382,10 +1379,9 @@ generate raw keying material, then passing the result into the
 <li><code>'ECDH'</code></li>
 <li><code>'HKDF'</code></li>
 <li><code>'PBKDF2'</code></li>
-<li><code>'NODE-DH'</code><sup>1</sup></li>
-<li>'<code>NODE-SCRYPT'</code><sup>1</sup></li>
+<li><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-12" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li>'<code>NODE-SCRYPT'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-13" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
-<p><sup>1</sup> Node.js-specific extension</p>
 <h4><code>subtle.digest(algorithm, data)</code><span><a class="mark" href="#subtledigestalgorithm-data" id="subtledigestalgorithm-data">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_digest_algorithm_data"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1587,8 +1583,7 @@ extension that allows converting a <a href="webcrypto.html#class-cryptokey" clas
 
 
 
-<table><thead><tr><th>Key Type</th><th><code>'spki'</code></th><th><code>'pkcs8'</code></th><th><code>'jwk'</code></th><th><code>'raw'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DSA'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code> <sup>1</sup></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'NODE-ED448'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr></tbody></table>
-<p><sup>1</sup> Node.js-specific extension</p>
+<table><thead><tr><th>Key Type</th><th><code>'spki'</code></th><th><code>'pkcs8'</code></th><th><code>'jwk'</code></th><th><code>'raw'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-14" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-15" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-16" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td></td><td></td></tr><tr><td><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-17" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-18" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr></tbody></table>
 <h4><code>subtle.generateKey(algorithm, extractable, keyUsages)</code><span><a class="mark" href="#subtlegeneratekeyalgorithm-extractable-keyusages" id="subtlegeneratekeyalgorithm-extractable-keyusages">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_generatekey_algorithm_extractable_keyusages"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1614,10 +1609,10 @@ include:</p>
 <li><code>'RSA-OAEP'</code></li>
 <li><code>'ECDSA'</code></li>
 <li><code>'ECDH'</code></li>
-<li><code>'NODE-DSA'</code> <sup>1</sup></li>
-<li><code>'NODE-DH'</code> <sup>1</sup></li>
-<li><code>'NODE-ED25519'</code> <sup>1</sup></li>
-<li><code>'NODE-ED448'</code> <sup>1</sup></li>
+<li><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-19" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-20" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-21" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-22" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
 <p>The <a href="webcrypto.html#class-cryptokey" class="type">&#x3C;CryptoKey></a> (secret key) generating algorithms supported include:</p>
 <ul>
@@ -1627,7 +1622,6 @@ include:</p>
 <li><code>'AES-GCM'</code></li>
 <li><code>'AES-KW'</code></li>
 </ul>
-<p><sup>1</sup> Non-standard Node.js extension</p>
 <h4><code>subtle.importKey(format, keyData, algorithm, extractable, keyUsages)</code><span><a class="mark" href="#subtleimportkeyformat-keydata-algorithm-extractable-keyusages" id="subtleimportkeyformat-keydata-algorithm-extractable-keyusages">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_importkey_format_keydata_algorithm_extractable_keyusages"></a></h4>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -1794,8 +1788,7 @@ extension that allows converting a Node.js <a href="crypto.html#class-keyobject"
 
 
 
-<table><thead><tr><th>Key Type</th><th><code>'spki'</code></th><th><code>'pkcs8'</code></th><th><code>'jwk'</code></th><th><code>'raw'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DSA'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code> <sup>1</sup></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'NODE-ED25519'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'NODE-ED448'</code> <sup>1</sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr></tbody></table>
-<p><sup>1</sup> Node.js-specific extension</p>
+<table><thead><tr><th>Key Type</th><th><code>'spki'</code></th><th><code>'pkcs8'</code></th><th><code>'jwk'</code></th><th><code>'raw'</code></th></tr></thead><tbody><tr><td><code>'AES-CBC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-CTR'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-GCM'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'AES-KW'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDH'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'ECDSA'</code></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'HDKF'</code></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'HMAC'</code></td><td></td><td></td><td>✔</td><td>✔</td></tr><tr><td><code>'PBKDF2'</code></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'RSA-OAEP'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSA-PSS'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'RSASSA-PKCS1-v1_5'</code></td><td>✔</td><td>✔</td><td>✔</td><td></td></tr><tr><td><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-23" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-24" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td></td><td></td></tr><tr><td><code>'NODE-SCRYPT'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-25" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td></td><td></td><td></td><td>✔</td></tr><tr><td><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-26" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-27" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr></tbody></table>
 <h4><code>subtle.sign(algorithm, key, data)</code><span><a class="mark" href="#subtlesignalgorithm-key-data" id="subtlesignalgorithm-key-data">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_sign_algorithm_key_data"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1818,11 +1811,10 @@ an <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Gl
 <li><code>'RSA-PSS'</code></li>
 <li><code>'ECDSA'</code></li>
 <li><code>'HMAC'</code></li>
-<li><code>'NODE-DSA'</code><sup>1</sup></li>
-<li><code>'NODE-ED25519'</code><sup>1</sup></li>
-<li><code>'NODE-ED448'</code><sup>1</sup></li>
+<li><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-28" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-29" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-30" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
-<p><sup>1</sup> Non-standard Node.js extension</p>
 <h4><code>subtle.unwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgo, unwrappedKeyAlgo, extractable, keyUsages)</code><span><a class="mark" href="#subtleunwrapkeyformat-wrappedkey-unwrappingkey-unwrapalgo-unwrappedkeyalgo-extractable-keyusages" id="subtleunwrapkeyformat-wrappedkey-unwrappingkey-unwrapalgo-unwrappedkeyalgo-extractable-keyusages">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_unwrapkey_format_wrappedkey_unwrappingkey_unwrapalgo_unwrappedkeyalgo_extractable_keyusages"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1854,10 +1846,10 @@ promise is resolved with a <a href="webcrypto.html#class-cryptokey" class="type"
 <p>The wrapping algorithms currently supported include:</p>
 <ul>
 <li><code>'RSA-OAEP'</code></li>
-<li><code>'AES-CTR'</code><sup>1</sup></li>
-<li><code>'AES-CBC'</code><sup>1</sup></li>
-<li><code>'AES-GCM'</code><sup>1</sup></li>
-<li><code>'AES-KW'</code><sup>1</sup></li>
+<li><code>'AES-CTR'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-31" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'AES-CBC'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-32" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'AES-GCM'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-33" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'AES-KW'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-34" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
 <p>The unwrapped key algorithms supported include:</p>
 <ul>
@@ -1871,10 +1863,9 @@ promise is resolved with a <a href="webcrypto.html#class-cryptokey" class="type"
 <li><code>'AES-CBC'</code></li>
 <li><code>'AES-GCM'</code></li>
 <li><code>'AES-KW'</code></li>
-<li><code>'NODE-DSA'</code><sup>1</sup></li>
-<li><code>'NODE-DH'</code><sup>1</sup></li>
+<li><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-35" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-DH'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-36" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
-<p><sup>1</sup> Non-standard Node.js extension</p>
 <h4><code>subtle.verify(algorithm, key, signature, data)</code><span><a class="mark" href="#subtleverifyalgorithm-key-signature-data" id="subtleverifyalgorithm-key-signature-data">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_verify_algorithm_key_signature_data"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -1898,11 +1889,10 @@ with either <code>true</code> or <code>false</code>.</p>
 <li><code>'RSA-PSS'</code></li>
 <li><code>'ECDSA'</code></li>
 <li><code>'HMAC'</code></li>
-<li><code>'NODE-DSA'</code><sup>1</sup></li>
-<li><code>'NODE-ED25519'</code><sup>1</sup></li>
-<li><code>'NODE-ED448'</code><sup>1</sup></li>
+<li><code>'NODE-DSA'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-37" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED25519'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-38" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
+<li><code>'NODE-ED448'</code><sup><a href="#user-content-fn-1" id="user-content-fnref-1-39" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></li>
 </ul>
-<p><sup>1</sup> Non-standard Node.js extension</p>
 <h4><code>subtle.wrapKey(format, key, wrappingKey, wrapAlgo)</code><span><a class="mark" href="#subtlewrapkeyformat-key-wrappingkey-wrapalgo" id="subtlewrapkeyformat-key-wrappingkey-wrapalgo">#</a></span><a aria-hidden="true" class="legacy" id="webcrypto_subtle_wrapkey_format_key_wrappingkey_wrapalgo"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -2742,7 +2732,14 @@ greater than 1. <strong>Default:</strong> <code>16384</code>.</li>
 </div>
 <ul>
 <li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer" class="type">&#x3C;ArrayBuffer></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray" class="type">&#x3C;TypedArray></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView" class="type">&#x3C;DataView></a></li>
-</ul></section>
+</ul>
+<section data-footnotes="" class="footnotes"></section><section><h3 id="footnote-label" class="sr-only">Footnotes</h3>
+<ol>
+<li id="user-content-fn-1">
+<p>Non-standard Node.js-specific extension <a href="#user-content-fnref-1" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩</a> <a href="#user-content-fnref-1-2" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>2</sup></a> <a href="#user-content-fnref-1-3" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>3</sup></a> <a href="#user-content-fnref-1-4" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>4</sup></a> <a href="#user-content-fnref-1-5" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>5</sup></a> <a href="#user-content-fnref-1-6" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>6</sup></a> <a href="#user-content-fnref-1-7" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>7</sup></a> <a href="#user-content-fnref-1-8" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>8</sup></a> <a href="#user-content-fnref-1-9" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>9</sup></a> <a href="#user-content-fnref-1-10" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>10</sup></a> <a href="#user-content-fnref-1-11" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>11</sup></a> <a href="#user-content-fnref-1-12" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>12</sup></a> <a href="#user-content-fnref-1-13" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>13</sup></a> <a href="#user-content-fnref-1-14" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>14</sup></a> <a href="#user-content-fnref-1-15" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>15</sup></a> <a href="#user-content-fnref-1-16" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>16</sup></a> <a href="#user-content-fnref-1-17" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>17</sup></a> <a href="#user-content-fnref-1-18" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>18</sup></a> <a href="#user-content-fnref-1-19" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>19</sup></a> <a href="#user-content-fnref-1-20" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>20</sup></a> <a href="#user-content-fnref-1-21" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>21</sup></a> <a href="#user-content-fnref-1-22" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>22</sup></a> <a href="#user-content-fnref-1-23" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>23</sup></a> <a href="#user-content-fnref-1-24" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>24</sup></a> <a href="#user-content-fnref-1-25" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>25</sup></a> <a href="#user-content-fnref-1-26" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>26</sup></a> <a href="#user-content-fnref-1-27" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>27</sup></a> <a href="#user-content-fnref-1-28" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>28</sup></a> <a href="#user-content-fnref-1-29" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>29</sup></a> <a href="#user-content-fnref-1-30" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>30</sup></a> <a href="#user-content-fnref-1-31" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>31</sup></a> <a href="#user-content-fnref-1-32" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>32</sup></a> <a href="#user-content-fnref-1-33" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>33</sup></a> <a href="#user-content-fnref-1-34" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>34</sup></a> <a href="#user-content-fnref-1-35" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>35</sup></a> <a href="#user-content-fnref-1-36" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>36</sup></a> <a href="#user-content-fnref-1-37" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>37</sup></a> <a href="#user-content-fnref-1-38" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>38</sup></a> <a href="#user-content-fnref-1-39" data-footnote-backref="" class="data-footnote-backref" aria-label="Back to content">↩<sup>39</sup></a></p>
+</li>
+</ol>
+</section></section>
         <!-- API END -->
       </div>
     </div>

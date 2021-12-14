@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/repl.js\">lib/repl.js</a></p>\n<p>The <code>repl</code> module provides a Read-Eval-Print-Loop (REPL) implementation that\nis available both as a standalone program or includible in other applications.\nIt can be accessed using:</p>\n<pre><code class=\"language-js\">const repl = require('repl');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/repl.js\">lib/repl.js</a></p>\n<p>The <code>repl</code> module provides a Read-Eval-Print-Loop (REPL) implementation that\nis available both as a standalone program or includible in other applications.\nIt can be accessed using:</p>\n<pre><code class=\"language-js\">const repl = require('repl');\n</code></pre>",
       "modules": [
         {
           "textRaw": "Design and features",
@@ -18,7 +18,7 @@
             {
               "textRaw": "Commands and special keys",
               "name": "commands_and_special_keys",
-              "desc": "<p>The following special commands are supported by all REPL instances:</p>\n<ul>\n<li><code>.break</code>: When in the process of inputting a multi-line expression, enter\nthe <code>.break</code> command (or press <kbd>Ctrl</kbd>+<kbd>C</kbd>) to abort\nfurther input or processing of that expression.</li>\n<li><code>.clear</code>: Resets the REPL <code>context</code> to an empty object and clears any\nmulti-line expression being input.</li>\n<li><code>.exit</code>: Close the I/O stream, causing the REPL to exit.</li>\n<li><code>.help</code>: Show this list of special commands.</li>\n<li><code>.save</code>: Save the current REPL session to a file:\n<code>> .save ./file/to/save.js</code></li>\n<li><code>.load</code>: Load a file into the current REPL session.\n<code>> .load ./file/to/load.js</code></li>\n<li><code>.editor</code>: Enter editor mode (<kbd>Ctrl</kbd>+<kbd>D</kbd> to finish,\n<kbd>Ctrl</kbd>+<kbd>C</kbd> to cancel).</li>\n</ul>\n<pre><code class=\"language-console\">> .editor\n// Entering editor mode (^D to finish, ^C to cancel)\nfunction welcome(name) {\n  return `Hello ${name}!`;\n}\n\nwelcome('Node.js User');\n\n// ^D\n'Hello Node.js User!'\n>\n</code></pre>\n<p>The following key combinations in the REPL have these special effects:</p>\n<ul>\n<li><kbd>Ctrl</kbd>+<kbd>C</kbd>: When pressed once, has the same effect as the\n<code>.break</code> command.\nWhen pressed twice on a blank line, has the same effect as the <code>.exit</code>\ncommand.</li>\n<li><kbd>Ctrl</kbd>+<kbd>D</kbd>: Has the same effect as the <code>.exit</code> command.</li>\n<li><kbd>Tab</kbd>: When pressed on a blank line, displays global and local (scope)\nvariables. When pressed while entering other input, displays relevant\nautocompletion options.</li>\n</ul>\n<p>For key bindings related to the reverse-i-search, see <a href=\"#reverse-i-search\"><code>reverse-i-search</code></a>.\nFor all other key bindings, see <a href=\"readline.html#tty-keybindings\">TTY keybindings</a>.</p>",
+              "desc": "<p>The following special commands are supported by all REPL instances:</p>\n<ul>\n<li><code>.break</code>: When in the process of inputting a multi-line expression, enter\nthe <code>.break</code> command (or press <kbd>Ctrl</kbd>+<kbd>C</kbd>) to abort\nfurther input or processing of that expression.</li>\n<li><code>.clear</code>: Resets the REPL <code>context</code> to an empty object and clears any\nmulti-line expression being input.</li>\n<li><code>.exit</code>: Close the I/O stream, causing the REPL to exit.</li>\n<li><code>.help</code>: Show this list of special commands.</li>\n<li><code>.save</code>: Save the current REPL session to a file:\n<code>> .save ./file/to/save.js</code></li>\n<li><code>.load</code>: Load a file into the current REPL session.\n<code>> .load ./file/to/load.js</code></li>\n<li><code>.editor</code>: Enter editor mode (<kbd>Ctrl</kbd>+<kbd>D</kbd> to\nfinish, <kbd>Ctrl</kbd>+<kbd>C</kbd> to cancel).</li>\n</ul>\n<pre><code class=\"language-console\">> .editor\n// Entering editor mode (^D to finish, ^C to cancel)\nfunction welcome(name) {\n  return `Hello ${name}!`;\n}\n\nwelcome('Node.js User');\n\n// ^D\n'Hello Node.js User!'\n>\n</code></pre>\n<p>The following key combinations in the REPL have these special effects:</p>\n<ul>\n<li><kbd>Ctrl</kbd>+<kbd>C</kbd>: When pressed once, has the same effect as the\n<code>.break</code> command.\nWhen pressed twice on a blank line, has the same effect as the <code>.exit</code>\ncommand.</li>\n<li><kbd>Ctrl</kbd>+<kbd>D</kbd>: Has the same effect as the <code>.exit</code> command.</li>\n<li><kbd>Tab</kbd>: When pressed on a blank line, displays global and local\n(scope) variables. When pressed while entering other input, displays relevant\nautocompletion options.</li>\n</ul>\n<p>For key bindings related to the reverse-i-search, see <a href=\"#reverse-i-search\"><code>reverse-i-search</code></a>.\nFor all other key bindings, see <a href=\"readline.html#tty-keybindings\">TTY keybindings</a>.</p>",
               "type": "module",
               "displayName": "Commands and special keys"
             },
@@ -101,7 +101,7 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>The REPL supports bi-directional reverse-i-search similar to <a href=\"https://en.wikipedia.org/wiki/Z_shell\">ZSH</a>. It is\ntriggered with <kbd>Ctrl</kbd>+<kbd>R</kbd> to search backward and\n<kbd>Ctrl</kbd>+<kbd>S</kbd> to search\nforwards.</p>\n<p>Duplicated history entries will be skipped.</p>\n<p>Entries are accepted as soon as any key is pressed that doesn't correspond\nwith the reverse search. Cancelling is possible by pressing <kbd>Esc</kbd> or\n<kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>\n<p>Changing the direction immediately searches for the next entry in the expected\ndirection from the current position on.</p>",
+              "desc": "<p>The REPL supports bi-directional reverse-i-search similar to <a href=\"https://en.wikipedia.org/wiki/Z_shell\">ZSH</a>. It is\ntriggered with <kbd>Ctrl</kbd>+<kbd>R</kbd> to search backward\nand <kbd>Ctrl</kbd>+<kbd>S</kbd> to search forwards.</p>\n<p>Duplicated history entries will be skipped.</p>\n<p>Entries are accepted as soon as any key is pressed that doesn't correspond\nwith the reverse search. Cancelling is possible by pressing <kbd>Esc</kbd>\nor <kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>\n<p>Changing the direction immediately searches for the next entry in the expected\ndirection from the current position on.</p>",
               "type": "module",
               "displayName": "Reverse-i-search"
             },
@@ -225,10 +225,10 @@
                 {
                   "params": [
                     {
-                      "textRaw": "`keyword` {string} The command keyword (*without* a leading `.` character).",
+                      "textRaw": "`keyword` {string} The command keyword (_without_ a leading `.` character).",
                       "name": "keyword",
                       "type": "string",
-                      "desc": "The command keyword (*without* a leading `.` character)."
+                      "desc": "The command keyword (_without_ a leading `.` character)."
                     },
                     {
                       "textRaw": "`cmd` {Object|Function} The function to invoke when the command is processed.",
@@ -368,8 +368,8 @@
       ],
       "properties": [
         {
-          "textRaw": "`builtinModules` {string[]}",
-          "type": "string[]",
+          "textRaw": "`builtinModules` {string\\[]}",
+          "type": "string\\[]",
           "name": "builtinModules",
           "meta": {
             "added": [

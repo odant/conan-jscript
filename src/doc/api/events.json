@@ -9,7 +9,7 @@
       "stability": 2,
       "stabilityText": "Stable",
       "type": "module",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/events.js\">lib/events.js</a></p>\n<p>Much of the Node.js core API is built around an idiomatic asynchronous\nevent-driven architecture in which certain kinds of objects (called \"emitters\")\nemit named events that cause <code>Function</code> objects (\"listeners\") to be called.</p>\n<p>For instance: a <a href=\"net.html#class-netserver\"><code>net.Server</code></a> object emits an event each time a peer\nconnects to it; a <a href=\"fs.html#class-fsreadstream\"><code>fs.ReadStream</code></a> emits an event when the file is opened;\na <a href=\"stream.html\">stream</a> emits an event whenever data is available to be read.</p>\n<p>All objects that emit events are instances of the <code>EventEmitter</code> class. These\nobjects expose an <code>eventEmitter.on()</code> function that allows one or more\nfunctions to be attached to named events emitted by the object. Typically,\nevent names are camel-cased strings but any valid JavaScript property key\ncan be used.</p>\n<p>When the <code>EventEmitter</code> object emits an event, all of the functions attached\nto that specific event are called <em>synchronously</em>. Any values returned by the\ncalled listeners are <em>ignored</em> and discarded.</p>\n<p>The following example shows a simple <code>EventEmitter</code> instance with a single\nlistener. The <code>eventEmitter.on()</code> method is used to register listeners, while\nthe <code>eventEmitter.emit()</code> method is used to trigger the event.</p>\n<pre><code class=\"language-js\">const EventEmitter = require('events');\n\nclass MyEmitter extends EventEmitter {}\n\nconst myEmitter = new MyEmitter();\nmyEmitter.on('event', () => {\n  console.log('an event occurred!');\n});\nmyEmitter.emit('event');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/events.js\">lib/events.js</a></p>\n<p>Much of the Node.js core API is built around an idiomatic asynchronous\nevent-driven architecture in which certain kinds of objects (called \"emitters\")\nemit named events that cause <code>Function</code> objects (\"listeners\") to be called.</p>\n<p>For instance: a <a href=\"net.html#class-netserver\"><code>net.Server</code></a> object emits an event each time a peer\nconnects to it; a <a href=\"fs.html#class-fsreadstream\"><code>fs.ReadStream</code></a> emits an event when the file is opened;\na <a href=\"stream.html\">stream</a> emits an event whenever data is available to be read.</p>\n<p>All objects that emit events are instances of the <code>EventEmitter</code> class. These\nobjects expose an <code>eventEmitter.on()</code> function that allows one or more\nfunctions to be attached to named events emitted by the object. Typically,\nevent names are camel-cased strings but any valid JavaScript property key\ncan be used.</p>\n<p>When the <code>EventEmitter</code> object emits an event, all of the functions attached\nto that specific event are called <em>synchronously</em>. Any values returned by the\ncalled listeners are <em>ignored</em> and discarded.</p>\n<p>The following example shows a simple <code>EventEmitter</code> instance with a single\nlistener. The <code>eventEmitter.on()</code> method is used to register listeners, while\nthe <code>eventEmitter.emit()</code> method is used to trigger the event.</p>\n<pre><code class=\"language-js\">const EventEmitter = require('events');\n\nclass MyEmitter extends EventEmitter {}\n\nconst myEmitter = new MyEmitter();\nmyEmitter.on('event', () => {\n  console.log('an event occurred!');\n});\nmyEmitter.emit('event');\n</code></pre>",
       "modules": [
         {
           "textRaw": "Passing arguments and `this` to listeners",
@@ -577,9 +577,9 @@
                   "signatures": [
                     {
                       "return": {
-                        "textRaw": "Returns: {string[]}",
+                        "textRaw": "Returns: {string\\[]}",
                         "name": "return",
-                        "type": "string[]"
+                        "type": "string\\[]"
                       },
                       "params": []
                     }
@@ -1041,9 +1041,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {Function[]}",
+                    "textRaw": "Returns: {Function\\[]}",
                     "name": "return",
-                    "type": "Function[]"
+                    "type": "Function\\[]"
                   },
                   "params": [
                     {
@@ -1331,9 +1331,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {Function[]}",
+                    "textRaw": "Returns: {Function\\[]}",
                     "name": "return",
-                    "type": "Function[]"
+                    "type": "Function\\[]"
                   },
                   "params": [
                     {
@@ -1434,9 +1434,9 @@
           "signatures": [
             {
               "return": {
-                "textRaw": "Returns: {Function[]}",
+                "textRaw": "Returns: {Function\\[]}",
                 "name": "return",
-                "type": "Function[]"
+                "type": "Function\\[]"
               },
               "params": [
                 {
@@ -1620,9 +1620,9 @@
                   "desc": "A non-negative number. The maximum number of listeners per `EventTarget` event."
                 },
                 {
-                  "textRaw": "`...eventsTargets` {EventTarget[]|EventEmitter[]} Zero or more {EventTarget} or {EventEmitter} instances. If none are specified, `n` is set as the default max for all newly created {EventTarget} and {EventEmitter} objects.",
+                  "textRaw": "`...eventsTargets` {EventTarget\\[]|EventEmitter\\[]} Zero or more {EventTarget} or {EventEmitter} instances. If none are specified, `n` is set as the default max for all newly created {EventTarget} and {EventEmitter} objects.",
                   "name": "...eventsTargets",
-                  "type": "EventTarget[]|EventEmitter[]",
+                  "type": "EventTarget\\[]|EventEmitter\\[]",
                   "desc": "Zero or more {EventTarget} or {EventEmitter} instances. If none are specified, `n` is set as the default max for all newly created {EventTarget} and {EventEmitter} objects."
                 }
               ]

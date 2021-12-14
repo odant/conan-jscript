@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('stream');\n</code></pre>\n<p>The <code>stream</code> module is useful for creating new types of stream instances. It is\nusually not necessary to use the <code>stream</code> module to consume streams.</p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('stream');\n</code></pre>\n<p>The <code>stream</code> module is useful for creating new types of stream instances. It is\nusually not necessary to use the <code>stream</code> module to consume streams.</p>",
       "modules": [
         {
           "textRaw": "Organization of this document",
@@ -129,10 +129,10 @@
                       "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be writable."
                     },
                     {
-                      "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will *not* be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
+                      "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
                       "name": "signal",
                       "type": "AbortSignal",
-                      "desc": "allows aborting the wait for the stream finish. The underlying stream will *not* be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
+                      "desc": "allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
                     }
                   ]
                 },
@@ -177,9 +177,9 @@
               },
               "params": [
                 {
-                  "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                  "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                   "name": "streams",
-                  "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                  "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                 },
                 {
                   "textRaw": "`source` {Stream|Iterable|AsyncIterable|Function}",
@@ -280,9 +280,9 @@
               },
               "params": [
                 {
-                  "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                  "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                   "name": "streams",
-                  "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                  "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                 },
                 {
                   "textRaw": "`source` {Stream|Iterable|AsyncIterable|Function}",
@@ -374,9 +374,9 @@
               },
               "params": [
                 {
-                  "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                  "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                   "name": "streams",
-                  "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                  "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                 }
               ]
             }
@@ -418,62 +418,6 @@
             }
           ],
           "desc": "<p>A utility method for creating readable streams out of iterators.</p>\n<pre><code class=\"language-js\">const { Readable } = require('stream');\n\nasync function * generate() {\n  yield 'hello';\n  yield 'streams';\n}\n\nconst readable = Readable.from(generate());\n\nreadable.on('data', (chunk) => {\n  console.log(chunk);\n});\n</code></pre>\n<p>Calling <code>Readable.from(string)</code> or <code>Readable.from(buffer)</code> will not have\nthe strings or buffers be iterated to match the other streams semantics\nfor performance reasons.</p>"
-        },
-        {
-          "textRaw": "`stream.Readable.fromWeb(readableStream[, options])`",
-          "type": "method",
-          "name": "fromWeb",
-          "meta": {
-            "added": [
-              "v16.11.0"
-            ],
-            "changes": []
-          },
-          "stability": 1,
-          "stabilityText": "Experimental",
-          "signatures": [
-            {
-              "return": {
-                "textRaw": "Returns: {stream.Readable}",
-                "name": "return",
-                "type": "stream.Readable"
-              },
-              "params": [
-                {
-                  "textRaw": "`readableStream` {ReadableStream}",
-                  "name": "readableStream",
-                  "type": "ReadableStream"
-                },
-                {
-                  "textRaw": "`options` {Object}",
-                  "name": "options",
-                  "type": "Object",
-                  "options": [
-                    {
-                      "textRaw": "`encoding` {string}",
-                      "name": "encoding",
-                      "type": "string"
-                    },
-                    {
-                      "textRaw": "`highWaterMark` {number}",
-                      "name": "highWaterMark",
-                      "type": "number"
-                    },
-                    {
-                      "textRaw": "`objectMode` {boolean}",
-                      "name": "objectMode",
-                      "type": "boolean"
-                    },
-                    {
-                      "textRaw": "`signal` {AbortSignal}",
-                      "name": "signal",
-                      "type": "AbortSignal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
         },
         {
           "textRaw": "`stream.Readable.isDisturbed(stream)`",
@@ -1299,10 +1243,10 @@
                       "signatures": [
                         {
                           "return": {
-                            "textRaw": "Returns: {stream.Writable} The *destination*, allowing for a chain of pipes if it is a [`Duplex`][] or a [`Transform`][] stream",
+                            "textRaw": "Returns: {stream.Writable} The _destination_, allowing for a chain of pipes if it is a [`Duplex`][] or a [`Transform`][] stream",
                             "name": "return",
                             "type": "stream.Writable",
-                            "desc": "The *destination*, allowing for a chain of pipes if it is a [`Duplex`][] or a [`Transform`][] stream"
+                            "desc": "The _destination_, allowing for a chain of pipes if it is a [`Duplex`][] or a [`Transform`][] stream"
                           },
                           "params": [
                             {
@@ -1882,10 +1826,10 @@
                           "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be writable."
                         },
                         {
-                          "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will *not* be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
+                          "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
                           "name": "signal",
                           "type": "AbortSignal",
-                          "desc": "allows aborting the wait for the stream finish. The underlying stream will *not* be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
+                          "desc": "allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
                         }
                       ]
                     },
@@ -1930,9 +1874,9 @@
                   },
                   "params": [
                     {
-                      "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                      "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                       "name": "streams",
-                      "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                      "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                     },
                     {
                       "textRaw": "`source` {Stream|Iterable|AsyncIterable|Function}",
@@ -2033,9 +1977,9 @@
                   },
                   "params": [
                     {
-                      "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                      "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                       "name": "streams",
-                      "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                      "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                     },
                     {
                       "textRaw": "`source` {Stream|Iterable|AsyncIterable|Function}",
@@ -2127,9 +2071,9 @@
                   },
                   "params": [
                     {
-                      "textRaw": "`streams` {Stream[]|Iterable[]|AsyncIterable[]|Function[]}",
+                      "textRaw": "`streams` {Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]}",
                       "name": "streams",
-                      "type": "Stream[]|Iterable[]|AsyncIterable[]|Function[]"
+                      "type": "Stream\\[]|Iterable\\[]|AsyncIterable\\[]|Function\\[]"
                     }
                   ]
                 }
@@ -2171,62 +2115,6 @@
                 }
               ],
               "desc": "<p>A utility method for creating readable streams out of iterators.</p>\n<pre><code class=\"language-js\">const { Readable } = require('stream');\n\nasync function * generate() {\n  yield 'hello';\n  yield 'streams';\n}\n\nconst readable = Readable.from(generate());\n\nreadable.on('data', (chunk) => {\n  console.log(chunk);\n});\n</code></pre>\n<p>Calling <code>Readable.from(string)</code> or <code>Readable.from(buffer)</code> will not have\nthe strings or buffers be iterated to match the other streams semantics\nfor performance reasons.</p>"
-            },
-            {
-              "textRaw": "`stream.Readable.fromWeb(readableStream[, options])`",
-              "type": "method",
-              "name": "fromWeb",
-              "meta": {
-                "added": [
-                  "v16.11.0"
-                ],
-                "changes": []
-              },
-              "stability": 1,
-              "stabilityText": "Experimental",
-              "signatures": [
-                {
-                  "return": {
-                    "textRaw": "Returns: {stream.Readable}",
-                    "name": "return",
-                    "type": "stream.Readable"
-                  },
-                  "params": [
-                    {
-                      "textRaw": "`readableStream` {ReadableStream}",
-                      "name": "readableStream",
-                      "type": "ReadableStream"
-                    },
-                    {
-                      "textRaw": "`options` {Object}",
-                      "name": "options",
-                      "type": "Object",
-                      "options": [
-                        {
-                          "textRaw": "`encoding` {string}",
-                          "name": "encoding",
-                          "type": "string"
-                        },
-                        {
-                          "textRaw": "`highWaterMark` {number}",
-                          "name": "highWaterMark",
-                          "type": "number"
-                        },
-                        {
-                          "textRaw": "`objectMode` {boolean}",
-                          "name": "objectMode",
-                          "type": "boolean"
-                        },
-                        {
-                          "textRaw": "`signal` {AbortSignal}",
-                          "name": "signal",
-                          "type": "AbortSignal"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
             },
             {
               "textRaw": "`stream.Readable.isDisturbed(stream)`",
@@ -2534,9 +2422,9 @@
                     {
                       "params": [
                         {
-                          "textRaw": "`chunks` {Object[]} The data to be written. The value is an array of {Object} that each represent a discrete chunk of data to write. The properties of these objects are:",
+                          "textRaw": "`chunks` {Object\\[]} The data to be written. The value is an array of {Object} that each represent a discrete chunk of data to write. The properties of these objects are:",
                           "name": "chunks",
-                          "type": "Object[]",
+                          "type": "Object\\[]",
                           "desc": "The data to be written. The value is an array of {Object} that each represent a discrete chunk of data to write. The properties of these objects are:",
                           "options": [
                             {

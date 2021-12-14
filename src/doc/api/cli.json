@@ -298,19 +298,6 @@
               "displayName": "`--experimental-loader=module`"
             },
             {
-              "textRaw": "`--experimental-modules`",
-              "name": "`--experimental-modules`",
-              "meta": {
-                "added": [
-                  "v8.5.0"
-                ],
-                "changes": []
-              },
-              "desc": "<p>Enable latest experimental modules features (deprecated).</p>",
-              "type": "module",
-              "displayName": "`--experimental-modules`"
-            },
-            {
               "textRaw": "`--experimental-policy`",
               "name": "`--experimental-policy`",
               "meta": {
@@ -847,7 +834,7 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>Write process warnings to the given file instead of printing to stderr. The\nfile will be created if it does not exist, and will be appended to if it does.\nIf an error occurs while attempting to write the warning to the file, the\nwarning will be written to stderr instead.</p>\n<p>The <code>file</code> name may be an absolute path. If it is not, the default directory it\nwill be written to is controlled by the\n<a href=\"\"><code>--diagnostic-dir</code></a> command-line option.</p>",
+              "desc": "<p>Write process warnings to the given file instead of printing to stderr. The\nfile will be created if it does not exist, and will be appended to if it does.\nIf an error occurs while attempting to write the warning to the file, the\nwarning will be written to stderr instead.</p>\n<p>The <code>file</code> name may be an absolute path. If it is not, the default directory it\nwill be written to is controlled by the\n<a href=\"#--diagnostic-dirdirectory\"><code>--diagnostic-dir</code></a> command-line option.</p>",
               "type": "module",
               "displayName": "`--redirect-warnings=file`"
             },
@@ -1790,7 +1777,7 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>Load an OpenSSL configuration file on startup. Among other uses, this can be\nused to enable FIPS-compliant crypto if Node.js is built with <code>./configure --openssl-fips</code>.</p>\n<p>If the <a href=\"#--openssl-configfile\"><code>--openssl-config</code></a> command-line option is used, the environment\nvariable is ignored.</p>",
+              "desc": "<p>Load an OpenSSL configuration file on startup. Among other uses, this can be\nused to enable FIPS-compliant crypto if Node.js is built with\n<code>./configure --openssl-fips</code>.</p>\n<p>If the <a href=\"#--openssl-configfile\"><code>--openssl-config</code></a> command-line option is used, the environment\nvariable is ignored.</p>",
               "type": "module",
               "displayName": "`OPENSSL_CONF=file`"
             },

@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/fs.js\">lib/fs.js</a></p>\n<p>The <code>fs</code> module enables interacting with the file system in a\nway modeled on standard POSIX functions.</p>\n<p>To use the promise-based APIs:</p>\n<pre><code class=\"language-mjs\">import * as fs from 'fs/promises';\n</code></pre>\n<pre><code class=\"language-cjs\">const fs = require('fs/promises');\n</code></pre>\n<p>To use the callback and sync APIs:</p>\n<pre><code class=\"language-mjs\">import * as fs from 'fs';\n</code></pre>\n<pre><code class=\"language-cjs\">const fs = require('fs');\n</code></pre>\n<p>All file system operations have synchronous, callback, and promise-based\nforms, and are accessible using both CommonJS syntax and ES6 Modules (ESM).</p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/fs.js\">lib/fs.js</a></p>\n<p>The <code>fs</code> module enables interacting with the file system in a\nway modeled on standard POSIX functions.</p>\n<p>To use the promise-based APIs:</p>\n<pre><code class=\"language-mjs\">import * as fs from 'fs/promises';\n</code></pre>\n<pre><code class=\"language-cjs\">const fs = require('fs/promises');\n</code></pre>\n<p>To use the callback and sync APIs:</p>\n<pre><code class=\"language-mjs\">import * as fs from 'fs';\n</code></pre>\n<pre><code class=\"language-cjs\">const fs = require('fs');\n</code></pre>\n<p>All file system operations have synchronous, callback, and promise-based\nforms, and are accessible using both CommonJS syntax and ES6 Modules (ESM).</p>",
       "modules": [
         {
           "textRaw": "Promise example",
@@ -335,7 +335,7 @@
                       ]
                     }
                   ],
-                  "desc": "<p><code>options</code> may also include a <code>start</code> option to allow writing data at some\nposition past the beginning of the file, allowed values are in the\n[0, <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER\"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than replacing\nit may require the <code>flags</code> <code>open</code> option to be set to <code>r+</code> rather than the\ndefault <code>r</code>. The <code>encoding</code> can be any one of those accepted by <a href=\"buffer.html#class-buffer\" class=\"type\">&lt;Buffer&gt;</a>.</p>\n<p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>\nthe file descriptor will be closed automatically. If <code>autoClose</code> is false,\nthen the file descriptor won't be closed, even if there's an error.\nIt is the application's responsibility to close it and make sure there's no\nfile descriptor leak.</p>\n<p>By default, the stream will emit a <code>'close'</code> event after it has been\ndestroyed.  Set the <code>emitClose</code> option to <code>false</code> to change this behavior.</p>"
+                  "desc": "<p><code>options</code> may also include a <code>start</code> option to allow writing data at some\nposition past the beginning of the file, allowed values are in the\n[0, <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER\"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than\nreplacing it may require the <code>flags</code> <code>open</code> option to be set to <code>r+</code> rather than\nthe default <code>r</code>. The <code>encoding</code> can be any one of those accepted by <a href=\"buffer.html#class-buffer\" class=\"type\">&lt;Buffer&gt;</a>.</p>\n<p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>\nthe file descriptor will be closed automatically. If <code>autoClose</code> is false,\nthen the file descriptor won't be closed, even if there's an error.\nIt is the application's responsibility to close it and make sure there's no\nfile descriptor leak.</p>\n<p>By default, the stream will emit a <code>'close'</code> event after it has been\ndestroyed.  Set the <code>emitClose</code> option to <code>false</code> to change this behavior.</p>"
                 },
                 {
                   "textRaw": "`filehandle.datasync()`",
@@ -565,18 +565,18 @@
                             "desc": "the number of bytes read"
                           },
                           {
-                            "textRaw": "`buffers` {Buffer[]|TypedArray[]|DataView[]} property containing a reference to the `buffers` input.",
+                            "textRaw": "`buffers` {Buffer\\[]|TypedArray\\[]|DataView\\[]} property containing a reference to the `buffers` input.",
                             "name": "buffers",
-                            "type": "Buffer[]|TypedArray[]|DataView[]",
+                            "type": "Buffer\\[]|TypedArray\\[]|DataView\\[]",
                             "desc": "property containing a reference to the `buffers` input."
                           }
                         ]
                       },
                       "params": [
                         {
-                          "textRaw": "`buffers` {Buffer[]|TypedArray[]|DataView[]}",
+                          "textRaw": "`buffers` {Buffer\\[]|TypedArray\\[]|DataView\\[]}",
                           "name": "buffers",
-                          "type": "Buffer[]|TypedArray[]|DataView[]"
+                          "type": "Buffer\\[]|TypedArray\\[]|DataView\\[]"
                         },
                         {
                           "textRaw": "`position` {integer} The offset from the beginning of the file where the data should be read from. If `position` is not a `number`, the data will be read from the current position.",
@@ -906,9 +906,9 @@
                       },
                       "params": [
                         {
-                          "textRaw": "`buffers` {Buffer[]|TypedArray[]|DataView[]}",
+                          "textRaw": "`buffers` {Buffer\\[]|TypedArray\\[]|DataView\\[]}",
                           "name": "buffers",
-                          "type": "Buffer[]|TypedArray[]|DataView[]"
+                          "type": "Buffer\\[]|TypedArray\\[]|DataView\\[]"
                         },
                         {
                           "textRaw": "`position` {integer} The offset from the beginning of the file where the data from `buffers` should be written. If `position` is not a `number`, the data will be written at the current position.",
@@ -1234,11 +1234,11 @@
                           "desc": "Function to filter copied files/directories. Return `true` to copy the item, `false` to ignore it. Can also return a `Promise` that resolves to `true` or `false`"
                         },
                         {
-                          "textRaw": "`force` {boolean} overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
+                          "textRaw": "`force` {boolean} overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
                           "name": "force",
                           "type": "boolean",
                           "default": "`true`",
-                          "desc": "overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
+                          "desc": "overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
                         },
                         {
                           "textRaw": "`preserveTimestamps` {boolean} When `true` timestamps from `src` will be preserved. **Default:** `false`.",
@@ -2846,11 +2846,11 @@
                           "desc": "Function to filter copied files/directories. Return `true` to copy the item, `false` to ignore it. Can also return a `Promise` that resolves to `true` or `false`"
                         },
                         {
-                          "textRaw": "`force` {boolean} overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
+                          "textRaw": "`force` {boolean} overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
                           "name": "force",
                           "type": "boolean",
                           "default": "`true`",
-                          "desc": "overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
+                          "desc": "overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
                         },
                         {
                           "textRaw": "`preserveTimestamps` {boolean} When `true` timestamps from `src` will be preserved. **Default:** `false`.",
@@ -3166,7 +3166,7 @@
                   ]
                 }
               ],
-              "desc": "<p><code>options</code> may also include a <code>start</code> option to allow writing data at some\nposition past the beginning of the file, allowed values are in the\n[0, <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER\"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than replacing\nit may require the <code>flags</code> option to be set to <code>r+</code> rather than the default <code>w</code>.\nThe <code>encoding</code> can be any one of those accepted by <a href=\"buffer.html#class-buffer\" class=\"type\">&lt;Buffer&gt;</a>.</p>\n<p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>\nthe file descriptor will be closed automatically. If <code>autoClose</code> is false,\nthen the file descriptor won't be closed, even if there's an error.\nIt is the application's responsibility to close it and make sure there's no\nfile descriptor leak.</p>\n<p>By default, the stream will emit a <code>'close'</code> event after it has been\ndestroyed.  Set the <code>emitClose</code> option to <code>false</code> to change this behavior.</p>\n<p>By providing the <code>fs</code> option it is possible to override the corresponding <code>fs</code>\nimplementations for <code>open</code>, <code>write</code>, <code>writev</code> and <code>close</code>. Overriding <code>write()</code>\nwithout <code>writev()</code> can reduce performance as some optimizations (<code>_writev()</code>)\nwill be disabled. When providing the <code>fs</code> option, overrides for at least one of\n<code>write</code> and <code>writev</code> are required. If no <code>fd</code> option is supplied, an override\nfor <code>open</code> is also required. If <code>autoClose</code> is <code>true</code>, an override for <code>close</code>\nis also required.</p>\n<p>Like <a href=\"fs.html#class-fsreadstream\" class=\"type\">&lt;fs.ReadStream&gt;</a>, if <code>fd</code> is specified, <a href=\"fs.html#class-fswritestream\" class=\"type\">&lt;fs.WriteStream&gt;</a> will ignore the\n<code>path</code> argument and will use the specified file descriptor. This means that no\n<code>'open'</code> event will be emitted. <code>fd</code> should be blocking; non-blocking <code>fd</code>s\nshould be passed to <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a>.</p>\n<p>If <code>options</code> is a string, then it specifies the encoding.</p>"
+              "desc": "<p><code>options</code> may also include a <code>start</code> option to allow writing data at some\nposition past the beginning of the file, allowed values are in the\n[0, <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER\"><code>Number.MAX_SAFE_INTEGER</code></a>] range. Modifying a file rather than\nreplacing it may require the <code>flags</code> option to be set to <code>r+</code> rather than the\ndefault <code>w</code>. The <code>encoding</code> can be any one of those accepted by <a href=\"buffer.html#class-buffer\" class=\"type\">&lt;Buffer&gt;</a>.</p>\n<p>If <code>autoClose</code> is set to true (default behavior) on <code>'error'</code> or <code>'finish'</code>\nthe file descriptor will be closed automatically. If <code>autoClose</code> is false,\nthen the file descriptor won't be closed, even if there's an error.\nIt is the application's responsibility to close it and make sure there's no\nfile descriptor leak.</p>\n<p>By default, the stream will emit a <code>'close'</code> event after it has been\ndestroyed.  Set the <code>emitClose</code> option to <code>false</code> to change this behavior.</p>\n<p>By providing the <code>fs</code> option it is possible to override the corresponding <code>fs</code>\nimplementations for <code>open</code>, <code>write</code>, <code>writev</code> and <code>close</code>. Overriding <code>write()</code>\nwithout <code>writev()</code> can reduce performance as some optimizations (<code>_writev()</code>)\nwill be disabled. When providing the <code>fs</code> option, overrides for at least one of\n<code>write</code> and <code>writev</code> are required. If no <code>fd</code> option is supplied, an override\nfor <code>open</code> is also required. If <code>autoClose</code> is <code>true</code>, an override for <code>close</code>\nis also required.</p>\n<p>Like <a href=\"fs.html#class-fsreadstream\" class=\"type\">&lt;fs.ReadStream&gt;</a>, if <code>fd</code> is specified, <a href=\"fs.html#class-fswritestream\" class=\"type\">&lt;fs.WriteStream&gt;</a> will ignore the\n<code>path</code> argument and will use the specified file descriptor. This means that no\n<code>'open'</code> event will be emitted. <code>fd</code> should be blocking; non-blocking <code>fd</code>s\nshould be passed to <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a>.</p>\n<p>If <code>options</code> is a string, then it specifies the encoding.</p>"
             },
             {
               "textRaw": "`fs.exists(path, callback)`",
@@ -4432,9 +4432,9 @@
                           "type": "Error"
                         },
                         {
-                          "textRaw": "`files` {string[]|Buffer[]|fs.Dirent[]}",
+                          "textRaw": "`files` {string\\[]|Buffer\\[]|fs.Dirent\\[]}",
                           "name": "files",
-                          "type": "string[]|Buffer[]|fs.Dirent[]"
+                          "type": "string\\[]|Buffer\\[]|fs.Dirent\\[]"
                         }
                       ]
                     }
@@ -4651,9 +4651,9 @@
                       "type": "integer"
                     },
                     {
-                      "textRaw": "`buffers` {ArrayBufferView[]}",
+                      "textRaw": "`buffers` {ArrayBufferView\\[]}",
                       "name": "buffers",
-                      "type": "ArrayBufferView[]"
+                      "type": "ArrayBufferView\\[]"
                     },
                     {
                       "textRaw": "`position` {integer}",
@@ -4676,9 +4676,9 @@
                           "type": "integer"
                         },
                         {
-                          "textRaw": "`buffers` {ArrayBufferView[]}",
+                          "textRaw": "`buffers` {ArrayBufferView\\[]}",
                           "name": "buffers",
-                          "type": "ArrayBufferView[]"
+                          "type": "ArrayBufferView\\[]"
                         }
                       ]
                     }
@@ -5191,7 +5191,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Creates the link called <code>path</code> pointing to <code>target</code>. No arguments other than a\npossible exception are given to the completion callback.</p>\n<p>See the POSIX <a href=\"http://man7.org/linux/man-pages/man2/symlink.2.html\"><code>symlink(2)</code></a> documentation for more details.</p>\n<p>The <code>type</code> argument is only available on Windows and ignored on other platforms.\nIt can be set to <code>'dir'</code>, <code>'file'</code>, or <code>'junction'</code>. If the <code>type</code> argument is\nnot set, Node.js will autodetect <code>target</code> type and use <code>'file'</code> or <code>'dir'</code>. If\nthe <code>target</code> does not exist, <code>'file'</code> will be used. Windows junction points\nrequire the destination path to be absolute. When using <code>'junction'</code>, the\n<code>target</code> argument will automatically be normalized to absolute path.</p>\n<p>Relative targets are relative to the link’s parent directory.</p>\n<pre><code class=\"language-mjs\">import { symlink } from 'fs';\n\nsymlink('./mew', './example/mewtwo', callback);\n</code></pre>\n<p>The above example creates a symbolic link <code>mewtwo</code> in the <code>example</code> which points\nto <code>mew</code> in the same directory:</p>\n<pre><code class=\"language-bash\">$ tree example/\nexample/\n├── mew\n└── mewtwo -> ./mew\n</code></pre>"
+              "desc": "<p>Creates the link called <code>path</code> pointing to <code>target</code>. No arguments other than a\npossible exception are given to the completion callback.</p>\n<p>See the POSIX <a href=\"http://man7.org/linux/man-pages/man2/symlink.2.html\"><code>symlink(2)</code></a> documentation for more details.</p>\n<p>The <code>type</code> argument is only available on Windows and ignored on other platforms.\nIt can be set to <code>'dir'</code>, <code>'file'</code>, or <code>'junction'</code>. If the <code>type</code> argument is\nnot set, Node.js will autodetect <code>target</code> type and use <code>'file'</code> or <code>'dir'</code>. If\nthe <code>target</code> does not exist, <code>'file'</code> will be used. Windows junction points\nrequire the destination path to be absolute. When using <code>'junction'</code>, the\n<code>target</code> argument will automatically be normalized to absolute path.</p>\n<p>Relative targets are relative to the link’s parent directory.</p>\n<pre><code class=\"language-mjs\">import { symlink } from 'fs';\n\nsymlink('./mew', './mewtwo', callback);\n</code></pre>\n<p>The above example creates a symbolic link <code>mewtwo</code> which points to <code>mew</code> in the\nsame directory:</p>\n<pre><code class=\"language-bash\">$ tree .\n.\n├── mew\n└── mewtwo -> ./mew\n</code></pre>"
             },
             {
               "textRaw": "`fs.truncate(path[, len], callback)`",
@@ -5941,9 +5941,9 @@
                       "type": "integer"
                     },
                     {
-                      "textRaw": "`buffers` {ArrayBufferView[]}",
+                      "textRaw": "`buffers` {ArrayBufferView\\[]}",
                       "name": "buffers",
-                      "type": "ArrayBufferView[]"
+                      "type": "ArrayBufferView\\[]"
                     },
                     {
                       "textRaw": "`position` {integer}",
@@ -5966,9 +5966,9 @@
                           "type": "integer"
                         },
                         {
-                          "textRaw": "`buffers` {ArrayBufferView[]}",
+                          "textRaw": "`buffers` {ArrayBufferView\\[]}",
                           "name": "buffers",
-                          "type": "ArrayBufferView[]"
+                          "type": "ArrayBufferView\\[]"
                         }
                       ]
                     }
@@ -6280,11 +6280,11 @@
                           "desc": "Function to filter copied files/directories. Return `true` to copy the item, `false` to ignore it."
                         },
                         {
-                          "textRaw": "`force` {boolean} overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
+                          "textRaw": "`force` {boolean} overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior. **Default:** `true`.",
                           "name": "force",
                           "type": "boolean",
                           "default": "`true`",
-                          "desc": "overwrite existing file or directory. _The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
+                          "desc": "overwrite existing file or directory. The copy operation will ignore errors if you set this to false and the destination exists. Use the `errorOnExist` option to change this behavior."
                         },
                         {
                           "textRaw": "`preserveTimestamps` {boolean} When `true` timestamps from `src` will be preserved. **Default:** `false`.",
@@ -7023,9 +7023,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {string[]|Buffer[]|fs.Dirent[]}",
+                    "textRaw": "Returns: {string\\[]|Buffer\\[]|fs.Dirent\\[]}",
                     "name": "return",
-                    "type": "string[]|Buffer[]|fs.Dirent[]"
+                    "type": "string\\[]|Buffer\\[]|fs.Dirent\\[]"
                   },
                   "params": [
                     {
@@ -7317,9 +7317,9 @@
                       "type": "integer"
                     },
                     {
-                      "textRaw": "`buffers` {ArrayBufferView[]}",
+                      "textRaw": "`buffers` {ArrayBufferView\\[]}",
                       "name": "buffers",
-                      "type": "ArrayBufferView[]"
+                      "type": "ArrayBufferView\\[]"
                     },
                     {
                       "textRaw": "`position` {integer}",
@@ -8076,9 +8076,9 @@
                       "type": "integer"
                     },
                     {
-                      "textRaw": "`buffers` {ArrayBufferView[]}",
+                      "textRaw": "`buffers` {ArrayBufferView\\[]}",
                       "name": "buffers",
-                      "type": "ArrayBufferView[]"
+                      "type": "ArrayBufferView\\[]"
                     },
                     {
                       "textRaw": "`position` {integer}",

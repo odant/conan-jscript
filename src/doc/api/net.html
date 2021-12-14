@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Net | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Net | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="net" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/net.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/net.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/net.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/net.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/net.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/net.html">13.x</a></li>
@@ -266,7 +266,7 @@
 
 <!--lint disable maximum-line-length-->
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/net.js">lib/net.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/net.js">lib/net.js</a></p>
 <p>The <code>net</code> module provides an asynchronous network API for creating stream-based
 TCP or <a href="#ipc-support">IPC</a> servers (<a href="#netcreateserveroptions-connectionlistener"><code>net.createServer()</code></a>) and clients
 (<a href="#netcreateconnection"><code>net.createConnection()</code></a>).</p>
@@ -385,7 +385,8 @@ blockList.<span class="hljs-title function_">addSubnet</span>(<span class="hljs-
 <li><code>address</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The network address as either an IPv4 or IPv6 string.
 <strong>Default</strong>: <code>'127.0.0.1'</code> if <code>family</code> is <code>'ipv4'</code>; <code>'::'</code> if <code>family</code> is
 <code>'ipv6'</code>.</li>
-<li><code>family</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> One of either <code>'ipv4'</code> or 'ipv6'<code>. **Default**: </code>'ipv4'`.</li>
+<li><code>family</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> One of either <code>'ipv4'</code> or <code>'ipv6'</code>.
+<strong>Default</strong>: <code>'ipv4'</code>.</li>
 <li><code>flowlabel</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> An IPv6 flow-label used only if <code>family</code> is <code>'ipv6'</code>.</li>
 <li><code>port</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> An IP port.</li>
 </ul>
@@ -522,19 +523,14 @@ when sockets were sent to forks.</p>
 <p>Start a server listening for connections. A <code>net.Server</code> can be a TCP or
 an <a href="#ipc-support">IPC</a> server depending on what it listens to.</p>
 <p>Possible signatures:</p>
-<!--lint disable no-undefined-references-->
 <ul>
 <li><a href="#serverlistenhandle-backlog-callback"><code>server.listen(handle[, backlog][, callback])</code></a></li>
 <li><a href="#serverlistenoptions-callback"><code>server.listen(options[, callback])</code></a></li>
 <li><a href="#serverlistenpath-backlog-callback"><code>server.listen(path[, backlog][, callback])</code></a>
 for <a href="#ipc-support">IPC</a> servers</li>
-<li>
-<a href="#serverlistenport-host-backlog-callback">
-<code>server.listen([port[, host[, backlog]]][, callback])</code></a>
-for TCP servers
-</li>
+<li><a href="#serverlistenport-host-backlog-callback"><code>server.listen([port[, host[, backlog]]][, callback])</code></a>
+for TCP servers</li>
 </ul>
-<!--lint enable no-undefined-references-->
 <p>This function is asynchronous. When the server starts listening, the
 <a href="#event-listening"><code>'listening'</code></a> event will be emitted. The last parameter <code>callback</code>
 will be added as a listener for the <a href="#event-listening"><code>'listening'</code></a> event.</p>
@@ -614,14 +610,11 @@ disable dual-stack support, i.e., binding to host <code>::</code> won't make
 functions.</li>
 <li>Returns: <a href="net.html#class-netserver" class="type">&#x3C;net.Server></a></li>
 </ul>
-<!--lint disable no-undefined-references-->
 <p>If <code>port</code> is specified, it behaves the same as
-<a href="#serverlistenport-host-backlog-callback">
-<code>server.listen([port[, host[, backlog]]][, callback])</code></a>.
+<a href="#serverlistenport-host-backlog-callback"><code>server.listen([port[, host[, backlog]]][, callback])</code></a>.
 Otherwise, if <code>path</code> is specified, it behaves the same as
 <a href="#serverlistenpath-backlog-callback"><code>server.listen(path[, backlog][, callback])</code></a>.
 If none of them is specified, an error will be thrown.</p>
-<!--lint enable no-undefined-references-->
 <p>If <code>exclusive</code> is <code>false</code> (default), then cluster workers will use the same
 underlying handle, allowing connection handling duties to be shared. When
 <code>exclusive</code> is <code>true</code>, the handle is not shared, and attempted port sharing

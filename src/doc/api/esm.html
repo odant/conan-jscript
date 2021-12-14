@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Modules: ECMAScript modules | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Modules: ECMAScript modules | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="esm" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/esm.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/esm.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/esm.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/esm.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/esm.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/esm.html">13.x</a></li>
@@ -265,9 +265,7 @@ code for reuse. Modules are defined using a variety of <a href="https://develope
 provides interoperability between them and its original module format,
 <a href="modules.html">CommonJS</a>.</p>
 <!-- Anchors to make sure old links find a target -->
-<p><i id="esm_package_json_type_field"></i>
-<i id="esm_package_scope_and_file_extensions"></i>
-<i id="esm_input_type_flag"></i></p>
+<p><i id="esm_package_json_type_field"></i><i id="esm_package_scope_and_file_extensions"></i><i id="esm_input_type_flag"></i></p>
 </section><section><h3>Enabling<span><a class="mark" href="#enabling" id="enabling">#</a></span><a aria-hidden="true" class="legacy" id="esm_enabling"></a></h3>
 
 <p>Node.js treats JavaScript code as CommonJS modules by default.
@@ -277,20 +275,7 @@ via the <code>.mjs</code> file extension, the <code>package.json</code> <a href=
 <a href="packages.html#determining-module-system">Modules: Packages</a> for more
 details.</p>
 <!-- Anchors to make sure old links find a target -->
-<p><i id="esm_package_entry_points"></i>
-<i id="esm_main_entry_point_export"></i>
-<i id="esm_subpath_exports"></i>
-<i id="esm_package_exports_fallbacks"></i>
-<i id="esm_exports_sugar"></i>
-<i id="esm_conditional_exports"></i>
-<i id="esm_nested_conditions"></i>
-<i id="esm_self_referencing_a_package_using_its_name"></i>
-<i id="esm_internal_package_imports"></i>
-<i id="esm_dual_commonjs_es_module_packages"></i>
-<i id="esm_dual_package_hazard"></i>
-<i id="esm_writing_dual_packages_while_avoiding_or_minimizing_hazards"></i>
-<i id="esm_approach_1_use_an_es_module_wrapper"></i>
-<i id="esm_approach_2_isolate_state"></i></p>
+<p><i id="esm_package_entry_points"></i><i id="esm_main_entry_point_export"></i><i id="esm_subpath_exports"></i><i id="esm_package_exports_fallbacks"></i><i id="esm_exports_sugar"></i><i id="esm_conditional_exports"></i><i id="esm_nested_conditions"></i><i id="esm_self_referencing_a_package_using_its_name"></i><i id="esm_internal_package_imports"></i><i id="esm_dual_commonjs_es_module_packages"></i><i id="esm_dual_package_hazard"></i><i id="esm_writing_dual_packages_while_avoiding_or_minimizing_hazards"></i><i id="esm_approach_1_use_an_es_module_wrapper"></i><i id="esm_approach_2_isolate_state"></i></p>
 </section><section><h3>Packages<span><a class="mark" href="#packages" id="packages">#</a></span><a aria-hidden="true" class="legacy" id="esm_packages"></a></h3>
 <p>This section was moved to <a href="packages.html">Modules: Packages</a>.</p>
 </section><section><h3><code>import</code> Specifiers<span><a class="mark" href="#import-specifiers" id="import-specifiers">#</a></span><a aria-hidden="true" class="legacy" id="esm_import_specifiers"></a></h3>
@@ -523,7 +508,7 @@ for these named exports.</p>
 always correctly detect named exports. In these cases, using the default
 import form described above can be a better option.</p>
 <p>Named exports detection covers many common export patterns, reexport patterns
-and build tool and transpiler outputs. See <a href="https://github.com/guybedford/cjs-module-lexer/tree/1.2.2">cjs-module-lexer</a> for the exact
+and build tool and transpiler outputs. See <a href="https://github.com/nodejs/cjs-module-lexer/tree/1.2.2">cjs-module-lexer</a> for the exact
 semantics implemented.</p>
 <h4>Differences between ES modules and CommonJS<span><a class="mark" href="#differences-between-es-modules-and-commonjs" id="differences-between-es-modules-and-commonjs">#</a></span><a aria-hidden="true" class="legacy" id="esm_differences_between_es_modules_and_commonjs"></a></h4>
 <h5>No <code>require</code>, <code>exports</code> or <code>module.exports</code><span><a class="mark" href="#no-require-exports-or-moduleexports" id="no-require-exports-or-moduleexports">#</a></span><a aria-hidden="true" class="legacy" id="esm_no_require_exports_or_module_exports"></a></h5>
@@ -915,16 +900,13 @@ throw an error on unknown file types.</p>
 Node.js; a transpiler loader should only be used for development and testing
 purposes.</p>
 <pre><code class="language-js"><span class="hljs-comment">// coffeescript-loader.mjs</span>
-<span class="hljs-keyword">import</span> { readFile } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs/promises'</span>;
-<span class="hljs-keyword">import</span> { readFileSync } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs'</span>;
-<span class="hljs-keyword">import</span> { createRequire } <span class="hljs-keyword">from</span> <span class="hljs-string">'module'</span>;
-<span class="hljs-keyword">import</span> { dirname, extname, resolve <span class="hljs-keyword">as</span> resolvePath } <span class="hljs-keyword">from</span> <span class="hljs-string">'path'</span>;
-<span class="hljs-keyword">import</span> { cwd } <span class="hljs-keyword">from</span> <span class="hljs-string">'process'</span>;
-<span class="hljs-keyword">import</span> { fileURLToPath, pathToFileURL } <span class="hljs-keyword">from</span> <span class="hljs-string">'url'</span>;
-
+<span class="hljs-keyword">import</span> { readFile } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:fs/promises'</span>;
+<span class="hljs-keyword">import</span> { dirname, extname, resolve <span class="hljs-keyword">as</span> resolvePath } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:path'</span>;
+<span class="hljs-keyword">import</span> { cwd } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:process'</span>;
+<span class="hljs-keyword">import</span> { fileURLToPath, pathToFileURL } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:url'</span>;
 <span class="hljs-keyword">import</span> <span class="hljs-title class_">CoffeeScript</span> <span class="hljs-keyword">from</span> <span class="hljs-string">'coffeescript'</span>;
 
-<span class="hljs-keyword">const</span> baseURL = <span class="hljs-title function_">pathToFileURL</span>(<span class="hljs-string">`<span class="hljs-subst">${cwd}</span>/`</span>).<span class="hljs-property">href</span>;
+<span class="hljs-keyword">const</span> baseURL = <span class="hljs-title function_">pathToFileURL</span>(<span class="hljs-string">`<span class="hljs-subst">${cwd()}</span>/`</span>).<span class="hljs-property">href</span>;
 
 <span class="hljs-comment">// CoffeeScript files end in .coffee, .litcoffee or .coffee.md.</span>
 <span class="hljs-keyword">const</span> extensionsRegex = <span class="hljs-regexp">/\.coffee$|\.litcoffee$|\.coffee\.md$/</span>;

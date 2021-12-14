@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>Command-line options | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>Command-line options | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="cli" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/cli.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/cli.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/cli.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/cli.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/cli.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/cli.html">13.x</a></li>
@@ -165,7 +165,6 @@
 <li><a href="#--experimental-import-meta-resolve"><code>--experimental-import-meta-resolve</code></a></li>
 <li><a href="#--experimental-json-modules"><code>--experimental-json-modules</code></a></li>
 <li><a href="#--experimental-loadermodule"><code>--experimental-loader=module</code></a></li>
-<li><a href="#--experimental-modules"><code>--experimental-modules</code></a></li>
 <li><a href="#--experimental-policy"><code>--experimental-policy</code></a></li>
 <li><a href="#--no-experimental-repl-await"><code>--no-experimental-repl-await</code></a></li>
 <li><a href="#--experimental-specifier-resolutionmode"><code>--experimental-specifier-resolution=mode</code></a></li>
@@ -495,11 +494,6 @@ Use of this command-line flag is no longer required.</p>
 </div>
 <p>Specify the <code>module</code> of a custom experimental <a href="esm.html#loaders">ECMAScript Module loader</a>.
 <code>module</code> may be either a path to a file, or an ECMAScript Module name.</p>
-<h4><code>--experimental-modules</code><span><a class="mark" href="#--experimental-modules" id="--experimental-modules">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_modules"></a></h4>
-<div class="api_metadata">
-<span>Added in: v8.5.0</span>
-</div>
-<p>Enable latest experimental modules features (deprecated).</p>
 <h4><code>--experimental-policy</code><span><a class="mark" href="#--experimental-policy" id="--experimental-policy">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_policy"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.8.0</span>
@@ -871,7 +865,7 @@ If an error occurs while attempting to write the warning to the file, the
 warning will be written to stderr instead.</p>
 <p>The <code>file</code> name may be an absolute path. If it is not, the default directory it
 will be written to is controlled by the
-<a href=""><code>--diagnostic-dir</code></a> command-line option.</p>
+<a href="#--diagnostic-dirdirectory"><code>--diagnostic-dir</code></a> command-line option.</p>
 <h4><code>--report-compact</code><span><a class="mark" href="#--report-compact" id="--report-compact">#</a></span><a aria-hidden="true" class="legacy" id="cli_report_compact"></a></h4>
 <div class="api_metadata">
 <span>Added in: v13.12.0, v12.17.0</span>
@@ -1598,7 +1592,8 @@ environment variable is arbitrary.</p>
 <span>Added in: v6.11.0</span>
 </div>
 <p>Load an OpenSSL configuration file on startup. Among other uses, this can be
-used to enable FIPS-compliant crypto if Node.js is built with <code>./configure --openssl-fips</code>.</p>
+used to enable FIPS-compliant crypto if Node.js is built with
+<code>./configure --openssl-fips</code>.</p>
 <p>If the <a href="#--openssl-configfile"><code>--openssl-config</code></a> command-line option is used, the environment
 variable is ignored.</p>
 <h4><code>SSL_CERT_DIR=dir</code><span><a class="mark" href="#ssl_cert_dirdir" id="ssl_cert_dirdir">#</a></span><a aria-hidden="true" class="legacy" id="cli_ssl_cert_dir_dir"></a></h4>

@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.0/lib/dns.js\">lib/dns.js</a></p>\n<p>The <code>dns</code> module enables name resolution. For example, use it to look up IP\naddresses of host names.</p>\n<p>Although named for the <a href=\"https://en.wikipedia.org/wiki/Domain_Name_System\">Domain Name System (DNS)</a>, it does not always use the\nDNS protocol for lookups. <a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a> uses the operating system\nfacilities to perform name resolution. It may not need to perform any network\ncommunication. To perform name resolution the way other applications on the same\nsystem do, use <a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a>.</p>\n<pre><code class=\"language-js\">const dns = require('dns');\n\ndns.lookup('example.org', (err, address, family) => {\n  console.log('address: %j family: IPv%s', address, family);\n});\n// address: \"93.184.216.34\" family: IPv4\n</code></pre>\n<p>All other functions in the <code>dns</code> module connect to an actual DNS server to\nperform name resolution. They will always use the network to perform DNS\nqueries. These functions do not use the same set of configuration files used by\n<a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a> (e.g. <code>/etc/hosts</code>). Use these functions to always perform\nDNS queries, bypassing other name-resolution facilities.</p>\n<pre><code class=\"language-js\">const dns = require('dns');\n\ndns.resolve4('archive.org', (err, addresses) => {\n  if (err) throw err;\n\n  console.log(`addresses: ${JSON.stringify(addresses)}`);\n\n  addresses.forEach((a) => {\n    dns.reverse(a, (err, hostnames) => {\n      if (err) {\n        throw err;\n      }\n      console.log(`reverse for ${a}: ${JSON.stringify(hostnames)}`);\n    });\n  });\n});\n</code></pre>\n<p>See the <a href=\"#implementation-considerations\">Implementation considerations section</a> for more information.</p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/dns.js\">lib/dns.js</a></p>\n<p>The <code>dns</code> module enables name resolution. For example, use it to look up IP\naddresses of host names.</p>\n<p>Although named for the <a href=\"https://en.wikipedia.org/wiki/Domain_Name_System\">Domain Name System (DNS)</a>, it does not always use the\nDNS protocol for lookups. <a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a> uses the operating system\nfacilities to perform name resolution. It may not need to perform any network\ncommunication. To perform name resolution the way other applications on the same\nsystem do, use <a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a>.</p>\n<pre><code class=\"language-js\">const dns = require('dns');\n\ndns.lookup('example.org', (err, address, family) => {\n  console.log('address: %j family: IPv%s', address, family);\n});\n// address: \"93.184.216.34\" family: IPv4\n</code></pre>\n<p>All other functions in the <code>dns</code> module connect to an actual DNS server to\nperform name resolution. They will always use the network to perform DNS\nqueries. These functions do not use the same set of configuration files used by\n<a href=\"#dnslookuphostname-options-callback\"><code>dns.lookup()</code></a> (e.g. <code>/etc/hosts</code>). Use these functions to always perform\nDNS queries, bypassing other name-resolution facilities.</p>\n<pre><code class=\"language-js\">const dns = require('dns');\n\ndns.resolve4('archive.org', (err, addresses) => {\n  if (err) throw err;\n\n  console.log(`addresses: ${JSON.stringify(addresses)}`);\n\n  addresses.forEach((a) => {\n    dns.reverse(a, (err, hostnames) => {\n      if (err) {\n        throw err;\n      }\n      console.log(`reverse for ${a}: ${JSON.stringify(hostnames)}`);\n    });\n  });\n});\n</code></pre>\n<p>See the <a href=\"#implementation-considerations\">Implementation considerations section</a> for more information.</p>",
       "classes": [
         {
           "textRaw": "Class: `dns.Resolver`",
@@ -116,9 +116,9 @@
           "signatures": [
             {
               "return": {
-                "textRaw": "Returns: {string[]}",
+                "textRaw": "Returns: {string\\[]}",
                 "name": "return",
-                "type": "string[]"
+                "type": "string\\[]"
               },
               "params": []
             }
@@ -327,16 +327,16 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`records` {string[] | Object[] | Object}",
+                      "textRaw": "`records` {string\\[] | Object\\[] | Object}",
                       "name": "records",
-                      "type": "string[] | Object[] | Object"
+                      "type": "string\\[] | Object\\[] | Object"
                     }
                   ]
                 }
               ]
             }
           ],
-          "desc": "<p>Uses the DNS protocol to resolve a host name (e.g. <code>'nodejs.org'</code>) into an array\nof the resource records. The <code>callback</code> function has arguments\n<code>(err, records)</code>. When successful, <code>records</code> will be an array of resource\nrecords. The type and structure of individual results varies based on <code>rrtype</code>:</p>\n<table>\n<thead>\n<tr>\n<th><code>rrtype</code></th>\n<th><code>records</code> contains</th>\n<th>Result type</th>\n<th>Shorthand method</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>'A'</code></td>\n<td>IPv4 addresses (default)</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolve4hostname-options-callback\"><code>dns.resolve4()</code></a></td>\n</tr>\n<tr>\n<td><code>'AAAA'</code></td>\n<td>IPv6 addresses</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolve6hostname-options-callback\"><code>dns.resolve6()</code></a></td>\n</tr>\n<tr>\n<td><code>'ANY'</code></td>\n<td>any records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolveanyhostname-callback\"><code>dns.resolveAny()</code></a></td>\n</tr>\n<tr>\n<td><code>'CAA'</code></td>\n<td>CA authorization records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvecaahostname-callback\"><code>dns.resolveCaa()</code></a></td>\n</tr>\n<tr>\n<td><code>'CNAME'</code></td>\n<td>canonical name records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolvecnamehostname-callback\"><code>dns.resolveCname()</code></a></td>\n</tr>\n<tr>\n<td><code>'MX'</code></td>\n<td>mail exchange records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvemxhostname-callback\"><code>dns.resolveMx()</code></a></td>\n</tr>\n<tr>\n<td><code>'NAPTR'</code></td>\n<td>name authority pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvenaptrhostname-callback\"><code>dns.resolveNaptr()</code></a></td>\n</tr>\n<tr>\n<td><code>'NS'</code></td>\n<td>name server records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolvenshostname-callback\"><code>dns.resolveNs()</code></a></td>\n</tr>\n<tr>\n<td><code>'PTR'</code></td>\n<td>pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolveptrhostname-callback\"><code>dns.resolvePtr()</code></a></td>\n</tr>\n<tr>\n<td><code>'SOA'</code></td>\n<td>start of authority records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvesoahostname-callback\"><code>dns.resolveSoa()</code></a></td>\n</tr>\n<tr>\n<td><code>'SRV'</code></td>\n<td>service records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvesrvhostname-callback\"><code>dns.resolveSrv()</code></a></td>\n</tr>\n<tr>\n<td><code>'TXT'</code></td>\n<td>text records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string[]&gt;</a></td>\n<td><a href=\"#dnsresolvetxthostname-callback\"><code>dns.resolveTxt()</code></a></td>\n</tr>\n</tbody>\n</table>\n<p>On error, <code>err</code> is an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code> is one of the\n<a href=\"\">DNS error codes</a>.</p>"
+          "desc": "<p>Uses the DNS protocol to resolve a host name (e.g. <code>'nodejs.org'</code>) into an array\nof the resource records. The <code>callback</code> function has arguments\n<code>(err, records)</code>. When successful, <code>records</code> will be an array of resource\nrecords. The type and structure of individual results varies based on <code>rrtype</code>:</p>\n<table>\n<thead>\n<tr>\n<th><code>rrtype</code></th>\n<th><code>records</code> contains</th>\n<th>Result type</th>\n<th>Shorthand method</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>'A'</code></td>\n<td>IPv4 addresses (default)</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolve4hostname-options-callback\"><code>dns.resolve4()</code></a></td>\n</tr>\n<tr>\n<td><code>'AAAA'</code></td>\n<td>IPv6 addresses</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolve6hostname-options-callback\"><code>dns.resolve6()</code></a></td>\n</tr>\n<tr>\n<td><code>'ANY'</code></td>\n<td>any records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolveanyhostname-callback\"><code>dns.resolveAny()</code></a></td>\n</tr>\n<tr>\n<td><code>'CAA'</code></td>\n<td>CA authorization records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvecaahostname-callback\"><code>dns.resolveCaa()</code></a></td>\n</tr>\n<tr>\n<td><code>'CNAME'</code></td>\n<td>canonical name records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolvecnamehostname-callback\"><code>dns.resolveCname()</code></a></td>\n</tr>\n<tr>\n<td><code>'MX'</code></td>\n<td>mail exchange records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvemxhostname-callback\"><code>dns.resolveMx()</code></a></td>\n</tr>\n<tr>\n<td><code>'NAPTR'</code></td>\n<td>name authority pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvenaptrhostname-callback\"><code>dns.resolveNaptr()</code></a></td>\n</tr>\n<tr>\n<td><code>'NS'</code></td>\n<td>name server records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolvenshostname-callback\"><code>dns.resolveNs()</code></a></td>\n</tr>\n<tr>\n<td><code>'PTR'</code></td>\n<td>pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnsresolveptrhostname-callback\"><code>dns.resolvePtr()</code></a></td>\n</tr>\n<tr>\n<td><code>'SOA'</code></td>\n<td>start of authority records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvesoahostname-callback\"><code>dns.resolveSoa()</code></a></td>\n</tr>\n<tr>\n<td><code>'SRV'</code></td>\n<td>service records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnsresolvesrvhostname-callback\"><code>dns.resolveSrv()</code></a></td>\n</tr>\n<tr>\n<td><code>'TXT'</code></td>\n<td>text records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string[]&gt;</a></td>\n<td><a href=\"#dnsresolvetxthostname-callback\"><code>dns.resolveTxt()</code></a></td>\n</tr>\n</tbody>\n</table>\n<p>On error, <code>err</code> is an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code> is one of the\n<a href=\"#error-codes\">DNS error codes</a>.</p>"
         },
         {
           "textRaw": "`dns.resolve4(hostname[, options], callback)`",
@@ -387,9 +387,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {string[] | Object[]}",
+                      "textRaw": "`addresses` {string\\[] | Object\\[]}",
                       "name": "addresses",
-                      "type": "string[] | Object[]"
+                      "type": "string\\[] | Object\\[]"
                     }
                   ]
                 }
@@ -447,9 +447,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {string[] | Object[]}",
+                      "textRaw": "`addresses` {string\\[] | Object\\[]}",
                       "name": "addresses",
-                      "type": "string[] | Object[]"
+                      "type": "string\\[] | Object\\[]"
                     }
                   ]
                 }
@@ -481,9 +481,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`ret` {Object[]}",
+                      "textRaw": "`ret` {Object\\[]}",
                       "name": "ret",
-                      "type": "Object[]"
+                      "type": "Object\\[]"
                     }
                   ]
                 }
@@ -521,9 +521,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {string[]}",
+                      "textRaw": "`addresses` {string\\[]}",
                       "name": "addresses",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ]
                 }
@@ -561,9 +561,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`records` {Object[]}",
+                      "textRaw": "`records` {Object\\[]}",
                       "name": "records",
-                      "type": "Object[]"
+                      "type": "Object\\[]"
                     }
                   ]
                 }
@@ -601,9 +601,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {Object[]}",
+                      "textRaw": "`addresses` {Object\\[]}",
                       "name": "addresses",
-                      "type": "Object[]"
+                      "type": "Object\\[]"
                     }
                   ]
                 }
@@ -641,9 +641,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {Object[]}",
+                      "textRaw": "`addresses` {Object\\[]}",
                       "name": "addresses",
-                      "type": "Object[]"
+                      "type": "Object\\[]"
                     }
                   ]
                 }
@@ -681,9 +681,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {string[]}",
+                      "textRaw": "`addresses` {string\\[]}",
                       "name": "addresses",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ]
                 }
@@ -721,9 +721,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {string[]}",
+                      "textRaw": "`addresses` {string\\[]}",
                       "name": "addresses",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ]
                 }
@@ -801,9 +801,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`addresses` {Object[]}",
+                      "textRaw": "`addresses` {Object\\[]}",
                       "name": "addresses",
-                      "type": "Object[]"
+                      "type": "Object\\[]"
                     }
                   ]
                 }
@@ -858,9 +858,9 @@
                       "type": "Error"
                     },
                     {
-                      "textRaw": "`hostnames` {string[]}",
+                      "textRaw": "`hostnames` {string\\[]}",
                       "name": "hostnames",
-                      "type": "string[]"
+                      "type": "string\\[]"
                     }
                   ]
                 }
@@ -907,9 +907,9 @@
             {
               "params": [
                 {
-                  "textRaw": "`servers` {string[]} array of [RFC 5952][] formatted addresses",
+                  "textRaw": "`servers` {string\\[]} array of [RFC 5952][] formatted addresses",
                   "name": "servers",
-                  "type": "string[]",
+                  "type": "string\\[]",
                   "desc": "array of [RFC 5952][] formatted addresses"
                 }
               ]
@@ -988,9 +988,9 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {string[]}",
+                    "textRaw": "Returns: {string\\[]}",
                     "name": "return",
-                    "type": "string[]"
+                    "type": "string\\[]"
                   },
                   "params": []
                 }
@@ -1111,7 +1111,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Uses the DNS protocol to resolve a host name (e.g. <code>'nodejs.org'</code>) into an array\nof the resource records. When successful, the <code>Promise</code> is resolved with an\narray of resource records. The type and structure of individual results vary\nbased on <code>rrtype</code>:</p>\n<table>\n<thead>\n<tr>\n<th><code>rrtype</code></th>\n<th><code>records</code> contains</th>\n<th>Result type</th>\n<th>Shorthand method</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>'A'</code></td>\n<td>IPv4 addresses (default)</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolve4hostname-options\"><code>dnsPromises.resolve4()</code></a></td>\n</tr>\n<tr>\n<td><code>'AAAA'</code></td>\n<td>IPv6 addresses</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolve6hostname-options\"><code>dnsPromises.resolve6()</code></a></td>\n</tr>\n<tr>\n<td><code>'ANY'</code></td>\n<td>any records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolveanyhostname\"><code>dnsPromises.resolveAny()</code></a></td>\n</tr>\n<tr>\n<td><code>'CAA'</code></td>\n<td>CA authorization records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvecaahostname\"><code>dnsPromises.resolveCaa()</code></a></td>\n</tr>\n<tr>\n<td><code>'CNAME'</code></td>\n<td>canonical name records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolvecnamehostname\"><code>dnsPromises.resolveCname()</code></a></td>\n</tr>\n<tr>\n<td><code>'MX'</code></td>\n<td>mail exchange records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvemxhostname\"><code>dnsPromises.resolveMx()</code></a></td>\n</tr>\n<tr>\n<td><code>'NAPTR'</code></td>\n<td>name authority pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvenaptrhostname\"><code>dnsPromises.resolveNaptr()</code></a></td>\n</tr>\n<tr>\n<td><code>'NS'</code></td>\n<td>name server records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolvenshostname\"><code>dnsPromises.resolveNs()</code></a></td>\n</tr>\n<tr>\n<td><code>'PTR'</code></td>\n<td>pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolveptrhostname\"><code>dnsPromises.resolvePtr()</code></a></td>\n</tr>\n<tr>\n<td><code>'SOA'</code></td>\n<td>start of authority records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvesoahostname\"><code>dnsPromises.resolveSoa()</code></a></td>\n</tr>\n<tr>\n<td><code>'SRV'</code></td>\n<td>service records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvesrvhostname\"><code>dnsPromises.resolveSrv()</code></a></td>\n</tr>\n<tr>\n<td><code>'TXT'</code></td>\n<td>text records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string[]&gt;</a></td>\n<td><a href=\"#dnspromisesresolvetxthostname\"><code>dnsPromises.resolveTxt()</code></a></td>\n</tr>\n</tbody>\n</table>\n<p>On error, the <code>Promise</code> is rejected with an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code>\nis one of the <a href=\"\">DNS error codes</a>.</p>"
+              "desc": "<p>Uses the DNS protocol to resolve a host name (e.g. <code>'nodejs.org'</code>) into an array\nof the resource records. When successful, the <code>Promise</code> is resolved with an\narray of resource records. The type and structure of individual results vary\nbased on <code>rrtype</code>:</p>\n<table>\n<thead>\n<tr>\n<th><code>rrtype</code></th>\n<th><code>records</code> contains</th>\n<th>Result type</th>\n<th>Shorthand method</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>'A'</code></td>\n<td>IPv4 addresses (default)</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolve4hostname-options\"><code>dnsPromises.resolve4()</code></a></td>\n</tr>\n<tr>\n<td><code>'AAAA'</code></td>\n<td>IPv6 addresses</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolve6hostname-options\"><code>dnsPromises.resolve6()</code></a></td>\n</tr>\n<tr>\n<td><code>'ANY'</code></td>\n<td>any records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolveanyhostname\"><code>dnsPromises.resolveAny()</code></a></td>\n</tr>\n<tr>\n<td><code>'CAA'</code></td>\n<td>CA authorization records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvecaahostname\"><code>dnsPromises.resolveCaa()</code></a></td>\n</tr>\n<tr>\n<td><code>'CNAME'</code></td>\n<td>canonical name records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolvecnamehostname\"><code>dnsPromises.resolveCname()</code></a></td>\n</tr>\n<tr>\n<td><code>'MX'</code></td>\n<td>mail exchange records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvemxhostname\"><code>dnsPromises.resolveMx()</code></a></td>\n</tr>\n<tr>\n<td><code>'NAPTR'</code></td>\n<td>name authority pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvenaptrhostname\"><code>dnsPromises.resolveNaptr()</code></a></td>\n</tr>\n<tr>\n<td><code>'NS'</code></td>\n<td>name server records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolvenshostname\"><code>dnsPromises.resolveNs()</code></a></td>\n</tr>\n<tr>\n<td><code>'PTR'</code></td>\n<td>pointer records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a></td>\n<td><a href=\"#dnspromisesresolveptrhostname\"><code>dnsPromises.resolvePtr()</code></a></td>\n</tr>\n<tr>\n<td><code>'SOA'</code></td>\n<td>start of authority records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvesoahostname\"><code>dnsPromises.resolveSoa()</code></a></td>\n</tr>\n<tr>\n<td><code>'SRV'</code></td>\n<td>service records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></td>\n<td><a href=\"#dnspromisesresolvesrvhostname\"><code>dnsPromises.resolveSrv()</code></a></td>\n</tr>\n<tr>\n<td><code>'TXT'</code></td>\n<td>text records</td>\n<td><a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string[]&gt;</a></td>\n<td><a href=\"#dnspromisesresolvetxthostname\"><code>dnsPromises.resolveTxt()</code></a></td>\n</tr>\n</tbody>\n</table>\n<p>On error, the <code>Promise</code> is rejected with an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code>\nis one of the <a href=\"#error-codes\">DNS error codes</a>.</p>"
             },
             {
               "textRaw": "`dnsPromises.resolve4(hostname[, options])`",
@@ -1438,7 +1438,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Performs a reverse DNS query that resolves an IPv4 or IPv6 address to an\narray of host names.</p>\n<p>On error, the <code>Promise</code> is rejected with an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code>\nis one of the <a href=\"\">DNS error codes</a>.</p>"
+              "desc": "<p>Performs a reverse DNS query that resolves an IPv4 or IPv6 address to an\narray of host names.</p>\n<p>On error, the <code>Promise</code> is rejected with an <a href=\"errors.html#class-error\"><code>Error</code></a> object, where <code>err.code</code>\nis one of the <a href=\"#error-codes\">DNS error codes</a>.</p>"
             },
             {
               "textRaw": "`dnsPromises.setDefaultResultOrder(order)`",
@@ -1478,9 +1478,9 @@
                 {
                   "params": [
                     {
-                      "textRaw": "`servers` {string[]} array of [RFC 5952][] formatted addresses",
+                      "textRaw": "`servers` {string\\[]} array of [RFC 5952][] formatted addresses",
                       "name": "servers",
-                      "type": "string[]",
+                      "type": "string\\[]",
                       "desc": "array of [RFC 5952][] formatted addresses"
                     }
                   ]

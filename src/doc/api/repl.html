@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>REPL | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>REPL | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="repl" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/repl.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/repl.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/repl.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/repl.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/repl.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/repl.html">13.x</a></li>
@@ -197,7 +197,7 @@
         <h2>REPL<span><a class="mark" href="#repl" id="repl">#</a></span><a aria-hidden="true" class="legacy" id="repl_repl"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/repl.js">lib/repl.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/repl.js">lib/repl.js</a></p>
 <p>The <code>repl</code> module provides a Read-Eval-Print-Loop (REPL) implementation that
 is available both as a standalone program or includible in other applications.
 It can be accessed using:</p>
@@ -229,8 +229,8 @@ multi-line expression being input.</li>
 <code>> .save ./file/to/save.js</code></li>
 <li><code>.load</code>: Load a file into the current REPL session.
 <code>> .load ./file/to/load.js</code></li>
-<li><code>.editor</code>: Enter editor mode (<kbd>Ctrl</kbd>+<kbd>D</kbd> to finish,
-<kbd>Ctrl</kbd>+<kbd>C</kbd> to cancel).</li>
+<li><code>.editor</code>: Enter editor mode (<kbd>Ctrl</kbd>+<kbd>D</kbd> to
+finish, <kbd>Ctrl</kbd>+<kbd>C</kbd> to cancel).</li>
 </ul>
 <pre><code class="language-console"><span class="hljs-meta">> </span><span class="language-bash">.editor</span>
 // Entering editor mode (^D to finish, ^C to cancel)
@@ -250,8 +250,8 @@ welcome('Node.js User');
 When pressed twice on a blank line, has the same effect as the <code>.exit</code>
 command.</li>
 <li><kbd>Ctrl</kbd>+<kbd>D</kbd>: Has the same effect as the <code>.exit</code> command.</li>
-<li><kbd>Tab</kbd>: When pressed on a blank line, displays global and local (scope)
-variables. When pressed while entering other input, displays relevant
+<li><kbd>Tab</kbd>: When pressed on a blank line, displays global and local
+(scope) variables. When pressed while entering other input, displays relevant
 autocompletion options.</li>
 </ul>
 <p>For key bindings related to the reverse-i-search, see <a href="#reverse-i-search"><code>reverse-i-search</code></a>.
@@ -393,13 +393,12 @@ undefined
 <span>Added in: v13.6.0, v12.17.0</span>
 </div>
 <p>The REPL supports bi-directional reverse-i-search similar to <a href="https://en.wikipedia.org/wiki/Z_shell">ZSH</a>. It is
-triggered with <kbd>Ctrl</kbd>+<kbd>R</kbd> to search backward and
-<kbd>Ctrl</kbd>+<kbd>S</kbd> to search
-forwards.</p>
+triggered with <kbd>Ctrl</kbd>+<kbd>R</kbd> to search backward
+and <kbd>Ctrl</kbd>+<kbd>S</kbd> to search forwards.</p>
 <p>Duplicated history entries will be skipped.</p>
 <p>Entries are accepted as soon as any key is pressed that doesn't correspond
-with the reverse search. Cancelling is possible by pressing <kbd>Esc</kbd> or
-<kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>
+with the reverse search. Cancelling is possible by pressing <kbd>Esc</kbd>
+or <kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>
 <p>Changing the direction immediately searches for the next entry in the expected
 direction from the current position on.</p>
 <h4>Custom evaluation functions<span><a class="mark" href="#custom-evaluation-functions" id="custom-evaluation-functions">#</a></span><a aria-hidden="true" class="legacy" id="repl_custom_evaluation_functions"></a></h4>

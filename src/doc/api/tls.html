@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.0">
-  <title>TLS (SSL) | Node.js v16.13.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.1">
+  <title>TLS (SSL) | Node.js v16.13.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -25,7 +25,7 @@
 <hr class="line">
 <ul>
 <li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
-<li><a href="async_context.html" class="nav-async_context">Async_context</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
 <li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
 <li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
 <li><a href="addons.html" class="nav-addons">C++ addons</a></li>
@@ -92,7 +92,7 @@
     <div id="column1" data-id="tls" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.0 documentation</h1>
+          <h1>Node.js v16.13.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -120,7 +120,7 @@
     <li class="version-picker">
       <a href="#">View another version <span>&#x25bc;</span></a>
       <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/tls.html">17.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v16.x/api/tls.html">16.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v16.x/api/tls.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/tls.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/tls.html">14.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v13.x/api/tls.html">13.x</a></li>
@@ -250,7 +250,7 @@
         <h2>TLS (SSL)<span><a class="mark" href="#tls-ssl" id="tls-ssl">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_ssl"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.0/lib/tls.js">lib/tls.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/tls.js">lib/tls.js</a></p>
 <p>The <code>tls</code> module provides an implementation of the Transport Layer Security
 (TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.
 The module can be accessed using:</p>
@@ -589,7 +589,7 @@ implementation of the TLS protocol.</p>
 <p>The <code>'secure'</code> event is emitted by the <code>SecurePair</code> object once a secure
 connection has been established.</p>
 <p>As with checking for the server
-<a href=""><code>'secureConnection'</code></a>
+<a href="#event-secureconnection"><code>'secureConnection'</code></a>
 event, <code>pair.cleartext.authorized</code> should be inspected to confirm whether the
 certificate used is properly authorized.</p>
 </section><section><h3>Class: <code>tls.Server</code><span><a class="mark" href="#class-tlsserver" id="class-tlsserver">#</a></span><a aria-hidden="true" class="legacy" id="tls_class_tls_server"></a></h3>
@@ -1009,9 +1009,10 @@ to renegotiate will trigger an <code>'error'</code> event on the <code>TLSSocket
 </div>
 <p>When enabled, TLS packet trace information is written to <code>stderr</code>. This can be
 used to debug TLS connection problems.</p>
-<p>Note: The format of the output is identical to the output of <code>openssl s_client -trace</code> or <code>openssl s_server -trace</code>. While it is produced by OpenSSL's
-<code>SSL_trace()</code> function, the format is undocumented, can change without notice,
-and should not be relied on.</p>
+<p>The format of the output is identical to the output of
+<code>openssl s_client -trace</code> or <code>openssl s_server -trace</code>. While it is produced by
+OpenSSL's <code>SSL_trace()</code> function, the format is undocumented, can change
+without notice, and should not be relied on.</p>
 <h4><code>tlsSocket.encrypted</code><span><a class="mark" href="#tlssocketencrypted" id="tlssocketencrypted">#</a></span><a aria-hidden="true" class="legacy" id="tls_tlssocket_encrypted"></a></h4>
 <div class="api_metadata">
 <span>Added in: v0.11.4</span>
@@ -1715,15 +1716,15 @@ provided.
 For PEM encoded certificates, supported types are "TRUSTED CERTIFICATE",
 "X509 CERTIFICATE", and "CERTIFICATE".
 See also <a href="#tlsrootcertificates"><code>tls.rootCertificates</code></a>.</li>
-<li><code>cert</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer[]></a> Cert chains in PEM format. One cert
-chain should be provided per private key. Each cert chain should consist of
-the PEM formatted certificate for a provided private <code>key</code>, followed by the
-PEM formatted intermediate certificates (if any), in order, and not
-including the root CA (the root CA must be pre-known to the peer, see <code>ca</code>).
-When providing multiple cert chains, they do not have to be in the same
-order as their private keys in <code>key</code>. If the intermediate certificates are
-not provided, the peer will not be able to validate the certificate, and the
-handshake will fail.</li>
+<li><code>cert</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer[]></a> Cert chains in PEM format. One
+cert chain should be provided per private key. Each cert chain should
+consist of the PEM formatted certificate for a provided private <code>key</code>,
+followed by the PEM formatted intermediate certificates (if any), in order,
+and not including the root CA (the root CA must be pre-known to the peer,
+see <code>ca</code>). When providing multiple cert chains, they do not have to be in
+the same order as their private keys in <code>key</code>. If the intermediate
+certificates are not provided, the peer will not be able to validate the
+certificate, and the handshake will fail.</li>
 <li><code>sigalgs</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> Colon-separated list of supported signature algorithms.
 The list can contain digest algorithms (<code>SHA256</code>, <code>MD5</code> etc.), public key
 algorithms (<code>RSA-PSS</code>, <code>ECDSA</code> etc.), combination of both (e.g
@@ -1755,11 +1756,11 @@ will also display the name and description of each available elliptic curve.
 preferences instead of the client's. When <code>true</code>, causes
 <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code> to be set in <code>secureOptions</code>, see
 <a href="crypto.html#openssl-options">OpenSSL Options</a> for more information.</li>
-<li><code>key</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer[]></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object[]></a> Private keys in PEM format.
-PEM allows the option of private keys being encrypted. Encrypted keys will
-be decrypted with <code>options.passphrase</code>. Multiple keys using different
-algorithms can be provided either as an array of unencrypted key strings or
-buffers, or an array of objects in the form
+<li><code>key</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer[]></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object[]></a> Private keys in PEM
+format. PEM allows the option of private keys being encrypted. Encrypted
+keys will be decrypted with <code>options.passphrase</code>. Multiple keys using
+different algorithms can be provided either as an array of unencrypted key
+strings or buffers, or an array of objects in the form
 <code>{pem: &#x3C;string|buffer>[, passphrase: &#x3C;string>]}</code>. The object form can only
 occur in an array. <code>object.passphrase</code> is optional. Encrypted keys will be
 decrypted with <code>object.passphrase</code> if provided, or <code>options.passphrase</code> if
@@ -1799,9 +1800,9 @@ Value is a numeric bitmask of the <code>SSL_OP_*</code> options from
 version to use, it does not support independent control of the minimum and
 maximum version, and does not support limiting the protocol to TLSv1.3. Use
 <code>minVersion</code> and <code>maxVersion</code> instead. The possible values are listed as
-<a href="https://www.openssl.org/docs/man1.1.1/man7/ssl.html#Dealing-with-Protocol-Methods">SSL_METHODS</a>, use the function names as strings. For example, use
-<code>'TLSv1_1_method'</code> to force TLS version 1.1, or <code>'TLS_method'</code> to allow any
-TLS protocol version up to TLSv1.3. It is not recommended to use TLS
+<a href="https://www.openssl.org/docs/man1.1.1/man7/ssl.html#Dealing-with-Protocol-Methods">SSL_METHODS</a>, use the function names as strings. For example,
+use <code>'TLSv1_1_method'</code> to force TLS version 1.1, or <code>'TLS_method'</code> to allow
+any TLS protocol version up to TLSv1.3. It is not recommended to use TLS
 versions less than 1.2, but it may be required for interoperability.
 <strong>Default:</strong> none, see <code>minVersion</code>.</li>
 <li><code>sessionIdContext</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> Opaque identifier used by servers to ensure
