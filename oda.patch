@@ -2,7 +2,7 @@ diff --git a/src/common.gypi b/src/common.gypi
 index e610650a0..e3aa0ba46 100644
 --- a/src/common.gypi
 +++ b/src/common.gypi
-@@ -268,7 +268,7 @@
+@@ -273,7 +273,7 @@
      ],
      'msvs_settings': {
        'VCCLCompilerTool': {
@@ -11,7 +11,7 @@ index e610650a0..e3aa0ba46 100644
          'BufferSecurityCheck': 'true',
          'DebugInformationFormat': 1,          # /Z7 embed info in .obj files
          'ExceptionHandling': 0,               # /EHsc
-@@ -386,7 +386,7 @@
+@@ -391,7 +391,7 @@
        }],
        [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
          'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
@@ -20,7 +20,7 @@ index e610650a0..e3aa0ba46 100644
          'defines': [ '__STDC_FORMAT_MACROS' ],
          'ldflags': [ '-rdynamic' ],
          'target_conditions': [
-@@ -530,7 +530,7 @@
+@@ -535,7 +535,7 @@
            ['clang==1', {
              'xcode_settings': {
                'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
@@ -406,7 +406,7 @@ index 0f72abc0b..4375a1415 100644
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 16
  #define NODE_MINOR_VERSION 13
- #define NODE_PATCH_VERSION 0
+ #define NODE_PATCH_VERSION 1
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
