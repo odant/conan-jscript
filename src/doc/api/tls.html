@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.1">
-  <title>TLS (SSL) | Node.js v16.13.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.2">
+  <title>TLS (SSL) | Node.js v16.13.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="tls" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.1 documentation</h1>
+          <h1>Node.js v16.13.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -250,7 +250,7 @@
         <h2>TLS (SSL)<span><a class="mark" href="#tls-ssl" id="tls-ssl">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_ssl"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/tls.js">lib/tls.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/tls.js">lib/tls.js</a></p>
 <p>The <code>tls</code> module provides an implementation of the Transport Layer Security
 (TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.
 The module can be accessed using:</p>
@@ -1426,7 +1426,15 @@ smaller fragments add extra TLS framing bytes and CPU overhead, which may
 decrease overall server throughput.</p>
 </section><section><h3><code>tls.checkServerIdentity(hostname, cert)</code><span><a class="mark" href="#tlscheckserveridentityhostname-cert" id="tlscheckserveridentityhostname-cert">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_checkserveridentity_hostname_cert"></a></h3>
 <div class="api_metadata">
-<span>Added in: v0.8.4</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.13.2</td>
+<td><p>Support for <code>uniformResourceIdentifier</code> subject alternative names has been disabled in response to CVE-2021-44531.</p></td></tr>
+<tr><td>v0.8.4</td>
+<td><p><span>Added in: v0.8.4</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li><code>hostname</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The host name or IP address to verify the certificate
@@ -1443,6 +1451,11 @@ overwriting function can call <code>tls.checkServerIdentity()</code> of course, 
 the checks done with additional verification.</p>
 <p>This function is only called if the certificate passed all other checks, such as
 being issued by trusted CA (<code>options.ca</code>).</p>
+<p>Earlier versions of Node.js incorrectly accepted certificates for a given
+<code>hostname</code> if a matching <code>uniformResourceIdentifier</code> subject alternative name
+was present (see <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44531">CVE-2021-44531</a>). Applications that wish to accept
+<code>uniformResourceIdentifier</code> subject alternative names can use a custom
+<code>options.checkServerIdentity</code> function that implements the desired behavior.</p>
 </section><section><h3><code>tls.connect(options[, callback])</code><span><a class="mark" href="#tlsconnectoptions-callback" id="tlsconnectoptions-callback">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_connect_options_callback"></a></h3>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>

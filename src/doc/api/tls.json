@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/tls.js\">lib/tls.js</a></p>\n<p>The <code>tls</code> module provides an implementation of the Transport Layer Security\n(TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.\nThe module can be accessed using:</p>\n<pre><code class=\"language-js\">const tls = require('tls');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/tls.js\">lib/tls.js</a></p>\n<p>The <code>tls</code> module provides an implementation of the Transport Layer Security\n(TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.\nThe module can be accessed using:</p>\n<pre><code class=\"language-js\">const tls = require('tls');\n</code></pre>",
       "modules": [
         {
           "textRaw": "TLS/SSL concepts",
@@ -1242,7 +1242,13 @@
             "added": [
               "v0.8.4"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v16.13.2",
+                "pr-url": "https://github.com/nodejs-private/node-private/pull/300",
+                "description": "Support for `uniformResourceIdentifier` subject alternative names has been disabled in response to CVE-2021-44531."
+              }
+            ]
           },
           "signatures": [
             {
@@ -1267,7 +1273,7 @@
               ]
             }
           ],
-          "desc": "<p>Verifies the certificate <code>cert</code> is issued to <code>hostname</code>.</p>\n<p>Returns <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error\" class=\"type\">&lt;Error&gt;</a> object, populating it with <code>reason</code>, <code>host</code>, and <code>cert</code> on\nfailure. On success, returns <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type\" class=\"type\">&lt;undefined&gt;</a>.</p>\n<p>This function can be overwritten by providing alternative function as part of\nthe <code>options.checkServerIdentity</code> option passed to <code>tls.connect()</code>. The\noverwriting function can call <code>tls.checkServerIdentity()</code> of course, to augment\nthe checks done with additional verification.</p>\n<p>This function is only called if the certificate passed all other checks, such as\nbeing issued by trusted CA (<code>options.ca</code>).</p>"
+          "desc": "<p>Verifies the certificate <code>cert</code> is issued to <code>hostname</code>.</p>\n<p>Returns <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error\" class=\"type\">&lt;Error&gt;</a> object, populating it with <code>reason</code>, <code>host</code>, and <code>cert</code> on\nfailure. On success, returns <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type\" class=\"type\">&lt;undefined&gt;</a>.</p>\n<p>This function can be overwritten by providing alternative function as part of\nthe <code>options.checkServerIdentity</code> option passed to <code>tls.connect()</code>. The\noverwriting function can call <code>tls.checkServerIdentity()</code> of course, to augment\nthe checks done with additional verification.</p>\n<p>This function is only called if the certificate passed all other checks, such as\nbeing issued by trusted CA (<code>options.ca</code>).</p>\n<p>Earlier versions of Node.js incorrectly accepted certificates for a given\n<code>hostname</code> if a matching <code>uniformResourceIdentifier</code> subject alternative name\nwas present (see <a href=\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44531\">CVE-2021-44531</a>). Applications that wish to accept\n<code>uniformResourceIdentifier</code> subject alternative names can use a custom\n<code>options.checkServerIdentity</code> function that implements the desired behavior.</p>"
         },
         {
           "textRaw": "`tls.connect(options[, callback])`",

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.1">
-  <title>Crypto | Node.js v16.13.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.2">
+  <title>Crypto | Node.js v16.13.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="crypto" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.1 documentation</h1>
+          <h1>Node.js v16.13.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -352,7 +352,7 @@
         <h2>Crypto<span><a class="mark" href="#crypto" id="crypto">#</a></span><a aria-hidden="true" class="legacy" id="crypto_crypto"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.1/lib/crypto.js">lib/crypto.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/crypto.js">lib/crypto.js</a></p>
 <p>The <code>crypto</code> module provides cryptographic functionality that includes a set of
 wrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>
 
@@ -2579,12 +2579,29 @@ the given private key.</p>
 <p>The SHA-256 fingerprint of this certificate.</p>
 <h4><code>x509.infoAccess</code><span><a class="mark" href="#x509infoaccess" id="x509infoaccess">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_infoaccess"></a></h4>
 <div class="api_metadata">
-<span>Added in: v15.6.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.13.2</td>
+<td><p>Parts of this string may be encoded as JSON string literals in response to CVE-2021-44532.</p></td></tr>
+<tr><td>v15.6.0</td>
+<td><p><span>Added in: v15.6.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 </ul>
-<p>The information access content of this certificate.</p>
+<p>A textual representation of the certificate's authority information access
+extension.</p>
+<p>This is a line feed separated list of access descriptions. Each line begins with
+the access method and the kind of the access location, followed by a colon and
+the value associated with the access location.</p>
+<p>After the prefix denoting the access method and the kind of the access location,
+the remainder of each line might be enclosed in quotes to indicate that the
+value is a JSON string literal. For backward compatibility, Node.js only uses
+JSON string literals within this property when necessary to avoid ambiguity.
+Third-party code should be prepared to handle both possible entry formats.</p>
 <h4><code>x509.issuer</code><span><a class="mark" href="#x509issuer" id="x509issuer">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_issuer"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.6.0</span>
@@ -2644,12 +2661,32 @@ available.</p>
 <p>The complete subject of this certificate.</p>
 <h4><code>x509.subjectAltName</code><span><a class="mark" href="#x509subjectaltname" id="x509subjectaltname">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_subjectaltname"></a></h4>
 <div class="api_metadata">
-<span>Added in: v15.6.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.13.2</td>
+<td><p>Parts of this string may be encoded as JSON string literals in response to CVE-2021-44532.</p></td></tr>
+<tr><td>v15.6.0</td>
+<td><p><span>Added in: v15.6.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 </ul>
 <p>The subject alternative name specified for this certificate.</p>
+<p>This is a comma-separated list of subject alternative names. Each entry begins
+with a string identifying the kind of the subject alternative name followed by
+a colon and the value associated with the entry.</p>
+<p>Earlier versions of Node.js incorrectly assumed that it is safe to split this
+property at the two-character sequence <code>', '</code> (see <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44532">CVE-2021-44532</a>). However,
+both malicious and legitimate certificates can contain subject alternative names
+that include this sequence when represented as a string.</p>
+<p>After the prefix denoting the type of the entry, the remainder of each entry
+might be enclosed in quotes to indicate that the value is a JSON string literal.
+For backward compatibility, Node.js only uses JSON string literals within this
+property when necessary to avoid ambiguity. Third-party code should be prepared
+to handle both possible entry formats.</p>
 <h4><code>x509.toJSON()</code><span><a class="mark" href="#x509tojson" id="x509tojson">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_tojson"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.6.0</span>

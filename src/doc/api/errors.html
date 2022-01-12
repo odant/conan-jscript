@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.1">
-  <title>Errors | Node.js v16.13.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.13.2">
+  <title>Errors | Node.js v16.13.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="errors" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.1 documentation</h1>
+          <h1>Node.js v16.13.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -437,6 +437,7 @@
 <li><a href="#err_string_too_long"><code>ERR_STRING_TOO_LONG</code></a></li>
 <li><a href="#err_synthetic"><code>ERR_SYNTHETIC</code></a></li>
 <li><a href="#err_system_error"><code>ERR_SYSTEM_ERROR</code></a></li>
+<li><a href="#err_tls_cert_altname_format"><code>ERR_TLS_CERT_ALTNAME_FORMAT</code></a></li>
 <li><a href="#err_tls_cert_altname_invalid"><code>ERR_TLS_CERT_ALTNAME_INVALID</code></a></li>
 <li><a href="#err_tls_dh_param_size"><code>ERR_TLS_DH_PARAM_SIZE</code></a></li>
 <li><a href="#err_tls_handshake_timeout"><code>ERR_TLS_HANDSHAKE_TIMEOUT</code></a></li>
@@ -2137,6 +2138,12 @@ reports.</p>
 <p>An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an <code>err.info</code> object property with
 additional details.</p>
+<p><a id="ERR_TLS_CERT_ALTNAME_FORMAT"></a></p>
+<h4><code>ERR_TLS_CERT_ALTNAME_FORMAT</code><span><a class="mark" href="#err_tls_cert_altname_format" id="err_tls_cert_altname_format">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_tls_cert_altname_format"></a></h4>
+<p>This error is thrown by <code>checkServerIdentity</code> if a user-supplied
+<code>subjectaltname</code> property violates encoding rules. Certificate objects produced
+by Node.js itself always comply with encoding rules and will never cause
+this error.</p>
 <p><a id="ERR_TLS_CERT_ALTNAME_INVALID"></a></p>
 <h4><code>ERR_TLS_CERT_ALTNAME_INVALID</code><span><a class="mark" href="#err_tls_cert_altname_invalid" id="err_tls_cert_altname_invalid">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_tls_cert_altname_invalid"></a></h4>
 <p>While using TLS, the host name/IP of the peer did not match any of the

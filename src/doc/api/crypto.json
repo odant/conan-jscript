@@ -8,7 +8,7 @@
       "introduced_in": "v0.3.6",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.1/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
       "modules": [
         {
           "textRaw": "Determining if crypto support is unavailable",
@@ -4737,9 +4737,15 @@
                 "added": [
                   "v15.6.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.13.2",
+                    "pr-url": "https://github.com/nodejs-private/node-private/pull/300",
+                    "description": "Parts of this string may be encoded as JSON string literals in response to CVE-2021-44532."
+                  }
+                ]
               },
-              "desc": "<p>The information access content of this certificate.</p>"
+              "desc": "<p>A textual representation of the certificate's authority information access\nextension.</p>\n<p>This is a line feed separated list of access descriptions. Each line begins with\nthe access method and the kind of the access location, followed by a colon and\nthe value associated with the access location.</p>\n<p>After the prefix denoting the access method and the kind of the access location,\nthe remainder of each line might be enclosed in quotes to indicate that the\nvalue is a JSON string literal. For backward compatibility, Node.js only uses\nJSON string literals within this property when necessary to avoid ambiguity.\nThird-party code should be prepared to handle both possible entry formats.</p>"
             },
             {
               "textRaw": "`issuer` Type: {string}",
@@ -4833,9 +4839,15 @@
                 "added": [
                   "v15.6.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.13.2",
+                    "pr-url": "https://github.com/nodejs-private/node-private/pull/300",
+                    "description": "Parts of this string may be encoded as JSON string literals in response to CVE-2021-44532."
+                  }
+                ]
               },
-              "desc": "<p>The subject alternative name specified for this certificate.</p>"
+              "desc": "<p>The subject alternative name specified for this certificate.</p>\n<p>This is a comma-separated list of subject alternative names. Each entry begins\nwith a string identifying the kind of the subject alternative name followed by\na colon and the value associated with the entry.</p>\n<p>Earlier versions of Node.js incorrectly assumed that it is safe to split this\nproperty at the two-character sequence <code>', '</code> (see <a href=\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44532\">CVE-2021-44532</a>). However,\nboth malicious and legitimate certificates can contain subject alternative names\nthat include this sequence when represented as a string.</p>\n<p>After the prefix denoting the type of the entry, the remainder of each entry\nmight be enclosed in quotes to indicate that the value is a JSON string literal.\nFor backward compatibility, Node.js only uses JSON string literals within this\nproperty when necessary to avoid ambiguity. Third-party code should be prepared\nto handle both possible entry formats.</p>"
             },
             {
               "textRaw": "`validFrom` Type: {string}",

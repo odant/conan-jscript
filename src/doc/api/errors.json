@@ -2130,9 +2130,16 @@
             {
               "textRaw": "`ERR_SYSTEM_ERROR`",
               "name": "`err_system_error`",
-              "desc": "<p>An unspecified or non-specific system error has occurred within the Node.js\nprocess. The error object will have an <code>err.info</code> object property with\nadditional details.</p>\n<p><a id=\"ERR_TLS_CERT_ALTNAME_INVALID\"></a></p>",
+              "desc": "<p>An unspecified or non-specific system error has occurred within the Node.js\nprocess. The error object will have an <code>err.info</code> object property with\nadditional details.</p>\n<p><a id=\"ERR_TLS_CERT_ALTNAME_FORMAT\"></a></p>",
               "type": "module",
               "displayName": "`ERR_SYSTEM_ERROR`"
+            },
+            {
+              "textRaw": "`ERR_TLS_CERT_ALTNAME_FORMAT`",
+              "name": "`err_tls_cert_altname_format`",
+              "desc": "<p>This error is thrown by <code>checkServerIdentity</code> if a user-supplied\n<code>subjectaltname</code> property violates encoding rules. Certificate objects produced\nby Node.js itself always comply with encoding rules and will never cause\nthis error.</p>\n<p><a id=\"ERR_TLS_CERT_ALTNAME_INVALID\"></a></p>",
+              "type": "module",
+              "displayName": "`ERR_TLS_CERT_ALTNAME_FORMAT`"
             },
             {
               "textRaw": "`ERR_TLS_CERT_ALTNAME_INVALID`",
