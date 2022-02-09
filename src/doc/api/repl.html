@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>REPL | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>REPL | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="repl" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -197,7 +197,7 @@
         <h2>REPL<span><a class="mark" href="#repl" id="repl">#</a></span><a aria-hidden="true" class="legacy" id="repl_repl"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/repl.js">lib/repl.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/repl.js">lib/repl.js</a></p>
 <p>The <code>repl</code> module provides a Read-Eval-Print-Loop (REPL) implementation that
 is available both as a standalone program or includible in other applications.
 It can be accessed using:</p>
@@ -370,9 +370,9 @@ Error: foo
 <span class="hljs-meta">> </span><span class="language-bash">await Promise.reject(new Error(<span class="hljs-string">'REPL await'</span>))</span>
 Error: REPL await
     at repl:1:45
-<span class="hljs-meta">> </span><span class="language-bash">const timeout = util.promisify(setTimeout);</span>
+<span class="hljs-meta">> </span><span class="language-bash">const <span class="hljs-built_in">timeout</span> = util.promisify(setTimeout);</span>
 undefined
-<span class="hljs-meta">> </span><span class="language-bash">const old = Date.now(); await timeout(1000); console.log(Date.now() - old);</span>
+<span class="hljs-meta">> </span><span class="language-bash">const old = Date.now(); await <span class="hljs-built_in">timeout</span>(1000); console.log(Date.now() - old);</span>
 1002
 undefined</code></pre>
 <p>One known limitation of using the <code>await</code> keyword in the REPL is that
@@ -488,7 +488,7 @@ or directly using the JavaScript <code>new</code> keyword.</p>
 <span class="hljs-keyword">const</span> options = { <span class="hljs-attr">useColors</span>: <span class="hljs-literal">true</span> };
 
 <span class="hljs-keyword">const</span> firstInstance = repl.<span class="hljs-title function_">start</span>(options);
-<span class="hljs-keyword">const</span> secondInstance = <span class="hljs-keyword">new</span> repl.<span class="hljs-title function_">REPLServer</span>(options);</code></pre>
+<span class="hljs-keyword">const</span> secondInstance = <span class="hljs-keyword">new</span> repl.<span class="hljs-title class_">REPLServer</span>(options);</code></pre>
 <h4>Event: <code>'exit'</code><span><a class="mark" href="#event-exit" id="event-exit">#</a></span><a aria-hidden="true" class="legacy" id="repl_event_exit"></a></h4>
 <div class="api_metadata">
 <span>Added in: v0.7.7</span>

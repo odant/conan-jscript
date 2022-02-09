@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Performance measurement APIs | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Performance measurement APIs | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="perf_hooks" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -196,12 +196,19 @@
 <li><a href="#perf_hooksmonitoreventloopdelayoptions"><code>perf_hooks.monitorEventLoopDelay([options])</code></a></li>
 <li><a href="#class-histogram">Class: <code>Histogram</code></a>
 <ul>
+<li><a href="#histogramcount"><code>histogram.count</code></a></li>
+<li><a href="#histogramcountbigint"><code>histogram.countBigInt</code></a></li>
 <li><a href="#histogramexceeds"><code>histogram.exceeds</code></a></li>
+<li><a href="#histogramexceedsbigint"><code>histogram.exceedsBigInt</code></a></li>
 <li><a href="#histogrammax"><code>histogram.max</code></a></li>
+<li><a href="#histogrammaxbigint"><code>histogram.maxBigInt</code></a></li>
 <li><a href="#histogrammean"><code>histogram.mean</code></a></li>
 <li><a href="#histogrammin"><code>histogram.min</code></a></li>
+<li><a href="#histogramminbigint"><code>histogram.minBigInt</code></a></li>
 <li><a href="#histogrampercentilepercentile"><code>histogram.percentile(percentile)</code></a></li>
+<li><a href="#histogrampercentilebigintpercentile"><code>histogram.percentileBigInt(percentile)</code></a></li>
 <li><a href="#histogrampercentiles"><code>histogram.percentiles</code></a></li>
+<li><a href="#histogrampercentilesbigint"><code>histogram.percentilesBigInt</code></a></li>
 <li><a href="#histogramreset"><code>histogram.reset()</code></a></li>
 <li><a href="#histogramstddev"><code>histogram.stddev</code></a></li>
 </ul>
@@ -215,6 +222,7 @@
 </li>
 <li><a href="#class-recordablehistogram-extends-histogram">Class: <code>RecordableHistogram extends Histogram</code></a>
 <ul>
+<li><a href="#histogramaddother"><code>histogram.add(other)</code></a></li>
 <li><a href="#histogramrecordval"><code>histogram.record(val)</code></a></li>
 <li><a href="#histogramrecorddelta"><code>histogram.recordDelta()</code></a></li>
 </ul>
@@ -233,7 +241,7 @@
         <h2>Performance measurement APIs<span><a class="mark" href="#performance-measurement-apis" id="performance-measurement-apis">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_performance_measurement_apis"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/perf_hooks.js">lib/perf_hooks.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/perf_hooks.js">lib/perf_hooks.js</a></p>
 <p>This module provides an implementation of a subset of the W3C
 <a href="https://w3c.github.io/perf-timing-primer/">Web Performance APIs</a> as well as additional APIs for
 Node.js-specific performance measurements.</p>
@@ -812,7 +820,7 @@ or <code>options.type</code>:</p>
 } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'perf_hooks'</span>);
 
 <span class="hljs-keyword">const</span> obs = <span class="hljs-keyword">new</span> <span class="hljs-title class_">PerformanceObserver</span>(<span class="hljs-function">(<span class="hljs-params">list, observer</span>) =></span> {
-  <span class="hljs-comment">// Called three times synchronously. `list` contains one item.</span>
+  <span class="hljs-comment">// Called once asynchronously. `list` contains three items.</span>
 });
 obs.<span class="hljs-title function_">observe</span>({ <span class="hljs-attr">type</span>: <span class="hljs-string">'mark'</span> });
 
@@ -960,10 +968,11 @@ performance.<span class="hljs-title function_">mark</span>(<span class="hljs-str
 <ul>
 <li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
 <ul>
-<li><code>min</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a> The minimum recordable value. Must be an integer
+<li><code>lowest</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a> The lowest discernible value. Must be an integer
 value greater than 0. <strong>Default:</strong> <code>1</code>.</li>
-<li><code>max</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a> The maximum recordable value. Must be an integer
-value greater than <code>min</code>. <strong>Default:</strong> <code>Number.MAX_SAFE_INTEGER</code>.</li>
+<li><code>highest</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a> The highest recordable value. Must be an integer
+value that is equal to or greater than two times <code>min</code>.
+<strong>Default:</strong> <code>Number.MAX_SAFE_INTEGER</code>.</li>
 <li><code>figures</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> The number of accuracy digits. Must be a number between
 <code>1</code> and <code>5</code>. <strong>Default:</strong> <code>3</code>.</li>
 </ul>
@@ -1008,6 +1017,22 @@ h.<span class="hljs-title function_">disable</span>();
 <div class="api_metadata">
 <span>Added in: v11.10.0</span>
 </div>
+<h4><code>histogram.count</code><span><a class="mark" href="#histogramcount" id="histogramcount">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_count"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
+</ul>
+<p>The number of samples recorded by the histogram.</p>
+<h4><code>histogram.countBigInt</code><span><a class="mark" href="#histogramcountbigint" id="histogramcountbigint">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_countbigint"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a></li>
+</ul>
+<p>The number of samples recorded by the histogram.</p>
 <h4><code>histogram.exceeds</code><span><a class="mark" href="#histogramexceeds" id="histogramexceeds">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_exceeds"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.10.0</span>
@@ -1017,12 +1042,29 @@ h.<span class="hljs-title function_">disable</span>();
 </ul>
 <p>The number of times the event loop delay exceeded the maximum 1 hour event
 loop delay threshold.</p>
+<h4><code>histogram.exceedsBigInt</code><span><a class="mark" href="#histogramexceedsbigint" id="histogramexceedsbigint">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_exceedsbigint"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a></li>
+</ul>
+<p>The number of times the event loop delay exceeded the maximum 1 hour event
+loop delay threshold.</p>
 <h4><code>histogram.max</code><span><a class="mark" href="#histogrammax" id="histogrammax">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_max"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.10.0</span>
 </div>
 <ul>
 <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
+</ul>
+<p>The maximum recorded event loop delay.</p>
+<h4><code>histogram.maxBigInt</code><span><a class="mark" href="#histogrammaxbigint" id="histogrammaxbigint">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_maxbigint"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a></li>
 </ul>
 <p>The maximum recorded event loop delay.</p>
 <h4><code>histogram.mean</code><span><a class="mark" href="#histogrammean" id="histogrammean">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_mean"></a></h4>
@@ -1041,6 +1083,14 @@ loop delay threshold.</p>
 <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
 </ul>
 <p>The minimum recorded event loop delay.</p>
+<h4><code>histogram.minBigInt</code><span><a class="mark" href="#histogramminbigint" id="histogramminbigint">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_minbigint"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a></li>
+</ul>
+<p>The minimum recorded event loop delay.</p>
 <h4><code>histogram.percentile(percentile)</code><span><a class="mark" href="#histogrampercentilepercentile" id="histogrampercentilepercentile">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_percentile_percentile"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.10.0</span>
@@ -1050,9 +1100,26 @@ loop delay threshold.</p>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
 </ul>
 <p>Returns the value at the given percentile.</p>
+<h4><code>histogram.percentileBigInt(percentile)</code><span><a class="mark" href="#histogrampercentilebigintpercentile" id="histogrampercentilebigintpercentile">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_percentilebigint_percentile"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>percentile</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> A percentile value in the range (0, 100).</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt" class="type">&#x3C;bigint></a></li>
+</ul>
+<p>Returns the value at the given percentile.</p>
 <h4><code>histogram.percentiles</code><span><a class="mark" href="#histogrampercentiles" id="histogrampercentiles">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_percentiles"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.10.0</span>
+</div>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map" class="type">&#x3C;Map></a></li>
+</ul>
+<p>Returns a <code>Map</code> object detailing the accumulated percentile distribution.</p>
+<h4><code>histogram.percentilesBigInt</code><span><a class="mark" href="#histogrampercentilesbigint" id="histogrampercentilesbigint">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_percentilesbigint"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
 </div>
 <ul>
 <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map" class="type">&#x3C;Map></a></li>
@@ -1099,6 +1166,14 @@ implement the <code>enable()</code> and <code>disable()</code> methods.</p>
 <div class="api_metadata">
 <span>Added in: v15.9.0</span>
 </div>
+<h4><code>histogram.add(other)</code><span><a class="mark" href="#histogramaddother" id="histogramaddother">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_add_other"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>other</code> <a href="perf_hooks.html#class-recordablehistogram-extends-histogram" class="type">&#x3C;RecordableHistogram></a></li>
+</ul>
+<p>Adds the values from <code>other</code> to this histogram.</p>
 <h4><code>histogram.record(val)</code><span><a class="mark" href="#histogramrecordval" id="histogramrecordval">#</a></span><a aria-hidden="true" class="legacy" id="perf_hooks_histogram_record_val"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.9.0</span>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Deprecated APIs | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Deprecated APIs | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="deprecations" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -298,6 +298,7 @@
 <li><a href="#DEP0154">DEP0154: RSA-PSS generate key pair options</a></li>
 <li><a href="#DEP0155">DEP0155: Trailing slashes in pattern specifier resolutions</a></li>
 <li><a href="#DEP0156">DEP0156: <code>.aborted</code> property and <code>'abort'</code>, <code>'aborted'</code> event in <code>http</code></a></li>
+<li><a href="#DEP0157">DEP0157: Thenable support in streams</a></li>
 </ul>
 </li>
 </ul>
@@ -2819,7 +2820,30 @@ Check <code>stream.destroyed</code> instead of the <code>.aborted</code> propert
 <code>.destroy([error])</code> then check the <code>.destroyed</code> property and <code>'close'</code> event
 should have the same effect. The receiving end should also check the
 <a href="stream.html#readablereadableended"><code>readable.readableEnded</code></a> value on <a href="http.html#class-httpincomingmessage"><code>http.IncomingMessage</code></a> to get whether
-it was an aborted or graceful destroy.</p></section>
+it was an aborted or graceful destroy.</p>
+<h4 id="DEP0157">DEP0157: Thenable support in streams<span><a class="mark" href="#dep0157-thenable-support-in-streams" id="dep0157-thenable-support-in-streams">#</a></span><a aria-hidden="true" class="legacy" id="deprecations_dep0157_thenable_support_in_streams"></a></h4>
+<div class="api_metadata">
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>Documentation-only deprecation.</p></td></tr>
+</tbody></table>
+</details>
+</div>
+<p>Type: Documentation-only</p>
+<p>An undocumented feature of Node.js streams was to support thenables in
+implementation methods. This is now deprecated, use callbacks instead and avoid
+use of async function for streams implementation methods.</p>
+<p>This feature caused users to encounter unexpected problems where the user
+implements the function in callback style but uses e.g. an async method which
+would cause an error since mixing promise and callback semantics is not valid.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> w = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Writable</span>({
+  <span class="hljs-keyword">async</span> <span class="hljs-title function_">final</span>(<span class="hljs-params">callback</span>) {
+    <span class="hljs-keyword">await</span> <span class="hljs-title function_">someOp</span>();
+    <span class="hljs-title function_">callback</span>();
+  }
+});</code></pre></section>
         <!-- API END -->
       </div>
     </div>

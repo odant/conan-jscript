@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Node-API | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Node-API | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="n-api" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -210,10 +210,11 @@
 <li><a href="#napi_throw_error"><code>napi_throw_error</code></a></li>
 <li><a href="#napi_throw_type_error"><code>napi_throw_type_error</code></a></li>
 <li><a href="#napi_throw_range_error"><code>napi_throw_range_error</code></a></li>
-<li><a href="#napi_is_error"><code>napi_is_error</code></a></li>
+<li><a href="#node_api_throw_syntax_error"><code>node_api_throw_syntax_error</code></a></li>
 <li><a href="#napi_create_error"><code>napi_create_error</code></a></li>
 <li><a href="#napi_create_type_error"><code>napi_create_type_error</code></a></li>
 <li><a href="#napi_create_range_error"><code>napi_create_range_error</code></a></li>
+<li><a href="#node_api_create_syntax_error"><code>node_api_create_syntax_error</code></a></li>
 <li><a href="#napi_get_and_clear_last_exception"><code>napi_get_and_clear_last_exception</code></a></li>
 <li><a href="#napi_is_exception_pending"><code>napi_is_exception_pending</code></a></li>
 <li><a href="#napi_fatal_exception"><code>napi_fatal_exception</code></a></li>
@@ -344,7 +345,7 @@
 <li><a href="#napi_is_arraybuffer"><code>napi_is_arraybuffer</code></a></li>
 <li><a href="#napi_is_buffer"><code>napi_is_buffer</code></a></li>
 <li><a href="#napi_is_date"><code>napi_is_date</code></a></li>
-<li><a href="#napi_is_error_1"><code>napi_is_error</code></a></li>
+<li><a href="#napi_is_error"><code>napi_is_error</code></a></li>
 <li><a href="#napi_is_typedarray"><code>napi_is_typedarray</code></a></li>
 <li><a href="#napi_is_dataview"><code>napi_is_dataview</code></a></li>
 <li><a href="#napi_strict_equals"><code>napi_strict_equals</code></a></li>
@@ -806,7 +807,7 @@ napi_value <span class="hljs-title function_">create_addon</span><span class="hl
     }                                                             \
   } while(0)</span>
 
-<span class="hljs-keyword">static</span> napi_value
+<span class="hljs-type">static</span> napi_value
 <span class="hljs-title function_">DoSomethingUseful</span><span class="hljs-params">(napi_env env, napi_callback_info info)</span> {
   <span class="hljs-comment">// Do something useful.</span>
   <span class="hljs-keyword">return</span> <span class="hljs-literal">NULL</span>;
@@ -945,7 +946,7 @@ it can be obtained by calling <code>napi_get_last_error_info</code>.</p>
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c"><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> {</span>
-  <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* error_message;
+  <span class="hljs-type">const</span> <span class="hljs-type">char</span>* error_message;
   <span class="hljs-type">void</span>* engine_reserved;
   <span class="hljs-type">uint32_t</span> engine_error_code;
   napi_status error_code;
@@ -1208,7 +1209,7 @@ The format of the <code>napi_extended_error_info</code> structure is as follows:
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c"><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">napi_extended_error_info</span> {</span>
-  <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* error_message;
+  <span class="hljs-type">const</span> <span class="hljs-type">char</span>* error_message;
   <span class="hljs-type">void</span>* engine_reserved;
   <span class="hljs-type">uint32_t</span> engine_error_code;
   napi_status error_code;
@@ -1231,7 +1232,7 @@ logging purposes.</p>
 </div>
 <pre><code class="language-c">napi_status
 <span class="hljs-title function_">napi_get_last_error_info</span><span class="hljs-params">(napi_env env,
-                         <span class="hljs-keyword">const</span> napi_extended_error_info** result)</span>;</code></pre>
+                         <span class="hljs-type">const</span> napi_extended_error_info** result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[out] result</code>: The <code>napi_extended_error_info</code> structure with more
@@ -1244,8 +1245,8 @@ about the last error that occurred.</p>
 a Node-API function is called on the same <code>env</code>. This includes a call to
 <code>napi_is_exception_pending</code> so it may often be necessary to make a copy
 of the information so that it can be used later. The pointer returned
-in error_message points to a statically defined string so it is safe to use
-that pointer if you have copied it out of the error_message field (which will
+in <code>error_message</code> points to a statically-defined string so it is safe to use
+that pointer if you have copied it out of the <code>error_message</code> field (which will
 be overwritten) before another Node-API function was called.</p>
 <p>Do not rely on the content or format of any of the extended information as it
 is not subject to SemVer and may change at any time. It is intended only for
@@ -1290,11 +1291,10 @@ JavaScript value to be thrown.</p>
 <p>The following utility functions are also available in case native code
 needs to throw an exception or determine if a <code>napi_value</code> is an instance
 of a JavaScript <code>Error</code> object: <a href="#napi_throw_error"><code>napi_throw_error</code></a>,
-<a href="#napi_throw_type_error"><code>napi_throw_type_error</code></a>, <a href="#napi_throw_range_error"><code>napi_throw_range_error</code></a> and
-<a href="#napi_is_error"><code>napi_is_error</code></a>.</p>
+<a href="#napi_throw_type_error"><code>napi_throw_type_error</code></a>, <a href="#napi_throw_range_error"><code>napi_throw_range_error</code></a>, <a href="#node_api_throw_syntax_error"><code>node_api_throw_syntax_error</code></a> and <a href="#napi_is_error"><code>napi_is_error</code></a>.</p>
 <p>The following utility functions are also available in case native
 code needs to create an <code>Error</code> object: <a href="#napi_create_error"><code>napi_create_error</code></a>,
-<a href="#napi_create_type_error"><code>napi_create_type_error</code></a>, and <a href="#napi_create_range_error"><code>napi_create_range_error</code></a>,
+<a href="#napi_create_type_error"><code>napi_create_type_error</code></a>, <a href="#napi_create_range_error"><code>napi_create_range_error</code></a> and <a href="#node_api_create_syntax_error"><code>node_api_create_syntax_error</code></a>,
 where result is the <code>napi_value</code> that refers to the newly created
 JavaScript <code>Error</code> object.</p>
 <p>The Node.js project is adding error codes to all of the errors
@@ -1332,8 +1332,8 @@ is <code>'ERR_ERROR_1'</code> and a <code>TypeError</code> is being created the 
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">napi_throw_error</span><span class="hljs-params">(napi_env env,
-                                         <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* code,
-                                         <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
+                                         <span class="hljs-type">const</span> <span class="hljs-type">char</span>* code,
+                                         <span class="hljs-type">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] code</code>: Optional error code to be set on the error.</li>
@@ -1347,8 +1347,8 @@ is <code>'ERR_ERROR_1'</code> and a <code>TypeError</code> is being created the 
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">napi_throw_type_error</span><span class="hljs-params">(napi_env env,
-                                              <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* code,
-                                              <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
+                                              <span class="hljs-type">const</span> <span class="hljs-type">char</span>* code,
+                                              <span class="hljs-type">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] code</code>: Optional error code to be set on the error.</li>
@@ -1362,8 +1362,8 @@ is <code>'ERR_ERROR_1'</code> and a <code>TypeError</code> is being created the 
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">napi_throw_range_error</span><span class="hljs-params">(napi_env env,
-                                               <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* code,
-                                               <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
+                                               <span class="hljs-type">const</span> <span class="hljs-type">char</span>* code,
+                                               <span class="hljs-type">const</span> <span class="hljs-type">char</span>* msg)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] code</code>: Optional error code to be set on the error.</li>
@@ -1371,12 +1371,31 @@ is <code>'ERR_ERROR_1'</code> and a <code>TypeError</code> is being created the 
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
 <p>This API throws a JavaScript <code>RangeError</code> with the text provided.</p>
-<h5><code>napi_is_error</code><span><a class="mark" href="#napi_is_error" id="napi_is_error">#</a></span><a aria-hidden="true" class="legacy" id="n_api_napi_is_error"></a></h5>
+<h5><code>node_api_throw_syntax_error</code><span><a class="mark" href="#node_api_throw_syntax_error" id="node_api_throw_syntax_error">#</a></span><a aria-hidden="true" class="legacy" id="n_api_node_api_throw_syntax_error"></a></h5>
 <div class="api_metadata">
-<span>Added in: v8.0.0</span>
-<span>N-API version: 1</span>
+<span>Added in: v16.14.0</span>
 </div>
-<pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">napi_is_error</span><span class="hljs-params">(napi_env env,
+<pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">node_api_throw_syntax_error</span><span class="hljs-params">(napi_env env,
+                                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* code,
+                                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* msg)</span>;
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] code`: Optional error code to be <span class="hljs-built_in">set</span> on the error.
+* `[in] msg`: C <span class="hljs-built_in">string</span> representing the text to be associated with the error.
+
+Returns `napi_ok` <span class="hljs-keyword">if</span> the API succeeded.
+
+This API throws a JavaScript `SyntaxError` with the text provided.
+
+#### `napi_is_error`
+
+&#x3C;!-- YAML
+added: v8<span class="hljs-number">.0</span><span class="hljs-number">.0</span>
+napiVersion: <span class="hljs-number">1</span>
+-->
+
+```c
+NAPI_EXTERN napi_status <span class="hljs-title function_">napi_is_error</span><span class="hljs-params">(napi_env env,
                                       napi_value value,
                                       <span class="hljs-type">bool</span>* result)</span>;</code></pre>
 <ul>
@@ -1444,6 +1463,24 @@ the message for the <code>Error</code>.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
 <p>This API returns a JavaScript <code>RangeError</code> with the text provided.</p>
+<h5><code>node_api_create_syntax_error</code><span><a class="mark" href="#node_api_create_syntax_error" id="node_api_create_syntax_error">#</a></span><a aria-hidden="true" class="legacy" id="n_api_node_api_create_syntax_error"></a></h5>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<pre><code class="language-c">NAPI_EXTERN napi_status <span class="hljs-title function_">node_api_create_syntax_error</span><span class="hljs-params">(napi_env env,
+                                                     napi_value code,
+                                                     napi_value msg,
+                                                     napi_value* result)</span>;</code></pre>
+<ul>
+<li><code>[in] env</code>: The environment that the API is invoked under.</li>
+<li><code>[in] code</code>: Optional <code>napi_value</code> with the string for the error code to be
+associated with the error.</li>
+<li><code>[in] msg</code>: <code>napi_value</code> that references a JavaScript <code>string</code> to be used as
+the message for the <code>Error</code>.</li>
+<li><code>[out] result</code>: <code>napi_value</code> representing the error created.</li>
+</ul>
+<p>Returns <code>napi_ok</code> if the API succeeded.</p>
+<p>This API returns a JavaScript <code>SyntaxError</code> with the text provided.</p>
 <h5><code>napi_get_and_clear_last_exception</code><span><a class="mark" href="#napi_get_and_clear_last_exception" id="napi_get_and_clear_last_exception">#</a></span><a aria-hidden="true" class="legacy" id="n_api_napi_get_and_clear_last_exception"></a></h5>
 <div class="api_metadata">
 <span>Added in: v8.0.0</span>
@@ -1489,9 +1526,9 @@ thrown to immediately terminate the process.</p>
 <span>Added in: v8.2.0</span>
 <span>N-API version: 1</span>
 </div>
-<pre><code class="language-c">NAPI_NO_RETURN <span class="hljs-type">void</span> <span class="hljs-title function_">napi_fatal_error</span><span class="hljs-params">(<span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* location,
+<pre><code class="language-c">NAPI_NO_RETURN <span class="hljs-type">void</span> <span class="hljs-title function_">napi_fatal_error</span><span class="hljs-params">(<span class="hljs-type">const</span> <span class="hljs-type">char</span>* location,
                                      <span class="hljs-type">size_t</span> location_len,
-                                     <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* message,
+                                     <span class="hljs-type">const</span> <span class="hljs-type">char</span>* message,
                                      <span class="hljs-type">size_t</span> message_len)</span>;</code></pre>
 <ul>
 <li><code>[in] location</code>: Optional location at which the error occurred.</li>
@@ -2100,7 +2137,8 @@ directly read and/or written via C, consider using
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] length</code>: The length in bytes of the array buffer to create.</li>
-<li><code>[out] data</code>: Pointer to the underlying byte buffer of the <code>ArrayBuffer</code>.</li>
+<li><code>[out] data</code>: Pointer to the underlying byte buffer of the <code>ArrayBuffer</code>.
+<code>data</code> can optionally be ignored by passing <code>NULL</code>.</li>
 <li><code>[out] result</code>: A <code>napi_value</code> representing a JavaScript <code>ArrayBuffer</code>.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
@@ -2127,7 +2165,8 @@ a typed array or <code>DataView</code> object would need to be created.</p>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] size</code>: Size in bytes of the underlying buffer.</li>
-<li><code>[out] data</code>: Raw pointer to the underlying buffer.</li>
+<li><code>[out] data</code>: Raw pointer to the underlying buffer.
+<code>data</code> can optionally be ignored by passing <code>NULL</code>.</li>
 <li><code>[out] result</code>: A <code>napi_value</code> representing a <code>node::Buffer</code>.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
@@ -2140,7 +2179,7 @@ fully-supported data structure, in most cases using a <code>TypedArray</code> wi
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_buffer_copy</span><span class="hljs-params">(napi_env env,
                                     <span class="hljs-type">size_t</span> length,
-                                    <span class="hljs-keyword">const</span> <span class="hljs-type">void</span>* data,
+                                    <span class="hljs-type">const</span> <span class="hljs-type">void</span>* data,
                                     <span class="hljs-type">void</span>** result_data,
                                     napi_value* result)</span></code></pre>
 <ul>
@@ -2148,7 +2187,8 @@ fully-supported data structure, in most cases using a <code>TypedArray</code> wi
 <li><code>[in] size</code>: Size in bytes of the input buffer (should be the same as the size
 of the new buffer).</li>
 <li><code>[in] data</code>: Raw pointer to the underlying buffer to copy from.</li>
-<li><code>[out] result_data</code>: Pointer to the new <code>Buffer</code>'s underlying data buffer.</li>
+<li><code>[out] result_data</code>: Pointer to the new <code>Buffer</code>'s underlying data buffer.
+<code>result_data</code> can optionally be ignored by passing <code>NULL</code>.</li>
 <li><code>[out] result</code>: A <code>napi_value</code> representing a <code>node::Buffer</code>.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
@@ -2477,7 +2517,7 @@ outside the range of <a href="https://tc39.github.io/ecma262/#sec-number.min_saf
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_bigint_words</span><span class="hljs-params">(napi_env env,
                                      <span class="hljs-type">int</span> sign_bit,
                                      <span class="hljs-type">size_t</span> word_count,
-                                     <span class="hljs-keyword">const</span> <span class="hljs-type">uint64_t</span>* words,
+                                     <span class="hljs-type">const</span> <span class="hljs-type">uint64_t</span>* words,
                                      napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
@@ -2498,7 +2538,7 @@ value.</p>
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_string_latin1</span><span class="hljs-params">(napi_env env,
-                                      <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* str,
+                                      <span class="hljs-type">const</span> <span class="hljs-type">char</span>* str,
                                       <span class="hljs-type">size_t</span> length,
                                       napi_value* result)</span>;</code></pre>
 <ul>
@@ -2519,7 +2559,7 @@ string. The native string is copied.</p>
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_string_utf16</span><span class="hljs-params">(napi_env env,
-                                     <span class="hljs-keyword">const</span> <span class="hljs-type">char16_t</span>* str,
+                                     <span class="hljs-type">const</span> <span class="hljs-type">char16_t</span>* str,
                                      <span class="hljs-type">size_t</span> length,
                                      napi_value* result)</span></code></pre>
 <ul>
@@ -2540,7 +2580,7 @@ The native string is copied.</p>
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_string_utf8</span><span class="hljs-params">(napi_env env,
-                                    <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* str,
+                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* str,
                                     <span class="hljs-type">size_t</span> length,
                                     napi_value* result)</span></code></pre>
 <ul>
@@ -3201,7 +3241,7 @@ object.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
 <p>This API checks if the <code>Object</code> passed in is a date.</p>
-<h4><code>napi_is_error</code><span><a class="mark" href="#napi_is_error_1" id="napi_is_error_1">#</a></span><a aria-hidden="true" class="legacy" id="n_api_napi_is_error_1"></a></h4>
+<h4><code>napi_is_error</code><span><a class="mark" href="#napi_is_error" id="napi_is_error">#</a></span><a aria-hidden="true" class="legacy" id="n_api_napi_is_error"></a></h4>
 <div class="api_metadata">
 <span>Added in: v8.0.0</span>
 <span>N-API version: 1</span>
@@ -3451,7 +3491,7 @@ the property is writable, enumerable, and configurable.</li>
 <h5><code>napi_property_descriptor</code><span><a class="mark" href="#napi_property_descriptor" id="napi_property_descriptor">#</a></span><a aria-hidden="true" class="legacy" id="n_api_napi_property_descriptor"></a></h5>
 <pre><code class="language-c"><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> {</span>
   <span class="hljs-comment">// One of utf8name or name should be NULL.</span>
-  <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8name;
+  <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8name;
   napi_value name;
 
   napi_callback method;
@@ -3632,7 +3672,7 @@ perform any conversion between data types.</p>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_set_named_property</span><span class="hljs-params">(napi_env env,
                                     napi_value object,
-                                    <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8Name,
+                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8Name,
                                     napi_value value)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the Node-API call is invoked under.</li>
@@ -3650,7 +3690,7 @@ created from the string passed in as <code>utf8Name</code>.</p>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_get_named_property</span><span class="hljs-params">(napi_env env,
                                     napi_value object,
-                                    <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8Name,
+                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8Name,
                                     napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the Node-API call is invoked under.</li>
@@ -3668,7 +3708,7 @@ created from the string passed in as <code>utf8Name</code>.</p>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_has_named_property</span><span class="hljs-params">(napi_env env,
                                     napi_value object,
-                                    <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8Name,
+                                    <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8Name,
                                     <span class="hljs-type">bool</span>* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the Node-API call is invoked under.</li>
@@ -3757,7 +3797,7 @@ optionally be ignored by passing <code>NULL</code>.</li>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_define_properties</span><span class="hljs-params">(napi_env env,
                                    napi_value object,
                                    <span class="hljs-type">size_t</span> property_count,
-                                   <span class="hljs-keyword">const</span> napi_property_descriptor* properties)</span>;</code></pre>
+                                   <span class="hljs-type">const</span> napi_property_descriptor* properties)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the Node-API call is invoked under.</li>
 <li><code>[in] object</code>: The object from which to retrieve the properties.</li>
@@ -3836,7 +3876,7 @@ whenever <code>object</code> is garbage-collected by passing both <code>object</
                                            napi_value recv,
                                            napi_value func,
                                            <span class="hljs-type">size_t</span> argc,
-                                           <span class="hljs-keyword">const</span> napi_value* argv,
+                                           <span class="hljs-type">const</span> napi_value* argv,
                                            napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
@@ -3856,7 +3896,8 @@ after an async operation, see <a href="#napi_make_callback"><code>napi_make_call
 snippet:</p>
 <pre><code class="language-js"><span class="hljs-keyword">function</span> <span class="hljs-title function_">AddTwo</span>(<span class="hljs-params">num</span>) {
   <span class="hljs-keyword">return</span> num + <span class="hljs-number">2</span>;
-}</code></pre>
+}
+<span class="hljs-variable language_">global</span>.<span class="hljs-property">AddTwo</span> = <span class="hljs-title class_">AddTwo</span>;</code></pre>
 <p>Then, the above function can be invoked from a native add-on using the
 following code:</p>
 <pre><code class="language-c"><span class="hljs-comment">// Get the function named "AddTwo" on the global object</span>
@@ -3889,15 +3930,15 @@ status = napi_get_value_int32(env, return_val, &#x26;result);
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_create_function</span><span class="hljs-params">(napi_env env,
-                                 <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8name,
+                                 <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8name,
                                  <span class="hljs-type">size_t</span> length,
                                  napi_callback cb,
                                  <span class="hljs-type">void</span>* data,
                                  napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
-<li><code>[in] utf8Name</code>: The name of the function encoded as UTF8. This is visible
-within JavaScript as the new function object's <code>name</code> property.</li>
+<li><code>[in] utf8Name</code>: Optional name of the function encoded as UTF8. This is
+visible within JavaScript as the new function object's <code>name</code> property.</li>
 <li><code>[in] length</code>: The length of the <code>utf8name</code> in bytes, or <code>NAPI_AUTO_LENGTH</code> if
 it is null-terminated.</li>
 <li><code>[in] cb</code>: The native function which should be called when this function
@@ -3962,14 +4003,18 @@ Language Specification.</p>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] cbinfo</code>: The callback info passed into the callback function.</li>
 <li><code>[in-out] argc</code>: Specifies the length of the provided <code>argv</code> array and
-receives the actual count of arguments.</li>
+receives the actual count of arguments. <code>argc</code> can
+optionally be ignored by passing <code>NULL</code>.</li>
 <li><code>[out] argv</code>: Buffer to which the <code>napi_value</code> representing the arguments are
 copied. If there are more arguments than the provided count, only the
 requested number of arguments are copied. If there are fewer arguments
 provided than claimed, the rest of <code>argv</code> is filled with <code>napi_value</code> values
-that represent <code>undefined</code>.</li>
-<li><code>[out] this</code>: Receives the JavaScript <code>this</code> argument for the call.</li>
-<li><code>[out] data</code>: Receives the data pointer for the callback.</li>
+that represent <code>undefined</code>. <code>argv</code> can optionally be ignored by
+passing <code>NULL</code>.</li>
+<li><code>[out] this</code>: Receives the JavaScript <code>this</code> argument for the call. <code>this</code>
+can optionally be ignored by passing <code>NULL</code>.</li>
+<li><code>[out] data</code>: Receives the data pointer for the callback. <code>data</code> can
+optionally be ignored by passing <code>NULL</code>.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
 <p>This method is used within a callback function to retrieve details about the
@@ -4006,7 +4051,8 @@ callback is not a constructor call, the result is <code>NULL</code>.</p>
 as a constructor.</li>
 <li><code>[in] argc</code>: The count of elements in the <code>argv</code> array.</li>
 <li><code>[in] argv</code>: Array of JavaScript values as <code>napi_value</code> representing the
-arguments to the constructor.</li>
+arguments to the constructor. If <code>argc</code> is zero this parameter may be
+omitted by passing in <code>NULL</code>.</li>
 <li><code>[out] result</code>: <code>napi_value</code> representing the JavaScript object returned,
 which in this case is the constructed object.</li>
 </ul>
@@ -4133,16 +4179,16 @@ illustrates the use of <code>napi_type_tag_object()</code> and
 <span class="hljs-comment">//   uuidgen | sed -r -e 's/-//g' -e 's/(.{16})(.*)/0x\1, 0x\2/'</span>
 <span class="hljs-comment">//</span>
 <span class="hljs-comment">// can be used to obtain the two values with which to initialize the structure.</span>
-<span class="hljs-keyword">static</span> <span class="hljs-keyword">const</span> napi_type_tag DatabaseHandleTypeTag = {
+<span class="hljs-type">static</span> <span class="hljs-type">const</span> napi_type_tag DatabaseHandleTypeTag = {
   <span class="hljs-number">0x1edf75a38336451d</span>, <span class="hljs-number">0xa5ed9ce2e4c00c38</span>
 };
 
 <span class="hljs-comment">// This value is the type tag for a query handle.</span>
-<span class="hljs-keyword">static</span> <span class="hljs-keyword">const</span> napi_type_tag QueryHandleTypeTag = {
+<span class="hljs-type">static</span> <span class="hljs-type">const</span> napi_type_tag QueryHandleTypeTag = {
   <span class="hljs-number">0x9c73317f9fad44a3</span>, <span class="hljs-number">0x93c3920bf3b0ad6a</span>
 };
 
-<span class="hljs-keyword">static</span> napi_value
+<span class="hljs-type">static</span> napi_value
 <span class="hljs-title function_">openDatabase</span><span class="hljs-params">(napi_env env, napi_callback_info info)</span> {
   napi_status status;
   napi_value result;
@@ -4169,7 +4215,7 @@ illustrates the use of <code>napi_type_tag_object()</code> and
 <span class="hljs-comment">// we can use `napi_check_object_type_tag()` to ensure that it is indeed such a</span>
 <span class="hljs-comment">// handle.</span>
 
-<span class="hljs-keyword">static</span> napi_value
+<span class="hljs-type">static</span> napi_value
 <span class="hljs-title function_">query</span><span class="hljs-params">(napi_env env, napi_callback_info info)</span> {
   napi_status status;
   <span class="hljs-type">size_t</span> argc = <span class="hljs-number">2</span>;
@@ -4199,12 +4245,12 @@ illustrates the use of <code>napi_type_tag_object()</code> and
 <span>N-API version: 1</span>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_define_class</span><span class="hljs-params">(napi_env env,
-                              <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* utf8name,
+                              <span class="hljs-type">const</span> <span class="hljs-type">char</span>* utf8name,
                               <span class="hljs-type">size_t</span> length,
                               napi_callback constructor,
                               <span class="hljs-type">void</span>* data,
                               <span class="hljs-type">size_t</span> property_count,
-                              <span class="hljs-keyword">const</span> napi_property_descriptor* properties,
+                              <span class="hljs-type">const</span> napi_property_descriptor* properties,
                               napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
@@ -4352,7 +4398,7 @@ JavaScript object becomes garbage-collected.</p>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_type_tag_object</span><span class="hljs-params">(napi_env env,
                                  napi_value js_object,
-                                 <span class="hljs-keyword">const</span> napi_type_tag* type_tag)</span>;</code></pre>
+                                 <span class="hljs-type">const</span> napi_type_tag* type_tag)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[in] js_object</code>: The JavaScript object to be marked.</li>
@@ -4372,7 +4418,7 @@ has the right type.</p>
 </div>
 <pre><code class="language-c">napi_status <span class="hljs-title function_">napi_check_object_type_tag</span><span class="hljs-params">(napi_env env,
                                        napi_value js_object,
-                                       <span class="hljs-keyword">const</span> napi_type_tag* type_tag,
+                                       <span class="hljs-type">const</span> napi_type_tag* type_tag,
                                        <span class="hljs-type">bool</span>* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
@@ -4629,7 +4675,7 @@ the linkage between async callbacks.</p>
                                            napi_value recv,
                                            napi_value func,
                                            <span class="hljs-type">size_t</span> argc,
-                                           <span class="hljs-keyword">const</span> napi_value* argv,
+                                           <span class="hljs-type">const</span> napi_value* argv,
                                            napi_value* result)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
@@ -4644,7 +4690,8 @@ async context when using the <code>AsyncLocalStorage</code> API.</li>
 <li><code>[in] func</code>: <code>napi_value</code> representing the JavaScript function to be invoked.</li>
 <li><code>[in] argc</code>: The count of elements in the <code>argv</code> array.</li>
 <li><code>[in] argv</code>: Array of JavaScript values as <code>napi_value</code> representing the
-arguments to the function.</li>
+arguments to the function. If <code>argc</code> is zero this parameter may be
+omitted by passing in <code>NULL</code>.</li>
 <li><code>[out] result</code>: <code>napi_value</code> representing the JavaScript object returned.</li>
 </ul>
 <p>Returns <code>napi_ok</code> if the API succeeded.</p>
@@ -4708,11 +4755,11 @@ the required scope.</p>
   <span class="hljs-type">uint32_t</span> major;
   <span class="hljs-type">uint32_t</span> minor;
   <span class="hljs-type">uint32_t</span> patch;
-  <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>* release;
+  <span class="hljs-type">const</span> <span class="hljs-type">char</span>* release;
 } napi_node_version;
 
 napi_status <span class="hljs-title function_">napi_get_node_version</span><span class="hljs-params">(napi_env env,
-                                  <span class="hljs-keyword">const</span> napi_node_version** version)</span>;</code></pre>
+                                  <span class="hljs-type">const</span> napi_node_version** version)</span>;</code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>
 <li><code>[out] version</code>: A pointer to version information for Node.js itself.</li>
@@ -5211,7 +5258,7 @@ idempotent.</p>
 </div>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
 <pre><code class="language-c">NAPI_EXTERN napi_status
-<span class="hljs-title function_">node_api_get_module_file_name</span><span class="hljs-params">(napi_env env, <span class="hljs-keyword">const</span> <span class="hljs-type">char</span>** result)</span>;
+<span class="hljs-title function_">node_api_get_module_file_name</span><span class="hljs-params">(napi_env env, <span class="hljs-type">const</span> <span class="hljs-type">char</span>** result)</span>;
 </code></pre>
 <ul>
 <li><code>[in] env</code>: The environment that the API is invoked under.</li>

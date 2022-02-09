@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Worker threads | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Worker threads | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="worker_threads" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -217,7 +217,7 @@
         <h2>Worker threads<span><a class="mark" href="#worker-threads" id="worker-threads">#</a></span><a aria-hidden="true" class="legacy" id="worker_threads_worker_threads"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/worker_threads.js">lib/worker_threads.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/worker_threads.js">lib/worker_threads.js</a></p>
 <p>The <code>worker_threads</code> module enables the use of threads that execute JavaScript
 in parallel. To access it:</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> worker = <span class="hljs-built_in">require</span>(<span class="hljs-string">'worker_threads'</span>);</code></pre>
@@ -250,7 +250,7 @@ instances.</p>
   <span class="hljs-keyword">const</span> script = workerData;
   parentPort.<span class="hljs-title function_">postMessage</span>(<span class="hljs-title function_">parse</span>(script));
 }</code></pre>
-<p>The above example spawns a Worker thread for each <code>parse()</code> call. In actual
+<p>The above example spawns a Worker thread for each <code>parseJSAsync()</code> call. In
 practice, use a pool of Workers for these kinds of tasks. Otherwise, the
 overhead of creating Workers would likely exceed their benefit.</p>
 <p>When implementing a worker pool, use the <a href="async_hooks.html#class-asyncresource"><code>AsyncResource</code></a> API to inform
@@ -319,8 +319,8 @@ For example, Node.js marks the <code>ArrayBuffer</code>s it uses for its
 <pre><code class="language-js"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">MessageChannel</span>, markAsUntransferable } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'worker_threads'</span>);
 
 <span class="hljs-keyword">const</span> pooledBuffer = <span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>(<span class="hljs-number">8</span>);
-<span class="hljs-keyword">const</span> typedArray1 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(pooledBuffer);
-<span class="hljs-keyword">const</span> typedArray2 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>(pooledBuffer);
+<span class="hljs-keyword">const</span> typedArray1 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(pooledBuffer);
+<span class="hljs-keyword">const</span> typedArray2 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>(pooledBuffer);
 
 <span class="hljs-title function_">markAsUntransferable</span>(pooledBuffer);
 
@@ -733,7 +733,7 @@ from either thread. They cannot be listed in <code>transferList</code>.</p>
 
 port1.<span class="hljs-title function_">on</span>(<span class="hljs-string">'message'</span>, <span class="hljs-function">(<span class="hljs-params">message</span>) =></span> <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(message));
 
-<span class="hljs-keyword">const</span> uint8Array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>([ <span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span> ]);
+<span class="hljs-keyword">const</span> uint8Array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>([ <span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span> ]);
 <span class="hljs-comment">// This posts a copy of `uint8Array`:</span>
 port2.<span class="hljs-title function_">postMessage</span>(uint8Array);
 <span class="hljs-comment">// This does not copy data, but renders `uint8Array` unusable:</span>
@@ -741,7 +741,7 @@ port2.<span class="hljs-title function_">postMessage</span>(uint8Array, [ uint8A
 
 <span class="hljs-comment">// The memory for the `sharedUint8Array` is accessible from both the</span>
 <span class="hljs-comment">// original and the copy received by `.on('message')`:</span>
-<span class="hljs-keyword">const</span> sharedUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">SharedArrayBuffer</span>(<span class="hljs-number">4</span>));
+<span class="hljs-keyword">const</span> sharedUint8Array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">SharedArrayBuffer</span>(<span class="hljs-number">4</span>));
 port2.<span class="hljs-title function_">postMessage</span>(sharedUint8Array);
 
 <span class="hljs-comment">// This transfers a freshly created message port to the receiver.</span>
@@ -764,8 +764,8 @@ Great care must be taken when using a transfer list to transfer an
 instances that share that same <code>ArrayBuffer</code> to become unusable.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> ab = <span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>(<span class="hljs-number">10</span>);
 
-<span class="hljs-keyword">const</span> u1 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(ab);
-<span class="hljs-keyword">const</span> u2 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(ab);
+<span class="hljs-keyword">const</span> u1 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(ab);
+<span class="hljs-keyword">const</span> u2 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(ab);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(u2.<span class="hljs-property">length</span>);  <span class="hljs-comment">// prints 5</span>
 

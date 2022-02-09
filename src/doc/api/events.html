@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Events | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Events | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="events" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -150,7 +150,7 @@
 <li><a href="#asynchronous-vs-synchronous">Asynchronous vs. synchronous</a></li>
 <li><a href="#handling-events-only-once">Handling events only once</a></li>
 <li><a href="#error-events">Error events</a></li>
-<li><span class="stability_1"><a href="#capture-rejections-of-promises">Capture rejections of promises</a></span></li>
+<li><a href="#capture-rejections-of-promises">Capture rejections of promises</a></li>
 <li><a href="#class-eventemitter">Class: <code>EventEmitter</code></a>
 <ul>
 <li><a href="#event-newlistener">Event: <code>'newListener'</code></a></li>
@@ -170,7 +170,7 @@
 <li><a href="#emitterremovelistenereventname-listener"><code>emitter.removeListener(eventName, listener)</code></a></li>
 <li><a href="#emittersetmaxlistenersn"><code>emitter.setMaxListeners(n)</code></a></li>
 <li><a href="#emitterrawlistenerseventname"><code>emitter.rawListeners(eventName)</code></a></li>
-<li><span class="stability_1"><a href="#emittersymbolfornodejsrejectionerr-eventname-args"><code>emitter[Symbol.for('nodejs.rejection')](err, eventName[, ...args])</code></a></span></li>
+<li><a href="#emittersymbolfornodejsrejectionerr-eventname-args"><code>emitter[Symbol.for('nodejs.rejection')](err, eventName[, ...args])</code></a></li>
 </ul>
 </li>
 <li><a href="#eventsdefaultmaxlisteners"><code>events.defaultMaxListeners</code></a></li>
@@ -181,11 +181,20 @@
 <li><a href="#awaiting-multiple-events-emitted-on-processnexttick">Awaiting multiple events emitted on <code>process.nextTick()</code></a></li>
 </ul>
 </li>
-<li><span class="stability_1"><a href="#eventscapturerejections"><code>events.captureRejections</code></a></span></li>
-<li><span class="stability_1"><a href="#eventscapturerejectionsymbol"><code>events.captureRejectionSymbol</code></a></span></li>
+<li><a href="#eventscapturerejections"><code>events.captureRejections</code></a></li>
+<li><a href="#eventscapturerejectionsymbol"><code>events.captureRejectionSymbol</code></a></li>
 <li><span class="stability_0"><a href="#eventslistenercountemitter-eventname"><code>events.listenerCount(emitter, eventName)</code></a></span></li>
 <li><a href="#eventsonemitter-eventname-options"><code>events.on(emitter, eventName[, options])</code></a></li>
 <li><a href="#eventssetmaxlistenersn-eventtargets"><code>events.setMaxListeners(n[, ...eventTargets])</code></a></li>
+<li><a href="#class-eventseventemitterasyncresource-extends-eventemitter">Class: <code>events.EventEmitterAsyncResource extends EventEmitter</code></a>
+<ul>
+<li><a href="#new-eventseventemitterasyncresourceoptions"><code>new events.EventEmitterAsyncResource(options)</code></a></li>
+<li><a href="#eventemitterasyncresourceasyncid"><code>eventemitterasyncresource.asyncId</code></a></li>
+<li><a href="#eventemitterasyncresourceasyncresource"><code>eventemitterasyncresource.asyncResource</code></a></li>
+<li><a href="#eventemitterasyncresourceemitdestroy"><code>eventemitterasyncresource.emitDestroy()</code></a></li>
+<li><a href="#eventemitterasyncresourcetriggerasyncid"><code>eventemitterasyncresource.triggerAsyncId</code></a></li>
+</ul>
+</li>
 <li><a href="#eventtarget-and-event-api"><code>EventTarget</code> and <code>Event</code> API</a>
 <ul>
 <li><a href="#nodejs-eventtarget-vs-dom-eventtarget">Node.js <code>EventTarget</code> vs. DOM <code>EventTarget</code></a></li>
@@ -243,7 +252,7 @@
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/events.js">lib/events.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/events.js">lib/events.js</a></p>
 <p>Much of the Node.js core API is built around an idiomatic asynchronous
 event-driven architecture in which certain kinds of objects (called "emitters")
 emit named events that cause <code>Function</code> objects ("listeners") to be called.</p>
@@ -362,7 +371,6 @@ myEmitter.<span class="hljs-title function_">on</span>(errorMonitor, <span class
 myEmitter.<span class="hljs-title function_">emit</span>(<span class="hljs-string">'error'</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">Error</span>(<span class="hljs-string">'whoops!'</span>));
 <span class="hljs-comment">// Still throws and crashes Node.js</span></code></pre>
 </section><section><h3>Capture rejections of promises<span><a class="mark" href="#capture-rejections-of-promises" id="capture-rejections-of-promises">#</a></span><a aria-hidden="true" class="legacy" id="events_capture_rejections_of_promises"></a></h3>
-<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - captureRejections is experimental.</div><p></p>
 <p>Using <code>async</code> functions with event handlers is problematic, because it
 can lead to an unhandled rejection in case of a thrown exception:</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> ee = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitter</span>();
@@ -818,9 +826,16 @@ newListeners[<span class="hljs-number">0</span>]();
 emitter.<span class="hljs-title function_">emit</span>(<span class="hljs-string">'log'</span>);</code></pre>
 <h4><code>emitter[Symbol.for('nodejs.rejection')](err, eventName[, ...args])</code><span><a class="mark" href="#emittersymbolfornodejsrejectionerr-eventname-args" id="emittersymbolfornodejsrejectionerr-eventname-args">#</a></span><a aria-hidden="true" class="legacy" id="events_emitter_symbol_for_nodejs_rejection_err_eventname_args"></a></h4>
 <div class="api_metadata">
-<span>Added in: v13.4.0, v12.16.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>No longer experimental.</p></td></tr>
+<tr><td>v13.4.0, v12.16.0</td>
+<td><p><span>Added in: v13.4.0, v12.16.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
-<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - captureRejections is experimental.</div><p></p>
 <ul>
 <li><code>err</code> Error</li>
 <li><code>eventName</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Symbol_type" class="type">&#x3C;symbol></a></li>
@@ -1054,16 +1069,30 @@ process.<span class="hljs-title function_">nextTick</span>(<span class="hljs-fun
 <span class="hljs-title function_">foo</span>().<span class="hljs-title function_">then</span>(<span class="hljs-function">() =></span> <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'done'</span>));</code></pre>
 </section><section><h3><code>events.captureRejections</code><span><a class="mark" href="#eventscapturerejections" id="eventscapturerejections">#</a></span><a aria-hidden="true" class="legacy" id="events_events_capturerejections"></a></h3>
 <div class="api_metadata">
-<span>Added in: v13.4.0, v12.16.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>No longer experimental.</p></td></tr>
+<tr><td>v13.4.0, v12.16.0</td>
+<td><p><span>Added in: v13.4.0, v12.16.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
-<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - captureRejections is experimental.</div><p></p>
 <p>Value: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></p>
 <p>Change the default <code>captureRejections</code> option on all new <code>EventEmitter</code> objects.</p>
 </section><section><h3><code>events.captureRejectionSymbol</code><span><a class="mark" href="#eventscapturerejectionsymbol" id="eventscapturerejectionsymbol">#</a></span><a aria-hidden="true" class="legacy" id="events_events_capturerejectionsymbol"></a></h3>
 <div class="api_metadata">
-<span>Added in: v13.4.0, v12.16.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>No longer experimental.</p></td></tr>
+<tr><td>v13.4.0, v12.16.0</td>
+<td><p><span>Added in: v13.4.0, v12.16.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
-<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - captureRejections is experimental.</div><p></p>
 <p>Value: <code>Symbol.for('nodejs.rejection')</code></p>
 <p>See how to write a custom <a href="#emittersymbolfornodejsrejectionerr-eventname-args">rejection handler</a>.</p>
 </section><section><h3><code>events.listenerCount(emitter, eventName)</code><span><a class="mark" href="#eventslistenercountemitter-eventname" id="eventslistenercountemitter-eventname">#</a></span><a aria-hidden="true" class="legacy" id="events_events_listenercount_emitter_eventname"></a></h3>
@@ -1163,6 +1192,82 @@ max for all newly created <a href="events.html#class-eventtarget" class="type">&
 <span class="hljs-keyword">const</span> emitter = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitter</span>();
 
 <span class="hljs-title function_">setMaxListeners</span>(<span class="hljs-number">5</span>, target, emitter);</code></pre>
+</section><section><h3>Class: <code>events.EventEmitterAsyncResource extends EventEmitter</code><span><a class="mark" href="#class-eventseventemitterasyncresource-extends-eventemitter" id="class-eventseventemitterasyncresource-extends-eventemitter">#</a></span><a aria-hidden="true" class="legacy" id="events_class_events_eventemitterasyncresource_extends_eventemitter"></a></h3>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<p>Integrates <code>EventEmitter</code> with <a href="async_hooks.html#class-asyncresource" class="type">&#x3C;AsyncResource></a> for <code>EventEmitter</code>s that
+require manual async tracking. Specifically, all events emitted by instances
+of <code>events.EventEmitterAsyncResource</code> will run within its <a href="async_context.html">async context</a>.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">EventEmitterAsyncResource</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'events'</span>);
+<span class="hljs-keyword">const</span> { notStrictEqual, strictEqual } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+<span class="hljs-keyword">const</span> { executionAsyncId } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'async_hooks'</span>);
+
+<span class="hljs-comment">// Async tracking tooling will identify this as 'Q'.</span>
+<span class="hljs-keyword">const</span> ee1 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitterAsyncResource</span>({ <span class="hljs-attr">name</span>: <span class="hljs-string">'Q'</span> });
+
+<span class="hljs-comment">// 'foo' listeners will run in the EventEmitters async context.</span>
+ee1.<span class="hljs-title function_">on</span>(<span class="hljs-string">'foo'</span>, <span class="hljs-function">() =></span> {
+  <span class="hljs-title function_">strictEqual</span>(<span class="hljs-title function_">executionAsyncId</span>(), ee1.<span class="hljs-property">asyncId</span>);
+  <span class="hljs-title function_">strictEqual</span>(<span class="hljs-title function_">triggerAsyncId</span>(), ee1.<span class="hljs-property">triggerAsyncId</span>);
+});
+
+<span class="hljs-keyword">const</span> ee2 = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitter</span>();
+
+<span class="hljs-comment">// 'foo' listeners on ordinary EventEmitters that do not track async</span>
+<span class="hljs-comment">// context, however, run in the same async context as the emit().</span>
+ee2.<span class="hljs-title function_">on</span>(<span class="hljs-string">'foo'</span>, <span class="hljs-function">() =></span> {
+  <span class="hljs-title function_">notStrictEqual</span>(<span class="hljs-title function_">executionAsyncId</span>(), ee2.<span class="hljs-property">asyncId</span>);
+  <span class="hljs-title function_">notStrictEqual</span>(<span class="hljs-title function_">triggerAsyncId</span>(), ee2.<span class="hljs-property">triggerAsyncId</span>);
+});
+
+<span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">resolve</span>().<span class="hljs-title function_">then</span>(<span class="hljs-function">() =></span> {
+  ee1.<span class="hljs-title function_">emit</span>(<span class="hljs-string">'foo'</span>);
+  ee2.<span class="hljs-title function_">emit</span>(<span class="hljs-string">'foo'</span>);
+});</code></pre>
+<p>The <code>EventEmitterAsyncResource</code> class has the same methods and takes the
+same options as <code>EventEmitter</code> and <code>AsyncResource</code> themselves.</p>
+<h4><code>new events.EventEmitterAsyncResource(options)</code><span><a class="mark" href="#new-eventseventemitterasyncresourceoptions" id="new-eventseventemitterasyncresourceoptions">#</a></span><a aria-hidden="true" class="legacy" id="events_new_events_eventemitterasyncresource_options"></a></h4>
+<ul>
+<li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
+<ul>
+<li><code>captureRejections</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> It enables
+<a href="#capture-rejections-of-promises">automatic capturing of promise rejection</a>.
+<strong>Default:</strong> <code>false</code>.</li>
+<li><code>name</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The type of async event. <strong>Default::</strong>
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/new.target"><code>new.target.name</code></a>.</li>
+<li><code>triggerAsyncId</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> The ID of the execution context that created this
+async event. <strong>Default:</strong> <code>executionAsyncId()</code>.</li>
+<li><code>requireManualDestroy</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> If set to <code>true</code>, disables <code>emitDestroy</code>
+when the object is garbage collected. This usually does not need to be set
+(even if <code>emitDestroy</code> is called manually), unless the resource's <code>asyncId</code>
+is retrieved and the sensitive API's <code>emitDestroy</code> is called with it.
+When set to <code>false</code>, the <code>emitDestroy</code> call on garbage collection
+will only take place if there is at least one active <code>destroy</code> hook.
+<strong>Default:</strong> <code>false</code>.</li>
+</ul>
+</li>
+</ul>
+<h4><code>eventemitterasyncresource.asyncId</code><span><a class="mark" href="#eventemitterasyncresourceasyncid" id="eventemitterasyncresourceasyncid">#</a></span><a aria-hidden="true" class="legacy" id="events_eventemitterasyncresource_asyncid"></a></h4>
+<ul>
+<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> The unique <code>asyncId</code> assigned to the resource.</li>
+</ul>
+<h4><code>eventemitterasyncresource.asyncResource</code><span><a class="mark" href="#eventemitterasyncresourceasyncresource" id="eventemitterasyncresourceasyncresource">#</a></span><a aria-hidden="true" class="legacy" id="events_eventemitterasyncresource_asyncresource"></a></h4>
+<ul>
+<li>Type: The underlying <a href="async_hooks.html#class-asyncresource" class="type">&#x3C;AsyncResource></a>.</li>
+</ul>
+<p>The returned <code>AsyncResource</code> object has an additional <code>eventEmitter</code> property
+that provides a reference to this <code>EventEmitterAsyncResource</code>.</p>
+<h4><code>eventemitterasyncresource.emitDestroy()</code><span><a class="mark" href="#eventemitterasyncresourceemitdestroy" id="eventemitterasyncresourceemitdestroy">#</a></span><a aria-hidden="true" class="legacy" id="events_eventemitterasyncresource_emitdestroy"></a></h4>
+<p>Call all <code>destroy</code> hooks. This should only ever be called once. An error will
+be thrown if it is called more than once. This <strong>must</strong> be manually called. If
+the resource is left to be collected by the GC then the <code>destroy</code> hooks will
+never be called.</p>
+<h4><code>eventemitterasyncresource.triggerAsyncId</code><span><a class="mark" href="#eventemitterasyncresourcetriggerasyncid" id="eventemitterasyncresourcetriggerasyncid">#</a></span><a aria-hidden="true" class="legacy" id="events_eventemitterasyncresource_triggerasyncid"></a></h4>
+<ul>
+<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> The same <code>triggerAsyncId</code> that is passed to the
+<code>AsyncResource</code> constructor.</li>
+</ul>
 <p><a id="event-target-and-event-api"></a></p>
 </section><section><h3><code>EventTarget</code> and <code>Event</code> API<span><a class="mark" href="#eventtarget-and-event-api" id="eventtarget-and-event-api">#</a></span><a aria-hidden="true" class="legacy" id="events_eventtarget_and_event_api"></a></h3>
 <div class="api_metadata">

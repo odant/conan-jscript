@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Modules: ECMAScript modules | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Modules: ECMAScript modules | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="esm" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -156,6 +156,7 @@
 </li>
 </ul>
 </li>
+<li><span class="stability_1"><a href="#import-assertions">Import assertions</a></span></li>
 <li><a href="#builtin-modules">Builtin modules</a></li>
 <li><a href="#import-expressions"><code>import()</code> expressions</a></li>
 <li><a href="#importmeta"><code>import.meta</code></a>
@@ -223,6 +224,8 @@
 <details class="changelog"><summary>History</summary>
 <table>
 <tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>Add support for import assertions.</p></td></tr>
 <tr><td>v16.12.0</td>
 <td><p>Consolidate loader hooks, removed <code>getFormat</code>, <code>getSource</code>, <code>transformSource</code>, and <code>getGlobalPreloadCode</code> hooks added <code>load</code> and <code>globalPreload</code> hooks allowed returning <code>format</code> from either <code>resolve</code> or <code>load</code> hooks.</p></td></tr>
 <tr><td>v14.8.0</td>
@@ -318,8 +321,8 @@ must also be fully specified.</p>
 <p>This behavior matches how <code>import</code> behaves in browser environments, assuming a
 typically configured server.</p>
 <h4>URLs<span><a class="mark" href="#urls" id="urls">#</a></span><a aria-hidden="true" class="legacy" id="esm_urls"></a></h4>
-<p>ES modules are resolved and cached as URLs. This means that files containing
-special characters such as <code>#</code> and <code>?</code> need to be escaped.</p>
+<p>ES modules are resolved and cached as URLs. This means that special characters
+must be <a href="url.html#percent-encoding-in-urls">percent-encoded</a>, such as <code>#</code> with <code>%23</code> and <code>?</code> with <code>%3F</code>.</p>
 <p><code>file:</code>, <code>node:</code>, and <code>data:</code> URL schemes are supported. A specifier like
 <code>'https://example.com/app.js'</code> is not supported natively in Node.js unless using
 a <a href="#https-loader">custom HTTPS loader</a>.</p>
@@ -366,6 +369,33 @@ URLs being used is:</p>
 modules. This URL scheme allows for builtin modules to be referenced by valid
 absolute URL strings.</p>
 <pre><code class="language-js"><span class="hljs-keyword">import</span> fs <span class="hljs-keyword">from</span> <span class="hljs-string">'node:fs/promises'</span>;</code></pre>
+</section><section><h3>Import assertions<span><a class="mark" href="#import-assertions" id="import-assertions">#</a></span><a aria-hidden="true" class="legacy" id="esm_import_assertions"></a></h3>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
+<p>The <a href="https://github.com/tc39/proposal-import-assertions">Import Assertions proposal</a> adds an inline syntax for module import
+statements to pass on more information alongside the module specifier.</p>
+<pre><code class="language-js"><span class="hljs-keyword">import</span> fooData <span class="hljs-keyword">from</span> <span class="hljs-string">'./foo.json'</span> assert { <span class="hljs-attr">type</span>: <span class="hljs-string">'json'</span> };
+
+<span class="hljs-keyword">const</span> { <span class="hljs-attr">default</span>: barData } =
+  <span class="hljs-keyword">await</span> <span class="hljs-title function_">import</span>(<span class="hljs-string">'./bar.json'</span>, { <span class="hljs-attr">assert</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'json'</span> } });</code></pre>
+<p>Node.js supports the following <code>type</code> values, for which the assertion is
+mandatory:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Assertion <code>type</code></th><th>Needed for</th></tr></thead><tbody><tr><td><code>'json'</code></td><td><a href="#json-modules">JSON modules</a></td></tr></tbody></table>
 </section><section><h3>Builtin modules<span><a class="mark" href="#builtin-modules" id="builtin-modules">#</a></span><a aria-hidden="true" class="legacy" id="esm_builtin_modules"></a></h3>
 <p><a href="modules.html#core-modules">Core modules</a> provide named exports of their public API. A
 default export is also provided which is the value of the CommonJS exports.
@@ -525,7 +555,7 @@ semantics implemented.</p>
 <p>Local JSON files can be loaded relative to <code>import.meta.url</code> with <code>fs</code> directly:</p>
 <!-- eslint-skip -->
 <pre><code class="language-js"><span class="hljs-keyword">import</span> { readFile } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs/promises'</span>;
-<span class="hljs-keyword">const</span> json = <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">parse</span>(<span class="hljs-keyword">await</span> <span class="hljs-title function_">readFile</span>(<span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'./dat.json'</span>, <span class="hljs-keyword">import</span>.<span class="hljs-property">meta</span>.<span class="hljs-property">url</span>)));</code></pre>
+<span class="hljs-keyword">const</span> json = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(<span class="hljs-keyword">await</span> <span class="hljs-title function_">readFile</span>(<span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'./dat.json'</span>, <span class="hljs-keyword">import</span>.<span class="hljs-property">meta</span>.<span class="hljs-property">url</span>)));</code></pre>
 <p>Alternatively <code>module.createRequire()</code> can be used.</p>
 <h5>No Native Module Loading<span><a class="mark" href="#no-native-module-loading" id="no-native-module-loading">#</a></span><a aria-hidden="true" class="legacy" id="esm_no_native_module_loading"></a></h5>
 <p>Native modules are not currently supported with ES module imports.</p>
@@ -560,20 +590,20 @@ cache to avoid duplication. The same object is returned in
 CommonJS if the JSON module has already been imported from the
 same path.</p>
 <p>Assuming an <code>index.mjs</code> with</p>
-<!-- eslint-skip -->
-<pre><code class="language-js"><span class="hljs-keyword">import</span> packageConfig <span class="hljs-keyword">from</span> <span class="hljs-string">'./package.json'</span>;</code></pre>
+<pre><code class="language-js"><span class="hljs-keyword">import</span> packageConfig <span class="hljs-keyword">from</span> <span class="hljs-string">'./package.json'</span> assert { <span class="hljs-attr">type</span>: <span class="hljs-string">'json'</span> };</code></pre>
 <p>The <code>--experimental-json-modules</code> flag is needed for the module
 to work.</p>
 <pre><code class="language-bash">node index.mjs <span class="hljs-comment"># fails</span>
 node --experimental-json-modules index.mjs <span class="hljs-comment"># works</span></code></pre>
+<p>The <code>assert { type: 'json' }</code> syntax is mandatory; see <a href="#import-assertions">Import Assertions</a>.</p>
 <p><i id="esm_experimental_wasm_modules"></i></p>
 </section><section><h3>Wasm modules<span><a class="mark" href="#wasm-modules" id="wasm-modules">#</a></span><a aria-hidden="true" class="legacy" id="esm_wasm_modules"></a></h3>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
-<p>Importing Web Assembly modules is supported under the
+<p>Importing WebAssembly modules is supported under the
 <code>--experimental-wasm-modules</code> flag, allowing any <code>.wasm</code> files to be
 imported as normal modules while also supporting their module imports.</p>
 <p>This integration is in line with the
-<a href="https://github.com/webassembly/esm-integration">ES Module Integration Proposal for Web Assembly</a>.</p>
+<a href="https://github.com/webassembly/esm-integration">ES Module Integration Proposal for WebAssembly</a>.</p>
 <p>For example, an <code>index.mjs</code> containing:</p>
 <pre><code class="language-js"><span class="hljs-keyword">import</span> * <span class="hljs-keyword">as</span> M <span class="hljs-keyword">from</span> <span class="hljs-string">'./module.wasm'</span>;
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(M);</code></pre>
@@ -582,17 +612,31 @@ imported as normal modules while also supporting their module imports.</p>
 <p>would provide the exports interface for the instantiation of <code>module.wasm</code>.</p>
 <p><i id="esm_experimental_top_level_await"></i></p>
 </section><section><h3>Top-level <code>await</code><span><a class="mark" href="#top-level-await" id="top-level-await">#</a></span><a aria-hidden="true" class="legacy" id="esm_top_level_await"></a></h3>
+<div class="api_metadata">
+<span>Added in: v14.8.0</span>
+</div>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
-<p>The <code>await</code> keyword may be used in the top level (outside of async functions)
-within modules as per the <a href="https://github.com/tc39/proposal-top-level-await/">ECMAScript Top-Level <code>await</code> proposal</a>.</p>
+<p>The <code>await</code> keyword may be used in the top level body of an ECMAScript module.</p>
 <p>Assuming an <code>a.mjs</code> with</p>
-<!-- eslint-skip -->
 <pre><code class="language-js"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> five = <span class="hljs-keyword">await</span> <span class="hljs-title class_">Promise</span>.<span class="hljs-title function_">resolve</span>(<span class="hljs-number">5</span>);</code></pre>
 <p>And a <code>b.mjs</code> with</p>
 <pre><code class="language-js"><span class="hljs-keyword">import</span> { five } <span class="hljs-keyword">from</span> <span class="hljs-string">'./a.mjs'</span>;
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(five); <span class="hljs-comment">// Logs `5`</span></code></pre>
 <pre><code class="language-bash">node b.mjs <span class="hljs-comment"># works</span></code></pre>
+<p>If a top level <code>await</code> expression never resolves, the <code>node</code> process will exit
+with a <code>13</code> <a href="process.html#exit-codes">status code</a>.</p>
+<pre><code class="language-js"><span class="hljs-keyword">import</span> { spawn } <span class="hljs-keyword">from</span> <span class="hljs-string">'child_process'</span>;
+<span class="hljs-keyword">import</span> { execPath } <span class="hljs-keyword">from</span> <span class="hljs-string">'process'</span>;
+
+<span class="hljs-title function_">spawn</span>(execPath, [
+  <span class="hljs-string">'--input-type=module'</span>,
+  <span class="hljs-string">'--eval'</span>,
+  <span class="hljs-comment">// Never-resolving Promise:</span>
+  <span class="hljs-string">'await new Promise(() => {})'</span>,
+]).<span class="hljs-title function_">once</span>(<span class="hljs-string">'exit'</span>, <span class="hljs-function">(<span class="hljs-params">code</span>) =></span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(code); <span class="hljs-comment">// Logs `13`</span>
+});</code></pre>
 <p><i id="esm_experimental_loaders"></i></p>
 </section><section><h3>Loaders<span><a class="mark" href="#loaders" id="loaders">#</a></span><a aria-hidden="true" class="legacy" id="esm_loaders"></a></h3>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
@@ -600,10 +644,19 @@ within modules as per the <a href="https://github.com/tc39/proposal-top-level-aw
 
 <p>To customize the default module resolution, loader hooks can optionally be
 provided via a <code>--experimental-loader ./loader-name.mjs</code> argument to Node.js.</p>
-<p>When hooks are used they only apply to ES module loading and not to any
-CommonJS modules loaded.</p>
+<p>When hooks are used they apply to the entry point and all <code>import</code> calls. They
+won't apply to <code>require</code> calls; those still follow <a href="modules.html">CommonJS</a> rules.</p>
 <h4>Hooks<span><a class="mark" href="#hooks" id="hooks">#</a></span><a aria-hidden="true" class="legacy" id="esm_hooks"></a></h4>
 <h5><code>resolve(specifier, context, defaultResolve)</code><span><a class="mark" href="#resolvespecifier-context-defaultresolve" id="resolvespecifier-context-defaultresolve">#</a></span><a aria-hidden="true" class="legacy" id="esm_resolve_specifier_context_defaultresolve"></a></h5>
+<div class="api_metadata">
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>Add support for import assertions.</p></td></tr>
+</tbody></table>
+</details>
+</div>
 <blockquote>
 <p>Note: The loaders API is being redesigned. This hook may disappear or its
 signature may change. Do not rely on the API described below.</p>
@@ -613,6 +666,7 @@ signature may change. Do not rely on the API described below.</p>
 <li><code>context</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
 <ul>
 <li><code>conditions</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a></li>
+<li><code>importAssertions</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a></li>
 <li><code>parentURL</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a></li>
 </ul>
 </li>
@@ -647,8 +701,8 @@ Node.js module specifier resolution behavior</em> when calling <code>defaultReso
 <pre><code class="language-js"><span class="hljs-comment">/**
  * <span class="hljs-doctag">@param</span> {<span class="hljs-type">string</span>} <span class="hljs-variable">specifier</span>
  * <span class="hljs-doctag">@param</span> {<span class="hljs-type">{
- *   conditions: !Array&#x3C;string>,
- *   parentURL: !(string | undefined),
+ *   conditions: string[],
+ *   parentURL: string | undefined,
  * </span>}} context
  * <span class="hljs-doctag">@param</span> {<span class="hljs-type">Function</span>} <span class="hljs-variable">defaultResolve</span>
  * <span class="hljs-doctag">@returns</span> {<span class="hljs-type">Promise&#x3C;{ url: string </span>}>}
@@ -690,6 +744,7 @@ deprecated, hooks (<code>getFormat</code>, <code>getSource</code>, and <code>tra
 <ul>
 <li><code>format</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Null_type" class="type">&#x3C;null></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> The format optionally supplied by the
 <code>resolve</code> hook.</li>
+<li><code>importAssertions</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a></li>
 </ul>
 </li>
 <li><code>defaultLoad</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a></li>
@@ -701,7 +756,8 @@ deprecated, hooks (<code>getFormat</code>, <code>getSource</code>, and <code>tra
 </li>
 </ul>
 <p>The <code>load</code> hook provides a way to define a custom method of determining how
-a URL should be interpreted, retrieved, and parsed.</p>
+a URL should be interpreted, retrieved, and parsed. It is also in charge of
+validating the import assertion.</p>
 <p>The final value of <code>format</code> must be one of the following:</p>
 
 
@@ -770,8 +826,8 @@ format to a supported one, for example <code>yaml</code> to <code>module</code>.
   </span>}} context If resolve settled with a `format`, that value is included here.
  * <span class="hljs-doctag">@param</span> {<span class="hljs-type">Function</span>} <span class="hljs-variable">defaultLoad</span>
  * <span class="hljs-doctag">@returns</span> {<span class="hljs-type">Promise&#x3C;{
-    format: !string,
-    source: !(string | ArrayBuffer | SharedArrayBuffer | Uint8Array),
+    format: string,
+    source: string | ArrayBuffer | SharedArrayBuffer | Uint8Array,
   </span>}>}
  */</span>
 <span class="hljs-keyword">export</span> <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">load</span>(<span class="hljs-params">url, context, defaultLoad</span>) {
@@ -815,9 +871,12 @@ builtins like "fs": <code>getBuiltin(request: string)</code>.</p>
 <p>If the code needs more advanced <code>require</code> features, it has to construct
 its own <code>require</code> using  <code>module.createRequire()</code>.</p>
 <pre><code class="language-js"><span class="hljs-comment">/**
+ * <span class="hljs-doctag">@param</span> {<span class="hljs-type">{
+     port: MessagePort,
+   </span>}} utilities Things that preload code might find useful
  * <span class="hljs-doctag">@returns</span> {<span class="hljs-type">string</span>} Code to run before application startup
  */</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">globalPreload</span>(<span class="hljs-params"></span>) {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">globalPreload</span>(<span class="hljs-params">utilities</span>) {
   <span class="hljs-keyword">return</span> <span class="hljs-string">`\
 globalThis.someInjectedProperty = 42;
 console.log('I just set some globals!');
@@ -828,6 +887,31 @@ const { cwd } = getBuiltin('process');
 const require = createRequire(cwd() + '/&#x3C;preload>');
 // [...]
 `</span>;
+}</code></pre>
+<p>In order to allow communication between the application and the loader, another
+argument is provided to the preload code: <code>port</code>. This is available as a
+parameter to the loader hook and inside of the source text returned by the hook.
+Some care must be taken in order to properly call <a href="https://nodejs.org/dist/latest-v17.x/docs/api/worker_threads.html#portref"><code>port.ref()</code></a> and
+<a href="https://nodejs.org/dist/latest-v17.x/docs/api/worker_threads.html#portunref"><code>port.unref()</code></a> to prevent a process from being in a state where it won't
+close normally.</p>
+<pre><code class="language-js"><span class="hljs-comment">/**
+ * This example has the application context send a message to the loader
+ * and sends the message back to the application context
+ * <span class="hljs-doctag">@param</span> {<span class="hljs-type">{
+     port: MessagePort,
+   </span>}} utilities Things that preload code might find useful
+ * <span class="hljs-doctag">@returns</span> {<span class="hljs-type">string</span>} Code to run before application startup
+ */</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">globalPreload</span>(<span class="hljs-params">{ port }</span>) {
+  port.<span class="hljs-property">onmessage</span> = <span class="hljs-function">(<span class="hljs-params">evt</span>) =></span> {
+    port.<span class="hljs-title function_">postMessage</span>(evt.<span class="hljs-property">data</span>);
+  };
+  <span class="hljs-keyword">return</span> <span class="hljs-string">`\
+    port.postMessage('console.log("I went to the Loader and back");');
+    port.onmessage = (evt) => {
+      eval(evt.data);
+    };
+  `</span>;
 }</code></pre>
 <h4>Examples<span><a class="mark" href="#examples" id="examples">#</a></span><a aria-hidden="true" class="legacy" id="esm_examples"></a></h4>
 <p>The various loader hooks can be used together to accomplish wide-ranging
@@ -983,7 +1067,7 @@ purposes.</p>
   <span class="hljs-keyword">const</span> packagePath = <span class="hljs-title function_">resolvePath</span>(dir, <span class="hljs-string">'package.json'</span>);
   <span class="hljs-comment">// Try to read the possibly nonexistent package.json</span>
   <span class="hljs-keyword">const</span> type = <span class="hljs-keyword">await</span> <span class="hljs-title function_">readFile</span>(packagePath, { <span class="hljs-attr">encoding</span>: <span class="hljs-string">'utf8'</span> })
-    .<span class="hljs-title function_">then</span>(<span class="hljs-function">(<span class="hljs-params">filestring</span>) =></span> <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">parse</span>(filestring).<span class="hljs-property">type</span>)
+    .<span class="hljs-title function_">then</span>(<span class="hljs-function">(<span class="hljs-params">filestring</span>) =></span> <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(filestring).<span class="hljs-property">type</span>)
     .<span class="hljs-title function_">catch</span>(<span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
       <span class="hljs-keyword">if</span> (err?.<span class="hljs-property">code</span> !== <span class="hljs-string">'ENOENT'</span>) <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(err);
     });
@@ -1078,7 +1162,10 @@ which is not a supported target for module imports.</li>
 <strong>PACKAGE_RESOLVE</strong>(<em>specifier</em>, <em>parentURL</em>).</li>
 </ol>
 </li>
-<li>If <em>resolved</em> contains any percent encodings of <em>"/"</em> or <em>"\"</em> (<em>"%2f"</em>
+<li>Let <em>format</em> be <strong>undefined</strong>.</li>
+<li>If <em>resolved</em> is a <em>"file:"</em> URL, then
+<ol>
+<li>If <em>resolved</em> contains any percent encodings of <em>"/"</em> or <em>"\"</em> (<em>"%2F"</em>
 and <em>"%5C"</em> respectively), then
 <ol>
 <li>Throw an <em>Invalid Module Specifier</em> error.</li>
@@ -1094,10 +1181,18 @@ and <em>"%5C"</em> respectively), then
 <li>Throw a <em>Module Not Found</em> error.</li>
 </ol>
 </li>
-<li>Set <em>resolved</em> to the real path of <em>resolved</em>.</li>
-<li>Let <em>format</em> be the result of <strong>ESM_FORMAT</strong>(<em>resolved</em>).</li>
+<li>Set <em>resolved</em> to the real path of <em>resolved</em>, maintaining the
+same URL querystring and fragment components.</li>
+<li>Set <em>format</em> to the result of <strong>ESM_FILE_FORMAT</strong>(<em>resolved</em>).</li>
+</ol>
+</li>
+<li>Otherwise,
+<ol>
+<li>Set <em>format</em> the module format of the content type associated with the
+URL <em>resolved</em>.</li>
+</ol>
+</li>
 <li>Load <em>resolved</em> as module format, <em>format</em>.</li>
-<li>Return <em>resolved</em>.</li>
 </ol>
 </blockquote>
 <p><strong>PACKAGE_RESOLVE</strong>(<em>packageSpecifier</em>, <em>parentURL</em>)</p>
@@ -1107,6 +1202,11 @@ and <em>"%5C"</em> respectively), then
 <li>If <em>packageSpecifier</em> is an empty string, then
 <ol>
 <li>Throw an <em>Invalid Module Specifier</em> error.</li>
+</ol>
+</li>
+<li>If <em>packageSpecifier</em> is a Node.js builtin module name, then
+<ol>
+<li>Return the string <em>"node:"</em> concatenated with <em>packageSpecifier</em>.</li>
 </ol>
 </li>
 <li>If <em>packageSpecifier</em> does not start with <em>"@"</em>, then
@@ -1133,15 +1233,14 @@ until the second <em>"/"</em> separator or the end of the string.</li>
 </li>
 <li>Let <em>packageSubpath</em> be <em>"."</em> concatenated with the substring of
 <em>packageSpecifier</em> from the position at the length of <em>packageName</em>.</li>
+<li>If <em>packageSubpath</em> ends in <em>"/"</em>, then
+<ol>
+<li>Throw an <em>Invalid Module Specifier</em> error.</li>
+</ol>
+</li>
 <li>Let <em>selfUrl</em> be the result of
 <strong>PACKAGE_SELF_RESOLVE</strong>(<em>packageName</em>, <em>packageSubpath</em>, <em>parentURL</em>).</li>
 <li>If <em>selfUrl</em> is not <strong>undefined</strong>, return <em>selfUrl</em>.</li>
-<li>If <em>packageSubpath</em> is <em>"."</em> and <em>packageName</em> is a Node.js builtin
-module, then
-<ol>
-<li>Return the string <em>"node:"</em> concatenated with <em>packageSpecifier</em>.</li>
-</ol>
-</li>
 <li>While <em>parentURL</em> is not the file system root,
 <ol>
 <li>Let <em>packageURL</em> be the URL resolution of <em>"node_modules/"</em>
@@ -1149,7 +1248,6 @@ concatenated with <em>packageSpecifier</em>, relative to <em>parentURL</em>.</li
 <li>Set <em>parentURL</em> to the parent folder URL of <em>parentURL</em>.</li>
 <li>If the folder at <em>packageURL</em> does not exist, then
 <ol>
-<li>Set <em>parentURL</em> to the parent URL path of <em>parentURL</em>.</li>
 <li>Continue the next loop iteration.</li>
 </ol>
 </li>
@@ -1157,17 +1255,17 @@ concatenated with <em>packageSpecifier</em>, relative to <em>parentURL</em>.</li
 <li>If <em>pjson</em> is not <strong>null</strong> and <em>pjson</em>.<em>exports</em> is not <strong>null</strong> or
 <strong>undefined</strong>, then
 <ol>
-<li>Let <em>exports</em> be <em>pjson.exports</em>.</li>
-<li>Return the <em>resolved</em> destructured value of the result of
-<strong>PACKAGE_EXPORTS_RESOLVE</strong>(<em>packageURL</em>, <em>packageSubpath</em>,
-<em>pjson.exports</em>, <em>defaultConditions</em>).</li>
+<li>Return the result of <strong>PACKAGE_EXPORTS_RESOLVE</strong>(<em>packageURL</em>,
+<em>packageSubpath</em>, <em>pjson.exports</em>, <em>defaultConditions</em>).</li>
 </ol>
 </li>
 <li>Otherwise, if <em>packageSubpath</em> is equal to <em>"."</em>, then
 <ol>
-<li>Return the result applying the legacy <strong>LOAD_AS_DIRECTORY</strong>
-CommonJS resolver to <em>packageURL</em>, throwing a <em>Module Not Found</em>
-error for no resolution.</li>
+<li>If <em>pjson.main</em> is a string, then
+<ol>
+<li>Return the URL resolution of <em>main</em> in <em>packageURL</em>.</li>
+</ol>
+</li>
 </ol>
 </li>
 <li>Otherwise,
@@ -1183,7 +1281,7 @@ error for no resolution.</li>
 <p><strong>PACKAGE_SELF_RESOLVE</strong>(<em>packageName</em>, <em>packageSubpath</em>, <em>parentURL</em>)</p>
 <blockquote>
 <ol>
-<li>Let <em>packageURL</em> be the result of <strong>READ_PACKAGE_SCOPE</strong>(<em>parentURL</em>).</li>
+<li>Let <em>packageURL</em> be the result of <strong>LOOKUP_PACKAGE_SCOPE</strong>(<em>parentURL</em>).</li>
 <li>If <em>packageURL</em> is <strong>null</strong>, then
 <ol>
 <li>Return <strong>undefined</strong>.</li>
@@ -1264,7 +1362,7 @@ starting with <em>"."</em>, then
 <li>Throw an <em>Invalid Module Specifier</em> error.</li>
 </ol>
 </li>
-<li>Let <em>packageURL</em> be the result of <strong>READ_PACKAGE_SCOPE</strong>(<em>parentURL</em>).</li>
+<li>Let <em>packageURL</em> be the result of <strong>LOOKUP_PACKAGE_SCOPE</strong>(<em>parentURL</em>).</li>
 <li>If <em>packageURL</em> is not <strong>null</strong>, then
 <ol>
 <li>Let <em>pjson</em> be the result of <strong>READ_PACKAGE_JSON</strong>(<em>packageURL</em>).</li>
@@ -1380,24 +1478,26 @@ does not end with <em>"/"</em>, throw an <em>Invalid Module Specifier</em> error
 <li>If <em>pattern</em> is <strong>true</strong>, then
 <ol>
 <li>Return <strong>PACKAGE_RESOLVE</strong>(<em>target</em> with every instance of
-<em>"*"</em> replaced by <em>subpath</em>, <em>packageURL</em> + <em>"/"</em>)_.</li>
+<em>"*"</em> replaced by <em>subpath</em>, <em>packageURL</em> + <em>"/"</em>).</li>
 </ol>
 </li>
 <li>Return <strong>PACKAGE_RESOLVE</strong>(<em>target</em> + <em>subpath</em>,
-<em>packageURL</em> + <em>"/"</em>)_.</li>
+<em>packageURL</em> + <em>"/"</em>).</li>
 </ol>
 </li>
 <li>Otherwise, throw an <em>Invalid Package Target</em> error.</li>
 </ol>
 </li>
 <li>If <em>target</em> split on <em>"/"</em> or <em>"\"</em> contains any <em>"."</em>, <em>".."</em> or
-<em>"node_modules"</em> segments after the first segment, throw an
-<em>Invalid Package Target</em> error.</li>
+<em>"node_modules"</em> segments after the first segment, case insensitive and
+including percent encoded variants, throw an <em>Invalid Package Target</em>
+error.</li>
 <li>Let <em>resolvedTarget</em> be the URL resolution of the concatenation of
 <em>packageURL</em> and <em>target</em>.</li>
 <li>Assert: <em>resolvedTarget</em> is contained in <em>packageURL</em>.</li>
 <li>If <em>subpath</em> split on <em>"/"</em> or <em>"\"</em> contains any <em>"."</em>, <em>".."</em> or
-<em>"node_modules"</em> segments, throw an <em>Invalid Module Specifier</em> error.</li>
+<em>"node_modules"</em> segments, case insensitive and including percent
+encoded variants, throw an <em>Invalid Module Specifier</em> error.</li>
 <li>If <em>pattern</em> is <strong>true</strong>, then
 <ol>
 <li>Return the URL resolution of <em>resolvedTarget</em> with every instance of
@@ -1454,11 +1554,10 @@ error.</li>
 <li>Otherwise throw an <em>Invalid Package Target</em> error.</li>
 </ol>
 </blockquote>
-<p><strong>ESM_FORMAT</strong>(<em>url</em>)</p>
+<p><strong>ESM_FILE_FORMAT</strong>(<em>url</em>)</p>
 <blockquote>
 <ol>
 <li>Assert: <em>url</em> corresponds to an existing file.</li>
-<li>Let <em>pjson</em> be the result of <strong>READ_PACKAGE_SCOPE</strong>(<em>url</em>).</li>
 <li>If <em>url</em> ends in <em>".mjs"</em>, then
 <ol>
 <li>Return <em>"module"</em>.</li>
@@ -1469,6 +1568,13 @@ error.</li>
 <li>Return <em>"commonjs"</em>.</li>
 </ol>
 </li>
+<li>If <em>url</em> ends in <em>".json"</em>, then
+<ol>
+<li>Return <em>"json"</em>.</li>
+</ol>
+</li>
+<li>Let <em>packageURL</em> be the result of <strong>LOOKUP_PACKAGE_SCOPE</strong>(<em>url</em>).</li>
+<li>Let <em>pjson</em> be the result of <strong>READ_PACKAGE_JSON</strong>(<em>packageURL</em>).</li>
 <li>If <em>pjson?.type</em> exists and is <em>"module"</em>, then
 <ol>
 <li>If <em>url</em> ends in <em>".js"</em>, then
@@ -1486,7 +1592,7 @@ error.</li>
 </li>
 </ol>
 </blockquote>
-<p><strong>READ_PACKAGE_SCOPE</strong>(<em>url</em>)</p>
+<p><strong>LOOKUP_PACKAGE_SCOPE</strong>(<em>url</em>)</p>
 <blockquote>
 <ol>
 <li>Let <em>scopeURL</em> be <em>url</em>.</li>
@@ -1494,10 +1600,11 @@ error.</li>
 <ol>
 <li>Set <em>scopeURL</em> to the parent URL of <em>scopeURL</em>.</li>
 <li>If <em>scopeURL</em> ends in a <em>"node_modules"</em> path segment, return <strong>null</strong>.</li>
-<li>Let <em>pjson</em> be the result of <strong>READ_PACKAGE_JSON</strong>(<em>scopeURL</em>).</li>
-<li>If <em>pjson</em> is not <strong>null</strong>, then
+<li>Let <em>pjsonURL</em> be the resolution of <em>"package.json"</em> within
+<em>packageURL</em>.</li>
+<li>if the file at <em>pjsonURL</em> exists, then
 <ol>
-<li>Return <em>pjson</em>.</li>
+<li>Return <em>scopeURL</em>.</li>
 </ol>
 </li>
 </ol>

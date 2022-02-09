@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Global objects | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Global objects | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="globals" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -148,14 +148,16 @@
 <ul>
 <li><a href="#class-abortcontroller">Class: <code>AbortController</code></a>
 <ul>
-<li><a href="#abortcontrollerabort"><code>abortController.abort()</code></a></li>
+<li><a href="#abortcontrollerabortreason"><code>abortController.abort([reason])</code></a></li>
 <li><a href="#abortcontrollersignal"><code>abortController.signal</code></a></li>
 <li><a href="#class-abortsignal">Class: <code>AbortSignal</code></a>
 <ul>
-<li><a href="#static-method-abortsignalabort">Static method: <code>AbortSignal.abort()</code></a></li>
+<li><a href="#static-method-abortsignalabortreason">Static method: <code>AbortSignal.abort([reason])</code></a></li>
+<li><a href="#static-method-abortsignaltimeoutdelay">Static method: <code>AbortSignal.timeout(delay)</code></a></li>
 <li><a href="#event-abort">Event: <code>'abort'</code></a></li>
 <li><a href="#abortsignalaborted"><code>abortSignal.aborted</code></a></li>
 <li><a href="#abortsignalonabort"><code>abortSignal.onabort</code></a></li>
+<li><a href="#abortsignalreason"><code>abortSignal.reason</code></a></li>
 </ul>
 </li>
 </ul>
@@ -233,10 +235,22 @@ ac.<span class="hljs-property">signal</span>.<span class="hljs-title function_">
 ac.<span class="hljs-title function_">abort</span>();
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(ac.<span class="hljs-property">signal</span>.<span class="hljs-property">aborted</span>);  <span class="hljs-comment">// Prints True</span></code></pre>
-<h4><code>abortController.abort()</code><span><a class="mark" href="#abortcontrollerabort" id="abortcontrollerabort">#</a></span><a aria-hidden="true" class="legacy" id="globals_abortcontroller_abort"></a></h4>
+<h4><code>abortController.abort([reason])</code><span><a class="mark" href="#abortcontrollerabortreason" id="abortcontrollerabortreason">#</a></span><a aria-hidden="true" class="legacy" id="globals_abortcontroller_abort_reason"></a></h4>
 <div class="api_metadata">
-<span>Added in: v15.0.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>Added the new optional reason argument.</p></td></tr>
+<tr><td>v15.0.0, v14.17.0</td>
+<td><p><span>Added in: v15.0.0, v14.17.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
+<ul>
+<li><code>reason</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types" class="type">&#x3C;any></a> An optional reason, retrievable on the <code>AbortSignal</code>s
+<code>reason</code> property.</li>
+</ul>
 <p>Triggers the abort signal, causing the <code>abortController.signal</code> to emit
 the <code>'abort'</code> event.</p>
 <h4><code>abortController.signal</code><span><a class="mark" href="#abortcontrollersignal" id="abortcontrollersignal">#</a></span><a aria-hidden="true" class="legacy" id="globals_abortcontroller_signal"></a></h4>
@@ -255,14 +269,32 @@ the <code>'abort'</code> event.</p>
 </ul>
 <p>The <code>AbortSignal</code> is used to notify observers when the
 <code>abortController.abort()</code> method is called.</p>
-<h5>Static method: <code>AbortSignal.abort()</code><span><a class="mark" href="#static-method-abortsignalabort" id="static-method-abortsignalabort">#</a></span><a aria-hidden="true" class="legacy" id="globals_static_method_abortsignal_abort"></a></h5>
+<h5>Static method: <code>AbortSignal.abort([reason])</code><span><a class="mark" href="#static-method-abortsignalabortreason" id="static-method-abortsignalabortreason">#</a></span><a aria-hidden="true" class="legacy" id="globals_static_method_abortsignal_abort_reason"></a></h5>
 <div class="api_metadata">
-<span>Added in: v15.12.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>Added the new optional reason argument.</p></td></tr>
+<tr><td>v15.12.0, v14.17.0</td>
+<td><p><span>Added in: v15.12.0, v14.17.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
+<li><code>reason</code>: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types" class="type">&#x3C;any></a></li>
 <li>Returns: <a href="globals.html#class-abortsignal" class="type">&#x3C;AbortSignal></a></li>
 </ul>
 <p>Returns a new already aborted <code>AbortSignal</code>.</p>
+<h5>Static method: <code>AbortSignal.timeout(delay)</code><span><a class="mark" href="#static-method-abortsignaltimeoutdelay" id="static-method-abortsignaltimeoutdelay">#</a></span><a aria-hidden="true" class="legacy" id="globals_static_method_abortsignal_timeout_delay"></a></h5>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>delay</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> The number of milliseconds to wait before triggering
+the AbortSignal.</li>
+</ul>
+<p>Returns a new <code>AbortSignal</code> which will be aborted in <code>delay</code> milliseconds.</p>
 <h5>Event: <code>'abort'</code><span><a class="mark" href="#event-abort" id="event-abort">#</a></span><a aria-hidden="true" class="legacy" id="globals_event_abort"></a></h5>
 <div class="api_metadata">
 <span>Added in: v15.0.0</span>
@@ -306,6 +338,17 @@ result in memory leaks.</p>
 </ul>
 <p>An optional callback function that may be set by user code to be notified
 when the <code>abortController.abort()</code> function has been called.</p>
+<h5><code>abortSignal.reason</code><span><a class="mark" href="#abortsignalreason" id="abortsignalreason">#</a></span><a aria-hidden="true" class="legacy" id="globals_abortsignal_reason"></a></h5>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types" class="type">&#x3C;any></a></li>
+</ul>
+<p>An optional reason specified when the <code>AbortSignal</code> was triggered.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> ac = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AbortController</span>();
+ac.<span class="hljs-title function_">abort</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Error</span>(<span class="hljs-string">'boom!'</span>));
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(ac.<span class="hljs-property">signal</span>.<span class="hljs-property">reason</span>);  <span class="hljs-comment">// Error('boom!');</span></code></pre>
 </section><section><h3>Class: <code>Buffer</code><span><a class="mark" href="#class-buffer" id="class-buffer">#</a></span><a aria-hidden="true" class="legacy" id="globals_class_buffer"></a></h3>
 <div class="api_metadata">
 <span>Added in: v0.1.103</span>

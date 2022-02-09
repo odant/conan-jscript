@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>V8 | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>V8 | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="v8" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -192,6 +192,23 @@
 <li><a href="#class-v8defaultdeserializer">Class: <code>v8.DefaultDeserializer</code></a></li>
 </ul>
 </li>
+<li><a href="#promise-hooks">Promise hooks</a>
+<ul>
+<li><a href="#promisehooksoninitinit"><code>promiseHooks.onInit(init)</code></a></li>
+<li><a href="#promisehooksonsettledsettled"><code>promiseHooks.onSettled(settled)</code></a></li>
+<li><a href="#promisehooksonbeforebefore"><code>promiseHooks.onBefore(before)</code></a></li>
+<li><a href="#promisehooksonafterafter"><code>promiseHooks.onAfter(after)</code></a></li>
+<li><a href="#promisehookscreatehookcallbacks"><code>promiseHooks.createHook(callbacks)</code></a></li>
+<li><a href="#hook-callbacks">Hook callbacks</a>
+<ul>
+<li><a href="#initpromise-parent"><code>init(promise, parent)</code></a></li>
+<li><a href="#beforepromise"><code>before(promise)</code></a></li>
+<li><a href="#afterpromise"><code>after(promise)</code></a></li>
+<li><a href="#settledpromise"><code>settled(promise)</code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul></details>
@@ -199,7 +216,7 @@
       <div id="apicontent">
         <h2>V8<span><a class="mark" href="#v8" id="v8">#</a></span><a aria-hidden="true" class="legacy" id="v8_v8"></a></h2>
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/v8.js">lib/v8.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/v8.js">lib/v8.js</a></p>
 <p>The <code>v8</code> module exposes APIs that are specific to the version of <a href="https://developers.google.com/v8/">V8</a>
 built into the Node.js binary. It can be accessed using:</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> v8 = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);</code></pre>
@@ -655,7 +672,214 @@ stores the part of their underlying <code>ArrayBuffer</code>s that they are refe
 <span>Added in: v8.0.0</span>
 </div>
 <p>A subclass of <a href="#class-v8deserializer"><code>Deserializer</code></a> corresponding to the format written by
-<a href="#class-v8defaultserializer"><code>DefaultSerializer</code></a>.</p></section>
+<a href="#class-v8defaultserializer"><code>DefaultSerializer</code></a>.</p>
+</section><section><h3>Promise hooks<span><a class="mark" href="#promise-hooks" id="promise-hooks">#</a></span><a aria-hidden="true" class="legacy" id="v8_promise_hooks"></a></h3>
+<p>The <code>promiseHooks</code> interface can be used to track promise lifecycle events.
+To track <em>all</em> async activity, see <a href="async_hooks.html"><code>async_hooks</code></a> which internally uses this
+module to produce promise lifecycle events in addition to events for other
+async resources. For request context management, see <a href="async_context.html#class-asynclocalstorage"><code>AsyncLocalStorage</code></a>.</p>
+<pre><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-comment">// There are four lifecycle events produced by promises:</span>
+
+<span class="hljs-comment">// The `init` event represents the creation of a promise. This could be a</span>
+<span class="hljs-comment">// direct creation such as with `new Promise(...)` or a continuation such</span>
+<span class="hljs-comment">// as `then()` or `catch()`. It also happens whenever an async function is</span>
+<span class="hljs-comment">// called or does an `await`. If a continuation promise is created, the</span>
+<span class="hljs-comment">// `parent` will be the promise it is a continuation from.</span>
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">init</span>(<span class="hljs-params">promise, parent</span>) {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'a promise was created'</span>, { promise, parent });
+}
+
+<span class="hljs-comment">// The `settled` event happens when a promise receives a resolution or</span>
+<span class="hljs-comment">// rejection value. This may happen synchronously such as when using</span>
+<span class="hljs-comment">// `Promise.resolve()` on non-promise input.</span>
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">settled</span>(<span class="hljs-params">promise</span>) {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'a promise resolved or rejected'</span>, { promise });
+}
+
+<span class="hljs-comment">// The `before` event runs immediately before a `then()` or `catch()` handler</span>
+<span class="hljs-comment">// runs or an `await` resumes execution.</span>
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">before</span>(<span class="hljs-params">promise</span>) {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'a promise is about to call a then handler'</span>, { promise });
+}
+
+<span class="hljs-comment">// The `after` event runs immediately after a `then()` handler runs or when</span>
+<span class="hljs-comment">// an `await` begins after resuming from another.</span>
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">after</span>(<span class="hljs-params">promise</span>) {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'a promise is done calling a then handler'</span>, { promise });
+}
+
+<span class="hljs-comment">// Lifecycle hooks may be started and stopped individually</span>
+<span class="hljs-keyword">const</span> stopWatchingInits = promiseHooks.<span class="hljs-title function_">onInit</span>(init);
+<span class="hljs-keyword">const</span> stopWatchingSettleds = promiseHooks.<span class="hljs-title function_">onSettled</span>(settled);
+<span class="hljs-keyword">const</span> stopWatchingBefores = promiseHooks.<span class="hljs-title function_">onBefore</span>(before);
+<span class="hljs-keyword">const</span> stopWatchingAfters = promiseHooks.<span class="hljs-title function_">onAfter</span>(after);
+
+<span class="hljs-comment">// Or they may be started and stopped in groups</span>
+<span class="hljs-keyword">const</span> stopHookSet = promiseHooks.<span class="hljs-title function_">createHook</span>({
+  init,
+  settled,
+  before,
+  after
+});
+
+<span class="hljs-comment">// To stop a hook, call the function returned at its creation.</span>
+<span class="hljs-title function_">stopWatchingInits</span>();
+<span class="hljs-title function_">stopWatchingSettleds</span>();
+<span class="hljs-title function_">stopWatchingBefores</span>();
+<span class="hljs-title function_">stopWatchingAfters</span>();
+<span class="hljs-title function_">stopHookSet</span>();</code></pre>
+<h4><code>promiseHooks.onInit(init)</code><span><a class="mark" href="#promisehooksoninitinit" id="promisehooksoninitinit">#</a></span><a aria-hidden="true" class="legacy" id="v8_promisehooks_oninit_init"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>init</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#initpromise-parent"><code>init</code> callback</a> to call when a promise is created.</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Call to stop the hook.</li>
+</ul>
+<p><strong>The <code>init</code> hook must be a plain function. Providing an async function will
+throw as it would produce an infinite microtask loop.</strong></p>
+
+<pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onInit</span>(<span class="hljs-function">(<span class="hljs-params">promise, parent</span>) =></span> {});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { promiseHooks } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onInit</span>(<span class="hljs-function">(<span class="hljs-params">promise, parent</span>) =></span> {});</code></pre>
+<h4><code>promiseHooks.onSettled(settled)</code><span><a class="mark" href="#promisehooksonsettledsettled" id="promisehooksonsettledsettled">#</a></span><a aria-hidden="true" class="legacy" id="v8_promisehooks_onsettled_settled"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>settled</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#settledpromise"><code>settled</code> callback</a> to call when a promise
+is resolved or rejected.</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Call to stop the hook.</li>
+</ul>
+<p><strong>The <code>settled</code> hook must be a plain function. Providing an async function will
+throw as it would produce an infinite microtask loop.</strong></p>
+
+<pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onSettled</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { promiseHooks } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onSettled</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code></pre>
+<h4><code>promiseHooks.onBefore(before)</code><span><a class="mark" href="#promisehooksonbeforebefore" id="promisehooksonbeforebefore">#</a></span><a aria-hidden="true" class="legacy" id="v8_promisehooks_onbefore_before"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>before</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#beforepromise"><code>before</code> callback</a> to call before a promise
+continuation executes.</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Call to stop the hook.</li>
+</ul>
+<p><strong>The <code>before</code> hook must be a plain function. Providing an async function will
+throw as it would produce an infinite microtask loop.</strong></p>
+
+<pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onBefore</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { promiseHooks } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onBefore</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code></pre>
+<h4><code>promiseHooks.onAfter(after)</code><span><a class="mark" href="#promisehooksonafterafter" id="promisehooksonafterafter">#</a></span><a aria-hidden="true" class="legacy" id="v8_promisehooks_onafter_after"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>after</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#afterpromise"><code>after</code> callback</a> to call after a promise
+continuation executes.</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Call to stop the hook.</li>
+</ul>
+<p><strong>The <code>after</code> hook must be a plain function. Providing an async function will
+throw as it would produce an infinite microtask loop.</strong></p>
+
+<pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onAfter</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { promiseHooks } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);
+
+<span class="hljs-keyword">const</span> stop = promiseHooks.<span class="hljs-title function_">onAfter</span>(<span class="hljs-function">(<span class="hljs-params">promise</span>) =></span> {});</code></pre>
+<h4><code>promiseHooks.createHook(callbacks)</code><span><a class="mark" href="#promisehookscreatehookcallbacks" id="promisehookscreatehookcallbacks">#</a></span><a aria-hidden="true" class="legacy" id="v8_promisehooks_createhook_callbacks"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li><code>callbacks</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> The <a href="#hook-callbacks">Hook Callbacks</a> to register
+<ul>
+<li><code>init</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#initpromise-parent"><code>init</code> callback</a>.</li>
+<li><code>before</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#beforepromise"><code>before</code> callback</a>.</li>
+<li><code>after</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#afterpromise"><code>after</code> callback</a>.</li>
+<li><code>settled</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> The <a href="#settledpromise"><code>settled</code> callback</a>.</li>
+</ul>
+</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function" class="type">&#x3C;Function></a> Used for disabling hooks</li>
+</ul>
+<p><strong>The hook callbacks must be plain functions. Providing async functions will
+throw as it would produce an infinite microtask loop.</strong></p>
+<p>Registers functions to be called for different lifetime events of each promise.</p>
+<p>The callbacks <code>init()</code>/<code>before()</code>/<code>after()</code>/<code>settled()</code> are called for the
+respective events during a promise's lifetime.</p>
+<p>All callbacks are optional. For example, if only promise creation needs to
+be tracked, then only the <code>init</code> callback needs to be passed. The
+specifics of all functions that can be passed to <code>callbacks</code> is in the
+<a href="#hook-callbacks">Hook Callbacks</a> section.</p>
+
+<pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { promiseHooks } <span class="hljs-keyword">from</span> <span class="hljs-string">'v8'</span>;
+
+<span class="hljs-keyword">const</span> stopAll = promiseHooks.<span class="hljs-title function_">createHook</span>({
+  <span class="hljs-title function_">init</span>(<span class="hljs-params">promise, parent</span>) {}
+});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { promiseHooks } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'v8'</span>);
+
+<span class="hljs-keyword">const</span> stopAll = promiseHooks.<span class="hljs-title function_">createHook</span>({
+  <span class="hljs-title function_">init</span>(<span class="hljs-params">promise, parent</span>) {}
+});</code></pre>
+<h4>Hook callbacks<span><a class="mark" href="#hook-callbacks" id="hook-callbacks">#</a></span><a aria-hidden="true" class="legacy" id="v8_hook_callbacks"></a></h4>
+<p>Key events in the lifetime of a promise have been categorized into four areas:
+creation of a promise, before/after a continuation handler is called or around
+an await, and when the promise resolves or rejects.</p>
+<p>While these hooks are similar to those of <a href="async_hooks.html"><code>async_hooks</code></a> they lack a
+<code>destroy</code> hook. Other types of async resources typically represent sockets or
+file descriptors which have a distinct "closed" state to express the <code>destroy</code>
+lifecycle event while promises remain usable for as long as code can still
+reach them. Garbage collection tracking is used to make promises fit into the
+<code>async_hooks</code> event model, however this tracking is very expensive and they may
+not necessarily ever even be garbage collected.</p>
+<p>Because promises are asynchronous resources whose lifecycle is tracked
+via the promise hooks mechanism, the <code>init()</code>, <code>before()</code>, <code>after()</code>, and
+<code>settled()</code> callbacks <em>must not</em> be async functions as they create more
+promises which would produce an infinite loop.</p>
+<p>While this API is used to feed promise events into <a href="async_hooks.html"><code>async_hooks</code></a>, the
+ordering between the two is considered undefined. Both APIs are multi-tenant
+and therefore could produce events in any order relative to each other.</p>
+<h5><code>init(promise, parent)</code><span><a class="mark" href="#initpromise-parent" id="initpromise-parent">#</a></span><a aria-hidden="true" class="legacy" id="v8_init_promise_parent"></a></h5>
+<ul>
+<li><code>promise</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise" class="type">&#x3C;Promise></a> The promise being created.</li>
+<li><code>parent</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise" class="type">&#x3C;Promise></a> The promise continued from, if applicable.</li>
+</ul>
+<p>Called when a promise is constructed. This <em>does not</em> mean that corresponding
+<code>before</code>/<code>after</code> events will occur, only that the possibility exists. This will
+happen if a promise is created without ever getting a continuation.</p>
+<h5><code>before(promise)</code><span><a class="mark" href="#beforepromise" id="beforepromise">#</a></span><a aria-hidden="true" class="legacy" id="v8_before_promise"></a></h5>
+<ul>
+<li><code>promise</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise" class="type">&#x3C;Promise></a></li>
+</ul>
+<p>Called before a promise continuation executes. This can be in the form of
+<code>then()</code>, <code>catch()</code>, or <code>finally()</code> handlers or an <code>await</code> resuming.</p>
+<p>The <code>before</code> callback will be called 0 to N times. The <code>before</code> callback
+will typically be called 0 times if no continuation was ever made for the
+promise. The <code>before</code> callback may be called many times in the case where
+many continuations have been made from the same promise.</p>
+<h5><code>after(promise)</code><span><a class="mark" href="#afterpromise" id="afterpromise">#</a></span><a aria-hidden="true" class="legacy" id="v8_after_promise"></a></h5>
+<ul>
+<li><code>promise</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise" class="type">&#x3C;Promise></a></li>
+</ul>
+<p>Called immediately after a promise continuation executes. This may be after a
+<code>then()</code>, <code>catch()</code>, or <code>finally()</code> handler or before an <code>await</code> after another
+<code>await</code>.</p>
+<h5><code>settled(promise)</code><span><a class="mark" href="#settledpromise" id="settledpromise">#</a></span><a aria-hidden="true" class="legacy" id="v8_settled_promise"></a></h5>
+<ul>
+<li><code>promise</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise" class="type">&#x3C;Promise></a></li>
+</ul>
+<p>Called when the promise receives a resolution or rejection value. This may
+occur synchronously in the case of <code>Promise.resolve()</code> or <code>Promise.reject()</code>.</p></section>
         <!-- API END -->
       </div>
     </div>

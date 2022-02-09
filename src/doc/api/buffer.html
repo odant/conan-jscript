@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Buffer | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Buffer | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="buffer" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -287,7 +287,7 @@
         <h2>Buffer<span><a class="mark" href="#buffer" id="buffer">#</a></span><a aria-hidden="true" class="legacy" id="buffer_buffer"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/buffer.js">lib/buffer.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/buffer.js">lib/buffer.js</a></p>
 <p><code>Buffer</code> objects are used to represent a fixed-length sequence of bytes. Many
 Node.js APIs support <code>Buffer</code>s.</p>
 <p>The <code>Buffer</code> class is a subclass of JavaScript's <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array"><code>Uint8Array</code></a> class and
@@ -534,14 +534,14 @@ of the target type.</li>
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span>]);
-<span class="hljs-keyword">const</span> uint32array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(buf);
+<span class="hljs-keyword">const</span> uint32array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(buf);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(uint32array);
 
 <span class="hljs-comment">// Prints: Uint32Array(4) [ 1, 2, 3, 4 ]</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span>]);
-<span class="hljs-keyword">const</span> uint32array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(buf);
+<span class="hljs-keyword">const</span> uint32array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(buf);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(uint32array);
 
@@ -554,20 +554,20 @@ of the target type.</li>
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'hello'</span>, <span class="hljs-string">'utf16le'</span>);
-<span class="hljs-keyword">const</span> uint16array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(
+<span class="hljs-keyword">const</span> uint16array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(
   buf.<span class="hljs-property">buffer</span>,
   buf.<span class="hljs-property">byteOffset</span>,
-  buf.<span class="hljs-property">length</span> / <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>.<span class="hljs-property">BYTES_PER_ELEMENT</span>);
+  buf.<span class="hljs-property">length</span> / <span class="hljs-title class_">Uint16Array</span>.<span class="hljs-property">BYTES_PER_ELEMENT</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(uint16array);
 
 <span class="hljs-comment">// Prints: Uint16Array(5) [ 104, 101, 108, 108, 111 ]</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'hello'</span>, <span class="hljs-string">'utf16le'</span>);
-<span class="hljs-keyword">const</span> uint16array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(
+<span class="hljs-keyword">const</span> uint16array = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(
   buf.<span class="hljs-property">buffer</span>,
   buf.<span class="hljs-property">byteOffset</span>,
-  buf.<span class="hljs-property">length</span> / <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>.<span class="hljs-property">BYTES_PER_ELEMENT</span>);
+  buf.<span class="hljs-property">length</span> / <span class="hljs-title class_">Uint16Array</span>.<span class="hljs-property">BYTES_PER_ELEMENT</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(uint16array);
 
@@ -579,7 +579,7 @@ behaves like <code>new Uint8Array()</code> in this context.</p>
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">2</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">2</span>);
 
 arr[<span class="hljs-number">0</span>] = <span class="hljs-number">5000</span>;
 arr[<span class="hljs-number">1</span>] = <span class="hljs-number">4000</span>;
@@ -602,7 +602,7 @@ arr[<span class="hljs-number">1</span>] = <span class="hljs-number">6000</span>;
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf2);
 <span class="hljs-comment">// Prints: &#x3C;Buffer 88 13 70 17></span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">2</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">2</span>);
 
 arr[<span class="hljs-number">0</span>] = <span class="hljs-number">5000</span>;
 arr[<span class="hljs-number">1</span>] = <span class="hljs-number">4000</span>;
@@ -630,13 +630,13 @@ possible to use only a portion of the underlying <a href="https://developer.mozi
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">20</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">20</span>);
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(arr.<span class="hljs-property">buffer</span>, <span class="hljs-number">0</span>, <span class="hljs-number">16</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-property">length</span>);
 <span class="hljs-comment">// Prints: 16</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">20</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">20</span>);
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(arr.<span class="hljs-property">buffer</span>, <span class="hljs-number">0</span>, <span class="hljs-number">16</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-property">length</span>);
@@ -1220,7 +1220,7 @@ allocated memory as the <a href="https://developer.mozilla.org/en-US/docs/Web/Ja
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">2</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">2</span>);
 
 arr[<span class="hljs-number">0</span>] = <span class="hljs-number">5000</span>;
 arr[<span class="hljs-number">1</span>] = <span class="hljs-number">4000</span>;
@@ -1237,7 +1237,7 @@ arr[<span class="hljs-number">1</span>] = <span class="hljs-number">6000</span>;
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf);
 <span class="hljs-comment">// Prints: &#x3C;Buffer 88 13 70 17></span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>(<span class="hljs-number">2</span>);
+<span class="hljs-keyword">const</span> arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>(<span class="hljs-number">2</span>);
 
 arr[<span class="hljs-number">0</span>] = <span class="hljs-number">5000</span>;
 arr[<span class="hljs-number">1</span>] = <span class="hljs-number">4000</span>;
@@ -1279,16 +1279,16 @@ beyond the range of the <code>TypedArray</code>:</p>
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-keyword">const</span> arrA = <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x63</span>, <span class="hljs-number">0x64</span>, <span class="hljs-number">0x65</span>, <span class="hljs-number">0x66</span>]); <span class="hljs-comment">// 4 elements</span>
-<span class="hljs-keyword">const</span> arrB = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(arrA.<span class="hljs-property">buffer</span>, <span class="hljs-number">1</span>, <span class="hljs-number">2</span>); <span class="hljs-comment">// 2 elements</span>
+<span class="hljs-keyword">const</span> arrA = <span class="hljs-title class_">Uint8Array</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x63</span>, <span class="hljs-number">0x64</span>, <span class="hljs-number">0x65</span>, <span class="hljs-number">0x66</span>]); <span class="hljs-comment">// 4 elements</span>
+<span class="hljs-keyword">const</span> arrB = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(arrA.<span class="hljs-property">buffer</span>, <span class="hljs-number">1</span>, <span class="hljs-number">2</span>); <span class="hljs-comment">// 2 elements</span>
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(arrA.<span class="hljs-property">buffer</span> === arrB.<span class="hljs-property">buffer</span>); <span class="hljs-comment">// true</span>
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(arrB.<span class="hljs-property">buffer</span>);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf);
 <span class="hljs-comment">// Prints: &#x3C;Buffer 63 64 65 66></span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> arrA = <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x63</span>, <span class="hljs-number">0x64</span>, <span class="hljs-number">0x65</span>, <span class="hljs-number">0x66</span>]); <span class="hljs-comment">// 4 elements</span>
-<span class="hljs-keyword">const</span> arrB = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(arrA.<span class="hljs-property">buffer</span>, <span class="hljs-number">1</span>, <span class="hljs-number">2</span>); <span class="hljs-comment">// 2 elements</span>
+<span class="hljs-keyword">const</span> arrA = <span class="hljs-title class_">Uint8Array</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x63</span>, <span class="hljs-number">0x64</span>, <span class="hljs-number">0x65</span>, <span class="hljs-number">0x66</span>]); <span class="hljs-comment">// 4 elements</span>
+<span class="hljs-keyword">const</span> arrB = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(arrA.<span class="hljs-property">buffer</span>, <span class="hljs-number">1</span>, <span class="hljs-number">2</span>); <span class="hljs-comment">// 2 elements</span>
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(arrA.<span class="hljs-property">buffer</span> === arrB.<span class="hljs-property">buffer</span>); <span class="hljs-comment">// true</span>
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(arrB.<span class="hljs-property">buffer</span>);
@@ -1420,13 +1420,13 @@ appropriate for <code>Buffer.from()</code> variants.</p>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// true</span>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-string">'a string'</span>); <span class="hljs-comment">// false</span>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>([]); <span class="hljs-comment">// false</span>
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">1024</span>)); <span class="hljs-comment">// false</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">1024</span>)); <span class="hljs-comment">// false</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">alloc</span>(<span class="hljs-number">10</span>)); <span class="hljs-comment">// true</span>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// true</span>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-string">'a string'</span>); <span class="hljs-comment">// false</span>
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>([]); <span class="hljs-comment">// false</span>
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">1024</span>)); <span class="hljs-comment">// false</span></code></pre>
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">1024</span>)); <span class="hljs-comment">// false</span></code></pre>
 <h4>Static method: <code>Buffer.isEncoding(encoding)</code><span><a class="mark" href="#static-method-bufferisencodingencoding" id="static-method-bufferisencodingencoding">#</a></span><a aria-hidden="true" class="legacy" id="buffer_static_method_buffer_isencoding_encoding"></a></h4>
 <div class="api_metadata">
 <span>Added in: v0.9.1</span>
@@ -1556,7 +1556,7 @@ a <code>Buffer</code> is that in this case one needs to specify the <code>byteOf
 <span class="hljs-comment">// When casting the Node.js Buffer to an Int8Array, use the byteOffset</span>
 <span class="hljs-comment">// to refer only to the part of `nodeBuffer.buffer` that contains the memory</span>
 <span class="hljs-comment">// for `nodeBuffer`.</span>
-<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>8<span class="hljs-built_in">Array</span>(nodeBuffer.<span class="hljs-property">buffer</span>, nodeBuffer.<span class="hljs-property">byteOffset</span>, nodeBuffer.<span class="hljs-property">length</span>);</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
+<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int8Array</span>(nodeBuffer.<span class="hljs-property">buffer</span>, nodeBuffer.<span class="hljs-property">byteOffset</span>, nodeBuffer.<span class="hljs-property">length</span>);</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-comment">// Create a buffer smaller than `Buffer.poolSize`.</span>
 <span class="hljs-keyword">const</span> nodeBuffer = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span>, <span class="hljs-number">5</span>, <span class="hljs-number">6</span>, <span class="hljs-number">7</span>, <span class="hljs-number">8</span>, <span class="hljs-number">9</span>]);
@@ -1564,7 +1564,7 @@ a <code>Buffer</code> is that in this case one needs to specify the <code>byteOf
 <span class="hljs-comment">// When casting the Node.js Buffer to an Int8Array, use the byteOffset</span>
 <span class="hljs-comment">// to refer only to the part of `nodeBuffer.buffer` that contains the memory</span>
 <span class="hljs-comment">// for `nodeBuffer`.</span>
-<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>8<span class="hljs-built_in">Array</span>(nodeBuffer.<span class="hljs-property">buffer</span>, nodeBuffer.<span class="hljs-property">byteOffset</span>, nodeBuffer.<span class="hljs-property">length</span>);</code></pre>
+<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int8Array</span>(nodeBuffer.<span class="hljs-property">buffer</span>, nodeBuffer.<span class="hljs-property">byteOffset</span>, nodeBuffer.<span class="hljs-property">length</span>);</code></pre>
 <h4><code>buf.compare(target[, targetStart[, targetEnd[, sourceStart[, sourceEnd]]]])</code><span><a class="mark" href="#bufcomparetarget-targetstart-targetend-sourcestart-sourceend" id="bufcomparetarget-targetstart-targetend-sourcestart-sourceend">#</a></span><a aria-hidden="true" class="legacy" id="buffer_buf_compare_target_targetstart_targetend_sourcestart_sourceend"></a></h4>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -3140,7 +3140,7 @@ which is a superclass of <code>Buffer</code>. To copy the slice, use
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> copiedBuf = <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>.<span class="hljs-property"><span class="hljs-keyword">prototype</span></span>.<span class="hljs-property">slice</span>.<span class="hljs-title function_">call</span>(buf);
+<span class="hljs-keyword">const</span> copiedBuf = <span class="hljs-title class_">Uint8Array</span>.<span class="hljs-property"><span class="hljs-keyword">prototype</span></span>.<span class="hljs-property">slice</span>.<span class="hljs-title function_">call</span>(buf);
 copiedBuf[<span class="hljs-number">0</span>]++;
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(copiedBuf.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints: cuffer</span>
@@ -3150,7 +3150,7 @@ copiedBuf[<span class="hljs-number">0</span>]++;
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> copiedBuf = <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>.<span class="hljs-property"><span class="hljs-keyword">prototype</span></span>.<span class="hljs-property">slice</span>.<span class="hljs-title function_">call</span>(buf);
+<span class="hljs-keyword">const</span> copiedBuf = <span class="hljs-title class_">Uint8Array</span>.<span class="hljs-property"><span class="hljs-keyword">prototype</span></span>.<span class="hljs-property">slice</span>.<span class="hljs-title function_">call</span>(buf);
 copiedBuf[<span class="hljs-number">0</span>]++;
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(copiedBuf.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints: cuffer</span>
@@ -3307,12 +3307,12 @@ In particular, <code>Buffer.from(buf.toJSON())</code> works like <code>Buffer.fr
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x1</span>, <span class="hljs-number">0x2</span>, <span class="hljs-number">0x3</span>, <span class="hljs-number">0x4</span>, <span class="hljs-number">0x5</span>]);
-<span class="hljs-keyword">const</span> json = <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">stringify</span>(buf);
+<span class="hljs-keyword">const</span> json = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>(buf);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(json);
 <span class="hljs-comment">// Prints: {"type":"Buffer","data":[1,2,3,4,5]}</span>
 
-<span class="hljs-keyword">const</span> copy = <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">parse</span>(json, <span class="hljs-function">(<span class="hljs-params">key, value</span>) =></span> {
+<span class="hljs-keyword">const</span> copy = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(json, <span class="hljs-function">(<span class="hljs-params">key, value</span>) =></span> {
   <span class="hljs-keyword">return</span> value &#x26;&#x26; value.<span class="hljs-property">type</span> === <span class="hljs-string">'Buffer'</span> ?
     <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(value) :
     value;
@@ -3322,12 +3322,12 @@ In particular, <code>Buffer.from(buf.toJSON())</code> works like <code>Buffer.fr
 <span class="hljs-comment">// Prints: &#x3C;Buffer 01 02 03 04 05></span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>([<span class="hljs-number">0x1</span>, <span class="hljs-number">0x2</span>, <span class="hljs-number">0x3</span>, <span class="hljs-number">0x4</span>, <span class="hljs-number">0x5</span>]);
-<span class="hljs-keyword">const</span> json = <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">stringify</span>(buf);
+<span class="hljs-keyword">const</span> json = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>(buf);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(json);
 <span class="hljs-comment">// Prints: {"type":"Buffer","data":[1,2,3,4,5]}</span>
 
-<span class="hljs-keyword">const</span> copy = <span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">parse</span>(json, <span class="hljs-function">(<span class="hljs-params">key, value</span>) =></span> {
+<span class="hljs-keyword">const</span> copy = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(json, <span class="hljs-function">(<span class="hljs-params">key, value</span>) =></span> {
   <span class="hljs-keyword">return</span> value &#x26;&#x26; value.<span class="hljs-property">type</span> === <span class="hljs-string">'Buffer'</span> ?
     <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(value) :
     value;

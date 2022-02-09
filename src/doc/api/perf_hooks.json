@@ -8,7 +8,7 @@
       "introduced_in": "v8.5.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/perf_hooks.js\">lib/perf_hooks.js</a></p>\n<p>This module provides an implementation of a subset of the W3C\n<a href=\"https://w3c.github.io/perf-timing-primer/\">Web Performance APIs</a> as well as additional APIs for\nNode.js-specific performance measurements.</p>\n<p>Node.js supports the following <a href=\"https://w3c.github.io/perf-timing-primer/\">Web Performance APIs</a>:</p>\n<ul>\n<li><a href=\"https://www.w3.org/TR/hr-time-2\">High Resolution Time</a></li>\n<li><a href=\"https://w3c.github.io/performance-timeline/\">Performance Timeline</a></li>\n<li><a href=\"https://www.w3.org/TR/user-timing/\">User Timing</a></li>\n</ul>\n<pre><code class=\"language-js\">const { PerformanceObserver, performance } = require('perf_hooks');\n\nconst obs = new PerformanceObserver((items) => {\n  console.log(items.getEntries()[0].duration);\n  performance.clearMarks();\n});\nobs.observe({ type: 'measure' });\nperformance.measure('Start to Now');\n\nperformance.mark('A');\ndoSomeLongRunningProcess(() => {\n  performance.measure('A to Now', 'A');\n\n  performance.mark('B');\n  performance.measure('A to B', 'A', 'B');\n});\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/perf_hooks.js\">lib/perf_hooks.js</a></p>\n<p>This module provides an implementation of a subset of the W3C\n<a href=\"https://w3c.github.io/perf-timing-primer/\">Web Performance APIs</a> as well as additional APIs for\nNode.js-specific performance measurements.</p>\n<p>Node.js supports the following <a href=\"https://w3c.github.io/perf-timing-primer/\">Web Performance APIs</a>:</p>\n<ul>\n<li><a href=\"https://www.w3.org/TR/hr-time-2\">High Resolution Time</a></li>\n<li><a href=\"https://w3c.github.io/performance-timeline/\">Performance Timeline</a></li>\n<li><a href=\"https://www.w3.org/TR/user-timing/\">User Timing</a></li>\n</ul>\n<pre><code class=\"language-js\">const { PerformanceObserver, performance } = require('perf_hooks');\n\nconst obs = new PerformanceObserver((items) => {\n  console.log(items.getEntries()[0].duration);\n  performance.clearMarks();\n});\nobs.observe({ type: 'measure' });\nperformance.measure('Start to Now');\n\nperformance.mark('A');\ndoSomeLongRunningProcess(() => {\n  performance.measure('A to Now', 'A');\n\n  performance.mark('B');\n  performance.measure('A to B', 'A', 'B');\n});\n</code></pre>",
       "properties": [
         {
           "textRaw": "`perf_hooks.performance`",
@@ -643,7 +643,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Subscribes the <a href=\"perf_hooks.html#class-perf_hooksperformanceobserver\" class=\"type\">&lt;PerformanceObserver&gt;</a> instance to notifications of new\n<a href=\"perf_hooks.html#class-performanceentry\" class=\"type\">&lt;PerformanceEntry&gt;</a> instances identified either by <code>options.entryTypes</code>\nor <code>options.type</code>:</p>\n<pre><code class=\"language-js\">const {\n  performance,\n  PerformanceObserver\n} = require('perf_hooks');\n\nconst obs = new PerformanceObserver((list, observer) => {\n  // Called three times synchronously. `list` contains one item.\n});\nobs.observe({ type: 'mark' });\n\nfor (let n = 0; n &#x3C; 3; n++)\n  performance.mark(`test${n}`);\n</code></pre>"
+              "desc": "<p>Subscribes the <a href=\"perf_hooks.html#class-perf_hooksperformanceobserver\" class=\"type\">&lt;PerformanceObserver&gt;</a> instance to notifications of new\n<a href=\"perf_hooks.html#class-performanceentry\" class=\"type\">&lt;PerformanceEntry&gt;</a> instances identified either by <code>options.entryTypes</code>\nor <code>options.type</code>:</p>\n<pre><code class=\"language-js\">const {\n  performance,\n  PerformanceObserver\n} = require('perf_hooks');\n\nconst obs = new PerformanceObserver((list, observer) => {\n  // Called once asynchronously. `list` contains three items.\n});\nobs.observe({ type: 'mark' });\n\nfor (let n = 0; n &#x3C; 3; n++)\n  performance.mark(`test${n}`);\n</code></pre>"
             }
           ],
           "signatures": [
@@ -780,6 +780,30 @@
           },
           "properties": [
             {
+              "textRaw": "`count` {number}",
+              "type": "number",
+              "name": "count",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The number of samples recorded by the histogram.</p>"
+            },
+            {
+              "textRaw": "`countBigInt` {bigint}",
+              "type": "bigint",
+              "name": "countBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The number of samples recorded by the histogram.</p>"
+            },
+            {
               "textRaw": "`exceeds` {number}",
               "type": "number",
               "name": "exceeds",
@@ -792,12 +816,36 @@
               "desc": "<p>The number of times the event loop delay exceeded the maximum 1 hour event\nloop delay threshold.</p>"
             },
             {
+              "textRaw": "`exceedsBigInt` {bigint}",
+              "type": "bigint",
+              "name": "exceedsBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The number of times the event loop delay exceeded the maximum 1 hour event\nloop delay threshold.</p>"
+            },
+            {
               "textRaw": "`max` {number}",
               "type": "number",
               "name": "max",
               "meta": {
                 "added": [
                   "v11.10.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The maximum recorded event loop delay.</p>"
+            },
+            {
+              "textRaw": "`maxBigInt` {bigint}",
+              "type": "bigint",
+              "name": "maxBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
                 ],
                 "changes": []
               },
@@ -828,12 +876,36 @@
               "desc": "<p>The minimum recorded event loop delay.</p>"
             },
             {
+              "textRaw": "`minBigInt` {bigint}",
+              "type": "bigint",
+              "name": "minBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The minimum recorded event loop delay.</p>"
+            },
+            {
               "textRaw": "`percentiles` {Map}",
               "type": "Map",
               "name": "percentiles",
               "meta": {
                 "added": [
                   "v11.10.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>Returns a <code>Map</code> object detailing the accumulated percentile distribution.</p>"
+            },
+            {
+              "textRaw": "`percentilesBigInt` {Map}",
+              "type": "Map",
+              "name": "percentilesBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
                 ],
                 "changes": []
               },
@@ -876,6 +948,35 @@
                       "name": "percentile",
                       "type": "number",
                       "desc": "A percentile value in the range (0, 100]."
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Returns the value at the given percentile.</p>"
+            },
+            {
+              "textRaw": "`histogram.percentileBigInt(percentile)`",
+              "type": "method",
+              "name": "percentileBigInt",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {bigint}",
+                    "name": "return",
+                    "type": "bigint"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`percentile` {number} A percentile value in the range (0, 100).",
+                      "name": "percentile",
+                      "type": "number",
+                      "desc": "A percentile value in the range (0, 100)."
                     }
                   ]
                 }
@@ -974,6 +1075,29 @@
           },
           "methods": [
             {
+              "textRaw": "`histogram.add(other)`",
+              "type": "method",
+              "name": "add",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "params": [
+                    {
+                      "textRaw": "`other` {RecordableHistogram}",
+                      "name": "other",
+                      "type": "RecordableHistogram"
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Adds the values from <code>other</code> to this histogram.</p>"
+            },
+            {
               "textRaw": "`histogram.record(val)`",
               "type": "method",
               "name": "record",
@@ -1057,18 +1181,18 @@
                   "type": "Object",
                   "options": [
                     {
-                      "textRaw": "`min` {number|bigint} The minimum recordable value. Must be an integer value greater than 0. **Default:** `1`.",
-                      "name": "min",
+                      "textRaw": "`lowest` {number|bigint} The lowest discernible value. Must be an integer value greater than 0. **Default:** `1`.",
+                      "name": "lowest",
                       "type": "number|bigint",
                       "default": "`1`",
-                      "desc": "The minimum recordable value. Must be an integer value greater than 0."
+                      "desc": "The lowest discernible value. Must be an integer value greater than 0."
                     },
                     {
-                      "textRaw": "`max` {number|bigint} The maximum recordable value. Must be an integer value greater than `min`. **Default:** `Number.MAX_SAFE_INTEGER`.",
-                      "name": "max",
+                      "textRaw": "`highest` {number|bigint} The highest recordable value. Must be an integer value that is equal to or greater than two times `min`. **Default:** `Number.MAX_SAFE_INTEGER`.",
+                      "name": "highest",
                       "type": "number|bigint",
                       "default": "`Number.MAX_SAFE_INTEGER`",
-                      "desc": "The maximum recordable value. Must be an integer value greater than `min`."
+                      "desc": "The highest recordable value. Must be an integer value that is equal to or greater than two times `min`."
                     },
                     {
                       "textRaw": "`figures` {number} The number of accuracy digits. Must be a number between `1` and `5`. **Default:** `3`.",

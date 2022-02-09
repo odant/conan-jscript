@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Async hooks | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Async hooks | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="async_hooks" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -171,6 +171,7 @@
 <li><a href="#async_hooksexecutionasyncresource"><code>async_hooks.executionAsyncResource()</code></a></li>
 <li><a href="#async_hooksexecutionasyncid"><code>async_hooks.executionAsyncId()</code></a></li>
 <li><a href="#async_hookstriggerasyncid"><code>async_hooks.triggerAsyncId()</code></a></li>
+<li><a href="#async_hooksasyncwrapproviders"><code>async_hooks.asyncWrapProviders</code></a></li>
 </ul>
 </li>
 <li><a href="#promise-execution-tracking">Promise execution tracking</a></li>
@@ -188,7 +189,7 @@
         <h2>Async hooks<span><a class="mark" href="#async-hooks" id="async-hooks">#</a></span><a aria-hidden="true" class="legacy" id="async_hooks_async_hooks"></a></h2>
 
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/async_hooks.js">lib/async_hooks.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/async_hooks.js">lib/async_hooks.js</a></p>
 <p>The <code>async_hooks</code> module provides an API to track asynchronous resources. It
 can be accessed using:</p>
 
@@ -698,7 +699,7 @@ use of a tracking <code>Map</code> to store the metadata:</p>
 <span class="hljs-keyword">const</span> server = <span class="hljs-title function_">createServer</span>(<span class="hljs-function">(<span class="hljs-params">req, res</span>) =></span> {
   <span class="hljs-title function_">executionAsyncResource</span>()[sym] = { <span class="hljs-attr">state</span>: req.<span class="hljs-property">url</span> };
   <span class="hljs-built_in">setTimeout</span>(<span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) {
-    res.<span class="hljs-title function_">end</span>(<span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">stringify</span>(<span class="hljs-title function_">executionAsyncResource</span>()[sym]));
+    res.<span class="hljs-title function_">end</span>(<span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>(<span class="hljs-title function_">executionAsyncResource</span>()[sym]));
   }, <span class="hljs-number">100</span>);
 }).<span class="hljs-title function_">listen</span>(<span class="hljs-number">3000</span>);</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { createServer } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
 <span class="hljs-keyword">const</span> {
@@ -720,7 +721,7 @@ use of a tracking <code>Map</code> to store the metadata:</p>
 <span class="hljs-keyword">const</span> server = <span class="hljs-title function_">createServer</span>(<span class="hljs-function">(<span class="hljs-params">req, res</span>) =></span> {
   <span class="hljs-title function_">executionAsyncResource</span>()[sym] = { <span class="hljs-attr">state</span>: req.<span class="hljs-property">url</span> };
   <span class="hljs-built_in">setTimeout</span>(<span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) {
-    res.<span class="hljs-title function_">end</span>(<span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">stringify</span>(<span class="hljs-title function_">executionAsyncResource</span>()[sym]));
+    res.<span class="hljs-title function_">end</span>(<span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>(<span class="hljs-title function_">executionAsyncResource</span>()[sym]));
   }, <span class="hljs-number">100</span>);
 }).<span class="hljs-title function_">listen</span>(<span class="hljs-number">3000</span>);</code></pre>
 <h4><code>async_hooks.executionAsyncId()</code><span><a class="mark" href="#async_hooksexecutionasyncid" id="async_hooksexecutionasyncid">#</a></span><a aria-hidden="true" class="legacy" id="async_hooks_async_hooks_executionasyncid"></a></h4>
@@ -784,6 +785,16 @@ that is currently being executed.</li>
 });</code></pre>
 <p>Promise contexts may not get valid <code>triggerAsyncId</code>s by default. See
 the section on <a href="#promise-execution-tracking">promise execution tracking</a>.</p>
+<h4><code>async_hooks.asyncWrapProviders</code><span><a class="mark" href="#async_hooksasyncwrapproviders" id="async_hooksasyncwrapproviders">#</a></span><a aria-hidden="true" class="legacy" id="async_hooks_async_hooks_asyncwrapproviders"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li>Returns: A map of provider types to the corresponding numeric id.
+This map contains all the event types that might be emitted by the <code>async_hooks.init()</code> event.</li>
+</ul>
+<p>This feature suppresses the deprecated usage of <code>process.binding('async_wrap').Providers</code>.
+See: <a href="deprecations.html#dep0111-processbinding">DEP0111</a></p>
 </section><section><h3>Promise execution tracking<span><a class="mark" href="#promise-execution-tracking" id="promise-execution-tracking">#</a></span><a aria-hidden="true" class="legacy" id="async_hooks_promise_execution_tracking"></a></h3>
 <p>By default, promise executions are not assigned <code>asyncId</code>s due to the relatively
 expensive nature of the <a href="https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit">promise introspection API</a> provided by

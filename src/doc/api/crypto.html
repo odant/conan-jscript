@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Crypto | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Crypto | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="crypto" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -251,6 +251,7 @@
 <li><a href="#x509checkprivatekeyprivatekey"><code>x509.checkPrivateKey(privateKey)</code></a></li>
 <li><a href="#x509fingerprint"><code>x509.fingerprint</code></a></li>
 <li><a href="#x509fingerprint256"><code>x509.fingerprint256</code></a></li>
+<li><a href="#x509fingerprint512"><code>x509.fingerprint512</code></a></li>
 <li><a href="#x509infoaccess"><code>x509.infoAccess</code></a></li>
 <li><a href="#x509issuer"><code>x509.issuer</code></a></li>
 <li><a href="#x509issuercertificate"><code>x509.issuerCertificate</code></a></li>
@@ -352,7 +353,7 @@
         <h2>Crypto<span><a class="mark" href="#crypto" id="crypto">#</a></span><a aria-hidden="true" class="legacy" id="crypto_crypto"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/crypto.js">lib/crypto.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/crypto.js">lib/crypto.js</a></p>
 <p>The <code>crypto</code> module provides cryptographic functionality that includes a set of
 wrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>
 
@@ -611,7 +612,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-comment">// Once we have the key and iv, we can create and use the cipher...</span>
@@ -640,7 +641,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-comment">// Once we have the key and iv, we can create and use the cipher...</span>
@@ -681,7 +682,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-keyword">const</span> cipher = <span class="hljs-title function_">createCipheriv</span>(algorithm, key, iv);
@@ -716,7 +717,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-keyword">const</span> cipher = <span class="hljs-title function_">createCipheriv</span>(algorithm, key, iv);
@@ -745,7 +746,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-keyword">const</span> cipher = <span class="hljs-title function_">createCipheriv</span>(algorithm, key, iv);
@@ -768,7 +769,7 @@ directly using the <code>new</code> keyword.</p>
 <span class="hljs-title function_">scrypt</span>(password, <span class="hljs-string">'salt'</span>, <span class="hljs-number">24</span>, <span class="hljs-function">(<span class="hljs-params">err, key</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-comment">// Then, we'll generate a random initialization vector</span>
-  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
+  <span class="hljs-title function_">randomFill</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">16</span>), <span class="hljs-function">(<span class="hljs-params">err, iv</span>) =></span> {
     <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
 
     <span class="hljs-keyword">const</span> cipher = <span class="hljs-title function_">createCipheriv</span>(algorithm, key, iv);
@@ -803,6 +804,8 @@ the given data.</li>
 </ul>
 <p>The <code>cipher.getAuthTag()</code> method should only be called after encryption has
 been completed using the <a href="#cipherfinaloutputencoding"><code>cipher.final()</code></a> method.</p>
+<p>If the <code>authTagLength</code> option was set during the <code>cipher</code> instance's creation,
+this function will return exactly <code>authTagLength</code> bytes.</p>
 <h4><code>cipher.setAAD(buffer[, options])</code><span><a class="mark" href="#ciphersetaadbuffer-options" id="ciphersetaadbuffer-options">#</a></span><a aria-hidden="true" class="legacy" id="crypto_cipher_setaad_buffer_options"></a></h4>
 <div class="api_metadata">
 <span>Added in: v1.0.0</span>
@@ -2519,10 +2522,15 @@ certificate.</li>
 <li><code>singleLabelSubdomains</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>false</code>.</li>
 </ul>
 </li>
-<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Returns <code>name</code> if the certificate matches,
-<code>undefined</code> if it does not.</li>
+<li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Returns a subject name that matches <code>name</code>,
+or <code>undefined</code> if no subject name matches <code>name</code>.</li>
 </ul>
 <p>Checks whether the certificate matches the given host name.</p>
+<p>If the certificate matches the given host name, the matching subject name is
+returned. The returned name might be an exact match (e.g., <code>foo.example.com</code>)
+or it might contain wildcards (e.g., <code>*.example.com</code>). Because host name
+comparisons are case-insensitive, the returned subject name might also differ
+from the given <code>name</code> in capitalization.</p>
 <h4><code>x509.checkIP(ip[, options])</code><span><a class="mark" href="#x509checkipip-options" id="x509checkipip-options">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_checkip_ip_options"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.6.0</span>
@@ -2577,6 +2585,14 @@ the given private key.</p>
 <li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 </ul>
 <p>The SHA-256 fingerprint of this certificate.</p>
+<h4><code>x509.fingerprint512</code><span><a class="mark" href="#x509fingerprint512" id="x509fingerprint512">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_fingerprint512"></a></h4>
+<div class="api_metadata">
+<span>Added in: v16.14.0</span>
+</div>
+<ul>
+<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
+</ul>
+<p>The SHA-512 fingerprint of this certificate.</p>
 <h4><code>x509.infoAccess</code><span><a class="mark" href="#x509infoaccess" id="x509infoaccess">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_infoaccess"></a></h4>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -4435,7 +4451,7 @@ not be larger than <code>2**31 - 1</code>.</li>
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 <span class="hljs-keyword">const</span> { randomFillSync } = <span class="hljs-keyword">await</span> <span class="hljs-title function_">import</span>(<span class="hljs-string">'crypto'</span>);
 
-<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(<span class="hljs-number">10</span>);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-title function_">randomFillSync</span>(a).<span class="hljs-property">buffer</span>,
                         a.<span class="hljs-property">byteOffset</span>, a.<span class="hljs-property">byteLength</span>).<span class="hljs-title function_">toString</span>(<span class="hljs-string">'hex'</span>));
 
@@ -4447,7 +4463,7 @@ not be larger than <code>2**31 - 1</code>.</li>
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-title function_">randomFillSync</span>(c)).<span class="hljs-title function_">toString</span>(<span class="hljs-string">'hex'</span>));</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { randomFillSync } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'crypto'</span>);
 <span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(<span class="hljs-number">10</span>);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-title function_">randomFillSync</span>(a).<span class="hljs-property">buffer</span>,
                         a.<span class="hljs-property">byteOffset</span>, a.<span class="hljs-property">byteLength</span>).<span class="hljs-title function_">toString</span>(<span class="hljs-string">'hex'</span>));
 
@@ -4530,7 +4546,7 @@ distribution and have no meaningful lower or upper bounds.</p>
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 <span class="hljs-keyword">const</span> { randomFill } = <span class="hljs-keyword">await</span> <span class="hljs-title function_">import</span>(<span class="hljs-string">'crypto'</span>);
 
-<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(<span class="hljs-number">10</span>);
 <span class="hljs-title function_">randomFill</span>(a, <span class="hljs-function">(<span class="hljs-params">err, buf</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(buf.<span class="hljs-property">buffer</span>, buf.<span class="hljs-property">byteOffset</span>, buf.<span class="hljs-property">byteLength</span>)
@@ -4551,7 +4567,7 @@ distribution and have no meaningful lower or upper bounds.</p>
 });</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { randomFill } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'crypto'</span>);
 <span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">const</span> a = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>(<span class="hljs-number">10</span>);
 <span class="hljs-title function_">randomFill</span>(a, <span class="hljs-function">(<span class="hljs-params">err, buf</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(buf.<span class="hljs-property">buffer</span>, buf.<span class="hljs-property">byteOffset</span>, buf.<span class="hljs-property">byteLength</span>)

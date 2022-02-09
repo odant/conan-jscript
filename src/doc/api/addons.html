@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>C++ addons | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>C++ addons | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="addons" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -241,7 +241,7 @@ equivalent of the following JavaScript code:</p>
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Method</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Method</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(String::<span class="hljs-built_in">NewFromUtf8</span>(
       isolate, <span class="hljs-string">"world"</span>).<span class="hljs-built_in">ToLocalChecked</span>());
@@ -311,7 +311,7 @@ performing the following steps:</p>
 <ul>
 <li>Define a class which will hold per-addon-instance data and which has a static
 member of the form
-<pre><code class="language-cpp"><span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">DeleteInstance</span><span class="hljs-params">(<span class="hljs-type">void</span>* data)</span> </span>{
+<pre><code class="language-cpp"><span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">DeleteInstance</span><span class="hljs-params">(<span class="hljs-type">void</span>* data)</span> </span>{
   <span class="hljs-comment">// Cast `data` to an instance of the class and delete it.</span>
 }</code></pre>
 </li>
@@ -347,12 +347,12 @@ any asynchronous callbacks the addon may create.</p>
   <span class="hljs-comment">// Per-addon data.</span>
   <span class="hljs-type">int</span> call_count;
 
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">DeleteInstance</span><span class="hljs-params">(<span class="hljs-type">void</span>* data)</span> </span>{
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">DeleteInstance</span><span class="hljs-params">(<span class="hljs-type">void</span>* data)</span> </span>{
     <span class="hljs-keyword">delete</span> <span class="hljs-built_in">static_cast</span>&#x3C;AddonData*>(data);
   }
 };
 
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Method</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; info)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Method</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; info)</span> </span>{
   <span class="hljs-comment">// Retrieve the per-addon-instance data.</span>
   AddonData* data =
       <span class="hljs-built_in">reinterpret_cast</span>&#x3C;AddonData*>(info.<span class="hljs-built_in">Data</span>().<span class="hljs-built_in">As</span>&#x3C;External>()-><span class="hljs-built_in">Value</span>());
@@ -423,11 +423,11 @@ such as any libuv handles registered by the addon.</p>
 <span class="hljs-keyword">using</span> v8::Object;
 
 <span class="hljs-comment">// Note: In a real-world application, do not rely on static/global data.</span>
-<span class="hljs-keyword">static</span> <span class="hljs-type">char</span> cookie[] = <span class="hljs-string">"yum yum"</span>;
-<span class="hljs-keyword">static</span> <span class="hljs-type">int</span> cleanup_cb1_called = <span class="hljs-number">0</span>;
-<span class="hljs-keyword">static</span> <span class="hljs-type">int</span> cleanup_cb2_called = <span class="hljs-number">0</span>;
+<span class="hljs-type">static</span> <span class="hljs-type">char</span> cookie[] = <span class="hljs-string">"yum yum"</span>;
+<span class="hljs-type">static</span> <span class="hljs-type">int</span> cleanup_cb1_called = <span class="hljs-number">0</span>;
+<span class="hljs-type">static</span> <span class="hljs-type">int</span> cleanup_cb2_called = <span class="hljs-number">0</span>;
 
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">cleanup_cb1</span><span class="hljs-params">(<span class="hljs-type">void</span>* arg)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">cleanup_cb1</span><span class="hljs-params">(<span class="hljs-type">void</span>* arg)</span> </span>{
   Isolate* isolate = <span class="hljs-built_in">static_cast</span>&#x3C;Isolate*>(arg);
   <span class="hljs-function">HandleScope <span class="hljs-title">scope</span><span class="hljs-params">(isolate)</span></span>;
   Local&#x3C;Object> obj = Object::<span class="hljs-built_in">New</span>(isolate);
@@ -436,12 +436,12 @@ such as any libuv handles registered by the addon.</p>
   cleanup_cb1_called++;
 }
 
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">cleanup_cb2</span><span class="hljs-params">(<span class="hljs-type">void</span>* arg)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">cleanup_cb2</span><span class="hljs-params">(<span class="hljs-type">void</span>* arg)</span> </span>{
   <span class="hljs-built_in">assert</span>(arg == <span class="hljs-built_in">static_cast</span>&#x3C;<span class="hljs-type">void</span>*>(cookie));
   cleanup_cb2_called++;
 }
 
-<span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">sanity_check</span><span class="hljs-params">(<span class="hljs-type">void</span>*)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">sanity_check</span><span class="hljs-params">(<span class="hljs-type">void</span>*)</span> </span>{
   <span class="hljs-built_in">assert</span>(cleanup_cb1_called == <span class="hljs-number">1</span>);
   <span class="hljs-built_in">assert</span>(cleanup_cb2_called == <span class="hljs-number">1</span>);
 }
@@ -643,7 +643,7 @@ JavaScript and how to return a result:</p>
 <span class="hljs-comment">// This is the implementation of the "add" method</span>
 <span class="hljs-comment">// Input arguments are passed using the</span>
 <span class="hljs-comment">// const FunctionCallbackInfo&#x3C;Value>&#x26; args struct</span>
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Add</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Add</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
   <span class="hljs-comment">// Check the number of arguments passed.</span>
@@ -704,11 +704,11 @@ to invoke such callbacks:</p>
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">RunCallback</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">RunCallback</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
   Local&#x3C;Function> cb = Local&#x3C;Function>::<span class="hljs-built_in">Cast</span>(args[<span class="hljs-number">0</span>]);
-  <span class="hljs-keyword">const</span> <span class="hljs-keyword">unsigned</span> argc = <span class="hljs-number">1</span>;
+  <span class="hljs-type">const</span> <span class="hljs-type">unsigned</span> argc = <span class="hljs-number">1</span>;
   Local&#x3C;Value> argv[argc] = {
       String::<span class="hljs-built_in">NewFromUtf8</span>(isolate,
                           <span class="hljs-string">"hello world"</span>).<span class="hljs-built_in">ToLocalChecked</span>() };
@@ -752,7 +752,7 @@ property <code>msg</code> that echoes the string passed to <code>createObject()<
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
 
@@ -799,13 +799,13 @@ functions and returning those back to JavaScript:</p>
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyFunction</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyFunction</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(String::<span class="hljs-built_in">NewFromUtf8</span>(
       isolate, <span class="hljs-string">"hello world"</span>).<span class="hljs-built_in">ToLocalChecked</span>());
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateFunction</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateFunction</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
@@ -864,14 +864,14 @@ instances to be created using the JavaScript <code>new</code> operator:</p>
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">MyObject</span> : <span class="hljs-keyword">public</span> node::ObjectWrap {
  <span class="hljs-keyword">public</span>:
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Local&#x3C;v8::Object> exports)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Local&#x3C;v8::Object> exports)</span></span>;
 
  <span class="hljs-keyword">private</span>:
   <span class="hljs-function"><span class="hljs-keyword">explicit</span> <span class="hljs-title">MyObject</span><span class="hljs-params">(<span class="hljs-type">double</span> value = <span class="hljs-number">0</span>)</span></span>;
   ~<span class="hljs-built_in">MyObject</span>();
 
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">PlusOne</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">PlusOne</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
 
   <span class="hljs-type">double</span> value_;
 };
@@ -929,7 +929,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
       constructor).<span class="hljs-built_in">FromJust</span>();
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
 
@@ -942,7 +942,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
     args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(args.<span class="hljs-built_in">This</span>());
   } <span class="hljs-keyword">else</span> {
     <span class="hljs-comment">// Invoked as plain function `MyObject(...)`, turn into construct call.</span>
-    <span class="hljs-keyword">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
+    <span class="hljs-type">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
     Local&#x3C;Value> argv[argc] = { args[<span class="hljs-number">0</span>] };
     Local&#x3C;Function> cons =
         args.<span class="hljs-built_in">Data</span>().<span class="hljs-built_in">As</span>&#x3C;Object>()-><span class="hljs-built_in">GetInternalField</span>(<span class="hljs-number">0</span>).<span class="hljs-built_in">As</span>&#x3C;Function>();
@@ -952,7 +952,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   }
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::PlusOne</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::PlusOne</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
   MyObject* obj = ObjectWrap::<span class="hljs-built_in">Unwrap</span>&#x3C;MyObject>(args.<span class="hljs-built_in">Holder</span>());
@@ -1015,7 +1015,7 @@ creating object instances using the JavaScript <code>new</code> operator:</p>
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   MyObject::<span class="hljs-built_in">NewInstance</span>(args);
 }
 
@@ -1042,16 +1042,16 @@ JavaScript:</p>
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">MyObject</span> : <span class="hljs-keyword">public</span> node::ObjectWrap {
  <span class="hljs-keyword">public</span>:
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Isolate* isolate)</span></span>;
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">NewInstance</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Isolate* isolate)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">NewInstance</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
 
  <span class="hljs-keyword">private</span>:
   <span class="hljs-function"><span class="hljs-keyword">explicit</span> <span class="hljs-title">MyObject</span><span class="hljs-params">(<span class="hljs-type">double</span> value = <span class="hljs-number">0</span>)</span></span>;
   ~<span class="hljs-built_in">MyObject</span>();
 
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">PlusOne</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
-  <span class="hljs-keyword">static</span> v8::Global&#x3C;v8::Function> constructor;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">PlusOne</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-type">static</span> v8::Global&#x3C;v8::Function> constructor;
   <span class="hljs-type">double</span> value_;
 };
 
@@ -1105,7 +1105,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   }, <span class="hljs-literal">nullptr</span>);
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
 
@@ -1118,7 +1118,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
     args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(args.<span class="hljs-built_in">This</span>());
   } <span class="hljs-keyword">else</span> {
     <span class="hljs-comment">// Invoked as plain function `MyObject(...)`, turn into construct call.</span>
-    <span class="hljs-keyword">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
+    <span class="hljs-type">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
     Local&#x3C;Value> argv[argc] = { args[<span class="hljs-number">0</span>] };
     Local&#x3C;Function> cons = Local&#x3C;Function>::<span class="hljs-built_in">New</span>(isolate, constructor);
     Local&#x3C;Object> instance =
@@ -1127,10 +1127,10 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   }
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::NewInstance</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::NewInstance</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
-  <span class="hljs-keyword">const</span> <span class="hljs-keyword">unsigned</span> argc = <span class="hljs-number">1</span>;
+  <span class="hljs-type">const</span> <span class="hljs-type">unsigned</span> argc = <span class="hljs-number">1</span>;
   Local&#x3C;Value> argv[argc] = { args[<span class="hljs-number">0</span>] };
   Local&#x3C;Function> cons = Local&#x3C;Function>::<span class="hljs-built_in">New</span>(isolate, constructor);
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
@@ -1140,7 +1140,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(instance);
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::PlusOne</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::PlusOne</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
   MyObject* obj = ObjectWrap::<span class="hljs-built_in">Unwrap</span>&#x3C;MyObject>(args.<span class="hljs-built_in">Holder</span>());
@@ -1203,11 +1203,11 @@ that can take two <code>MyObject</code> objects as input arguments:</p>
 <span class="hljs-keyword">using</span> v8::String;
 <span class="hljs-keyword">using</span> v8::Value;
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">CreateObject</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   MyObject::<span class="hljs-built_in">NewInstance</span>(args);
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Add</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Add</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
 
@@ -1243,16 +1243,16 @@ after unwrapping the object.</p>
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">MyObject</span> : <span class="hljs-keyword">public</span> node::ObjectWrap {
  <span class="hljs-keyword">public</span>:
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Isolate* isolate)</span></span>;
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">NewInstance</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
-  <span class="hljs-function"><span class="hljs-keyword">inline</span> <span class="hljs-type">double</span> <span class="hljs-title">value</span><span class="hljs-params">()</span> <span class="hljs-keyword">const</span> </span>{ <span class="hljs-keyword">return</span> value_; }
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">Init</span><span class="hljs-params">(v8::Isolate* isolate)</span></span>;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">NewInstance</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-function"><span class="hljs-keyword">inline</span> <span class="hljs-type">double</span> <span class="hljs-title">value</span><span class="hljs-params">()</span> <span class="hljs-type">const</span> </span>{ <span class="hljs-keyword">return</span> value_; }
 
  <span class="hljs-keyword">private</span>:
   <span class="hljs-function"><span class="hljs-keyword">explicit</span> <span class="hljs-title">MyObject</span><span class="hljs-params">(<span class="hljs-type">double</span> value = <span class="hljs-number">0</span>)</span></span>;
   ~<span class="hljs-built_in">MyObject</span>();
 
-  <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
-  <span class="hljs-keyword">static</span> v8::Global&#x3C;v8::Function> constructor;
+  <span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">void</span> <span class="hljs-title">New</span><span class="hljs-params">(<span class="hljs-type">const</span> v8::FunctionCallbackInfo&#x3C;v8::Value>&#x26; args)</span></span>;
+  <span class="hljs-type">static</span> v8::Global&#x3C;v8::Function> constructor;
   <span class="hljs-type">double</span> value_;
 };
 
@@ -1302,7 +1302,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   }, <span class="hljs-literal">nullptr</span>);
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::New</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();
 
@@ -1315,7 +1315,7 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
     args.<span class="hljs-built_in">GetReturnValue</span>().<span class="hljs-built_in">Set</span>(args.<span class="hljs-built_in">This</span>());
   } <span class="hljs-keyword">else</span> {
     <span class="hljs-comment">// Invoked as plain function `MyObject(...)`, turn into construct call.</span>
-    <span class="hljs-keyword">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
+    <span class="hljs-type">const</span> <span class="hljs-type">int</span> argc = <span class="hljs-number">1</span>;
     Local&#x3C;Value> argv[argc] = { args[<span class="hljs-number">0</span>] };
     Local&#x3C;Function> cons = Local&#x3C;Function>::<span class="hljs-built_in">New</span>(isolate, constructor);
     Local&#x3C;Object> instance =
@@ -1324,10 +1324,10 @@ MyObject::~<span class="hljs-built_in">MyObject</span>() {
   }
 }
 
-<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::NewInstance</span><span class="hljs-params">(<span class="hljs-keyword">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
+<span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">MyObject::NewInstance</span><span class="hljs-params">(<span class="hljs-type">const</span> FunctionCallbackInfo&#x3C;Value>&#x26; args)</span> </span>{
   Isolate* isolate = args.<span class="hljs-built_in">GetIsolate</span>();
 
-  <span class="hljs-keyword">const</span> <span class="hljs-keyword">unsigned</span> argc = <span class="hljs-number">1</span>;
+  <span class="hljs-type">const</span> <span class="hljs-type">unsigned</span> argc = <span class="hljs-number">1</span>;
   Local&#x3C;Value> argv[argc] = { args[<span class="hljs-number">0</span>] };
   Local&#x3C;Function> cons = Local&#x3C;Function>::<span class="hljs-built_in">New</span>(isolate, constructor);
   Local&#x3C;Context> context = isolate-><span class="hljs-built_in">GetCurrentContext</span>();

@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/url.js\">lib/url.js</a></p>\n<p>The <code>url</code> module provides utilities for URL resolution and parsing. It can be\naccessed using:</p>\n<pre><code class=\"language-mjs\">import url from 'url';\n</code></pre>\n<pre><code class=\"language-cjs\">const url = require('url');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/url.js\">lib/url.js</a></p>\n<p>The <code>url</code> module provides utilities for URL resolution and parsing. It can be\naccessed using:</p>\n<pre><code class=\"language-mjs\">import url from 'url';\n</code></pre>\n<pre><code class=\"language-cjs\">const url = require('url');\n</code></pre>",
       "modules": [
         {
           "textRaw": "URL strings and URL objects",
@@ -846,7 +846,7 @@
                   ]
                 }
               ],
-              "desc": "<p>This utility function converts a URL object into an ordinary options object as\nexpected by the <a href=\"http.html#httprequestoptions-callback\"><code>http.request()</code></a> and <a href=\"https.html#httpsrequestoptions-callback\"><code>https.request()</code></a> APIs.</p>\n<pre><code class=\"language-mjs\">import { urlToHttpOptions } from 'url';\nconst myURL = new URL('https://a:b@測試?abc#foo');\n\nconsole.log(urlToHttpOptions(myURL));\n/**\n{\n  protocol: 'https:',\n  hostname: 'xn--g6w251d',\n  hash: '#foo',\n  search: '?abc',\n  pathname: '/',\n  path: '/?abc',\n  href: 'https://a:b@xn--g6w251d/?abc#foo',\n  auth: 'a:b'\n}\n*/\n</code></pre>\n<pre><code class=\"language-cjs\">const { urlToHttpOptions } = require('url');\nconst myURL = new URL('https://a:b@測試?abc#foo');\n\nconsole.log(urlToHttpOptions(myUrl));\n/**\n{\n  protocol: 'https:',\n  hostname: 'xn--g6w251d',\n  hash: '#foo',\n  search: '?abc',\n  pathname: '/',\n  path: '/?abc',\n  href: 'https://a:b@xn--g6w251d/?abc#foo',\n  auth: 'a:b'\n}\n*/\n</code></pre>"
+              "desc": "<p>This utility function converts a URL object into an ordinary options object as\nexpected by the <a href=\"http.html#httprequestoptions-callback\"><code>http.request()</code></a> and <a href=\"https.html#httpsrequestoptions-callback\"><code>https.request()</code></a> APIs.</p>\n<pre><code class=\"language-mjs\">import { urlToHttpOptions } from 'url';\nconst myURL = new URL('https://a:b@測試?abc#foo');\n\nconsole.log(urlToHttpOptions(myURL));\n/*\n{\n  protocol: 'https:',\n  hostname: 'xn--g6w251d',\n  hash: '#foo',\n  search: '?abc',\n  pathname: '/',\n  path: '/?abc',\n  href: 'https://a:b@xn--g6w251d/?abc#foo',\n  auth: 'a:b'\n}\n*/\n</code></pre>\n<pre><code class=\"language-cjs\">const { urlToHttpOptions } = require('url');\nconst myURL = new URL('https://a:b@測試?abc#foo');\n\nconsole.log(urlToHttpOptions(myUrl));\n/*\n{\n  protocol: 'https:',\n  hostname: 'xn--g6w251d',\n  hash: '#foo',\n  search: '?abc',\n  pathname: '/',\n  path: '/?abc',\n  href: 'https://a:b@xn--g6w251d/?abc#foo',\n  auth: 'a:b'\n}\n*/\n</code></pre>"
             }
           ],
           "type": "module",

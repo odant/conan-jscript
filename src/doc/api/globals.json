@@ -22,18 +22,32 @@
       "desc": "<p>A utility class used to signal cancelation in selected <code>Promise</code>-based APIs.\nThe API is based on the Web API <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/AbortController\"><code>AbortController</code></a>.</p>\n<pre><code class=\"language-js\">const ac = new AbortController();\n\nac.signal.addEventListener('abort', () => console.log('Aborted!'),\n                           { once: true });\n\nac.abort();\n\nconsole.log(ac.signal.aborted);  // Prints True\n</code></pre>",
       "methods": [
         {
-          "textRaw": "`abortController.abort()`",
+          "textRaw": "`abortController.abort([reason])`",
           "type": "method",
           "name": "abort",
           "meta": {
             "added": [
-              "v15.0.0"
+              "v15.0.0",
+              "v14.17.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v16.14.0",
+                "pr-url": "https://github.com/nodejs/node/pull/40807",
+                "description": "Added the new optional reason argument."
+              }
+            ]
           },
           "signatures": [
             {
-              "params": []
+              "params": [
+                {
+                  "textRaw": "`reason` {any} An optional reason, retrievable on the `AbortSignal`s `reason` property.",
+                  "name": "reason",
+                  "type": "any",
+                  "desc": "An optional reason, retrievable on the `AbortSignal`s `reason` property."
+                }
+              ]
             }
           ],
           "desc": "<p>Triggers the abort signal, causing the <code>abortController.signal</code> to emit\nthe <code>'abort'</code> event.</p>"
@@ -66,14 +80,21 @@
           "desc": "<ul>\n<li>Extends: <a href=\"events.html#class-eventtarget\" class=\"type\">&lt;EventTarget&gt;</a></li>\n</ul>\n<p>The <code>AbortSignal</code> is used to notify observers when the\n<code>abortController.abort()</code> method is called.</p>",
           "classMethods": [
             {
-              "textRaw": "Static method: `AbortSignal.abort()`",
+              "textRaw": "Static method: `AbortSignal.abort([reason])`",
               "type": "classMethod",
               "name": "abort",
               "meta": {
                 "added": [
-                  "v15.12.0"
+                  "v15.12.0",
+                  "v14.17.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.14.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/40807",
+                    "description": "Added the new optional reason argument."
+                  }
+                ]
               },
               "signatures": [
                 {
@@ -82,10 +103,40 @@
                     "name": "return",
                     "type": "AbortSignal"
                   },
-                  "params": []
+                  "params": [
+                    {
+                      "textRaw": "`reason`: {any}",
+                      "name": "reason",
+                      "type": "any"
+                    }
+                  ]
                 }
               ],
               "desc": "<p>Returns a new already aborted <code>AbortSignal</code>.</p>"
+            },
+            {
+              "textRaw": "Static method: `AbortSignal.timeout(delay)`",
+              "type": "classMethod",
+              "name": "timeout",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "params": [
+                    {
+                      "textRaw": "`delay` {number} The number of milliseconds to wait before triggering the AbortSignal.",
+                      "name": "delay",
+                      "type": "number",
+                      "desc": "The number of milliseconds to wait before triggering the AbortSignal."
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Returns a new <code>AbortSignal</code> which will be aborted in <code>delay</code> milliseconds.</p>"
             }
           ],
           "events": [
@@ -127,6 +178,18 @@
                 "changes": []
               },
               "desc": "<p>An optional callback function that may be set by user code to be notified\nwhen the <code>abortController.abort()</code> function has been called.</p>"
+            },
+            {
+              "textRaw": "`reason` Type: {any}",
+              "type": "any",
+              "name": "Type",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>An optional reason specified when the <code>AbortSignal</code> was triggered.</p>\n<pre><code class=\"language-js\">const ac = new AbortController();\nac.abort(new Error('boom!'));\nconsole.log(ac.signal.reason);  // Error('boom!');\n</code></pre>"
             }
           ]
         }
@@ -475,18 +538,32 @@
           "desc": "<p>A utility class used to signal cancelation in selected <code>Promise</code>-based APIs.\nThe API is based on the Web API <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/AbortController\"><code>AbortController</code></a>.</p>\n<pre><code class=\"language-js\">const ac = new AbortController();\n\nac.signal.addEventListener('abort', () => console.log('Aborted!'),\n                           { once: true });\n\nac.abort();\n\nconsole.log(ac.signal.aborted);  // Prints True\n</code></pre>",
           "methods": [
             {
-              "textRaw": "`abortController.abort()`",
+              "textRaw": "`abortController.abort([reason])`",
               "type": "method",
               "name": "abort",
               "meta": {
                 "added": [
-                  "v15.0.0"
+                  "v15.0.0",
+                  "v14.17.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.14.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/40807",
+                    "description": "Added the new optional reason argument."
+                  }
+                ]
               },
               "signatures": [
                 {
-                  "params": []
+                  "params": [
+                    {
+                      "textRaw": "`reason` {any} An optional reason, retrievable on the `AbortSignal`s `reason` property.",
+                      "name": "reason",
+                      "type": "any",
+                      "desc": "An optional reason, retrievable on the `AbortSignal`s `reason` property."
+                    }
+                  ]
                 }
               ],
               "desc": "<p>Triggers the abort signal, causing the <code>abortController.signal</code> to emit\nthe <code>'abort'</code> event.</p>"
@@ -519,14 +596,21 @@
               "desc": "<ul>\n<li>Extends: <a href=\"events.html#class-eventtarget\" class=\"type\">&lt;EventTarget&gt;</a></li>\n</ul>\n<p>The <code>AbortSignal</code> is used to notify observers when the\n<code>abortController.abort()</code> method is called.</p>",
               "classMethods": [
                 {
-                  "textRaw": "Static method: `AbortSignal.abort()`",
+                  "textRaw": "Static method: `AbortSignal.abort([reason])`",
                   "type": "classMethod",
                   "name": "abort",
                   "meta": {
                     "added": [
-                      "v15.12.0"
+                      "v15.12.0",
+                      "v14.17.0"
                     ],
-                    "changes": []
+                    "changes": [
+                      {
+                        "version": "v16.14.0",
+                        "pr-url": "https://github.com/nodejs/node/pull/40807",
+                        "description": "Added the new optional reason argument."
+                      }
+                    ]
                   },
                   "signatures": [
                     {
@@ -535,10 +619,40 @@
                         "name": "return",
                         "type": "AbortSignal"
                       },
-                      "params": []
+                      "params": [
+                        {
+                          "textRaw": "`reason`: {any}",
+                          "name": "reason",
+                          "type": "any"
+                        }
+                      ]
                     }
                   ],
                   "desc": "<p>Returns a new already aborted <code>AbortSignal</code>.</p>"
+                },
+                {
+                  "textRaw": "Static method: `AbortSignal.timeout(delay)`",
+                  "type": "classMethod",
+                  "name": "timeout",
+                  "meta": {
+                    "added": [
+                      "v16.14.0"
+                    ],
+                    "changes": []
+                  },
+                  "signatures": [
+                    {
+                      "params": [
+                        {
+                          "textRaw": "`delay` {number} The number of milliseconds to wait before triggering the AbortSignal.",
+                          "name": "delay",
+                          "type": "number",
+                          "desc": "The number of milliseconds to wait before triggering the AbortSignal."
+                        }
+                      ]
+                    }
+                  ],
+                  "desc": "<p>Returns a new <code>AbortSignal</code> which will be aborted in <code>delay</code> milliseconds.</p>"
                 }
               ],
               "events": [
@@ -580,6 +694,18 @@
                     "changes": []
                   },
                   "desc": "<p>An optional callback function that may be set by user code to be notified\nwhen the <code>abortController.abort()</code> function has been called.</p>"
+                },
+                {
+                  "textRaw": "`reason` Type: {any}",
+                  "type": "any",
+                  "name": "Type",
+                  "meta": {
+                    "added": [
+                      "v16.14.0"
+                    ],
+                    "changes": []
+                  },
+                  "desc": "<p>An optional reason specified when the <code>AbortSignal</code> was triggered.</p>\n<pre><code class=\"language-js\">const ac = new AbortController();\nac.abort(new Error('boom!'));\nconsole.log(ac.signal.reason);  // Error('boom!');\n</code></pre>"
                 }
               ]
             }

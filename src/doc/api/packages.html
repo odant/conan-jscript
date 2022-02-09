@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Modules: Packages | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Modules: Packages | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="packages" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -155,7 +155,7 @@
 <li><a href="#conditional-exports">Conditional exports</a></li>
 <li><a href="#nested-conditions">Nested conditions</a></li>
 <li><a href="#resolving-user-conditions">Resolving user conditions</a></li>
-<li><a href="#conditions-definitions">Conditions Definitions</a></li>
+<li><a href="#community-conditions-definitions">Community Conditions Definitions</a></li>
 <li><a href="#self-referencing-a-package-using-its-name">Self-referencing a package using its name</a></li>
 </ul>
 </li>
@@ -579,8 +579,17 @@ certain conditions. They are supported for both CommonJS and ES module imports.<
   <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
   <span class="hljs-attr">"type"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"module"</span>
 <span class="hljs-punctuation">}</span></code></pre>
-<p>Node.js implements the following conditions:</p>
+<p>Node.js implements the following conditions, listed in order from most
+specific to least specific as conditions should be defined:</p>
 <ul>
+<li><code>"node-addons"</code> - similar to <code>"node"</code> and matches for any Node.js environment.
+This condition can be used to provide an entry point which uses native C++
+addons as opposed to an entry point which is more universal and doesn't rely
+on native addons. This condition can be disabled via the
+<a href="cli.html#--no-addons"><code>--no-addons</code> flag</a>.</li>
+<li><code>"node"</code> - matches for any Node.js environment. Can be a CommonJS or ES
+module file. <em>In most cases explicitly calling out the Node.js platform is
+not necessary.</em></li>
 <li><code>"import"</code> - matches when the package is loaded via <code>import</code> or
 <code>import()</code>, or via any top-level import or resolve operation by the
 ECMAScript module loader. Applies regardless of the module format of the
@@ -591,14 +600,6 @@ matches regardless of the module format of the target file. Expected
 formats include CommonJS, JSON, and native addons but not ES modules as
 <code>require()</code> doesn't support them. <em>Always mutually exclusive with
 <code>"import"</code>.</em></li>
-<li><code>"node"</code> - matches for any Node.js environment. Can be a CommonJS or ES
-module file. <em>This condition should always come after <code>"import"</code> or
-<code>"require"</code>.</em></li>
-<li><code>"node-addons"</code> - similar to <code>"node"</code> and matches for any Node.js environment.
-This condition can be used to provide an entry point which uses native C++
-addons as opposed to an entry point which is more universal and doesn't rely
-on native addons. This condition can be disabled via the
-<a href="cli.html#--no-addons"><code>--no-addons</code> flag</a>.</li>
 <li><code>"default"</code> - the generic fallback that always matches. Can be a CommonJS
 or ES module file. <em>This condition should always come last.</em></li>
 </ul>
@@ -608,6 +609,11 @@ entries. <em>The general rule is that conditions should be from most specific to
 least specific in object order</em>.</p>
 <p>Using the <code>"import"</code> and <code>"require"</code> conditions can lead to some hazards,
 which are further explained in <a href="#dual-commonjses-module-packages">the dual CommonJS/ES module packages section</a>.</p>
+<p>The <code>"node-addons"</code> condition can be used to provide an entry point which
+uses native C++ addons. However, this condition can be disabled via the
+<a href="cli.html#--no-addons"><code>--no-addons</code> flag</a>. When using <code>"node-addons"</code>, it's recommended to treat
+<code>"default"</code> as an enhancement that provides a more universal entry point, e.g.
+using WebAssembly instead of a native addon.</p>
 <p>Conditional exports can also be extended to exports subpaths, for example:</p>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">"main"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./main.js"</span><span class="hljs-punctuation">,</span>
@@ -640,7 +646,7 @@ use in Node.js but not the browser:</p>
       <span class="hljs-attr">"import"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./feature-node.mjs"</span><span class="hljs-punctuation">,</span>
       <span class="hljs-attr">"require"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./feature-node.cjs"</span>
     <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
-    <span class="hljs-attr">"default"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./feature.mjs"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"default"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./feature.mjs"</span>
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span></code></pre>
 <p>Conditions continue to be matched in order as with flat conditions. If
@@ -658,33 +664,27 @@ conditions behave analogously to nested JavaScript <code>if</code> statements.</
 exports, while resolving the existing <code>"node"</code>, <code>"node-addons"</code>, <code>"default"</code>,
 <code>"import"</code>, and <code>"require"</code> conditions as appropriate.</p>
 <p>Any number of custom conditions can be set with repeat flags.</p>
-<h4>Conditions Definitions<span><a class="mark" href="#conditions-definitions" id="conditions-definitions">#</a></span><a aria-hidden="true" class="legacy" id="packages_conditions_definitions"></a></h4>
-<p>The <code>"import"</code> , <code>"require"</code> , <code>"node"</code> , <code>"node-addons"</code> and <code>"default"</code>
-conditions are defined and implemented in Node.js core,
-<a href="#conditional-exports">as specified above</a>.</p>
-<p>The <code>"node-addons"</code> condition can be used to provide an entry point which
-uses native C++ addons. However, this condition can be disabled via the
-<a href="cli.html#--no-addons"><code>--no-addons</code> flag</a>. When using <code>"node-addons"</code>, it's recommended to treat
-<code>"default"</code> as an enhancement that provides a more universal entry point, e.g.
-using WebAssembly instead of a native addon.</p>
-<p>Other condition strings are unknown to Node.js and thus ignored by default.
-Runtimes or tools other than Node.js can use them at their discretion.</p>
-<p>These user conditions can be enabled in Node.js via the <a href="#resolving-user-conditions"><code>--conditions</code> flag</a>.</p>
-<p>The following condition definitions are currently endorsed by Node.js:</p>
+<h4>Community Conditions Definitions<span><a class="mark" href="#community-conditions-definitions" id="community-conditions-definitions">#</a></span><a aria-hidden="true" class="legacy" id="packages_community_conditions_definitions"></a></h4>
+<p>Condition strings other than the <code>"import"</code>, <code>"require"</code>, <code>"node"</code>,
+<code>"node-addons"</code> and <code>"default"</code> conditions
+<a href="#conditional-exports">implemented in Node.js core</a> are ignored by default.</p>
+<p>Other platforms may implement other conditions and user conditions can be
+enabled in Node.js via the <a href="#resolving-user-conditions"><code>--conditions</code> / <code>-C</code> flag</a>.</p>
+<p>Since custom package conditions require clear definitions to ensure correct
+usage, a list of common known package conditions and their strict definitions
+is provided below to assist with ecosystem coordination.</p>
 <ul>
-<li><code>"browser"</code> - any environment which implements a standard subset of global
-browser APIs available from JavaScript in web browsers, including the DOM
-APIs.</li>
+<li><code>"types"</code> - can be used by typing systems to resolve the typing file for
+the given export. <em>This condition should always be included first.</em></li>
+<li><code>"deno"</code> - indicates a variation for the Deno platform.</li>
+<li><code>"browser"</code> - any web browser environment.</li>
 <li><code>"development"</code> - can be used to define a development-only environment
-entry point. <em>Must always be mutually exclusive with <code>"production"</code>.</em></li>
+entry point, for example to provide additional debugging context such as
+better error messages when running in a development mode. <em>Must always be
+mutually exclusive with <code>"production"</code>.</em></li>
 <li><code>"production"</code> - can be used to define a production environment entry
 point. <em>Must always be mutually exclusive with <code>"development"</code>.</em></li>
 </ul>
-<p>The above user conditions can be enabled in Node.js via the
-<a href="#resolving-user-conditions"><code>--conditions</code> flag</a>.</p>
-<p>Platform specific conditions such as <code>"deno"</code>, <code>"electron"</code>, or <code>"react-native"</code>
-may be used, but while there remain no implementation or integration intent
-from these platforms, the above are not explicitly endorsed by Node.js.</p>
 <p>New conditions definitions may be added to this list by creating a pull request
 to the <a href="https://github.com/nodejs/node/blob/HEAD/doc/api/packages.md#conditions-definitions">Node.js documentation for this section</a>. The requirements for listing
 a new condition definition here are that:</p>

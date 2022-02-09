@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/http.js\">lib/http.js</a></p>\n<p>To use the HTTP server and client one must <code>require('http')</code>.</p>\n<p>The HTTP interfaces in Node.js are designed to support many features\nof the protocol which have been traditionally difficult to use.\nIn particular, large, possibly chunk-encoded, messages. The interface is\ncareful to never buffer entire requests or responses, so the\nuser is able to stream data.</p>\n<p>HTTP message headers are represented by an object like this:</p>\n<!-- eslint-skip -->\n<pre><code class=\"language-js\">{ 'content-length': '123',\n  'content-type': 'text/plain',\n  'connection': 'keep-alive',\n  'host': 'mysite.com',\n  'accept': '*/*' }\n</code></pre>\n<p>Keys are lowercased. Values are not modified.</p>\n<p>In order to support the full spectrum of possible HTTP applications, the Node.js\nHTTP API is very low-level. It deals with stream handling and message\nparsing only. It parses a message into headers and body but it does not\nparse the actual headers or the body.</p>\n<p>See <a href=\"#messageheaders\"><code>message.headers</code></a> for details on how duplicate headers are handled.</p>\n<p>The raw headers as they were received are retained in the <code>rawHeaders</code>\nproperty, which is an array of <code>[key, value, key2, value2, ...]</code>. For\nexample, the previous message header object might have a <code>rawHeaders</code>\nlist like the following:</p>\n<!-- eslint-disable semi -->\n<pre><code class=\"language-js\">[ 'ConTent-Length', '123456',\n  'content-LENGTH', '123',\n  'content-type', 'text/plain',\n  'CONNECTION', 'keep-alive',\n  'Host', 'mysite.com',\n  'accepT', '*/*' ]\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/http.js\">lib/http.js</a></p>\n<p>To use the HTTP server and client one must <code>require('http')</code>.</p>\n<p>The HTTP interfaces in Node.js are designed to support many features\nof the protocol which have been traditionally difficult to use.\nIn particular, large, possibly chunk-encoded, messages. The interface is\ncareful to never buffer entire requests or responses, so the\nuser is able to stream data.</p>\n<p>HTTP message headers are represented by an object like this:</p>\n<!-- eslint-skip -->\n<pre><code class=\"language-js\">{ 'content-length': '123',\n  'content-type': 'text/plain',\n  'connection': 'keep-alive',\n  'host': 'mysite.com',\n  'accept': '*/*' }\n</code></pre>\n<p>Keys are lowercased. Values are not modified.</p>\n<p>In order to support the full spectrum of possible HTTP applications, the Node.js\nHTTP API is very low-level. It deals with stream handling and message\nparsing only. It parses a message into headers and body but it does not\nparse the actual headers or the body.</p>\n<p>See <a href=\"#messageheaders\"><code>message.headers</code></a> for details on how duplicate headers are handled.</p>\n<p>The raw headers as they were received are retained in the <code>rawHeaders</code>\nproperty, which is an array of <code>[key, value, key2, value2, ...]</code>. For\nexample, the previous message header object might have a <code>rawHeaders</code>\nlist like the following:</p>\n<!-- eslint-disable semi -->\n<pre><code class=\"language-js\">[ 'ConTent-Length', '123456',\n  'content-LENGTH', '123',\n  'content-type', 'text/plain',\n  'CONNECTION', 'keep-alive',\n  'Host', 'mysite.com',\n  'accepT', '*/*' ]\n</code></pre>",
       "classes": [
         {
           "textRaw": "Class: `http.Agent`",
@@ -2286,7 +2286,7 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>The <a href=\"net.html#class-netsocket\"><code>net.Socket</code></a> object associated with the connection.</p>\n<p>With HTTPS support, use <a href=\"tls.html#tlssocketgetpeercertificatedetailed\"><code>request.socket.getPeerCertificate()</code></a> to obtain the\nclient's authentication details.</p>\n<p>This property is guaranteed to be an instance of the <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a> class,\na subclass of <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a>, unless the user specified a socket\ntype other than <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a>.</p>"
+              "desc": "<p>The <a href=\"net.html#class-netsocket\"><code>net.Socket</code></a> object associated with the connection.</p>\n<p>With HTTPS support, use <a href=\"tls.html#tlssocketgetpeercertificatedetailed\"><code>request.socket.getPeerCertificate()</code></a> to obtain the\nclient's authentication details.</p>\n<p>This property is guaranteed to be an instance of the <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a> class,\na subclass of <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a>, unless the user specified a socket\ntype other than <a href=\"net.html#class-netsocket\" class=\"type\">&lt;net.Socket&gt;</a> or internally nulled.</p>"
             },
             {
               "textRaw": "`statusCode` {number}",
@@ -3024,7 +3024,7 @@
             ],
             "changes": []
           },
-          "desc": "<p>Read-only property specifying the maximum allowed size of HTTP headers in bytes.\nDefaults to 8 KB. Configurable using the <a href=\"cli.html#--max-http-header-sizesize\"><code>--max-http-header-size</code></a> CLI\noption.</p>\n<p>This can be overridden for servers and client requests by passing the\n<code>maxHeaderSize</code> option.</p>"
+          "desc": "<p>Read-only property specifying the maximum allowed size of HTTP headers in bytes.\nDefaults to 16 KB. Configurable using the <a href=\"cli.html#--max-http-header-sizesize\"><code>--max-http-header-size</code></a> CLI\noption.</p>\n<p>This can be overridden for servers and client requests by passing the\n<code>maxHeaderSize</code> option.</p>"
         }
       ],
       "methods": [
@@ -3304,10 +3304,10 @@
                       ]
                     },
                     {
-                      "textRaw": "`auth` {string} Basic authentication i.e. `'user:password'` to compute an Authorization header.",
+                      "textRaw": "`auth` {string} Basic authentication (`'user:password'`) to compute an Authorization header.",
                       "name": "auth",
                       "type": "string",
-                      "desc": "Basic authentication i.e. `'user:password'` to compute an Authorization header."
+                      "desc": "Basic authentication (`'user:password'`) to compute an Authorization header."
                     },
                     {
                       "textRaw": "`createConnection` {Function} A function that produces a socket/stream to use for the request when the `agent` option is not used. This can be used to avoid creating a custom `Agent` class just to override the default `createConnection` function. See [`agent.createConnection()`][] for more details. Any [`Duplex`][] stream is a valid return value.",
@@ -3380,11 +3380,11 @@
                       "desc": "Custom lookup function."
                     },
                     {
-                      "textRaw": "`maxHeaderSize` {number} Optionally overrides the value of [`--max-http-header-size`][] for responses received from the server, i.e. the maximum length of response headers in bytes. **Default:** 16384 (16 KB).",
+                      "textRaw": "`maxHeaderSize` {number} Optionally overrides the value of [`--max-http-header-size`][] (the maximum length of response headers in bytes) for responses received from the server. **Default:** 16384 (16 KB).",
                       "name": "maxHeaderSize",
                       "type": "number",
                       "default": "16384 (16 KB)",
-                      "desc": "Optionally overrides the value of [`--max-http-header-size`][] for responses received from the server, i.e. the maximum length of response headers in bytes."
+                      "desc": "Optionally overrides the value of [`--max-http-header-size`][] (the maximum length of response headers in bytes) for responses received from the server."
                     },
                     {
                       "textRaw": "`method` {string} A string specifying the HTTP request method. **Default:** `'GET'`.",
@@ -3421,10 +3421,10 @@
                       "desc": ": Specifies whether or not to automatically add the `Host` header. Defaults to `true`."
                     },
                     {
-                      "textRaw": "`socketPath` {string} Unix Domain Socket (cannot be used if one of `host` or `port` is specified, those specify a TCP Socket).",
+                      "textRaw": "`socketPath` {string} Unix domain socket. Cannot be used if one of `host` or `port` is specified, as those specify a TCP Socket.",
                       "name": "socketPath",
                       "type": "string",
-                      "desc": "Unix Domain Socket (cannot be used if one of `host` or `port` is specified, those specify a TCP Socket)."
+                      "desc": "Unix domain socket. Cannot be used if one of `host` or `port` is specified, as those specify a TCP Socket."
                     },
                     {
                       "textRaw": "`timeout` {number}: A number specifying the socket timeout in milliseconds. This will set the timeout before the socket is connected.",
@@ -3540,10 +3540,10 @@
                       ]
                     },
                     {
-                      "textRaw": "`auth` {string} Basic authentication i.e. `'user:password'` to compute an Authorization header.",
+                      "textRaw": "`auth` {string} Basic authentication (`'user:password'`) to compute an Authorization header.",
                       "name": "auth",
                       "type": "string",
-                      "desc": "Basic authentication i.e. `'user:password'` to compute an Authorization header."
+                      "desc": "Basic authentication (`'user:password'`) to compute an Authorization header."
                     },
                     {
                       "textRaw": "`createConnection` {Function} A function that produces a socket/stream to use for the request when the `agent` option is not used. This can be used to avoid creating a custom `Agent` class just to override the default `createConnection` function. See [`agent.createConnection()`][] for more details. Any [`Duplex`][] stream is a valid return value.",
@@ -3616,11 +3616,11 @@
                       "desc": "Custom lookup function."
                     },
                     {
-                      "textRaw": "`maxHeaderSize` {number} Optionally overrides the value of [`--max-http-header-size`][] for responses received from the server, i.e. the maximum length of response headers in bytes. **Default:** 16384 (16 KB).",
+                      "textRaw": "`maxHeaderSize` {number} Optionally overrides the value of [`--max-http-header-size`][] (the maximum length of response headers in bytes) for responses received from the server. **Default:** 16384 (16 KB).",
                       "name": "maxHeaderSize",
                       "type": "number",
                       "default": "16384 (16 KB)",
-                      "desc": "Optionally overrides the value of [`--max-http-header-size`][] for responses received from the server, i.e. the maximum length of response headers in bytes."
+                      "desc": "Optionally overrides the value of [`--max-http-header-size`][] (the maximum length of response headers in bytes) for responses received from the server."
                     },
                     {
                       "textRaw": "`method` {string} A string specifying the HTTP request method. **Default:** `'GET'`.",
@@ -3657,10 +3657,10 @@
                       "desc": ": Specifies whether or not to automatically add the `Host` header. Defaults to `true`."
                     },
                     {
-                      "textRaw": "`socketPath` {string} Unix Domain Socket (cannot be used if one of `host` or `port` is specified, those specify a TCP Socket).",
+                      "textRaw": "`socketPath` {string} Unix domain socket. Cannot be used if one of `host` or `port` is specified, as those specify a TCP Socket.",
                       "name": "socketPath",
                       "type": "string",
-                      "desc": "Unix Domain Socket (cannot be used if one of `host` or `port` is specified, those specify a TCP Socket)."
+                      "desc": "Unix domain socket. Cannot be used if one of `host` or `port` is specified, as those specify a TCP Socket."
                     },
                     {
                       "textRaw": "`timeout` {number}: A number specifying the socket timeout in milliseconds. This will set the timeout before the socket is connected.",

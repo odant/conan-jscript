@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('stream');\n</code></pre>\n<p>The <code>stream</code> module is useful for creating new types of stream instances. It is\nusually not necessary to use the <code>stream</code> module to consume streams.</p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('stream');\n</code></pre>\n<p>The <code>stream</code> module is useful for creating new types of stream instances. It is\nusually not necessary to use the <code>stream</code> module to consume streams.</p>",
       "modules": [
         {
           "textRaw": "Organization of this document",
@@ -56,6 +56,152 @@
         }
       ],
       "methods": [
+        {
+          "textRaw": "`readable.map(fn[, options])`",
+          "type": "method",
+          "name": "map",
+          "meta": {
+            "added": [
+              "v16.14.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {Readable} a stream mapped with the function `fn`.",
+                "name": "return",
+                "type": "Readable",
+                "desc": "a stream mapped with the function `fn`."
+              },
+              "params": [
+                {
+                  "textRaw": "`fn` {Function|AsyncFunction} a function to map over every item in the stream.",
+                  "name": "fn",
+                  "type": "Function|AsyncFunction",
+                  "desc": "a function to map over every item in the stream.",
+                  "options": [
+                    {
+                      "textRaw": "`data` {any} a chunk of data from the stream.",
+                      "name": "data",
+                      "type": "any",
+                      "desc": "a chunk of data from the stream."
+                    },
+                    {
+                      "textRaw": "`options` {Object}",
+                      "name": "options",
+                      "type": "Object",
+                      "options": [
+                        {
+                          "textRaw": "`signal` {AbortSignal} aborted if the stream is destroyed allowing to abort the `fn` call early.",
+                          "name": "signal",
+                          "type": "AbortSignal",
+                          "desc": "aborted if the stream is destroyed allowing to abort the `fn` call early."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "textRaw": "`options` {Object}",
+                  "name": "options",
+                  "type": "Object",
+                  "options": [
+                    {
+                      "textRaw": "`concurrency` {number} the maximal concurrent invocation of `fn` to call on the stream at once. **Default:** `1`.",
+                      "name": "concurrency",
+                      "type": "number",
+                      "default": "`1`",
+                      "desc": "the maximal concurrent invocation of `fn` to call on the stream at once."
+                    },
+                    {
+                      "textRaw": "`signal` {AbortSignal} allows destroying the stream if the signal is aborted.",
+                      "name": "signal",
+                      "type": "AbortSignal",
+                      "desc": "allows destroying the stream if the signal is aborted."
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "desc": "<p>This method allows mapping over the stream. The <code>fn</code> function will be called\nfor every item in the stream. If the <code>fn</code> function returns a promise - that\npromise will be <code>await</code>ed before being passed to the result stream.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'stream';\nimport { Resolver } from 'dns/promises';\n\n// With a synchronous mapper.\nfor await (const item of Readable.from([1, 2, 3, 4]).map((x) => x * 2)) {\n  console.log(item); // 2, 4, 6, 8\n}\n// With an asynchronous mapper, making at most 2 queries at a time.\nconst resolver = new Resolver();\nconst dnsResults = await Readable.from([\n  'nodejs.org',\n  'openjsf.org',\n  'www.linuxfoundation.org',\n]).map((domain) => resolver.resolve4(domain), { concurrency: 2 });\nfor await (const result of dnsResults) {\n  console.log(result); // Logs the DNS result of resolver.resolve4.\n}\n</code></pre>"
+        },
+        {
+          "textRaw": "`readable.filter(fn[, options])`",
+          "type": "method",
+          "name": "filter",
+          "meta": {
+            "added": [
+              "v16.14.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {Readable} a stream filtered with the predicate `fn`.",
+                "name": "return",
+                "type": "Readable",
+                "desc": "a stream filtered with the predicate `fn`."
+              },
+              "params": [
+                {
+                  "textRaw": "`fn` {Function|AsyncFunction} a function to filter items from stream.",
+                  "name": "fn",
+                  "type": "Function|AsyncFunction",
+                  "desc": "a function to filter items from stream.",
+                  "options": [
+                    {
+                      "textRaw": "`data` {any} a chunk of data from the stream.",
+                      "name": "data",
+                      "type": "any",
+                      "desc": "a chunk of data from the stream."
+                    },
+                    {
+                      "textRaw": "`options` {Object}",
+                      "name": "options",
+                      "type": "Object",
+                      "options": [
+                        {
+                          "textRaw": "`signal` {AbortSignal} aborted if the stream is destroyed allowing to abort the `fn` call early.",
+                          "name": "signal",
+                          "type": "AbortSignal",
+                          "desc": "aborted if the stream is destroyed allowing to abort the `fn` call early."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "textRaw": "`options` {Object}",
+                  "name": "options",
+                  "type": "Object",
+                  "options": [
+                    {
+                      "textRaw": "`concurrency` {number} the maximal concurrent invocation of `fn` to call on the stream at once. **Default:** `1`.",
+                      "name": "concurrency",
+                      "type": "number",
+                      "default": "`1`",
+                      "desc": "the maximal concurrent invocation of `fn` to call on the stream at once."
+                    },
+                    {
+                      "textRaw": "`signal` {AbortSignal} allows destroying the stream if the signal is aborted.",
+                      "name": "signal",
+                      "type": "AbortSignal",
+                      "desc": "allows destroying the stream if the signal is aborted."
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "desc": "<p>This method allows filtering the stream. For each item in the stream the <code>fn</code>\nfunction will be called and if it returns a truthy value, the item will be\npassed to the result stream. If the <code>fn</code> function returns a promise - that\npromise will be <code>await</code>ed.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'stream';\nimport { Resolver } from 'dns/promises';\n\n// With a synchronous predicate.\nfor await (const item of Readable.from([1, 2, 3, 4]).filter((x) => x > 2)) {\n  console.log(item); // 3, 4\n}\n// With an asynchronous predicate, making at most 2 queries at a time.\nconst resolver = new Resolver();\nconst dnsResults = await Readable.from([\n  'nodejs.org',\n  'openjsf.org',\n  'www.linuxfoundation.org',\n]).filter(async (domain) => {\n  const { address } = await resolver.resolve4(domain, { ttl: true });\n  return address.ttl > 60;\n}, { concurrency: 2 });\nfor await (const result of dnsResults) {\n  // Logs domains with more than 60 seconds on the resolved dns record.\n  console.log(result);\n}\n</code></pre>"
+        },
         {
           "textRaw": "`stream.finished(stream[, options], callback)`",
           "type": "method",
@@ -448,6 +594,180 @@
             }
           ],
           "desc": "<p>Returns whether the stream has been read from or cancelled.</p>"
+        },
+        {
+          "textRaw": "`stream.isErrored(stream)`",
+          "type": "method",
+          "name": "isErrored",
+          "meta": {
+            "added": [
+              "v16.14.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {boolean}",
+                "name": "return",
+                "type": "boolean"
+              },
+              "params": [
+                {
+                  "textRaw": "`stream` {Readable|Writable|Duplex|WritableStream|ReadableStream}",
+                  "name": "stream",
+                  "type": "Readable|Writable|Duplex|WritableStream|ReadableStream"
+                }
+              ]
+            }
+          ],
+          "desc": "<p>Returns whether the stream has encountered an error.</p>"
+        },
+        {
+          "textRaw": "`stream.isReadable(stream)`",
+          "type": "method",
+          "name": "isReadable",
+          "meta": {
+            "added": [
+              "v16.14.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {boolean}",
+                "name": "return",
+                "type": "boolean"
+              },
+              "params": [
+                {
+                  "textRaw": "`stream` {Readable|Duplex|ReadableStream}",
+                  "name": "stream",
+                  "type": "Readable|Duplex|ReadableStream"
+                }
+              ]
+            }
+          ],
+          "desc": "<p>Returns whether the stream is readable.</p>"
+        },
+        {
+          "textRaw": "`stream.Readable.toWeb(streamReadable)`",
+          "type": "method",
+          "name": "toWeb",
+          "meta": {
+            "added": [
+              "v17.0.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {ReadableStream}",
+                "name": "return",
+                "type": "ReadableStream"
+              },
+              "params": [
+                {
+                  "textRaw": "`streamReadable` {stream.Readable}",
+                  "name": "streamReadable",
+                  "type": "stream.Readable"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "textRaw": "`stream.Writable.fromWeb(writableStream[, options])`",
+          "type": "method",
+          "name": "fromWeb",
+          "meta": {
+            "added": [
+              "v17.0.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {stream.Writable}",
+                "name": "return",
+                "type": "stream.Writable"
+              },
+              "params": [
+                {
+                  "textRaw": "`writableStream` {WritableStream}",
+                  "name": "writableStream",
+                  "type": "WritableStream"
+                },
+                {
+                  "textRaw": "`options` {Object}",
+                  "name": "options",
+                  "type": "Object",
+                  "options": [
+                    {
+                      "textRaw": "`decodeStrings` {boolean}",
+                      "name": "decodeStrings",
+                      "type": "boolean"
+                    },
+                    {
+                      "textRaw": "`highWaterMark` {number}",
+                      "name": "highWaterMark",
+                      "type": "number"
+                    },
+                    {
+                      "textRaw": "`objectMode` {boolean}",
+                      "name": "objectMode",
+                      "type": "boolean"
+                    },
+                    {
+                      "textRaw": "`signal` {AbortSignal}",
+                      "name": "signal",
+                      "type": "AbortSignal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "textRaw": "`stream.Writable.toWeb(streamWritable)`",
+          "type": "method",
+          "name": "toWeb",
+          "meta": {
+            "added": [
+              "v17.0.0"
+            ],
+            "changes": []
+          },
+          "stability": 1,
+          "stabilityText": "Experimental",
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {WritableStream}",
+                "name": "return",
+                "type": "WritableStream"
+              },
+              "params": [
+                {
+                  "textRaw": "`streamWritable` {stream.Writable}",
+                  "name": "streamWritable",
+                  "type": "stream.Writable"
+                }
+              ]
+            }
+          ]
         },
         {
           "textRaw": "`stream.Duplex.from(src)`",
@@ -1302,7 +1622,7 @@
                           ]
                         }
                       ],
-                      "desc": "<p>The <code>readable.read()</code> method pulls some data out of the internal buffer and\nreturns it. If no data available to be read, <code>null</code> is returned. By default,\nthe data will be returned as a <code>Buffer</code> object unless an encoding has been\nspecified using the <code>readable.setEncoding()</code> method or the stream is operating\nin object mode.</p>\n<p>The optional <code>size</code> argument specifies a specific number of bytes to read. If\n<code>size</code> bytes are not available to be read, <code>null</code> will be returned <em>unless</em>\nthe stream has ended, in which case all of the data remaining in the internal\nbuffer will be returned.</p>\n<p>If the <code>size</code> argument is not specified, all of the data contained in the\ninternal buffer will be returned.</p>\n<p>The <code>size</code> argument must be less than or equal to 1 GiB.</p>\n<p>The <code>readable.read()</code> method should only be called on <code>Readable</code> streams\noperating in paused mode. In flowing mode, <code>readable.read()</code> is called\nautomatically until the internal buffer is fully drained.</p>\n<pre><code class=\"language-js\">const readable = getReadableStreamSomehow();\n\n// 'readable' may be triggered multiple times as data is buffered in\nreadable.on('readable', () => {\n  let chunk;\n  console.log('Stream is readable (new data received in buffer)');\n  // Use a loop to make sure we read all currently available data\n  while (null !== (chunk = readable.read())) {\n    console.log(`Read ${chunk.length} bytes of data...`);\n  }\n});\n\n// 'end' will be triggered once when there is no more data available\nreadable.on('end', () => {\n  console.log('Reached end of stream.');\n});\n</code></pre>\n<p>Each call to <code>readable.read()</code> returns a chunk of data, or <code>null</code>. The chunks\nare not concatenated. A <code>while</code> loop is necessary to consume all data\ncurrently in the buffer. When reading a large file <code>.read()</code> may return <code>null</code>,\nhaving consumed all buffered content so far, but there is still more data to\ncome not yet buffered. In this case a new <code>'readable'</code> event will be emitted\nwhen there is more data in the buffer. Finally the <code>'end'</code> event will be\nemitted when there is no more data to come.</p>\n<p>Therefore to read a file's whole contents from a <code>readable</code>, it is necessary\nto collect chunks across multiple <code>'readable'</code> events:</p>\n<pre><code class=\"language-js\">const chunks = [];\n\nreadable.on('readable', () => {\n  let chunk;\n  while (null !== (chunk = readable.read())) {\n    chunks.push(chunk);\n  }\n});\n\nreadable.on('end', () => {\n  const content = chunks.join('');\n});\n</code></pre>\n<p>A <code>Readable</code> stream in object mode will always return a single item from\na call to <a href=\"#readablereadsize\"><code>readable.read(size)</code></a>, regardless of the value of the\n<code>size</code> argument.</p>\n<p>If the <code>readable.read()</code> method returns a chunk of data, a <code>'data'</code> event will\nalso be emitted.</p>\n<p>Calling <a href=\"#readablereadsize\"><code>stream.read([size])</code></a> after the <a href=\"#event-end\"><code>'end'</code></a> event has\nbeen emitted will return <code>null</code>. No runtime error will be raised.</p>"
+                      "desc": "<p>The <code>readable.read()</code> method reads data out of the internal buffer and\nreturns it. If no data is available to be read, <code>null</code> is returned. By default,\nthe data is returned as a <code>Buffer</code> object unless an encoding has been\nspecified using the <code>readable.setEncoding()</code> method or the stream is operating\nin object mode.</p>\n<p>The optional <code>size</code> argument specifies a specific number of bytes to read. If\n<code>size</code> bytes are not available to be read, <code>null</code> will be returned <em>unless</em>\nthe stream has ended, in which case all of the data remaining in the internal\nbuffer will be returned.</p>\n<p>If the <code>size</code> argument is not specified, all of the data contained in the\ninternal buffer will be returned.</p>\n<p>The <code>size</code> argument must be less than or equal to 1 GiB.</p>\n<p>The <code>readable.read()</code> method should only be called on <code>Readable</code> streams\noperating in paused mode. In flowing mode, <code>readable.read()</code> is called\nautomatically until the internal buffer is fully drained.</p>\n<pre><code class=\"language-js\">const readable = getReadableStreamSomehow();\n\n// 'readable' may be triggered multiple times as data is buffered in\nreadable.on('readable', () => {\n  let chunk;\n  console.log('Stream is readable (new data received in buffer)');\n  // Use a loop to make sure we read all currently available data\n  while (null !== (chunk = readable.read())) {\n    console.log(`Read ${chunk.length} bytes of data...`);\n  }\n});\n\n// 'end' will be triggered once when there is no more data available\nreadable.on('end', () => {\n  console.log('Reached end of stream.');\n});\n</code></pre>\n<p>Each call to <code>readable.read()</code> returns a chunk of data, or <code>null</code>. The chunks\nare not concatenated. A <code>while</code> loop is necessary to consume all data\ncurrently in the buffer. When reading a large file <code>.read()</code> may return <code>null</code>,\nhaving consumed all buffered content so far, but there is still more data to\ncome not yet buffered. In this case a new <code>'readable'</code> event will be emitted\nwhen there is more data in the buffer. Finally the <code>'end'</code> event will be\nemitted when there is no more data to come.</p>\n<p>Therefore to read a file's whole contents from a <code>readable</code>, it is necessary\nto collect chunks across multiple <code>'readable'</code> events:</p>\n<pre><code class=\"language-js\">const chunks = [];\n\nreadable.on('readable', () => {\n  let chunk;\n  while (null !== (chunk = readable.read())) {\n    chunks.push(chunk);\n  }\n});\n\nreadable.on('end', () => {\n  const content = chunks.join('');\n});\n</code></pre>\n<p>A <code>Readable</code> stream in object mode will always return a single item from\na call to <a href=\"#readablereadsize\"><code>readable.read(size)</code></a>, regardless of the value of the\n<code>size</code> argument.</p>\n<p>If the <code>readable.read()</code> method returns a chunk of data, a <code>'data'</code> event will\nalso be emitted.</p>\n<p>Calling <a href=\"#readablereadsize\"><code>stream.read([size])</code></a> after the <a href=\"#event-end\"><code>'end'</code></a> event has\nbeen emitted will return <code>null</code>. No runtime error will be raised.</p>"
                     },
                     {
                       "textRaw": "`readable.resume()`",
@@ -1754,6 +2074,152 @@
           ],
           "methods": [
             {
+              "textRaw": "`readable.map(fn[, options])`",
+              "type": "method",
+              "name": "map",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {Readable} a stream mapped with the function `fn`.",
+                    "name": "return",
+                    "type": "Readable",
+                    "desc": "a stream mapped with the function `fn`."
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`fn` {Function|AsyncFunction} a function to map over every item in the stream.",
+                      "name": "fn",
+                      "type": "Function|AsyncFunction",
+                      "desc": "a function to map over every item in the stream.",
+                      "options": [
+                        {
+                          "textRaw": "`data` {any} a chunk of data from the stream.",
+                          "name": "data",
+                          "type": "any",
+                          "desc": "a chunk of data from the stream."
+                        },
+                        {
+                          "textRaw": "`options` {Object}",
+                          "name": "options",
+                          "type": "Object",
+                          "options": [
+                            {
+                              "textRaw": "`signal` {AbortSignal} aborted if the stream is destroyed allowing to abort the `fn` call early.",
+                              "name": "signal",
+                              "type": "AbortSignal",
+                              "desc": "aborted if the stream is destroyed allowing to abort the `fn` call early."
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "textRaw": "`options` {Object}",
+                      "name": "options",
+                      "type": "Object",
+                      "options": [
+                        {
+                          "textRaw": "`concurrency` {number} the maximal concurrent invocation of `fn` to call on the stream at once. **Default:** `1`.",
+                          "name": "concurrency",
+                          "type": "number",
+                          "default": "`1`",
+                          "desc": "the maximal concurrent invocation of `fn` to call on the stream at once."
+                        },
+                        {
+                          "textRaw": "`signal` {AbortSignal} allows destroying the stream if the signal is aborted.",
+                          "name": "signal",
+                          "type": "AbortSignal",
+                          "desc": "allows destroying the stream if the signal is aborted."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>This method allows mapping over the stream. The <code>fn</code> function will be called\nfor every item in the stream. If the <code>fn</code> function returns a promise - that\npromise will be <code>await</code>ed before being passed to the result stream.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'stream';\nimport { Resolver } from 'dns/promises';\n\n// With a synchronous mapper.\nfor await (const item of Readable.from([1, 2, 3, 4]).map((x) => x * 2)) {\n  console.log(item); // 2, 4, 6, 8\n}\n// With an asynchronous mapper, making at most 2 queries at a time.\nconst resolver = new Resolver();\nconst dnsResults = await Readable.from([\n  'nodejs.org',\n  'openjsf.org',\n  'www.linuxfoundation.org',\n]).map((domain) => resolver.resolve4(domain), { concurrency: 2 });\nfor await (const result of dnsResults) {\n  console.log(result); // Logs the DNS result of resolver.resolve4.\n}\n</code></pre>"
+            },
+            {
+              "textRaw": "`readable.filter(fn[, options])`",
+              "type": "method",
+              "name": "filter",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {Readable} a stream filtered with the predicate `fn`.",
+                    "name": "return",
+                    "type": "Readable",
+                    "desc": "a stream filtered with the predicate `fn`."
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`fn` {Function|AsyncFunction} a function to filter items from stream.",
+                      "name": "fn",
+                      "type": "Function|AsyncFunction",
+                      "desc": "a function to filter items from stream.",
+                      "options": [
+                        {
+                          "textRaw": "`data` {any} a chunk of data from the stream.",
+                          "name": "data",
+                          "type": "any",
+                          "desc": "a chunk of data from the stream."
+                        },
+                        {
+                          "textRaw": "`options` {Object}",
+                          "name": "options",
+                          "type": "Object",
+                          "options": [
+                            {
+                              "textRaw": "`signal` {AbortSignal} aborted if the stream is destroyed allowing to abort the `fn` call early.",
+                              "name": "signal",
+                              "type": "AbortSignal",
+                              "desc": "aborted if the stream is destroyed allowing to abort the `fn` call early."
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "textRaw": "`options` {Object}",
+                      "name": "options",
+                      "type": "Object",
+                      "options": [
+                        {
+                          "textRaw": "`concurrency` {number} the maximal concurrent invocation of `fn` to call on the stream at once. **Default:** `1`.",
+                          "name": "concurrency",
+                          "type": "number",
+                          "default": "`1`",
+                          "desc": "the maximal concurrent invocation of `fn` to call on the stream at once."
+                        },
+                        {
+                          "textRaw": "`signal` {AbortSignal} allows destroying the stream if the signal is aborted.",
+                          "name": "signal",
+                          "type": "AbortSignal",
+                          "desc": "allows destroying the stream if the signal is aborted."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>This method allows filtering the stream. For each item in the stream the <code>fn</code>\nfunction will be called and if it returns a truthy value, the item will be\npassed to the result stream. If the <code>fn</code> function returns a promise - that\npromise will be <code>await</code>ed.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'stream';\nimport { Resolver } from 'dns/promises';\n\n// With a synchronous predicate.\nfor await (const item of Readable.from([1, 2, 3, 4]).filter((x) => x > 2)) {\n  console.log(item); // 3, 4\n}\n// With an asynchronous predicate, making at most 2 queries at a time.\nconst resolver = new Resolver();\nconst dnsResults = await Readable.from([\n  'nodejs.org',\n  'openjsf.org',\n  'www.linuxfoundation.org',\n]).filter(async (domain) => {\n  const { address } = await resolver.resolve4(domain, { ttl: true });\n  return address.ttl > 60;\n}, { concurrency: 2 });\nfor await (const result of dnsResults) {\n  // Logs domains with more than 60 seconds on the resolved dns record.\n  console.log(result);\n}\n</code></pre>"
+            },
+            {
               "textRaw": "`stream.finished(stream[, options], callback)`",
               "type": "method",
               "name": "finished",
@@ -2147,6 +2613,180 @@
               "desc": "<p>Returns whether the stream has been read from or cancelled.</p>"
             },
             {
+              "textRaw": "`stream.isErrored(stream)`",
+              "type": "method",
+              "name": "isErrored",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {boolean}",
+                    "name": "return",
+                    "type": "boolean"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`stream` {Readable|Writable|Duplex|WritableStream|ReadableStream}",
+                      "name": "stream",
+                      "type": "Readable|Writable|Duplex|WritableStream|ReadableStream"
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Returns whether the stream has encountered an error.</p>"
+            },
+            {
+              "textRaw": "`stream.isReadable(stream)`",
+              "type": "method",
+              "name": "isReadable",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {boolean}",
+                    "name": "return",
+                    "type": "boolean"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`stream` {Readable|Duplex|ReadableStream}",
+                      "name": "stream",
+                      "type": "Readable|Duplex|ReadableStream"
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Returns whether the stream is readable.</p>"
+            },
+            {
+              "textRaw": "`stream.Readable.toWeb(streamReadable)`",
+              "type": "method",
+              "name": "toWeb",
+              "meta": {
+                "added": [
+                  "v17.0.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {ReadableStream}",
+                    "name": "return",
+                    "type": "ReadableStream"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`streamReadable` {stream.Readable}",
+                      "name": "streamReadable",
+                      "type": "stream.Readable"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "textRaw": "`stream.Writable.fromWeb(writableStream[, options])`",
+              "type": "method",
+              "name": "fromWeb",
+              "meta": {
+                "added": [
+                  "v17.0.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {stream.Writable}",
+                    "name": "return",
+                    "type": "stream.Writable"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`writableStream` {WritableStream}",
+                      "name": "writableStream",
+                      "type": "WritableStream"
+                    },
+                    {
+                      "textRaw": "`options` {Object}",
+                      "name": "options",
+                      "type": "Object",
+                      "options": [
+                        {
+                          "textRaw": "`decodeStrings` {boolean}",
+                          "name": "decodeStrings",
+                          "type": "boolean"
+                        },
+                        {
+                          "textRaw": "`highWaterMark` {number}",
+                          "name": "highWaterMark",
+                          "type": "number"
+                        },
+                        {
+                          "textRaw": "`objectMode` {boolean}",
+                          "name": "objectMode",
+                          "type": "boolean"
+                        },
+                        {
+                          "textRaw": "`signal` {AbortSignal}",
+                          "name": "signal",
+                          "type": "AbortSignal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "textRaw": "`stream.Writable.toWeb(streamWritable)`",
+              "type": "method",
+              "name": "toWeb",
+              "meta": {
+                "added": [
+                  "v17.0.0"
+                ],
+                "changes": []
+              },
+              "stability": 1,
+              "stabilityText": "Experimental",
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {WritableStream}",
+                    "name": "return",
+                    "type": "WritableStream"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`streamWritable` {stream.Writable}",
+                      "name": "streamWritable",
+                      "type": "stream.Writable"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "textRaw": "`stream.Duplex.from(src)`",
               "type": "method",
               "name": "from",
@@ -2373,7 +3013,7 @@
                       ]
                     }
                   ],
-                  "desc": "<p>The <code>_construct()</code> method MUST NOT be called directly. It may be implemented\nby child classes, and if so, will be called by the internal <code>Writable</code>\nclass methods only.</p>\n<p>This optional function will be called in a tick after the stream constructor\nhas returned, delaying any <code>_write()</code>, <code>_final()</code> and <code>_destroy()</code> calls until\n<code>callback</code> is called. This is useful to initialize state or asynchronously\ninitialize resources before the stream can be used.</p>\n<pre><code class=\"language-js\">const { Writable } = require('stream');\nconst fs = require('fs');\n\nclass WriteStream extends Writable {\n  constructor(filename) {\n    super();\n    this.filename = filename;\n  }\n  _construct(callback) {\n    fs.open(this.filename, (err, fd) => {\n      if (err) {\n        callback(err);\n      } else {\n        this.fd = fd;\n        callback();\n      }\n    });\n  }\n  _write(chunk, encoding, callback) {\n    fs.write(this.fd, chunk, callback);\n  }\n  _destroy(err, callback) {\n    if (this.fd) {\n      fs.close(this.fd, (er) => callback(er || err));\n    } else {\n      callback(err);\n    }\n  }\n}\n</code></pre>"
+                  "desc": "<p>The <code>_construct()</code> method MUST NOT be called directly. It may be implemented\nby child classes, and if so, will be called by the internal <code>Writable</code>\nclass methods only.</p>\n<p>This optional function will be called in a tick after the stream constructor\nhas returned, delaying any <code>_write()</code>, <code>_final()</code> and <code>_destroy()</code> calls until\n<code>callback</code> is called. This is useful to initialize state or asynchronously\ninitialize resources before the stream can be used.</p>\n<pre><code class=\"language-js\">const { Writable } = require('stream');\nconst fs = require('fs');\n\nclass WriteStream extends Writable {\n  constructor(filename) {\n    super();\n    this.filename = filename;\n    this.fd = null;\n  }\n  _construct(callback) {\n    fs.open(this.filename, (err, fd) => {\n      if (err) {\n        callback(err);\n      } else {\n        this.fd = fd;\n        callback();\n      }\n    });\n  }\n  _write(chunk, encoding, callback) {\n    fs.write(this.fd, chunk, callback);\n  }\n  _destroy(err, callback) {\n    if (this.fd) {\n      fs.close(this.fd, (er) => callback(er || err));\n    } else {\n      callback(err);\n    }\n  }\n}\n</code></pre>"
                 },
                 {
                   "textRaw": "`writable._write(chunk, encoding, callback)`",
@@ -2480,7 +3120,7 @@
                       ]
                     }
                   ],
-                  "desc": "<p>The <code>_destroy()</code> method is called by <a href=\"#writabledestroyerror\"><code>writable.destroy()</code></a>.\nIt can be overridden by child classes but it <strong>must not</strong> be called directly.</p>"
+                  "desc": "<p>The <code>_destroy()</code> method is called by <a href=\"#writabledestroyerror\"><code>writable.destroy()</code></a>.\nIt can be overridden by child classes but it <strong>must not</strong> be called directly.\nFurthermore, the <code>callback</code> should not be mixed with async/await\nonce it is executed when a promise is resolved.</p>"
                 },
                 {
                   "textRaw": "`writable._final(callback)`",
@@ -2857,7 +3497,7 @@
                       ]
                     }
                   ],
-                  "desc": "<!-- eslint-disable no-useless-constructor -->\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\n\nclass MyDuplex extends Duplex {\n  constructor(options) {\n    super(options);\n    // ...\n  }\n}\n</code></pre>\n<p>Or, when using pre-ES6 style constructors:</p>\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\nconst util = require('util');\n\nfunction MyDuplex(options) {\n  if (!(this instanceof MyDuplex))\n    return new MyDuplex(options);\n  Duplex.call(this, options);\n}\nutil.inherits(MyDuplex, Duplex);\n</code></pre>\n<p>Or, using the simplified constructor approach:</p>\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\n\nconst myDuplex = new Duplex({\n  read(size) {\n    // ...\n  },\n  write(chunk, encoding, callback) {\n    // ...\n  }\n});\n</code></pre>\n<p>When using pipeline:</p>\n<pre><code class=\"language-js\">const { Transform, pipeline } = require('stream');\nconst fs = require('fs');\n\npipeline(\n  fs.createReadStream('object.json')\n    .setEncoding('utf8'),\n  new Transform({\n    decodeStrings: false, // Accept string input rather than Buffers\n    construct(callback) {\n      this.data = '';\n      callback();\n    },\n    transform(chunk, encoding, callback) {\n      this.data += chunk;\n      callback();\n    },\n    flush(callback) {\n      try {\n        // Make sure is valid json.\n        JSON.parse(this.data);\n        this.push(this.data);\n      } catch (err) {\n        callback(err);\n      }\n    }\n  }),\n  fs.createWriteStream('valid-object.json'),\n  (err) => {\n    if (err) {\n      console.error('failed', err);\n    } else {\n      console.log('completed');\n    }\n  }\n);\n</code></pre>"
+                  "desc": "<!-- eslint-disable no-useless-constructor -->\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\n\nclass MyDuplex extends Duplex {\n  constructor(options) {\n    super(options);\n    // ...\n  }\n}\n</code></pre>\n<p>Or, when using pre-ES6 style constructors:</p>\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\nconst util = require('util');\n\nfunction MyDuplex(options) {\n  if (!(this instanceof MyDuplex))\n    return new MyDuplex(options);\n  Duplex.call(this, options);\n}\nutil.inherits(MyDuplex, Duplex);\n</code></pre>\n<p>Or, using the simplified constructor approach:</p>\n<pre><code class=\"language-js\">const { Duplex } = require('stream');\n\nconst myDuplex = new Duplex({\n  read(size) {\n    // ...\n  },\n  write(chunk, encoding, callback) {\n    // ...\n  }\n});\n</code></pre>\n<p>When using pipeline:</p>\n<pre><code class=\"language-js\">const { Transform, pipeline } = require('stream');\nconst fs = require('fs');\n\npipeline(\n  fs.createReadStream('object.json')\n    .setEncoding('utf8'),\n  new Transform({\n    decodeStrings: false, // Accept string input rather than Buffers\n    construct(callback) {\n      this.data = '';\n      callback();\n    },\n    transform(chunk, encoding, callback) {\n      this.data += chunk;\n      callback();\n    },\n    flush(callback) {\n      try {\n        // Make sure is valid json.\n        JSON.parse(this.data);\n        this.push(this.data);\n        callback();\n      } catch (err) {\n        callback(err);\n      }\n    }\n  }),\n  fs.createWriteStream('valid-object.json'),\n  (err) => {\n    if (err) {\n      console.error('failed', err);\n    } else {\n      console.log('completed');\n    }\n  }\n);\n</code></pre>"
                 }
               ],
               "modules": [

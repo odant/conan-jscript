@@ -9,7 +9,7 @@
       "stability": 2,
       "stabilityText": "Stable",
       "type": "module",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/events.js\">lib/events.js</a></p>\n<p>Much of the Node.js core API is built around an idiomatic asynchronous\nevent-driven architecture in which certain kinds of objects (called \"emitters\")\nemit named events that cause <code>Function</code> objects (\"listeners\") to be called.</p>\n<p>For instance: a <a href=\"net.html#class-netserver\"><code>net.Server</code></a> object emits an event each time a peer\nconnects to it; a <a href=\"fs.html#class-fsreadstream\"><code>fs.ReadStream</code></a> emits an event when the file is opened;\na <a href=\"stream.html\">stream</a> emits an event whenever data is available to be read.</p>\n<p>All objects that emit events are instances of the <code>EventEmitter</code> class. These\nobjects expose an <code>eventEmitter.on()</code> function that allows one or more\nfunctions to be attached to named events emitted by the object. Typically,\nevent names are camel-cased strings but any valid JavaScript property key\ncan be used.</p>\n<p>When the <code>EventEmitter</code> object emits an event, all of the functions attached\nto that specific event are called <em>synchronously</em>. Any values returned by the\ncalled listeners are <em>ignored</em> and discarded.</p>\n<p>The following example shows a simple <code>EventEmitter</code> instance with a single\nlistener. The <code>eventEmitter.on()</code> method is used to register listeners, while\nthe <code>eventEmitter.emit()</code> method is used to trigger the event.</p>\n<pre><code class=\"language-js\">const EventEmitter = require('events');\n\nclass MyEmitter extends EventEmitter {}\n\nconst myEmitter = new MyEmitter();\nmyEmitter.on('event', () => {\n  console.log('an event occurred!');\n});\nmyEmitter.emit('event');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/events.js\">lib/events.js</a></p>\n<p>Much of the Node.js core API is built around an idiomatic asynchronous\nevent-driven architecture in which certain kinds of objects (called \"emitters\")\nemit named events that cause <code>Function</code> objects (\"listeners\") to be called.</p>\n<p>For instance: a <a href=\"net.html#class-netserver\"><code>net.Server</code></a> object emits an event each time a peer\nconnects to it; a <a href=\"fs.html#class-fsreadstream\"><code>fs.ReadStream</code></a> emits an event when the file is opened;\na <a href=\"stream.html\">stream</a> emits an event whenever data is available to be read.</p>\n<p>All objects that emit events are instances of the <code>EventEmitter</code> class. These\nobjects expose an <code>eventEmitter.on()</code> function that allows one or more\nfunctions to be attached to named events emitted by the object. Typically,\nevent names are camel-cased strings but any valid JavaScript property key\ncan be used.</p>\n<p>When the <code>EventEmitter</code> object emits an event, all of the functions attached\nto that specific event are called <em>synchronously</em>. Any values returned by the\ncalled listeners are <em>ignored</em> and discarded.</p>\n<p>The following example shows a simple <code>EventEmitter</code> instance with a single\nlistener. The <code>eventEmitter.on()</code> method is used to register listeners, while\nthe <code>eventEmitter.emit()</code> method is used to trigger the event.</p>\n<pre><code class=\"language-js\">const EventEmitter = require('events');\n\nclass MyEmitter extends EventEmitter {}\n\nconst myEmitter = new MyEmitter();\nmyEmitter.on('event', () => {\n  console.log('an event occurred!');\n});\nmyEmitter.emit('event');\n</code></pre>",
       "modules": [
         {
           "textRaw": "Passing arguments and `this` to listeners",
@@ -42,8 +42,6 @@
         {
           "textRaw": "Capture rejections of promises",
           "name": "capture_rejections_of_promises",
-          "stability": 1,
-          "stabilityText": "captureRejections is experimental.",
           "desc": "<p>Using <code>async</code> functions with event handlers is problematic, because it\ncan lead to an unhandled rejection in case of a thrown exception:</p>\n<pre><code class=\"language-js\">const ee = new EventEmitter();\nee.on('something', async (value) => {\n  throw new Error('kaboom');\n});\n</code></pre>\n<p>The <code>captureRejections</code> option in the <code>EventEmitter</code> constructor or the global\nsetting change this behavior, installing a <code>.then(undefined, handler)</code>\nhandler on the <code>Promise</code>. This handler routes the exception\nasynchronously to the <a href=\"#emittersymbolfornodejsrejectionerr-eventname-args\"><code>Symbol.for('nodejs.rejection')</code></a> method\nif there is one, or to <a href=\"#error-events\"><code>'error'</code></a> event handler if there is none.</p>\n<pre><code class=\"language-js\">const ee1 = new EventEmitter({ captureRejections: true });\nee1.on('something', async (value) => {\n  throw new Error('kaboom');\n});\n\nee1.on('error', console.log);\n\nconst ee2 = new EventEmitter({ captureRejections: true });\nee2.on('something', async (value) => {\n  throw new Error('kaboom');\n});\n\nee2[Symbol.for('nodejs.rejection')] = console.log;\n</code></pre>\n<p>Setting <code>events.captureRejections = true</code> will change the default for all\nnew instances of <code>EventEmitter</code>.</p>\n<pre><code class=\"language-js\">const events = require('events');\nevents.captureRejections = true;\nconst ee1 = new events.EventEmitter();\nee1.on('something', async (value) => {\n  throw new Error('kaboom');\n});\n\nee1.on('error', console.log);\n</code></pre>\n<p>The <code>'error'</code> events that are generated by the <code>captureRejections</code> behavior\ndo not have a catch handler to avoid infinite error loops: the\nrecommendation is to <strong>not use <code>async</code> functions as <code>'error'</code> event handlers</strong>.</p>",
           "type": "module",
           "displayName": "Capture rejections of promises"
@@ -1356,13 +1354,103 @@
                   "v13.4.0",
                   "v12.16.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.14.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/41267",
+                    "description": "No longer experimental."
+                  }
+                ]
               },
-              "stability": 1,
-              "stabilityText": "captureRejections is experimental.",
               "desc": "<ul>\n<li><code>err</code> Error</li>\n<li><code>eventName</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type\" class=\"type\">&lt;string&gt;</a> | <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Symbol_type\" class=\"type\">&lt;symbol&gt;</a></li>\n<li><code>...args</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Data_types\" class=\"type\">&lt;any&gt;</a></li>\n</ul>\n<p>The <code>Symbol.for('nodejs.rejection')</code> method is called in case a\npromise rejection happens when emitting an event and\n<a href=\"#capture-rejections-of-promises\"><code>captureRejections</code></a> is enabled on the emitter.\nIt is possible to use <a href=\"#eventscapturerejectionsymbol\"><code>events.captureRejectionSymbol</code></a> in\nplace of <code>Symbol.for('nodejs.rejection')</code>.</p>\n<pre><code class=\"language-js\">const { EventEmitter, captureRejectionSymbol } = require('events');\n\nclass MyClass extends EventEmitter {\n  constructor() {\n    super({ captureRejections: true });\n  }\n\n  [captureRejectionSymbol](err, event, ...args) {\n    console.log('rejection happened for', event, 'with', err, ...args);\n    this.destroy(err);\n  }\n\n  destroy(err) {\n    // Tear the resource down here.\n  }\n}\n</code></pre>",
               "type": "module",
               "displayName": "`emitter[Symbol.for('nodejs.rejection')](err, eventName[, ...args])`"
+            }
+          ]
+        },
+        {
+          "textRaw": "Class: `events.EventEmitterAsyncResource extends EventEmitter`",
+          "type": "class",
+          "name": "events.EventEmitterAsyncResource",
+          "meta": {
+            "added": [
+              "v16.14.0"
+            ],
+            "changes": []
+          },
+          "desc": "<p>Integrates <code>EventEmitter</code> with <a href=\"async_hooks.html#class-asyncresource\" class=\"type\">&lt;AsyncResource&gt;</a> for <code>EventEmitter</code>s that\nrequire manual async tracking. Specifically, all events emitted by instances\nof <code>events.EventEmitterAsyncResource</code> will run within its <a href=\"async_context.html\">async context</a>.</p>\n<pre><code class=\"language-js\">const { EventEmitterAsyncResource } = require('events');\nconst { notStrictEqual, strictEqual } = require('assert');\nconst { executionAsyncId } = require('async_hooks');\n\n// Async tracking tooling will identify this as 'Q'.\nconst ee1 = new EventEmitterAsyncResource({ name: 'Q' });\n\n// 'foo' listeners will run in the EventEmitters async context.\nee1.on('foo', () => {\n  strictEqual(executionAsyncId(), ee1.asyncId);\n  strictEqual(triggerAsyncId(), ee1.triggerAsyncId);\n});\n\nconst ee2 = new EventEmitter();\n\n// 'foo' listeners on ordinary EventEmitters that do not track async\n// context, however, run in the same async context as the emit().\nee2.on('foo', () => {\n  notStrictEqual(executionAsyncId(), ee2.asyncId);\n  notStrictEqual(triggerAsyncId(), ee2.triggerAsyncId);\n});\n\nPromise.resolve().then(() => {\n  ee1.emit('foo');\n  ee2.emit('foo');\n});\n</code></pre>\n<p>The <code>EventEmitterAsyncResource</code> class has the same methods and takes the\nsame options as <code>EventEmitter</code> and <code>AsyncResource</code> themselves.</p>",
+          "properties": [
+            {
+              "textRaw": "`asyncId` Type: {number} The unique `asyncId` assigned to the resource.",
+              "type": "number",
+              "name": "Type",
+              "desc": "The unique `asyncId` assigned to the resource."
+            },
+            {
+              "textRaw": "`asyncResource` Type: The underlying {AsyncResource}.",
+              "name": "Type",
+              "desc": "<p>The returned <code>AsyncResource</code> object has an additional <code>eventEmitter</code> property\nthat provides a reference to this <code>EventEmitterAsyncResource</code>.</p>",
+              "shortDesc": "The underlying {AsyncResource}."
+            },
+            {
+              "textRaw": "`triggerAsyncId` Type: {number} The same `triggerAsyncId` that is passed to the `AsyncResource` constructor.",
+              "type": "number",
+              "name": "Type",
+              "desc": "<p><a id=\"event-target-and-event-api\"></a></p>",
+              "shortDesc": "The same `triggerAsyncId` that is passed to the `AsyncResource` constructor."
+            }
+          ],
+          "methods": [
+            {
+              "textRaw": "`eventemitterasyncresource.emitDestroy()`",
+              "type": "method",
+              "name": "emitDestroy",
+              "signatures": [
+                {
+                  "params": []
+                }
+              ],
+              "desc": "<p>Call all <code>destroy</code> hooks. This should only ever be called once. An error will\nbe thrown if it is called more than once. This <strong>must</strong> be manually called. If\nthe resource is left to be collected by the GC then the <code>destroy</code> hooks will\nnever be called.</p>"
+            }
+          ],
+          "signatures": [
+            {
+              "params": [
+                {
+                  "textRaw": "`options` {Object}",
+                  "name": "options",
+                  "type": "Object",
+                  "options": [
+                    {
+                      "textRaw": "`captureRejections` {boolean} It enables [automatic capturing of promise rejection][capturerejections]. **Default:** `false`.",
+                      "name": "captureRejections",
+                      "type": "boolean",
+                      "default": "`false`",
+                      "desc": "It enables [automatic capturing of promise rejection][capturerejections]."
+                    },
+                    {
+                      "textRaw": "`name` {string} The type of async event. **Default::** [`new.target.name`][].",
+                      "name": "name",
+                      "type": "string",
+                      "desc": "The type of async event. **Default::** [`new.target.name`][]."
+                    },
+                    {
+                      "textRaw": "`triggerAsyncId` {number} The ID of the execution context that created this async event. **Default:** `executionAsyncId()`.",
+                      "name": "triggerAsyncId",
+                      "type": "number",
+                      "default": "`executionAsyncId()`",
+                      "desc": "The ID of the execution context that created this async event."
+                    },
+                    {
+                      "textRaw": "`requireManualDestroy` {boolean} If set to `true`, disables `emitDestroy` when the object is garbage collected. This usually does not need to be set (even if `emitDestroy` is called manually), unless the resource's `asyncId` is retrieved and the sensitive API's `emitDestroy` is called with it. When set to `false`, the `emitDestroy` call on garbage collection will only take place if there is at least one active `destroy` hook. **Default:** `false`.",
+                      "name": "requireManualDestroy",
+                      "type": "boolean",
+                      "default": "`false`",
+                      "desc": "If set to `true`, disables `emitDestroy` when the object is garbage collected. This usually does not need to be set (even if `emitDestroy` is called manually), unless the resource's `asyncId` is retrieved and the sensitive API's `emitDestroy` is called with it. When set to `false`, the `emitDestroy` call on garbage collection will only take place if there is at least one active `destroy` hook."
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -1399,10 +1487,14 @@
               "v13.4.0",
               "v12.16.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v16.14.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41267",
+                "description": "No longer experimental."
+              }
+            ]
           },
-          "stability": 1,
-          "stabilityText": "captureRejections is experimental.",
           "desc": "<p>Value: <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a></p>\n<p>Change the default <code>captureRejections</code> option on all new <code>EventEmitter</code> objects.</p>"
         },
         {
@@ -1413,10 +1505,14 @@
               "v13.4.0",
               "v12.16.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v16.14.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41267",
+                "description": "No longer experimental."
+              }
+            ]
           },
-          "stability": 1,
-          "stabilityText": "captureRejections is experimental.",
           "desc": "<p>Value: <code>Symbol.for('nodejs.rejection')</code></p>\n<p>See how to write a custom <a href=\"#emittersymbolfornodejsrejectionerr-eventname-args\">rejection handler</a>.</p>"
         }
       ],
@@ -1628,7 +1724,7 @@
               ]
             }
           ],
-          "desc": "<pre><code class=\"language-js\">const {\n  setMaxListeners,\n  EventEmitter\n} = require('events');\n\nconst target = new EventTarget();\nconst emitter = new EventEmitter();\n\nsetMaxListeners(5, target, emitter);\n</code></pre>\n<p><a id=\"event-target-and-event-api\"></a></p>"
+          "desc": "<pre><code class=\"language-js\">const {\n  setMaxListeners,\n  EventEmitter\n} = require('events');\n\nconst target = new EventTarget();\nconst emitter = new EventEmitter();\n\nsetMaxListeners(5, target, emitter);\n</code></pre>"
         }
       ]
     }

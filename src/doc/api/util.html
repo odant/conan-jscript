@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Util | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Util | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="util" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -281,7 +281,7 @@
         <h2>Util<span><a class="mark" href="#util" id="util">#</a></span><a aria-hidden="true" class="legacy" id="util_util"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/util.js">lib/util.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/util.js">lib/util.js</a></p>
 <p>The <code>util</code> module supports the needs of Node.js internal APIs. Many of the
 utilities are useful for application and module developers as well. To access
 it:</p>
@@ -643,6 +643,8 @@ stream.<span class="hljs-title function_">write</span>(<span class="hljs-string"
 <details class="changelog"><summary>History</summary>
 <table>
 <tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>The <code>numericSeparator</code> option is supported now.</p></td></tr>
 <tr><td>v13.0.0</td>
 <td><p>Circular references now include a marker to the reference.</p></td></tr>
 <tr><td>v14.6.0, v12.19.0</td>
@@ -704,7 +706,7 @@ the maximum call stack size pass <code>Infinity</code> or <code>null</code>.
 codes. Colors are customizable. See <a href="#customizing-utilinspect-colors">Customizing <code>util.inspect</code> colors</a>.
 <strong>Default:</strong> <code>false</code>.</li>
 <li><code>customInspect</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> If <code>false</code>,
-<code>[util.inspect.custom](depth, opts)</code> functions are not invoked.
+<code>[util.inspect.custom](depth, opts, inspect)</code> functions are not invoked.
 <strong>Default:</strong> <code>true</code>.</li>
 <li><code>showProxy</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> If <code>true</code>, <code>Proxy</code> inspection includes
 the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#Terminology"><code>target</code> and <code>handler</code></a> objects. <strong>Default:</strong> <code>false</code>.</li>
@@ -733,6 +735,9 @@ it is used as a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript
 to <code>'get'</code>, only getters without a corresponding setter are inspected. If
 set to <code>'set'</code>, only getters with a corresponding setter are inspected.
 This might cause side effects depending on the getter function.
+<strong>Default:</strong> <code>false</code>.</li>
+<li><code>numericSeparator</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> If set to <code>true</code>, an underscore is used to
+separate every three digits in all bigints and numbers.
 <strong>Default:</strong> <code>false</code>.</li>
 </ul>
 </li>
@@ -860,6 +865,17 @@ assert.<span class="hljs-property">strict</span>.<span class="hljs-title functio
   <span class="hljs-title function_">inspect</span>(o1, { <span class="hljs-attr">sorted</span>: <span class="hljs-literal">true</span> }),
   <span class="hljs-title function_">inspect</span>(o2, { <span class="hljs-attr">sorted</span>: <span class="hljs-literal">true</span> })
 );</code></pre>
+<p>The <code>numericSeparator</code> option adds an underscore every three digits to all
+numbers.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+
+<span class="hljs-keyword">const</span> thousand = <span class="hljs-number">1_000</span>;
+<span class="hljs-keyword">const</span> million = <span class="hljs-number">1_000_000</span>;
+<span class="hljs-keyword">const</span> bigNumber = <span class="hljs-number">123_456_789n</span>;
+<span class="hljs-keyword">const</span> bigDecimal = <span class="hljs-number">1_234.123_45</span>;
+
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(thousand, million, bigNumber, bigDecimal);
+<span class="hljs-comment">// 1_000 1_000_000 123_456_789n 1_234.123_45</span></code></pre>
 <p><code>util.inspect()</code> is a synchronous method intended for debugging. Its maximum
 output length is approximately 128 MB. Inputs that result in longer output will
 be truncated.</p>
@@ -949,10 +965,21 @@ double underlined (Alias: <code>doubleUnderline</code>)</li>
 </ul>
 <h4>Custom inspection functions on objects<span><a class="mark" href="#custom-inspection-functions-on-objects" id="custom-inspection-functions-on-objects">#</a></span><a aria-hidden="true" class="legacy" id="util_custom_inspection_functions_on_objects"></a></h4>
 
+<div class="api_metadata">
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>The inspect argument is added for more interoperability.</p></td></tr>
+<tr><td>v0.1.97</td>
+<td><p><span>Added in: v0.1.97</span></p></td></tr>
+</tbody></table>
+</details>
+</div>
 <p>Objects may also define their own
-<a href="#utilinspectcustom"><code>[util.inspect.custom](depth, opts)</code></a> function,
+<a href="#utilinspectcustom"><code>[util.inspect.custom](depth, opts, inspect)</code></a> function,
 which <code>util.inspect()</code> will invoke and use the result of when inspecting
-the object:</p>
+the object.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">Box</span> {
@@ -960,7 +987,7 @@ the object:</p>
     <span class="hljs-variable language_">this</span>.<span class="hljs-property">value</span> = value;
   }
 
-  [util.<span class="hljs-property">inspect</span>.<span class="hljs-property">custom</span>](depth, options) {
+  [util.<span class="hljs-property">inspect</span>.<span class="hljs-property">custom</span>](depth, options, inspect) {
     <span class="hljs-keyword">if</span> (depth &#x3C; <span class="hljs-number">0</span>) {
       <span class="hljs-keyword">return</span> options.<span class="hljs-title function_">stylize</span>(<span class="hljs-string">'[Box]'</span>, <span class="hljs-string">'special'</span>);
     }
@@ -971,8 +998,8 @@ the object:</p>
 
     <span class="hljs-comment">// Five space padding because that's the size of "Box&#x3C; ".</span>
     <span class="hljs-keyword">const</span> padding = <span class="hljs-string">' '</span>.<span class="hljs-title function_">repeat</span>(<span class="hljs-number">5</span>);
-    <span class="hljs-keyword">const</span> inner = util.<span class="hljs-title function_">inspect</span>(<span class="hljs-variable language_">this</span>.<span class="hljs-property">value</span>, newOptions)
-                      .<span class="hljs-title function_">replace</span>(<span class="hljs-regexp">/\n/g</span>, <span class="hljs-string">`\n<span class="hljs-subst">${padding}</span>`</span>);
+    <span class="hljs-keyword">const</span> inner = <span class="hljs-title function_">inspect</span>(<span class="hljs-variable language_">this</span>.<span class="hljs-property">value</span>, newOptions)
+                  .<span class="hljs-title function_">replace</span>(<span class="hljs-regexp">/\n/g</span>, <span class="hljs-string">`\n<span class="hljs-subst">${padding}</span>`</span>);
     <span class="hljs-keyword">return</span> <span class="hljs-string">`<span class="hljs-subst">${options.stylize(<span class="hljs-string">'Box'</span>, <span class="hljs-string">'special'</span>)}</span>&#x3C; <span class="hljs-subst">${inner}</span> >`</span>;
   }
 }
@@ -981,9 +1008,9 @@ the object:</p>
 
 util.<span class="hljs-title function_">inspect</span>(box);
 <span class="hljs-comment">// Returns: "Box&#x3C; true >"</span></code></pre>
-<p>Custom <code>[util.inspect.custom](depth, opts)</code> functions typically return a string
-but may return a value of any type that will be formatted accordingly by
-<code>util.inspect()</code>.</p>
+<p>Custom <code>[util.inspect.custom](depth, opts, inspect)</code> functions typically return
+a string but may return a value of any type that will be formatted accordingly
+by <code>util.inspect()</code>.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
 
 <span class="hljs-keyword">const</span> obj = { <span class="hljs-attr">foo</span>: <span class="hljs-string">'this will not show up in the inspect() output'</span> };
@@ -1011,7 +1038,11 @@ util.<span class="hljs-title function_">inspect</span>(obj);
 <p>In addition to being accessible through <code>util.inspect.custom</code>, this
 symbol is <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/for">registered globally</a> and can be
 accessed in any environment as <code>Symbol.for('nodejs.util.inspect.custom')</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> inspect = <span class="hljs-title class_">Symbol</span>.<span class="hljs-title function_">for</span>(<span class="hljs-string">'nodejs.util.inspect.custom'</span>);
+<p>Using this allows code to be written in a portable fashion, so that the custom
+inspect function is used in an Node.js environment and ignored in the browser.
+The <code>util.inspect()</code> function itself is passed as third argument to the custom
+inspect function to allow further portability.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> customInspectSymbol = <span class="hljs-title class_">Symbol</span>.<span class="hljs-title function_">for</span>(<span class="hljs-string">'nodejs.util.inspect.custom'</span>);
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">Password</span> {
   <span class="hljs-title function_">constructor</span>(<span class="hljs-params">value</span>) {
@@ -1022,7 +1053,7 @@ accessed in any environment as <code>Symbol.for('nodejs.util.inspect.custom')</c
     <span class="hljs-keyword">return</span> <span class="hljs-string">'xxxxxxxx'</span>;
   }
 
-  [inspect]() {
+  [customInspectSymbol](depth, inspectOptions, inspect) {
     <span class="hljs-keyword">return</span> <span class="hljs-string">`Password &#x3C;<span class="hljs-subst">${<span class="hljs-variable language_">this</span>.toString()}</span>>`</span>;
   }
 }
@@ -1498,7 +1529,7 @@ encoded bytes.</p>
 containing the read Unicode code units and written UTF-8 bytes.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> encoder = <span class="hljs-keyword">new</span> <span class="hljs-title class_">TextEncoder</span>();
 <span class="hljs-keyword">const</span> src = <span class="hljs-string">'this is some data'</span>;
-<span class="hljs-keyword">const</span> dest = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-number">10</span>);
+<span class="hljs-keyword">const</span> dest = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-number">10</span>);
 <span class="hljs-keyword">const</span> { read, written } = encoder.<span class="hljs-title function_">encodeInto</span>(src, dest);</code></pre>
 <h4><code>textEncoder.encoding</code><span><a class="mark" href="#textencoderencoding" id="textencoderencoding">#</a></span><a aria-hidden="true" class="legacy" id="util_textencoder_encoding"></a></h4>
 <ul>
@@ -1560,7 +1591,7 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 <p>Returns <code>true</code> if the value is an instance of one of the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer"><code>ArrayBuffer</code></a>
 views, such as typed array objects or <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView"><code>DataView</code></a>. Equivalent to
 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView"><code>ArrayBuffer.isView()</code></a>.</p>
-<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isArrayBufferView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>8<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// true</span>
+<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isArrayBufferView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int8Array</span>());  <span class="hljs-comment">// true</span>
 util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isArrayBufferView</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'hello world'</span>)); <span class="hljs-comment">// true</span>
 util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isArrayBufferView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">DataView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>(<span class="hljs-number">16</span>)));  <span class="hljs-comment">// true</span>
 util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isArrayBufferView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// false</span></code></pre>
@@ -1613,8 +1644,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the value is a <code>BigInt64Array</code> instance.</p>
-<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigInt64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigInt</span>64<span class="hljs-built_in">Array</span>());   <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigInt64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigUint</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigInt64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigInt64Array</span>());   <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigInt64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigUint64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isBigUint64Array(value)</code><span><a class="mark" href="#utiltypesisbiguint64arrayvalue" id="utiltypesisbiguint64arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isbiguint64array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1624,8 +1655,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the value is a <code>BigUint64Array</code> instance.</p>
-<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigUint64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigInt</span>64<span class="hljs-built_in">Array</span>());   <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigUint64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigUint</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
+<pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigUint64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigInt64Array</span>());   <span class="hljs-comment">// Returns false</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isBigUint64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">BigUint64Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
 <h4><code>util.types.isBooleanObject(value)</code><span><a class="mark" href="#utiltypesisbooleanobjectvalue" id="utiltypesisbooleanobjectvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isbooleanobject_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1678,7 +1709,7 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView"><code>DataView</code></a> instance.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> ab = <span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>(<span class="hljs-number">20</span>);
 util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isDataView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">DataView</span>(ab));  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isDataView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isDataView</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <p>See also <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView"><code>ArrayBuffer.isView()</code></a>.</p>
 <h4><code>util.types.isDate(value)</code><span><a class="mark" href="#utiltypesisdatevalue" id="utiltypesisdatevalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isdate_value"></a></h4>
 <div class="api_metadata">
@@ -1707,7 +1738,7 @@ addons. In JavaScript, they are <a href="https://developer.mozilla.org/en-US/doc
 <pre><code class="language-c"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&#x3C;js_native_api.h></span></span>
 <span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&#x3C;stdlib.h></span></span>
 napi_value result;
-<span class="hljs-keyword">static</span> napi_value <span class="hljs-title function_">MyNapi</span><span class="hljs-params">(napi_env env, napi_callback_info info)</span> {
+<span class="hljs-type">static</span> napi_value <span class="hljs-title function_">MyNapi</span><span class="hljs-params">(napi_env env, napi_callback_info info)</span> {
   <span class="hljs-type">int</span>* raw = (<span class="hljs-type">int</span>*) <span class="hljs-built_in">malloc</span>(<span class="hljs-number">1024</span>);
   napi_status status = napi_create_external(env, (<span class="hljs-type">void</span>*) raw, <span class="hljs-literal">NULL</span>, <span class="hljs-literal">NULL</span>, &#x26;result);
   <span class="hljs-keyword">if</span> (status != napi_ok) {
@@ -1736,8 +1767,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array"><code>Float32Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>32<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float32Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isFloat64Array(value)</code><span><a class="mark" href="#utiltypesisfloat64arrayvalue" id="utiltypesisfloat64arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isfloat64array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1748,8 +1779,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array"><code>Float64Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>());  <span class="hljs-comment">// Returns false</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isFloat64Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
 <h4><code>util.types.isGeneratorFunction(value)</code><span><a class="mark" href="#utiltypesisgeneratorfunctionvalue" id="utiltypesisgeneratorfunctionvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isgeneratorfunction_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1790,8 +1821,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array"><code>Int8Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>8<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int8Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isInt16Array(value)</code><span><a class="mark" href="#utiltypesisint16arrayvalue" id="utiltypesisint16arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isint16array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1802,8 +1833,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array"><code>Int16Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>16<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int16Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isInt32Array(value)</code><span><a class="mark" href="#utiltypesisint32arrayvalue" id="utiltypesisint32arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isint32array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -1814,8 +1845,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array"><code>Int32Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int</span>32<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Int32Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isInt32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isKeyObject(value)</code><span><a class="mark" href="#utiltypesiskeyobjectvalue" id="utiltypesiskeyobjectvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_iskeyobject_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v16.2.0</span>
@@ -1994,8 +2025,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray"><code>TypedArray</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isTypedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isTypedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isTypedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isTypedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isTypedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns true</span></code></pre>
 <p>See also <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView"><code>ArrayBuffer.isView()</code></a>.</p>
 <h4><code>util.types.isUint8Array(value)</code><span><a class="mark" href="#utiltypesisuint8arrayvalue" id="utiltypesisuint8arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isuint8array_value"></a></h4>
 <div class="api_metadata">
@@ -2007,8 +2038,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array"><code>Uint8Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isUint8ClampedArray(value)</code><span><a class="mark" href="#utiltypesisuint8clampedarrayvalue" id="utiltypesisuint8clampedarrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isuint8clampedarray_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -2019,8 +2050,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray"><code>Uint8ClampedArray</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8ClampedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8ClampedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8ClampedArray());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8ClampedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8ClampedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8ClampedArray</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint8ClampedArray</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isUint16Array(value)</code><span><a class="mark" href="#utiltypesisuint16arrayvalue" id="utiltypesisuint16arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isuint16array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -2031,8 +2062,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array"><code>Uint16Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>16<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint16Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint16Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isUint32Array(value)</code><span><a class="mark" href="#utiltypesisuint32arrayvalue" id="utiltypesisuint32arrayvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isuint32array_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -2043,8 +2074,8 @@ util.<span class="hljs-property">types</span>.<span class="hljs-title function_"
 </ul>
 <p>Returns <code>true</code> if the value is a built-in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array"><code>Uint32Array</code></a> instance.</p>
 <pre><code class="language-js">util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayBuffer</span>());  <span class="hljs-comment">// Returns false</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>32<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns true</span>
-util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float</span>64<span class="hljs-built_in">Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint32Array</span>());  <span class="hljs-comment">// Returns true</span>
+util.<span class="hljs-property">types</span>.<span class="hljs-title function_">isUint32Array</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Float64Array</span>());  <span class="hljs-comment">// Returns false</span></code></pre>
 <h4><code>util.types.isWeakMap(value)</code><span><a class="mark" href="#utiltypesisweakmapvalue" id="utiltypesisweakmapvalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isweakmap_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>

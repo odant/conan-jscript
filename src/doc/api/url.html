@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>URL | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>URL | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="url" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -244,7 +244,7 @@
         <h2>URL<span><a class="mark" href="#url" id="url">#</a></span><a aria-hidden="true" class="legacy" id="url_url"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/url.js">lib/url.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/url.js">lib/url.js</a></p>
 <p>The <code>url</code> module provides utilities for URL resolution and parsing. It can be
 accessed using:</p>
 
@@ -721,7 +721,7 @@ with <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/
   <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'https://www.example.com'</span>),
   <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'https://test.example.org'</span>),
 ];
-<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-variable constant_">JSON</span>.<span class="hljs-title function_">stringify</span>(myURLs));
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>(myURLs));
 <span class="hljs-comment">// Prints ["https://www.example.com/","https://test.example.org/"]</span></code></pre>
 <h5><code>URL.createObjectURL(blob)</code><span><a class="mark" href="#urlcreateobjecturlblob" id="urlcreateobjecturlblob">#</a></span><a aria-hidden="true" class="legacy" id="url_url_createobjecturl_blob"></a></h5>
 <div class="api_metadata">
@@ -794,7 +794,7 @@ myURL.<span class="hljs-property">searchParams</span>.<span class="hljs-title fu
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(myURL.<span class="hljs-property">href</span>);
 <span class="hljs-comment">// Prints https://example.org/?a=b</span>
 
-<span class="hljs-keyword">const</span> newSearchParams = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(myURL.<span class="hljs-property">searchParams</span>);
+<span class="hljs-keyword">const</span> newSearchParams = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(myURL.<span class="hljs-property">searchParams</span>);
 <span class="hljs-comment">// The above is equivalent to</span>
 <span class="hljs-comment">// const newSearchParams = new URLSearchParams(myURL.search);</span>
 
@@ -821,13 +821,13 @@ newSearchParams.<span class="hljs-title function_">delete</span>(<span class="hl
 <code>URLSearchParams</code> object. A leading <code>'?'</code>, if present, is ignored.</p>
 <pre><code class="language-js"><span class="hljs-keyword">let</span> params;
 
-params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-string">'user=abc&#x26;query=xyz'</span>);
+params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-string">'user=abc&#x26;query=xyz'</span>);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">get</span>(<span class="hljs-string">'user'</span>));
 <span class="hljs-comment">// Prints 'abc'</span>
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints 'user=abc&#x26;query=xyz'</span>
 
-params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-string">'?user=abc&#x26;query=xyz'</span>);
+params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-string">'?user=abc&#x26;query=xyz'</span>);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints 'user=abc&#x26;query=xyz'</span></code></pre>
 <h5><code>new URLSearchParams(obj)</code><span><a class="mark" href="#new-urlsearchparamsobj" id="new-urlsearchparamsobj">#</a></span><a aria-hidden="true" class="legacy" id="url_new_urlsearchparams_obj"></a></h5>
@@ -842,7 +842,7 @@ value of each property of <code>obj</code> are always coerced to strings.</p>
 <p>Unlike <a href="querystring.html"><code>querystring</code></a> module, duplicate keys in the form of array values are
 not allowed. Arrays are stringified using <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toString"><code>array.toString()</code></a>, which simply
 joins all array elements with commas.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>({
+<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>({
   <span class="hljs-attr">user</span>: <span class="hljs-string">'abc'</span>,
   <span class="hljs-attr">query</span>: [<span class="hljs-string">'first'</span>, <span class="hljs-string">'second'</span>]
 });
@@ -867,7 +867,7 @@ themselves be any iterable object.</p>
 <pre><code class="language-js"><span class="hljs-keyword">let</span> params;
 
 <span class="hljs-comment">// Using an array</span>
-params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>([
+params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>([
   [<span class="hljs-string">'user'</span>, <span class="hljs-string">'abc'</span>],
   [<span class="hljs-string">'query'</span>, <span class="hljs-string">'first'</span>],
   [<span class="hljs-string">'query'</span>, <span class="hljs-string">'second'</span>],
@@ -879,7 +879,7 @@ params = <span class="hljs-keyword">new</span> <span class="hljs-title function_
 <span class="hljs-keyword">const</span> map = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Map</span>();
 map.<span class="hljs-title function_">set</span>(<span class="hljs-string">'user'</span>, <span class="hljs-string">'abc'</span>);
 map.<span class="hljs-title function_">set</span>(<span class="hljs-string">'query'</span>, <span class="hljs-string">'xyz'</span>);
-params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(map);
+params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(map);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints 'user=abc&#x26;query=xyz'</span>
 
@@ -889,12 +889,12 @@ params = <span class="hljs-keyword">new</span> <span class="hljs-title function_
   <span class="hljs-keyword">yield</span> [<span class="hljs-string">'query'</span>, <span class="hljs-string">'first'</span>];
   <span class="hljs-keyword">yield</span> [<span class="hljs-string">'query'</span>, <span class="hljs-string">'second'</span>];
 }
-params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-title function_">getQueryPairs</span>());
+params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-title function_">getQueryPairs</span>());
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints 'user=abc&#x26;query=first&#x26;query=second'</span>
 
 <span class="hljs-comment">// Each key-value pair must have exactly two elements</span>
-<span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>([
+<span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>([
   [<span class="hljs-string">'user'</span>, <span class="hljs-string">'abc'</span>, <span class="hljs-string">'error'</span>],
 ]);
 <span class="hljs-comment">// Throws TypeError [ERR_INVALID_TUPLE]:</span>
@@ -957,7 +957,7 @@ no such pairs, an empty array is returned.</p>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#The_iterator_protocol" class="type">&#x3C;Iterator></a></li>
 </ul>
 <p>Returns an ES6 <code>Iterator</code> over the names of each name-value pair.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-string">'foo=bar&#x26;foo=baz'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-string">'foo=bar&#x26;foo=baz'</span>);
 <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> name <span class="hljs-keyword">of</span> params.<span class="hljs-title function_">keys</span>()) {
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(name);
 }
@@ -973,7 +973,7 @@ no such pairs, an empty array is returned.</p>
 <code>value</code>. If there are any pre-existing name-value pairs whose names are <code>name</code>,
 set the first such pair's value to <code>value</code> and remove all others. If not,
 append the name-value pair to the query string.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>();
+<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>();
 params.<span class="hljs-title function_">append</span>(<span class="hljs-string">'foo'</span>, <span class="hljs-string">'bar'</span>);
 params.<span class="hljs-title function_">append</span>(<span class="hljs-string">'foo'</span>, <span class="hljs-string">'baz'</span>);
 params.<span class="hljs-title function_">append</span>(<span class="hljs-string">'abc'</span>, <span class="hljs-string">'def'</span>);
@@ -992,7 +992,7 @@ params.<span class="hljs-title function_">set</span>(<span class="hljs-string">'
 with a <a href="https://en.wikipedia.org/wiki/Sorting_algorithm#Stability">stable sorting algorithm</a>, so relative order between name-value pairs
 with the same name is preserved.</p>
 <p>This method can be used, in particular, to increase cache hits.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-string">'query[]=abc&#x26;type=search&#x26;query[]=123'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-string">'query[]=abc&#x26;type=search&#x26;query[]=123'</span>);
 params.<span class="hljs-title function_">sort</span>();
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(params.<span class="hljs-title function_">toString</span>());
 <span class="hljs-comment">// Prints query%5B%5D=abc&#x26;query%5B%5D=123&#x26;type=search</span></code></pre>
@@ -1015,7 +1015,7 @@ percent-encoded where necessary.</p>
 Each item of the iterator is a JavaScript <code>Array</code>. The first item of the <code>Array</code>
 is the <code>name</code>, the second item of the <code>Array</code> is the <code>value</code>.</p>
 <p>Alias for <a href="#urlsearchparamsentries"><code>urlSearchParams.entries()</code></a>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URLSearchParams</span>(<span class="hljs-string">'foo=bar&#x26;xyz=baz'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> params = <span class="hljs-keyword">new</span> <span class="hljs-title class_">URLSearchParams</span>(<span class="hljs-string">'foo=bar&#x26;xyz=baz'</span>);
 <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> [name, value] <span class="hljs-keyword">of</span> params) {
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(name, value);
 }
@@ -1226,7 +1226,7 @@ expected by the <a href="http.html#httprequestoptions-callback"><code>http.reque
 <span class="hljs-keyword">const</span> myURL = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'https://a:b@測試?abc#foo'</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">urlToHttpOptions</span>(myURL));
-<span class="hljs-comment">/**
+<span class="hljs-comment">/*
 {
   protocol: 'https:',
   hostname: 'xn--g6w251d',
@@ -1234,14 +1234,14 @@ expected by the <a href="http.html#httprequestoptions-callback"><code>http.reque
   search: '?abc',
   pathname: '/',
   path: '/?abc',
-  href: 'https://a:b<span class="hljs-doctag">@xn</span>--g6w251d/?abc#foo',
+  href: 'https://a:b@xn--g6w251d/?abc#foo',
   auth: 'a:b'
 }
 */</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { urlToHttpOptions } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'url'</span>);
 <span class="hljs-keyword">const</span> myURL = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-string">'https://a:b@測試?abc#foo'</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">urlToHttpOptions</span>(myUrl));
-<span class="hljs-comment">/**
+<span class="hljs-comment">/*
 {
   protocol: 'https:',
   hostname: 'xn--g6w251d',
@@ -1249,7 +1249,7 @@ expected by the <a href="http.html#httprequestoptions-callback"><code>http.reque
   search: '?abc',
   pathname: '/',
   path: '/?abc',
-  href: 'https://a:b<span class="hljs-doctag">@xn</span>--g6w251d/?abc#foo',
+  href: 'https://a:b@xn--g6w251d/?abc#foo',
   auth: 'a:b'
 }
 */</span></code></pre>

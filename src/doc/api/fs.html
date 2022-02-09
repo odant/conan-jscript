@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>File system | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>File system | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="fs" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -472,7 +472,7 @@
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/fs.js">lib/fs.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/fs.js">lib/fs.js</a></p>
 <p>The <code>fs</code> module enables interacting with the file system in a
 way modeled on standard POSIX functions.</p>
 <p>To use the promise-based APIs:</p>
@@ -524,7 +524,7 @@ the first argument is <code>null</code> or <code>undefined</code>.</p>
 });</code></pre>
 <p>The callback-based versions of the <code>fs</code> module APIs are preferable over
 the use of the promise APIs when maximal performance (both in terms of
-execution time and memory allocation are required).</p>
+execution time and memory allocation) is required.</p>
 </section><section><h3>Synchronous example<span><a class="mark" href="#synchronous-example" id="synchronous-example">#</a></span><a aria-hidden="true" class="legacy" id="fs_synchronous_example"></a></h3>
 <p>The synchronous APIs block the Node.js event loop and further JavaScript
 execution until the operation is complete. Exceptions are thrown immediately
@@ -1050,9 +1050,11 @@ the end of the file.</p>
 </ul>
 <p>Tests a user's permissions for the file or directory specified by <code>path</code>.
 The <code>mode</code> argument is an optional integer that specifies the accessibility
-checks to be performed. Check <a href="#file-access-constants">File access constants</a> for possible values
-of <code>mode</code>. It is possible to create a mask consisting of the bitwise OR of
-two or more values (e.g. <code>fs.constants.W_OK | fs.constants.R_OK</code>).</p>
+checks to be performed. <code>mode</code> should be either the value <code>fs.constants.F_OK</code>
+or a mask consisting of the bitwise OR of any of <code>fs.constants.R_OK</code>,
+<code>fs.constants.W_OK</code>, and <code>fs.constants.X_OK</code> (e.g.
+<code>fs.constants.W_OK | fs.constants.R_OK</code>). Check <a href="#file-access-constants">File access constants</a> for
+possible values of <code>mode</code>.</p>
 <p>If the accessibility check is successful, the promise is resolved with no
 value. If any of the accessibility checks fail, the promise is rejected
 with an <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error" class="type">&#x3C;Error></a> object. The following example checks if the file
@@ -1809,7 +1811,7 @@ to be written.</p>
 <span class="hljs-keyword">try</span> {
   <span class="hljs-keyword">const</span> controller = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AbortController</span>();
   <span class="hljs-keyword">const</span> { signal } = controller;
-  <span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
+  <span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
   <span class="hljs-keyword">const</span> promise = <span class="hljs-title function_">writeFile</span>(<span class="hljs-string">'message.txt'</span>, data, { signal });
 
   <span class="hljs-comment">// Abort the request before the promise settles.</span>
@@ -1854,9 +1856,11 @@ concurrent modifications on the same file or data corruption may occur.</p>
 </ul>
 <p>Tests a user's permissions for the file or directory specified by <code>path</code>.
 The <code>mode</code> argument is an optional integer that specifies the accessibility
-checks to be performed. Check <a href="#file-access-constants">File access constants</a> for possible values
-of <code>mode</code>. It is possible to create a mask consisting of the bitwise OR of
-two or more values (e.g. <code>fs.constants.W_OK | fs.constants.R_OK</code>).</p>
+checks to be performed. <code>mode</code> should be either the value <code>fs.constants.F_OK</code>
+or a mask consisting of the bitwise OR of any of <code>fs.constants.R_OK</code>,
+<code>fs.constants.W_OK</code>, and <code>fs.constants.X_OK</code> (e.g.
+<code>fs.constants.W_OK | fs.constants.R_OK</code>). Check <a href="#file-access-constants">File access constants</a> for
+possible values of <code>mode</code>.</p>
 <p>The final argument, <code>callback</code>, is a callback function that is invoked with
 a possible error argument. If any of the accessibility checks fail, the error
 argument will be an <code>Error</code> object. The following examples check if
@@ -1880,14 +1884,9 @@ argument will be an <code>Error</code> object. The following examples check if
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`<span class="hljs-subst">${file}</span> <span class="hljs-subst">${err ? <span class="hljs-string">'is not writable'</span> : <span class="hljs-string">'is writable'</span>}</span>`</span>);
 });
 
-<span class="hljs-comment">// Check if the file exists in the current directory, and if it is writable.</span>
-<span class="hljs-title function_">access</span>(file, constants.<span class="hljs-property">F_OK</span> | constants.<span class="hljs-property">W_OK</span>, <span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
-  <span class="hljs-keyword">if</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(
-      <span class="hljs-string">`<span class="hljs-subst">${file}</span> <span class="hljs-subst">${err.code === <span class="hljs-string">'ENOENT'</span> ? <span class="hljs-string">'does not exist'</span> : <span class="hljs-string">'is read-only'</span>}</span>`</span>);
-  } <span class="hljs-keyword">else</span> {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`<span class="hljs-subst">${file}</span> exists, and it is writable`</span>);
-  }
+<span class="hljs-comment">// Check if the file is readable and writable.</span>
+<span class="hljs-title function_">access</span>(file, constants.<span class="hljs-property">R_OK</span> | constants.<span class="hljs-property">W_OK</span>, <span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`<span class="hljs-subst">${file}</span> <span class="hljs-subst">${err ? <span class="hljs-string">'is not'</span> : <span class="hljs-string">'is'</span>}</span> readable and writable`</span>);
 });</code></pre>
 <p>Do not use <code>fs.access()</code> to check for the accessibility of a file before calling
 <code>fs.open()</code>, <code>fs.readFile()</code> or <code>fs.writeFile()</code>. Doing
@@ -3700,7 +3699,15 @@ Windows and an <code>ENOTDIR</code> error on POSIX.</p>
 with options <code>{ recursive: true, force: true }</code>.</p>
 <h4><code>fs.rm(path[, options], callback)</code><span><a class="mark" href="#fsrmpath-options-callback" id="fsrmpath-options-callback">#</a></span><a aria-hidden="true" class="legacy" id="fs_fs_rm_path_options_callback"></a></h4>
 <div class="api_metadata">
-<span>Added in: v14.14.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>The <code>path</code> parameter can be a WHATWG <code>URL</code> object using <code>file:</code> protocol.</p></td></tr>
+<tr><td>v14.14.0</td>
+<td><p><span>Added in: v14.14.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li><code>path</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="url.html#the-whatwg-url-api" class="type">&#x3C;URL></a></li>
@@ -4348,7 +4355,7 @@ function property.</p>
 <pre><code class="language-js mjs"><span class="hljs-keyword">import</span> { writeFile } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs'</span>;
 <span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
+<span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
 <span class="hljs-title function_">writeFile</span>(<span class="hljs-string">'message.txt'</span>, data, <span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
   <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">throw</span> err;
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'The file has been saved!'</span>);
@@ -4371,7 +4378,7 @@ to be written.</p>
 
 <span class="hljs-keyword">const</span> controller = <span class="hljs-keyword">new</span> <span class="hljs-title class_">AbortController</span>();
 <span class="hljs-keyword">const</span> { signal } = controller;
-<span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint</span>8<span class="hljs-built_in">Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
+<span class="hljs-keyword">const</span> data = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>(<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'Hello Node.js'</span>));
 <span class="hljs-title function_">writeFile</span>(<span class="hljs-string">'message.txt'</span>, data, { signal }, <span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
   <span class="hljs-comment">// When a request is aborted - the callback is called with an AbortError</span>
 });
@@ -4451,10 +4458,11 @@ event loop until the operation completes or fails.</p>
 </ul>
 <p>Synchronously tests a user's permissions for the file or directory specified
 by <code>path</code>. The <code>mode</code> argument is an optional integer that specifies the
-accessibility checks to be performed. Check <a href="#file-access-constants">File access constants</a> for
-possible values of <code>mode</code>. It is possible to create a mask consisting of
-the bitwise OR of two or more values
-(e.g. <code>fs.constants.W_OK | fs.constants.R_OK</code>).</p>
+accessibility checks to be performed. <code>mode</code> should be either the value
+<code>fs.constants.F_OK</code> or a mask consisting of the bitwise OR of any of
+<code>fs.constants.R_OK</code>, <code>fs.constants.W_OK</code>, and <code>fs.constants.X_OK</code> (e.g.
+<code>fs.constants.W_OK | fs.constants.R_OK</code>). Check <a href="#file-access-constants">File access constants</a> for
+possible values of <code>mode</code>.</p>
 <p>If any of the accessibility checks fail, an <code>Error</code> will be thrown. Otherwise,
 the method will return <code>undefined</code>.</p>
 <pre><code class="language-js mjs"><span class="hljs-keyword">import</span> { accessSync, constants } <span class="hljs-keyword">from</span> <span class="hljs-string">'fs'</span>;
@@ -5249,7 +5257,15 @@ on Windows and an <code>ENOTDIR</code> error on POSIX.</p>
 with options <code>{ recursive: true, force: true }</code>.</p>
 <h4><code>fs.rmSync(path[, options])</code><span><a class="mark" href="#fsrmsyncpath-options" id="fsrmsyncpath-options">#</a></span><a aria-hidden="true" class="legacy" id="fs_fs_rmsync_path_options"></a></h4>
 <div class="api_metadata">
-<span>Added in: v14.14.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.0</td>
+<td><p>The <code>path</code> parameter can be a WHATWG <code>URL</code> object using <code>file:</code> protocol.</p></td></tr>
+<tr><td>v14.14.0</td>
+<td><p><span>Added in: v14.14.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li><code>path</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> | <a href="url.html#the-whatwg-url-api" class="type">&#x3C;URL></a></li>
@@ -6266,7 +6282,8 @@ operations.</p>
   <span class="hljs-comment">// ...</span>
 });</code></pre>
 <h6>File access constants<span><a class="mark" href="#file-access-constants" id="file-access-constants">#</a></span><a aria-hidden="true" class="legacy" id="fs_file_access_constants"></a></h6>
-<p>The following constants are meant for use with <a href="#fsaccesspath-mode-callback"><code>fs.access()</code></a>.</p>
+<p>The following constants are meant for use as the <code>mode</code> parameter passed to
+<a href="#fspromisesaccesspath-mode"><code>fsPromises.access()</code></a>, <a href="#fsaccesspath-mode-callback"><code>fs.access()</code></a>, and <a href="#fsaccesssyncpath-mode"><code>fs.accessSync()</code></a>.</p>
 <table>
   <tbody><tr>
     <th>Constant</th>

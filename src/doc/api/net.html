@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Net | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Net | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="net" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -266,7 +266,7 @@
 
 <!--lint disable maximum-line-length-->
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.13.2/lib/net.js">lib/net.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/net.js">lib/net.js</a></p>
 <p>The <code>net</code> module provides an asynchronous network API for creating stream-based
 TCP or <a href="#ipc-support">IPC</a> servers (<a href="#netcreateserveroptions-connectionlistener"><code>net.createServer()</code></a>) and clients
 (<a href="#netcreateconnection"><code>net.createConnection()</code></a>).</p>
@@ -1471,9 +1471,14 @@ server.<span class="hljs-title function_">listen</span>(<span class="hljs-number
 <li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;integer></a></li>
 </ul>
-<p>Tests if input is an IP address. Returns <code>0</code> for invalid strings,
-returns <code>4</code> for IP version 4 addresses, and returns <code>6</code> for IP version 6
-addresses.</p>
+<p>Returns <code>6</code> if <code>input</code> is an IPv6 address. Returns <code>4</code> if <code>input</code> is an IPv4
+address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal notation</a> with no leading zeroes. Otherwise, returns
+<code>0</code>.</p>
+<pre><code class="language-js">net.<span class="hljs-title function_">isIP</span>(<span class="hljs-string">'::1'</span>); <span class="hljs-comment">// returns 6</span>
+net.<span class="hljs-title function_">isIP</span>(<span class="hljs-string">'127.0.0.1'</span>); <span class="hljs-comment">// returns 4</span>
+net.<span class="hljs-title function_">isIP</span>(<span class="hljs-string">'127.000.000.001'</span>); <span class="hljs-comment">// returns 0</span>
+net.<span class="hljs-title function_">isIP</span>(<span class="hljs-string">'127.0.0.1/24'</span>); <span class="hljs-comment">// returns 0</span>
+net.<span class="hljs-title function_">isIP</span>(<span class="hljs-string">'fhqwhgads'</span>); <span class="hljs-comment">// returns 0</span></code></pre>
 </section><section><h3><code>net.isIPv4(input)</code><span><a class="mark" href="#netisipv4input" id="netisipv4input">#</a></span><a aria-hidden="true" class="legacy" id="net_net_isipv4_input"></a></h3>
 <div class="api_metadata">
 <span>Added in: v0.3.0</span>
@@ -1482,7 +1487,12 @@ addresses.</p>
 <li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
-<p>Returns <code>true</code> if input is a version 4 IP address, otherwise returns <code>false</code>.</p>
+<p>Returns <code>true</code> if <code>input</code> is an IPv4 address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal notation</a> with no
+leading zeroes. Otherwise, returns <code>false</code>.</p>
+<pre><code class="language-js">net.<span class="hljs-title function_">isIPv4</span>(<span class="hljs-string">'127.0.0.1'</span>); <span class="hljs-comment">// returns true</span>
+net.<span class="hljs-title function_">isIPv4</span>(<span class="hljs-string">'127.000.000.001'</span>); <span class="hljs-comment">// returns false</span>
+net.<span class="hljs-title function_">isIPv4</span>(<span class="hljs-string">'127.0.0.1/24'</span>); <span class="hljs-comment">// returns false</span>
+net.<span class="hljs-title function_">isIPv4</span>(<span class="hljs-string">'fhqwhgads'</span>); <span class="hljs-comment">// returns false</span></code></pre>
 </section><section><h3><code>net.isIPv6(input)</code><span><a class="mark" href="#netisipv6input" id="netisipv6input">#</a></span><a aria-hidden="true" class="legacy" id="net_net_isipv6_input"></a></h3>
 <div class="api_metadata">
 <span>Added in: v0.3.0</span>
@@ -1491,7 +1501,9 @@ addresses.</p>
 <li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
-<p>Returns <code>true</code> if input is a version 6 IP address, otherwise returns <code>false</code>.</p></section>
+<p>Returns <code>true</code> if <code>input</code> is an IPv6 address. Otherwise, returns <code>false</code>.</p>
+<pre><code class="language-js">net.<span class="hljs-title function_">isIPv6</span>(<span class="hljs-string">'::1'</span>); <span class="hljs-comment">// returns true</span>
+net.<span class="hljs-title function_">isIPv6</span>(<span class="hljs-string">'fhqwhgads'</span>); <span class="hljs-comment">// returns false</span></code></pre></section>
         <!-- API END -->
       </div>
     </div>

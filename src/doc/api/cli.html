@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Command-line options | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Command-line options | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="cli" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -161,7 +161,6 @@
 <li><a href="#--dns-result-orderorder"><code>--dns-result-order=order</code></a></li>
 <li><a href="#--enable-fips"><code>--enable-fips</code></a></li>
 <li><a href="#--enable-source-maps"><code>--enable-source-maps</code></a></li>
-<li><a href="#--experimental-abortcontroller"><code>--experimental-abortcontroller</code></a></li>
 <li><a href="#--experimental-import-meta-resolve"><code>--experimental-import-meta-resolve</code></a></li>
 <li><a href="#--experimental-json-modules"><code>--experimental-json-modules</code></a></li>
 <li><a href="#--experimental-loadermodule"><code>--experimental-loader=module</code></a></li>
@@ -380,7 +379,7 @@ in the current working directory.</p>
 <p>If <code>--cpu-prof-name</code> is not specified, the generated profile is
 named <code>CPU.${yyyymmdd}.${hhmmss}.${pid}.${tid}.${seq}.cpuprofile</code>.</p>
 <pre><code class="language-console"><span class="hljs-meta">$ </span><span class="language-bash">node --cpu-prof index.js</span>
-<span class="hljs-meta">$ </span><span class="language-bash">ls *.cpuprofile</span>
+<span class="hljs-meta">$ </span><span class="language-bash"><span class="hljs-built_in">ls</span> *.cpuprofile</span>
 CPU.20190409.202950.15293.0.0.cpuprofile</code></pre>
 <h4><code>--cpu-prof-dir</code><span><a class="mark" href="#--cpu-prof-dir" id="--cpu-prof-dir">#</a></span><a aria-hidden="true" class="legacy" id="cli_cpu_prof_dir"></a></h4>
 <div class="api_metadata">
@@ -464,20 +463,6 @@ application reference the transpiled code, not the original source position.
 effort to report stack traces relative to the original source file.</p>
 <p>Overriding <code>Error.prepareStackTrace</code> prevents <code>--enable-source-maps</code> from
 modifying the stack trace.</p>
-<h4><code>--experimental-abortcontroller</code><span><a class="mark" href="#--experimental-abortcontroller" id="--experimental-abortcontroller">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_abortcontroller"></a></h4>
-<div class="api_metadata">
-<details class="changelog"><summary>History</summary>
-<table>
-<tbody><tr><th>Version</th><th>Changes</th></tr>
-<tr><td>v15.0.0</td>
-<td><p>--experimental-abortcontroller is no longer required.</p></td></tr>
-<tr><td>v15.0.0</td>
-<td><p><span>Added in: v15.0.0</span></p></td></tr>
-</tbody></table>
-</details>
-</div>
-<p><code>AbortController</code> and <code>AbortSignal</code> support is enabled by default.
-Use of this command-line flag is no longer required.</p>
 <h4><code>--experimental-import-meta-resolve</code><span><a class="mark" href="#--experimental-import-meta-resolve" id="--experimental-import-meta-resolve">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_import_meta_resolve"></a></h4>
 <div class="api_metadata">
 <span>Added in: v13.9.0, v12.16.2</span>
@@ -554,11 +539,10 @@ the ability to import a directory that has an index file.</p>
 </div>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
 <p>Enable experimental frozen intrinsics like <code>Array</code> and <code>Object</code>.</p>
-<p>Support is currently only provided for the root context and no guarantees are
-currently provided that <code>global.Array</code> is indeed the default intrinsic
-reference. Code may break under this flag.</p>
-<p><code>--require</code> runs prior to freezing intrinsics in order to allow polyfills to
-be added.</p>
+<p>Only the root context is supported. There is no guarantee that
+<code>globalThis.Array</code> is indeed the default intrinsic reference. Code may break
+under this flag.</p>
+<p>To allow polyfills to be added, <code>--require</code> runs before freezing intrinsics.</p>
 <h4><code>--heapsnapshot-near-heap-limit=max_count</code><span><a class="mark" href="#--heapsnapshot-near-heap-limitmax_count" id="--heapsnapshot-near-heap-limitmax_count">#</a></span><a aria-hidden="true" class="legacy" id="cli_heapsnapshot_near_heap_limit_max_count"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.1.0</span>
@@ -609,7 +593,7 @@ Disabled by default.</p>
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 node         1  5.5  6.1 787252 247004 ?       Ssl  16:43   0:02 node --heapsnapshot-signal=SIGUSR2 index.js
 <span class="hljs-meta">$ </span><span class="language-bash"><span class="hljs-built_in">kill</span> -USR2 1</span>
-<span class="hljs-meta">$ </span><span class="language-bash">ls</span>
+<span class="hljs-meta">$ </span><span class="language-bash"><span class="hljs-built_in">ls</span></span>
 Heap.20190718.133405.15554.0.001.heapsnapshot</code></pre>
 <h4><code>--heap-prof</code><span><a class="mark" href="#--heap-prof" id="--heap-prof">#</a></span><a aria-hidden="true" class="legacy" id="cli_heap_prof"></a></h4>
 <div class="api_metadata">
@@ -623,7 +607,7 @@ in the current working directory.</p>
 <p>If <code>--heap-prof-name</code> is not specified, the generated profile is
 named <code>Heap.${yyyymmdd}.${hhmmss}.${pid}.${tid}.${seq}.heapprofile</code>.</p>
 <pre><code class="language-console"><span class="hljs-meta">$ </span><span class="language-bash">node --heap-prof index.js</span>
-<span class="hljs-meta">$ </span><span class="language-bash">ls *.heapprofile</span>
+<span class="hljs-meta">$ </span><span class="language-bash"><span class="hljs-built_in">ls</span> *.heapprofile</span>
 Heap.20190409.202950.15293.0.001.heapprofile</code></pre>
 <h4><code>--heap-prof-dir</code><span><a class="mark" href="#--heap-prof-dir" id="--heap-prof-dir">#</a></span><a aria-hidden="true" class="legacy" id="cli_heap_prof_dir"></a></h4>
 <div class="api_metadata">
@@ -1160,13 +1144,16 @@ occurs. One of the following modes can be chosen:</p>
 <ul>
 <li><code>throw</code>: Emit <a href="process.html#event-unhandledrejection"><code>unhandledRejection</code></a>. If this hook is not set, raise the
 unhandled rejection as an uncaught exception. This is the default.</li>
-<li><code>strict</code>: Raise the unhandled rejection as an uncaught exception.</li>
+<li><code>strict</code>: Raise the unhandled rejection as an uncaught exception. If the
+exception is handled, <a href="process.html#event-unhandledrejection"><code>unhandledRejection</code></a> is emitted.</li>
 <li><code>warn</code>: Always trigger a warning, no matter if the <a href="process.html#event-unhandledrejection"><code>unhandledRejection</code></a>
 hook is set or not but do not print the deprecation warning.</li>
 <li><code>warn-with-error-code</code>: Emit <a href="process.html#event-unhandledrejection"><code>unhandledRejection</code></a>. If this hook is not
 set, trigger a warning, and set the process exit code to 1.</li>
 <li><code>none</code>: Silence all warnings.</li>
 </ul>
+<p>If a rejection happens during the command line entry point's ES module static
+loading phase, it will always raise it as an uncaught exception.</p>
 <h4><code>--use-bundled-ca</code>, <code>--use-openssl-ca</code><span><a class="mark" href="#--use-bundled-ca---use-openssl-ca" id="--use-bundled-ca---use-openssl-ca">#</a></span><a aria-hidden="true" class="legacy" id="cli_use_bundled_ca_use_openssl_ca"></a></h4>
 <div class="api_metadata">
 <span>Added in: v6.11.0</span>

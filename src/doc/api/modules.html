@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>Modules: CommonJS modules | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>Modules: CommonJS modules | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="modules" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -254,9 +254,8 @@ or object).</p>
 run directly by testing <code>require.main === module</code>.</p>
 <p>For a file <code>foo.js</code>, this will be <code>true</code> if run via <code>node foo.js</code>, but
 <code>false</code> if run by <code>require('./foo')</code>.</p>
-<p>Because <code>module</code> provides a <code>filename</code> property (normally equivalent to
-<code>__filename</code>), the entry point of the current application can be obtained
-by checking <code>require.main.filename</code>.</p>
+<p>When the entry point is not a CommonJS module, <code>require.main</code> is <code>undefined</code>,
+and the main module is out of reach.</p>
 </section><section><h3>Package manager tips<span><a class="mark" href="#package-manager-tips" id="package-manager-tips">#</a></span><a aria-hidden="true" class="legacy" id="modules_package_manager_tips"></a></h3>
 
 <p>The semantics of the Node.js <code>require()</code> function were designed to be general
@@ -301,10 +300,12 @@ variable. Since the module lookups using <code>node_modules</code> folders are a
 relative, and based on the real path of the files making the calls to
 <code>require()</code>, the packages themselves can be anywhere.</p>
 </section><section><h3>The <code>.mjs</code> extension<span><a class="mark" href="#the-mjs-extension" id="the-mjs-extension">#</a></span><a aria-hidden="true" class="legacy" id="modules_the_mjs_extension"></a></h3>
-<p>It is not possible to <code>require()</code> files that have the <code>.mjs</code> extension.
-Attempting to do so will throw <a href="errors.html#err_require_esm">an error</a>. The <code>.mjs</code> extension is
-reserved for <a href="esm.html">ECMAScript Modules</a> which cannot be loaded via <code>require()</code>.
-See <a href="esm.html">ECMAScript Modules</a> for more details.</p>
+<p>Due to the synchronous nature of <code>require()</code>, it is not possible to use it to
+load ECMAScript module files. Attempting to do so will throw a
+<a href="errors.html#err_require_esm"><code>ERR_REQUIRE_ESM</code></a> error. Use <a href="https://wiki.developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#Dynamic_Imports"><code>import()</code></a> instead.</p>
+<p>The <code>.mjs</code> extension is reserved for <a href="esm.html">ECMAScript Modules</a> which cannot be
+loaded via <code>require()</code>. See <a href="packages.html#determining-module-system">Determining module system</a> section for more info
+regarding which files are parsed as ECMAScript modules.</p>
 </section><section><h3>All together...<span><a class="mark" href="#all-together" id="all-together">#</a></span><a aria-hidden="true" class="legacy" id="modules_all_together"></a></h3>
 
 <p>To get the exact filename that will be loaded when <code>require()</code> is called, use
@@ -359,13 +360,13 @@ LOAD_NODE_MODULES(X, START)
 NODE_MODULES_PATHS(START)
 1. let PARTS = path split(START)
 2. let I = count of PARTS - 1
-3. let DIRS = [GLOBAL_FOLDERS]
+3. let DIRS = []
 4. while I >= 0,
    a. if PARTS[I] = "node_modules" CONTINUE
    b. DIR = path join(PARTS[0 .. I] + "node_modules")
-   c. DIRS = DIRS + DIR
+   c. DIRS = DIR + DIRS
    d. let I = I - 1
-5. return DIRS
+5. return DIRS + GLOBAL_FOLDERS
 
 LOAD_PACKAGE_IMPORTS(X, DIR)
 1. Find the closest package scope SCOPE to DIR.
@@ -497,10 +498,14 @@ correctly within an application.</p>
 
 <p>If the exact filename is not found, then Node.js will attempt to load the
 required filename with the added extensions: <code>.js</code>, <code>.json</code>, and finally
-<code>.node</code>.</p>
-<p><code>.js</code> files are interpreted as JavaScript text files, and <code>.json</code> files are
-parsed as JSON text files. <code>.node</code> files are interpreted as compiled addon
-modules loaded with <code>process.dlopen()</code>.</p>
+<code>.node</code>. When loading a file that has a different extension (e.g. <code>.cjs</code>), its
+full name must be passed to <code>require()</code>, including its file extension (e.g.
+<code>require('./file.cjs')</code>).</p>
+<p><code>.json</code> files are parsed as JSON text files, <code>.node</code> files are interpreted as
+compiled addon modules loaded with <code>process.dlopen()</code>. Files using any other
+extension (or no extension at all) are parsed as JavaScript text files. Refer to
+the <a href="packages.html#determining-module-system">Determining module system</a> section to understand what parse goal will be
+used.</p>
 <p>A required module prefixed with <code>'/'</code> is an absolute path to the file. For
 example, <code>require('/home/marco/foo.js')</code> will load the file at
 <code>/home/marco/foo.js</code>.</p>
@@ -747,10 +752,11 @@ extensions gets slower with each registered extension.</p>
 <span>Added in: v0.1.17</span>
 </div>
 <ul>
-<li><a href="modules.html#the-module-object" class="type">&#x3C;module></a></li>
+<li><a href="modules.html#the-module-object" class="type">&#x3C;module></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a></li>
 </ul>
 <p>The <code>Module</code> object representing the entry script loaded when the Node.js
-process launched.
+process launched, or <code>undefined</code> if the entry point of the program is not a
+CommonJS module.
 See <a href="#accessing-the-main-module">"Accessing the main module"</a>.</p>
 <p>In <code>entry.js</code> script:</p>
 <pre><code class="language-js"><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-built_in">require</span>.<span class="hljs-property">main</span>);</code></pre>

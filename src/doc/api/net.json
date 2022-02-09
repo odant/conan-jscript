@@ -6,7 +6,7 @@
       "textRaw": "Net",
       "name": "net",
       "introduced_in": "v0.10.0",
-      "desc": "<!--lint disable maximum-line-length-->\n<blockquote>\n<p>Stability: 2 - Stable</p>\n</blockquote>\n<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/net.js\">lib/net.js</a></p>\n<p>The <code>net</code> module provides an asynchronous network API for creating stream-based\nTCP or <a href=\"#ipc-support\">IPC</a> servers (<a href=\"#netcreateserveroptions-connectionlistener\"><code>net.createServer()</code></a>) and clients\n(<a href=\"#netcreateconnection\"><code>net.createConnection()</code></a>).</p>\n<p>It can be accessed using:</p>\n<pre><code class=\"language-js\">const net = require('net');\n</code></pre>",
+      "desc": "<!--lint disable maximum-line-length-->\n<blockquote>\n<p>Stability: 2 - Stable</p>\n</blockquote>\n<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/net.js\">lib/net.js</a></p>\n<p>The <code>net</code> module provides an asynchronous network API for creating stream-based\nTCP or <a href=\"#ipc-support\">IPC</a> servers (<a href=\"#netcreateserveroptions-connectionlistener\"><code>net.createServer()</code></a>) and clients\n(<a href=\"#netcreateconnection\"><code>net.createConnection()</code></a>).</p>\n<p>It can be accessed using:</p>\n<pre><code class=\"language-js\">const net = require('net');\n</code></pre>",
       "modules": [
         {
           "textRaw": "IPC support",
@@ -1961,7 +1961,7 @@
               ]
             }
           ],
-          "desc": "<p>Tests if input is an IP address. Returns <code>0</code> for invalid strings,\nreturns <code>4</code> for IP version 4 addresses, and returns <code>6</code> for IP version 6\naddresses.</p>"
+          "desc": "<p>Returns <code>6</code> if <code>input</code> is an IPv6 address. Returns <code>4</code> if <code>input</code> is an IPv4\naddress in <a href=\"https://en.wikipedia.org/wiki/Dot-decimal_notation\">dot-decimal notation</a> with no leading zeroes. Otherwise, returns\n<code>0</code>.</p>\n<pre><code class=\"language-js\">net.isIP('::1'); // returns 6\nnet.isIP('127.0.0.1'); // returns 4\nnet.isIP('127.000.000.001'); // returns 0\nnet.isIP('127.0.0.1/24'); // returns 0\nnet.isIP('fhqwhgads'); // returns 0\n</code></pre>"
         },
         {
           "textRaw": "`net.isIPv4(input)`",
@@ -1989,7 +1989,7 @@
               ]
             }
           ],
-          "desc": "<p>Returns <code>true</code> if input is a version 4 IP address, otherwise returns <code>false</code>.</p>"
+          "desc": "<p>Returns <code>true</code> if <code>input</code> is an IPv4 address in <a href=\"https://en.wikipedia.org/wiki/Dot-decimal_notation\">dot-decimal notation</a> with no\nleading zeroes. Otherwise, returns <code>false</code>.</p>\n<pre><code class=\"language-js\">net.isIPv4('127.0.0.1'); // returns true\nnet.isIPv4('127.000.000.001'); // returns false\nnet.isIPv4('127.0.0.1/24'); // returns false\nnet.isIPv4('fhqwhgads'); // returns false\n</code></pre>"
         },
         {
           "textRaw": "`net.isIPv6(input)`",
@@ -2017,7 +2017,7 @@
               ]
             }
           ],
-          "desc": "<p>Returns <code>true</code> if input is a version 6 IP address, otherwise returns <code>false</code>.</p>"
+          "desc": "<p>Returns <code>true</code> if <code>input</code> is an IPv6 address. Otherwise, returns <code>false</code>.</p>\n<pre><code class=\"language-js\">net.isIPv6('::1'); // returns true\nnet.isIPv6('fhqwhgads'); // returns false\n</code></pre>"
         }
       ],
       "type": "module",

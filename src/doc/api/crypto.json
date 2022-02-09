@@ -8,7 +8,7 @@
       "introduced_in": "v0.3.6",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.13.2/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
       "modules": [
         {
           "textRaw": "Determining if crypto support is unavailable",
@@ -3163,7 +3163,7 @@
                   "params": []
                 }
               ],
-              "desc": "<p>The <code>cipher.getAuthTag()</code> method should only be called after encryption has\nbeen completed using the <a href=\"#cipherfinaloutputencoding\"><code>cipher.final()</code></a> method.</p>"
+              "desc": "<p>The <code>cipher.getAuthTag()</code> method should only be called after encryption has\nbeen completed using the <a href=\"#cipherfinaloutputencoding\"><code>cipher.final()</code></a> method.</p>\n<p>If the <code>authTagLength</code> option was set during the <code>cipher</code> instance's creation,\nthis function will return exactly <code>authTagLength</code> bytes.</p>"
             },
             {
               "textRaw": "`cipher.setAAD(buffer[, options])`",
@@ -4730,6 +4730,18 @@
               "desc": "<p>The SHA-256 fingerprint of this certificate.</p>"
             },
             {
+              "textRaw": "`fingerprint512` Type: {string}",
+              "type": "string",
+              "name": "Type",
+              "meta": {
+                "added": [
+                  "v16.14.0"
+                ],
+                "changes": []
+              },
+              "desc": "<p>The SHA-512 fingerprint of this certificate.</p>"
+            },
+            {
               "textRaw": "`infoAccess` Type: {string}",
               "type": "string",
               "name": "Type",
@@ -4955,10 +4967,10 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {string|undefined} Returns `name` if the certificate matches, `undefined` if it does not.",
+                    "textRaw": "Returns: {string|undefined} Returns a subject name that matches `name`, or `undefined` if no subject name matches `name`.",
                     "name": "return",
                     "type": "string|undefined",
-                    "desc": "Returns `name` if the certificate matches, `undefined` if it does not."
+                    "desc": "Returns a subject name that matches `name`, or `undefined` if no subject name matches `name`."
                   },
                   "params": [
                     {
@@ -5007,7 +5019,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Checks whether the certificate matches the given host name.</p>"
+              "desc": "<p>Checks whether the certificate matches the given host name.</p>\n<p>If the certificate matches the given host name, the matching subject name is\nreturned. The returned name might be an exact match (e.g., <code>foo.example.com</code>)\nor it might contain wildcards (e.g., <code>*.example.com</code>). Because host name\ncomparisons are case-insensitive, the returned subject name might also differ\nfrom the given <code>name</code> in capitalization.</p>"
             },
             {
               "textRaw": "`x509.checkIP(ip[, options])`",

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.13.2">
-  <title>C++ embedder API | Node.js v16.13.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.0">
+  <title>C++ embedder API | Node.js v16.14.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="embedding" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.13.2 documentation</h1>
+          <h1>Node.js v16.14.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -180,7 +180,7 @@ the <code>node</code> and <code>v8</code> C++ namespaces, respectively.</p>
   <span class="hljs-comment">// Parse Node.js CLI options, and print any errors that have occurred while</span>
   <span class="hljs-comment">// trying to parse them.</span>
   <span class="hljs-type">int</span> exit_code = node::<span class="hljs-built_in">InitializeNodeWithArgs</span>(&#x26;args, &#x26;exec_args, &#x26;errors);
-  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> std::string&#x26; error : errors)
+  <span class="hljs-keyword">for</span> (<span class="hljs-type">const</span> std::string&#x26; error : errors)
     <span class="hljs-built_in">fprintf</span>(stderr, <span class="hljs-string">"%s: %s\n"</span>, args[<span class="hljs-number">0</span>].<span class="hljs-built_in">c_str</span>(), error.<span class="hljs-built_in">c_str</span>());
   <span class="hljs-keyword">if</span> (exit_code != <span class="hljs-number">0</span>) {
     <span class="hljs-keyword">return</span> exit_code;
@@ -236,8 +236,8 @@ for tasks scheduled by the <code>v8::Isolate</code>.</p>
 sets it up with some Node.js-specific hooks (e.g. the Node.js error handler),
 and registers it with the platform automatically.</p>
 <pre><code class="language-cpp"><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">RunNodeInstance</span><span class="hljs-params">(MultiIsolatePlatform* platform,
-                    <span class="hljs-keyword">const</span> std::vector&#x3C;std::string>&#x26; args,
-                    <span class="hljs-keyword">const</span> std::vector&#x3C;std::string>&#x26; exec_args)</span> </span>{
+                    <span class="hljs-type">const</span> std::vector&#x3C;std::string>&#x26; args,
+                    <span class="hljs-type">const</span> std::vector&#x3C;std::string>&#x26; exec_args)</span> </span>{
   <span class="hljs-type">int</span> exit_code = <span class="hljs-number">0</span>;
 
   <span class="hljs-comment">// Setup up a libuv event loop, v8::Isolate, and Node.js Environment.</span>
@@ -245,7 +245,7 @@ and registers it with the platform automatically.</p>
   std::unique_ptr&#x3C;CommonEnvironmentSetup> setup =
       CommonEnvironmentSetup::<span class="hljs-built_in">Create</span>(platform, &#x26;errors, args, exec_args);
   <span class="hljs-keyword">if</span> (!setup) {
-    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> std::string&#x26; err : errors)
+    <span class="hljs-keyword">for</span> (<span class="hljs-type">const</span> std::string&#x26; err : errors)
       <span class="hljs-built_in">fprintf</span>(stderr, <span class="hljs-string">"%s: %s\n"</span>, args[<span class="hljs-number">0</span>].<span class="hljs-built_in">c_str</span>(), err.<span class="hljs-built_in">c_str</span>());
     <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>;
   }
