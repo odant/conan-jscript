@@ -1,0 +1,444 @@
+diff --git a/src/deps/v8/src/heap/combined-heap.h b/src/deps/v8/src/heap/combined-heap.h
+index 3390ffb95..b3e083555 100644
+--- a/src/deps/v8/src/heap/combined-heap.h
++++ b/src/deps/v8/src/heap/combined-heap.h
+@@ -33,9 +33,11 @@ class V8_EXPORT_PRIVATE CombinedHeapObjectIterator final {
+ 
+ V8_WARN_UNUSED_RESULT inline bool IsValidHeapObject(Heap* heap,
+                                                     HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return third_party_heap::Heap::IsValidHeapObject(object);
+   }
++#endif
+   return ReadOnlyHeap::Contains(object) || heap->Contains(object) ||
+          heap->SharedHeapContains(object);
+ }
+@@ -43,9 +45,11 @@ V8_WARN_UNUSED_RESULT inline bool IsValidHeapObject(Heap* heap,
+ V8_WARN_UNUSED_RESULT inline bool IsValidCodeObject(Heap* heap,
+                                                     HeapObject object) {
+   CHECK(V8_EXTERNAL_CODE_SPACE_BOOL);
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return third_party_heap::Heap::IsValidCodeObject(object);
+   }
++#endif
+   return heap->ContainsCode(object);
+ }
+ 
+diff --git a/src/deps/v8/src/heap/heap-inl.h b/src/deps/v8/src/heap/heap-inl.h
+index 7c8a2f54d..a87d87c32 100644
+--- a/src/deps/v8/src/heap/heap-inl.h
++++ b/src/deps/v8/src/heap/heap-inl.h
+@@ -238,9 +238,12 @@ AllocationResult Heap::AllocateRaw(int size_in_bytes, AllocationType type,
+     type = AllocationType::kOld;
+   }
+ 
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     allocation = tp_heap_->Allocate(size_in_bytes, type, alignment);
+-  } else {
++  } else
++#endif
++  {
+     if (AllocationType::kYoung == type) {
+       if (large_object) {
+         if (FLAG_young_generation_large_objects) {
+@@ -445,7 +448,9 @@ bool Heap::InYoungGeneration(MaybeObject object) {
+ 
+ // static
+ bool Heap::InYoungGeneration(HeapObject heap_object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return false;
++#endif
+   bool result =
+       BasicMemoryChunk::FromHeapObject(heap_object)->InYoungGeneration();
+ #ifdef DEBUG
+@@ -496,18 +501,22 @@ bool Heap::InToPage(HeapObject heap_object) {
+ }
+ 
+ bool Heap::InOldSpace(Object object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return object.IsHeapObject() &&
+            third_party_heap::Heap::InOldSpace(object.ptr());
+   }
++#endif
+   return old_space_->Contains(object);
+ }
+ 
+ // static
+ Heap* Heap::FromWritableHeapObject(HeapObject obj) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return Heap::GetIsolateFromWritableObject(obj)->heap();
+   }
++#endif
+   BasicMemoryChunk* chunk = BasicMemoryChunk::FromHeapObject(obj);
+   // RO_SPACE can be shared between heaps, so we can't use RO_SPACE objects to
+   // find a heap. The exception is when the ReadOnlySpace is writeable, during
+@@ -620,9 +629,11 @@ void Heap::UpdateAllocationSite(Map map, HeapObject object,
+ bool Heap::IsPendingAllocationInternal(HeapObject object) {
+   DCHECK(deserialization_complete());
+ 
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return tp_heap_->IsPendingAllocation(object);
+   }
++#endif
+ 
+   BasicMemoryChunk* chunk = BasicMemoryChunk::FromHeapObject(object);
+   if (chunk->InReadOnlySpace()) return false;
+diff --git a/src/deps/v8/src/heap/heap-write-barrier-inl.h b/src/deps/v8/src/heap/heap-write-barrier-inl.h
+index 1e651d5fc..1bebdee25 100644
+--- a/src/deps/v8/src/heap/heap-write-barrier-inl.h
++++ b/src/deps/v8/src/heap/heap-write-barrier-inl.h
+@@ -58,7 +58,9 @@ struct MemoryChunk {
+   V8_INLINE bool IsMarking() const { return GetFlags() & kMarkingBit; }
+ 
+   V8_INLINE bool InYoungGeneration() const {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+     if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return false;
++#endif
+     constexpr uintptr_t kYoungGenerationMask = kFromPageBit | kToPageBit;
+     return GetFlags() & kYoungGenerationMask;
+   }
+@@ -130,7 +132,9 @@ inline void WriteBarrierForCode(Code host) {
+ 
+ inline void GenerationalBarrier(HeapObject object, ObjectSlot slot,
+                                 Object value) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   DCHECK(!HasWeakHeapObjectTag(value));
+   if (!value.IsHeapObject()) return;
+   GenerationalBarrier(object, slot, HeapObject::cast(value));
+@@ -138,20 +142,26 @@ inline void GenerationalBarrier(HeapObject object, ObjectSlot slot,
+ 
+ inline void GenerationalBarrier(HeapObject object, ObjectSlot slot,
+                                 Code value) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   DCHECK(!Heap_ValueMightRequireGenerationalWriteBarrier(value));
+ }
+ 
+ inline void GenerationalBarrier(HeapObject object, ObjectSlot slot,
+                                 HeapObject value) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   DCHECK(!HasWeakHeapObjectTag(*slot));
+   heap_internals::GenerationalBarrierInternal(object, slot.address(), value);
+ }
+ 
+ inline void GenerationalEphemeronKeyBarrier(EphemeronHashTable table,
+                                             ObjectSlot slot, Object value) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   DCHECK(!HasWeakHeapObjectTag(*slot));
+   DCHECK(!HasWeakHeapObjectTag(value));
+   DCHECK(value.IsHeapObject());
+@@ -161,7 +171,9 @@ inline void GenerationalEphemeronKeyBarrier(EphemeronHashTable table,
+ 
+ inline void GenerationalBarrier(HeapObject object, MaybeObjectSlot slot,
+                                 MaybeObject value) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   HeapObject value_heap_object;
+   if (!value->GetHeapObject(&value_heap_object)) return;
+   heap_internals::GenerationalBarrierInternal(object, slot.address(),
+@@ -170,7 +182,9 @@ inline void GenerationalBarrier(HeapObject object, MaybeObjectSlot slot,
+ 
+ inline void GenerationalBarrierForCode(Code host, RelocInfo* rinfo,
+                                        HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   heap_internals::MemoryChunk* object_chunk =
+       heap_internals::MemoryChunk::FromHeapObject(object);
+   if (!object_chunk->InYoungGeneration()) return;
+@@ -198,14 +212,18 @@ inline bool ObjectInYoungGeneration(Object object) {
+ }
+ 
+ inline bool IsReadOnlyHeapObject(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return ReadOnlyHeap::Contains(object);
++#endif
+   heap_internals::MemoryChunk* chunk =
+       heap_internals::MemoryChunk::FromHeapObject(object);
+   return chunk->InReadOnlySpace();
+ }
+ 
+ base::Optional<Heap*> WriteBarrier::GetHeapIfMarking(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return {};
++#endif
+   heap_internals::MemoryChunk* chunk =
+       heap_internals::MemoryChunk::FromHeapObject(object);
+   if (!chunk->IsMarking()) return {};
+diff --git a/src/deps/v8/src/heap/heap.cc b/src/deps/v8/src/heap/heap.cc
+index 1784bdd5d..bfb72484c 100644
+--- a/src/deps/v8/src/heap/heap.cc
++++ b/src/deps/v8/src/heap/heap.cc
+@@ -339,7 +339,9 @@ size_t Heap::SemiSpaceSizeFromYoungGenerationSize(
+ size_t Heap::Capacity() {
+   if (!HasBeenSetUp()) return 0;
+ 
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (FLAG_enable_third_party_heap) return tp_heap_->Capacity();
++#endif  
+ 
+   return NewSpaceCapacity() + OldGenerationCapacity();
+ }
+@@ -1784,9 +1786,12 @@ bool Heap::CollectGarbage(AllocationSpace space,
+         }
+       }
+ 
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+       if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+         tp_heap_->CollectGarbage();
+-      } else {
++      } else
++#endif
++      {
+         freed_global_handles +=
+             PerformGarbageCollection(collector, gc_callback_flags);
+       }
+@@ -3267,17 +3272,21 @@ bool Heap::CanMoveObjectStart(HeapObject object) {
+ }
+ 
+ bool Heap::IsImmovable(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL)
+     return third_party_heap::Heap::IsImmovable(object);
++#endif
+ 
+   BasicMemoryChunk* chunk = BasicMemoryChunk::FromHeapObject(object);
+   return chunk->NeverEvacuate() || IsLargeObject(object);
+ }
+ 
+ bool Heap::IsLargeObject(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL)
+     return third_party_heap::Heap::InLargeObjectSpace(object.address()) ||
+            third_party_heap::Heap::InSpace(object.address(), CODE_LO_SPACE);
++#endif
+   return BasicMemoryChunk::FromHeapObject(object)->IsLargePage();
+ }
+ 
+@@ -3317,7 +3326,9 @@ class LeftTrimmerVerifierRootVisitor : public RootVisitor {
+ 
+ namespace {
+ bool MayContainRecordedSlots(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return false;
++#endif
+   // New space object do not have recorded slots.
+   if (BasicMemoryChunk::FromHeapObject(object)->InYoungGeneration())
+     return false;
+@@ -4297,9 +4308,11 @@ const char* Heap::GarbageCollectionReasonToString(
+ }
+ 
+ bool Heap::Contains(HeapObject value) const {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return true;
+   }
++#endif
+   if (ReadOnlyHeap::Contains(value)) {
+     return false;
+   }
+@@ -4315,9 +4328,11 @@ bool Heap::Contains(HeapObject value) const {
+ }
+ 
+ bool Heap::ContainsCode(HeapObject value) const {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return true;
+   }
++#endif
+   // TODO(v8:11880): support external code space.
+   if (memory_allocator()->IsOutsideAllocatedSpace(value.address())) {
+     return false;
+@@ -4334,8 +4349,10 @@ bool Heap::SharedHeapContains(HeapObject value) const {
+ }
+ 
+ bool Heap::InSpace(HeapObject value, AllocationSpace space) const {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL)
+     return third_party_heap::Heap::InSpace(value.address(), space);
++#endif
+   if (memory_allocator()->IsOutsideAllocatedSpace(value.address())) {
+     return false;
+   }
+@@ -6476,7 +6493,9 @@ HeapObjectIterator::HeapObjectIterator(
+       break;
+   }
+   object_iterator_ = space_iterator_->Next()->GetObjectIterator(heap_);
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) heap_->tp_heap_->ResetIterator();
++#endif
+ }
+ 
+ HeapObjectIterator::~HeapObjectIterator() {
+@@ -6500,7 +6519,9 @@ HeapObject HeapObjectIterator::Next() {
+ }
+ 
+ HeapObject HeapObjectIterator::NextObject() {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return heap_->tp_heap_->NextObject();
++#endif
+   // No iterator means we are done.
+   if (object_iterator_.get() == nullptr) return HeapObject();
+ 
+@@ -7028,10 +7049,12 @@ Code Heap::GcSafeFindCodeForInnerPointer(Address inner_pointer) {
+     return builtin(maybe_builtin);
+   }
+ 
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     Address start = tp_heap_->GetObjectFromInnerPointer(inner_pointer);
+     return GcSafeCastToCode(HeapObject::FromAddress(start), inner_pointer);
+   }
++#endif
+ 
+   // Check if the inner pointer points into a large object chunk.
+   LargePage* large_page = code_lo_space()->FindPage(inner_pointer);
+@@ -7232,9 +7255,11 @@ void Heap::GenerationalBarrierForCodeSlow(Code host, RelocInfo* rinfo,
+ }
+ 
+ bool Heap::PageFlagsAreConsistent(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return true;
+   }
++#endif
+   BasicMemoryChunk* chunk = BasicMemoryChunk::FromHeapObject(object);
+   heap_internals::MemoryChunk* slim_chunk =
+       heap_internals::MemoryChunk::FromHeapObject(object);
+diff --git a/src/deps/v8/src/heap/paged-spaces-inl.h b/src/deps/v8/src/heap/paged-spaces-inl.h
+index 75550d6b2..dea75f520 100644
+--- a/src/deps/v8/src/heap/paged-spaces-inl.h
++++ b/src/deps/v8/src/heap/paged-spaces-inl.h
+@@ -46,9 +46,11 @@ HeapObject PagedSpaceObjectIterator::FromCurrentPage() {
+ }
+ 
+ bool PagedSpace::Contains(Address addr) const {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return true;
+   }
++#endif
+   return Page::FromAddress(addr)->owner() == this;
+ }
+ 
+diff --git a/src/deps/v8/src/heap/read-only-heap.cc b/src/deps/v8/src/heap/read-only-heap.cc
+index 05ca965e0..5b1e44a5f 100644
+--- a/src/deps/v8/src/heap/read-only-heap.cc
++++ b/src/deps/v8/src/heap/read-only-heap.cc
+@@ -219,18 +219,24 @@ void ReadOnlyHeap::PopulateReadOnlySpaceStatistics(
+ 
+ // static
+ bool ReadOnlyHeap::Contains(Address address) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return third_party_heap::Heap::InReadOnlySpace(address);
+-  } else {
++  } else
++#endif
++  {
+     return BasicMemoryChunk::FromAddress(address)->InReadOnlySpace();
+   }
+ }
+ 
+ // static
+ bool ReadOnlyHeap::Contains(HeapObject object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return third_party_heap::Heap::InReadOnlySpace(object.address());
+-  } else {
++  } else
++#endif
++  {
+     return BasicMemoryChunk::FromHeapObject(object)->InReadOnlySpace();
+   }
+ }
+@@ -266,9 +272,11 @@ ReadOnlyHeapObjectIterator::ReadOnlyHeapObjectIterator(ReadOnlySpace* ro_space)
+                         : (*current_page_)->GetAreaStart()) {}
+ 
+ HeapObject ReadOnlyHeapObjectIterator::Next() {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     return HeapObject();  // Unsupported
+   }
++#endif
+ 
+   if (current_page_ == ro_space_->pages().end()) {
+     return HeapObject();
+diff --git a/src/deps/v8/src/heap/read-only-spaces.cc b/src/deps/v8/src/heap/read-only-spaces.cc
+index 9e0b2d5f6..386b8f7f9 100644
+--- a/src/deps/v8/src/heap/read-only-spaces.cc
++++ b/src/deps/v8/src/heap/read-only-spaces.cc
+@@ -369,10 +369,12 @@ void ReadOnlySpace::RepairFreeSpacesAfterDeserialization() {
+ }
+ 
+ void ReadOnlySpace::ClearStringPaddingIfNeeded() {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     // TODO(v8:11641): Revisit this once third-party heap supports iteration.
+     return;
+   }
++#endif
+   if (is_string_padding_cleared_) return;
+ 
+   ReadOnlyHeapObjectIterator iterator(this);
+@@ -740,7 +742,9 @@ size_t ReadOnlyPage::ShrinkToHighWaterMark() {
+ }
+ 
+ void ReadOnlySpace::ShrinkPages() {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return;
++#endif
+   BasicMemoryChunk::UpdateHighWaterMark(top_);
+   heap()->CreateFillerObjectAt(top_, static_cast<int>(limit_ - top_),
+                                ClearRecordedSlots::kNo);
+diff --git a/src/deps/v8/src/objects/string.cc b/src/deps/v8/src/objects/string.cc
+index 4b18ee3d0..e9c55f735 100644
+--- a/src/deps/v8/src/objects/string.cc
++++ b/src/deps/v8/src/objects/string.cc
+@@ -444,7 +444,9 @@ bool String::LooksValid() {
+   // TODO(leszeks): Maybe remove this check entirely, Heap::Contains uses
+   // basically the same logic as the way we access the heap in the first place.
+   // RO_SPACE objects should always be valid.
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) return true;
++#endif
+   if (ReadOnlyHeap::Contains(*this)) return true;
+   BasicMemoryChunk* chunk = BasicMemoryChunk::FromHeapObject(*this);
+   if (chunk->heap() == nullptr) return false;
+diff --git a/src/deps/v8/src/snapshot/serializer.cc b/src/deps/v8/src/snapshot/serializer.cc
+index 68fb1a01a..2988a5cf5 100644
+--- a/src/deps/v8/src/snapshot/serializer.cc
++++ b/src/deps/v8/src/snapshot/serializer.cc
+@@ -720,6 +720,7 @@ void Serializer::ObjectSerializer::Serialize() {
+ 
+ namespace {
+ SnapshotSpace GetSnapshotSpace(Handle<HeapObject> object) {
++#if V8_ENABLE_THIRD_PARTY_HEAP_BOOL
+   if (V8_ENABLE_THIRD_PARTY_HEAP_BOOL) {
+     if (object->IsCode()) {
+       return SnapshotSpace::kCode;
+@@ -730,7 +731,9 @@ SnapshotSpace GetSnapshotSpace(Handle<HeapObject> object) {
+     } else {
+       return SnapshotSpace::kOld;
+     }
+-  } else if (ReadOnlyHeap::Contains(*object)) {
++  } else
++#endif
++  if (ReadOnlyHeap::Contains(*object)) {
+     return SnapshotSpace::kReadOnlyHeap;
+   } else {
+     AllocationSpace heap_space =

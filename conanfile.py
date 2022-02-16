@@ -22,13 +22,15 @@ class JScriptConan(ConanFile):
         "dll_sign": [False, True],
         "ninja": [False, True],
         "cmake": [False, True],
-        "with_unit_tests": [False, True]
+        "with_unit_tests": [False, True],
+        "disable_v8_slow_dcheck": [False, True]
     }
     default_options = {
         "dll_sign": True,
         "ninja": False,
         "cmake": False,
-        "with_unit_tests": False
+        "with_unit_tests": False,
+        "disable_v8_slow_dcheck": True
     }
     exports_patches = [
         "oda.patch",
@@ -40,7 +42,9 @@ class JScriptConan(ConanFile):
         "src/*",
         "FindJScript.cmake",
         "win_delay_load_hook.cc",
-        *exports_patches
+        *exports_patches,
+        "fix_no_optimization_build.patch",
+        "disable_v8_slow_dcheck.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -55,6 +59,8 @@ class JScriptConan(ConanFile):
         if self.settings.os != "Windows":
             del self.options.dll_sign
             self.options.ninja = True
+        if self.settings.build_type != "Debug":
+            del self.options.disable_v8_slow_dcheck
 
     def requirements(self):
         self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
@@ -70,7 +76,12 @@ class JScriptConan(ConanFile):
         self.patch_version()
         for p in self.exports_patches:
             tools.patch(patch_file=p)
-
+        if self.settings.build_type == "Debug":
+            if self.settings.os == "Windows":
+                tools.patch(patch_file="fix_no_optimization_build.patch")
+            if self.options.disable_v8_slow_dcheck:    
+                tools.patch(patch_file="disable_v8_slow_dcheck.patch")
+            
     def patch_version(self):
         build_version = self.version.split(".")[3]
         content = tools.load("oda.patch")
@@ -125,6 +136,7 @@ class JScriptConan(ConanFile):
         # Build type, debug/release
         if self.settings.build_type == "Debug":
             flags.append("--debug")
+            flags.append("--v8-non-optimized-debug")
             if self.settings.os == "Linux":
                 flags.append("--gdb")
         #
