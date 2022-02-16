@@ -36,7 +36,8 @@ class JScriptConan(ConanFile):
         "oda.patch",
         "experimental.patch",
         "use_nodepath_for_esm.patch",
-        "fix_vs2022_build.patch"
+        "fix_vs2022_build.patch",
+        "add_v8_options.patch"
     ]
     exports_sources = [
         "src/*",
