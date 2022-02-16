@@ -1,0 +1,29 @@
+--- a/src/vcbuild.bat
++++ b/src/vcbuild.bat
+@@ -25,14 +25,14 @@
+ set "common_test_suites=%JS_SUITES% %NATIVE_SUITES%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
+ 
+ @rem Process arguments.
+-set config=Release
++set config=Debug
+ set target=Build
+ set target_arch=x64
+ set ltcg=
+-set target_env=
++set target_env=vs2022
+ set noprojgen=
+ set projgen=
+-set nobuild=
++set nobuild=1
+ set sign=
+ set nosnapshot=
+ set cctest_args=
+@@ -51,7 +51,7 @@
+ set i18n_arg=
+ set download_arg=
+ set build_release=
+-set configure_flags=
++set configure_flags=--shared --v8-non-optimized-debug --node_core_target_name=jscript
+ set build_addons=
+ set dll=
+ set enable_static=
