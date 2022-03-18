@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Child process | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Child process | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="child_process" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -216,7 +216,7 @@
         <h2>Child process<span><a class="mark" href="#child-process" id="child-process">#</a></span><a aria-hidden="true" class="legacy" id="child_process_child_process"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/child_process.js">lib/child_process.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/child_process.js">lib/child_process.js</a></p>
 <p>The <code>child_process</code> module provides the ability to spawn subprocesses in
 a manner that is similar, but not identical, to <a href="http://man7.org/linux/man-pages/man3/popen.3.html"><code>popen(3)</code></a>. This capability
 is primarily provided by the <a href="#child_processspawncommand-args-options"><code>child_process.spawn()</code></a> function:</p>
@@ -1507,7 +1507,7 @@ n.<span class="hljs-title function_">send</span>({ <span class="hljs-attr">hello
 });
 
 <span class="hljs-comment">// Causes the parent to print: PARENT got message: { foo: 'bar', baz: null }</span>
-process.<span class="hljs-title function_">send</span>({ <span class="hljs-attr">foo</span>: <span class="hljs-string">'bar'</span>, <span class="hljs-attr">baz</span>: <span class="hljs-title class_">Na</span>N });</code></pre>
+process.<span class="hljs-title function_">send</span>({ <span class="hljs-attr">foo</span>: <span class="hljs-string">'bar'</span>, <span class="hljs-attr">baz</span>: <span class="hljs-title class_">NaN</span> });</code></pre>
 <p>Child Node.js processes will have a <a href="process.html#processsendmessage-sendhandle-options-callback"><code>process.send()</code></a> method of their own
 that allows the child to send messages back to the parent.</p>
 <p>There is a special case when sending a <code>{cmd: 'NODE_foo'}</code> message. Messages

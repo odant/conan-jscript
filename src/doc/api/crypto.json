@@ -8,7 +8,7 @@
       "introduced_in": "v0.3.6",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.2/lib/crypto.js\">lib/crypto.js</a></p>\n<p>The <code>crypto</code> module provides cryptographic functionality that includes a set of\nwrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>\n<pre><code class=\"language-mjs\">const { createHmac } = await import('crypto');\n\nconst secret = 'abcdefg';\nconst hash = createHmac('sha256', secret)\n               .update('I love cupcakes')\n               .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>\n<pre><code class=\"language-cjs\">const crypto = require('crypto');\n\nconst secret = 'abcdefg';\nconst hash = crypto.createHmac('sha256', secret)\n                   .update('I love cupcakes')\n                   .digest('hex');\nconsole.log(hash);\n// Prints:\n//   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e\n</code></pre>",
       "modules": [
         {
           "textRaw": "Determining if crypto support is unavailable",
@@ -2708,7 +2708,7 @@
                   ]
                 }
               ],
-              "desc": "<p>This function is based on a constant-time algorithm.\nReturns true if <code>a</code> is equal to <code>b</code>, without leaking timing information that\nwould allow an attacker to guess one of the values. This is suitable for\ncomparing HMAC digests or secret values like authentication cookies or\n<a href=\"https://www.w3.org/TR/capability-urls/\">capability urls</a>.</p>\n<p><code>a</code> and <code>b</code> must both be <code>Buffer</code>s, <code>TypedArray</code>s, or <code>DataView</code>s, and they\nmust have the same byte length.</p>\n<p>If at least one of <code>a</code> and <code>b</code> is a <code>TypedArray</code> with more than one byte per\nentry, such as <code>Uint16Array</code>, the result will be computed using the platform\nbyte order.</p>\n<p>Use of <code>crypto.timingSafeEqual</code> does not guarantee that the <em>surrounding</em> code\nis timing-safe. Care should be taken to ensure that the surrounding code does\nnot introduce timing vulnerabilities.</p>"
+              "desc": "<p>This function is based on a constant-time algorithm.\nReturns true if <code>a</code> is equal to <code>b</code>, without leaking timing information that\nwould allow an attacker to guess one of the values. This is suitable for\ncomparing HMAC digests or secret values like authentication cookies or\n<a href=\"https://www.w3.org/TR/capability-urls/\">capability urls</a>.</p>\n<p><code>a</code> and <code>b</code> must both be <code>Buffer</code>s, <code>TypedArray</code>s, or <code>DataView</code>s, and they\nmust have the same byte length. An error is thrown if <code>a</code> and <code>b</code> have\ndifferent byte lengths.</p>\n<p>If at least one of <code>a</code> and <code>b</code> is a <code>TypedArray</code> with more than one byte per\nentry, such as <code>Uint16Array</code>, the result will be computed using the platform\nbyte order.</p>\n<p>Use of <code>crypto.timingSafeEqual</code> does not guarantee that the <em>surrounding</em> code\nis timing-safe. Care should be taken to ensure that the surrounding code does\nnot introduce timing vulnerabilities.</p>"
             },
             {
               "textRaw": "`crypto.verify(algorithm, data, key, signature[, callback])`",
@@ -2769,13 +2769,6 @@
               "displayName": "Legacy streams API (prior to Node.js 0.10)"
             },
             {
-              "textRaw": "Recent ECDH changes",
-              "name": "recent_ecdh_changes",
-              "desc": "<p>Usage of <code>ECDH</code> with non-dynamically generated key pairs has been simplified.\nNow, <a href=\"#ecdhsetprivatekeyprivatekey-encoding\"><code>ecdh.setPrivateKey()</code></a> can be called with a preselected private key\nand the associated public point (key) will be computed and stored in the object.\nThis allows code to only store and provide the private part of the EC key pair.\n<a href=\"#ecdhsetprivatekeyprivatekey-encoding\"><code>ecdh.setPrivateKey()</code></a> now also validates that the private key is valid for\nthe selected curve.</p>\n<p>The <a href=\"#ecdhsetpublickeypublickey-encoding\"><code>ecdh.setPublicKey()</code></a> method is now deprecated as its inclusion in the\nAPI is not useful. Either a previously stored private key should be set, which\nautomatically generates the associated public key, or <a href=\"#ecdhgeneratekeysencoding-format\"><code>ecdh.generateKeys()</code></a>\nshould be called. The main drawback of using <a href=\"#ecdhsetpublickeypublickey-encoding\"><code>ecdh.setPublicKey()</code></a> is that\nit can be used to put the ECDH key pair into an inconsistent state.</p>",
-              "type": "module",
-              "displayName": "Recent ECDH changes"
-            },
-            {
               "textRaw": "Support for weak or compromised algorithms",
               "name": "support_for_weak_or_compromised_algorithms",
               "desc": "<p>The <code>crypto</code> module still supports some algorithms which are already\ncompromised and are not currently recommended for use. The API also allows\nthe use of ciphers and hashes with a small key size that are too weak for safe\nuse.</p>\n<p>Users should take full responsibility for selecting the crypto\nalgorithm and key size according to their security requirements.</p>\n<p>Based on the recommendations of <a href=\"https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf\">NIST SP 800-131A</a>:</p>\n<ul>\n<li>MD5 and SHA-1 are no longer acceptable where collision resistance is\nrequired such as digital signatures.</li>\n<li>The key used with RSA, DSA, and DH algorithms is recommended to have\nat least 2048 bits and that of the curve of ECDSA and ECDH at least\n224 bits, to be safe to use for several years.</li>\n<li>The DH groups of <code>modp1</code>, <code>modp2</code> and <code>modp5</code> have a key size\nsmaller than 2048 bits and are not recommended.</li>\n</ul>\n<p>See the reference for other recommendations and details.</p>",
@@ -2801,7 +2794,7 @@
             {
               "textRaw": "OpenSSL options",
               "name": "openssl_options",
-              "desc": "<p>See the <a href=\"https://wiki.openssl.org/index.php/List_of_SSL_OP_Flags#Table_of_Options\">list of SSL OP Flags</a> for details.</p>\n<table>\n  <tr>\n    <th>Constant</th>\n    <th>Description</th>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALL</code></td>\n    <td>Applies multiple bug workarounds within OpenSSL. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>\n    for detail.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALLOW_NO_DHE_KEX</code></td>\n    <td>Instructs OpenSSL to allow a non-[EC]DHE-based key exchange mode\n    for TLS v1.3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION</code></td>\n    <td>Allows legacy insecure renegotiation between OpenSSL and unpatched\n    clients or servers. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CIPHER_SERVER_PREFERENCE</code></td>\n    <td>Attempts to use the server's preferences instead of the client's when\n    selecting a cipher. Behavior depends on protocol version. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CISCO_ANYCONNECT</code></td>\n    <td>Instructs OpenSSL to use Cisco's \"speshul\" version of DTLS_BAD_VER.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_COOKIE_EXCHANGE</code></td>\n    <td>Instructs OpenSSL to turn on cookie exchange.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CRYPTOPRO_TLSEXT_BUG</code></td>\n    <td>Instructs OpenSSL to add server-hello extension from an early version\n    of the cryptopro draft.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS</code></td>\n    <td>Instructs OpenSSL to disable a SSL 3.0/TLS 1.0 vulnerability\n    workaround added in OpenSSL 0.9.6d.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_EPHEMERAL_RSA</code></td>\n    <td>Instructs OpenSSL to always use the tmp_rsa key when performing RSA\n    operations.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_LEGACY_SERVER_CONNECT</code></td>\n    <td>Allows initial connection to servers that do not support RI.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MICROSOFT_SESS_ID_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MSIE_SSLV2_RSA_PADDING</code></td>\n    <td>Instructs OpenSSL to disable the workaround for a man-in-the-middle\n    protocol-version vulnerability in the SSL 2.0 server implementation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_CA_DN_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_CHALLENGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_COMPRESSION</code></td>\n    <td>Instructs OpenSSL to disable support for SSL/TLS compression.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_ENCRYPT_THEN_MAC</code></td>\n    <td>Instructs OpenSSL to disable encrypt-then-MAC.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_QUERY_MTU</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_RENEGOTIATION</code></td>\n    <td>Instructs OpenSSL to disable renegotiation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION</code></td>\n    <td>Instructs OpenSSL to always start a new session when performing\n    renegotiation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SSLv2</code></td>\n    <td>Instructs OpenSSL to turn off SSL v2</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SSLv3</code></td>\n    <td>Instructs OpenSSL to turn off SSL v3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TICKET</code></td>\n    <td>Instructs OpenSSL to disable use of RFC4507bis tickets.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_1</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.1</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_2</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.2</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_3</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PKCS1_CHECK_1</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PKCS1_CHECK_2</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PRIORITIZE_CHACHA</code></td>\n    <td>Instructs OpenSSL server to prioritize ChaCha20Poly1305\n    when client does.\n    This option has no effect if\n    <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code>\n    is not enabled.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SINGLE_DH_USE</code></td>\n    <td>Instructs OpenSSL to always create a new key when using\n    temporary/ephemeral DH parameters.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SINGLE_ECDH_USE</code></td>\n    <td>Instructs OpenSSL to always create a new key when using\n    temporary/ephemeral ECDH parameters.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SSLEAY_080_CLIENT_DH_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_BLOCK_PADDING_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_D5_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_ROLLBACK_BUG</code></td>\n    <td>Instructs OpenSSL to disable version rollback attack detection.</td>\n  </tr>\n</table>",
+              "desc": "<p>See the <a href=\"https://wiki.openssl.org/index.php/List_of_SSL_OP_Flags#Table_of_Options\">list of SSL OP Flags</a> for details.</p>\n<table>\n  <tr>\n    <th>Constant</th>\n    <th>Description</th>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALL</code></td>\n    <td>Applies multiple bug workarounds within OpenSSL. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>\n    for detail.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALLOW_NO_DHE_KEX</code></td>\n    <td>Instructs OpenSSL to allow a non-[EC]DHE-based key exchange mode\n    for TLS v1.3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION</code></td>\n    <td>Allows legacy insecure renegotiation between OpenSSL and unpatched\n    clients or servers. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CIPHER_SERVER_PREFERENCE</code></td>\n    <td>Attempts to use the server's preferences instead of the client's when\n    selecting a cipher. Behavior depends on protocol version. See\n    <a href=\"https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html\">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CISCO_ANYCONNECT</code></td>\n    <td>Instructs OpenSSL to use Cisco's \"speshul\" version of DTLS_BAD_VER.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_COOKIE_EXCHANGE</code></td>\n    <td>Instructs OpenSSL to turn on cookie exchange.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_CRYPTOPRO_TLSEXT_BUG</code></td>\n    <td>Instructs OpenSSL to add server-hello extension from an early version\n    of the cryptopro draft.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS</code></td>\n    <td>Instructs OpenSSL to disable a SSL 3.0/TLS 1.0 vulnerability\n    workaround added in OpenSSL 0.9.6d.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_EPHEMERAL_RSA</code></td>\n    <td>Instructs OpenSSL to always use the tmp_rsa key when performing RSA\n    operations.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_LEGACY_SERVER_CONNECT</code></td>\n    <td>Allows initial connection to servers that do not support RI.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MICROSOFT_SESS_ID_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_MSIE_SSLV2_RSA_PADDING</code></td>\n    <td>Instructs OpenSSL to disable the workaround for a man-in-the-middle\n    protocol-version vulnerability in the SSL 2.0 server implementation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_CA_DN_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_CHALLENGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_COMPRESSION</code></td>\n    <td>Instructs OpenSSL to disable support for SSL/TLS compression.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_ENCRYPT_THEN_MAC</code></td>\n    <td>Instructs OpenSSL to disable encrypt-then-MAC.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_QUERY_MTU</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_RENEGOTIATION</code></td>\n    <td>Instructs OpenSSL to disable renegotiation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION</code></td>\n    <td>Instructs OpenSSL to always start a new session when performing\n    renegotiation.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SSLv2</code></td>\n    <td>Instructs OpenSSL to turn off SSL v2</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_SSLv3</code></td>\n    <td>Instructs OpenSSL to turn off SSL v3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TICKET</code></td>\n    <td>Instructs OpenSSL to disable use of RFC4507bis tickets.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_1</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.1</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_2</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.2</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_NO_TLSv1_3</code></td>\n    <td>Instructs OpenSSL to turn off TLS v1.3</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PKCS1_CHECK_1</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PKCS1_CHECK_2</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_PRIORITIZE_CHACHA</code></td>\n    <td>Instructs OpenSSL server to prioritize ChaCha20-Poly1305\n    when the client does.\n    This option has no effect if\n    <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code>\n    is not enabled.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SINGLE_DH_USE</code></td>\n    <td>Instructs OpenSSL to always create a new key when using\n    temporary/ephemeral DH parameters.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SINGLE_ECDH_USE</code></td>\n    <td>Instructs OpenSSL to always create a new key when using\n    temporary/ephemeral ECDH parameters.</td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SSLEAY_080_CLIENT_DH_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_BLOCK_PADDING_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_D5_BUG</code></td>\n    <td></td>\n  </tr>\n  <tr>\n    <td><code>SSL_OP_TLS_ROLLBACK_BUG</code></td>\n    <td>Instructs OpenSSL to disable version rollback attack detection.</td>\n  </tr>\n</table>",
               "type": "module",
               "displayName": "OpenSSL options"
             },
@@ -3155,10 +3148,10 @@
               "signatures": [
                 {
                   "return": {
-                    "textRaw": "Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM` and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a [`Buffer`][] containing the _authentication tag_ that has been computed from the given data.",
+                    "textRaw": "Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM`, and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a [`Buffer`][] containing the _authentication tag_ that has been computed from the given data.",
                     "name": "return",
                     "type": "Buffer",
-                    "desc": "When using an authenticated encryption mode (`GCM`, `CCM` and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a [`Buffer`][] containing the _authentication tag_ that has been computed from the given data."
+                    "desc": "When using an authenticated encryption mode (`GCM`, `CCM`, and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a [`Buffer`][] containing the _authentication tag_ that has been computed from the given data."
                   },
                   "params": []
                 }
@@ -3211,7 +3204,7 @@
                   ]
                 }
               ],
-              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are\ncurrently supported), the <code>cipher.setAAD()</code> method sets the value used for the\n<em>additional authenticated data</em> (AAD) input parameter.</p>\n<p>The <code>plaintextLength</code> option is optional for <code>GCM</code> and <code>OCB</code>. When using <code>CCM</code>,\nthe <code>plaintextLength</code> option must be specified and its value must match the\nlength of the plaintext in bytes. See <a href=\"#ccm-mode\">CCM mode</a>.</p>\n<p>The <code>cipher.setAAD()</code> method must be called before <a href=\"#cipherupdatedata-inputencoding-outputencoding\"><code>cipher.update()</code></a>.</p>"
+              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are\ncurrently supported), the <code>cipher.setAAD()</code> method sets the value used for the\n<em>additional authenticated data</em> (AAD) input parameter.</p>\n<p>The <code>plaintextLength</code> option is optional for <code>GCM</code> and <code>OCB</code>. When using <code>CCM</code>,\nthe <code>plaintextLength</code> option must be specified and its value must match the\nlength of the plaintext in bytes. See <a href=\"#ccm-mode\">CCM mode</a>.</p>\n<p>The <code>cipher.setAAD()</code> method must be called before <a href=\"#cipherupdatedata-inputencoding-outputencoding\"><code>cipher.update()</code></a>.</p>"
             },
             {
               "textRaw": "`cipher.setAutoPadding([autoPadding])`",
@@ -3390,7 +3383,7 @@
                   ]
                 }
               ],
-              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are\ncurrently supported), the <code>decipher.setAAD()</code> method sets the value used for the\n<em>additional authenticated data</em> (AAD) input parameter.</p>\n<p>The <code>options</code> argument is optional for <code>GCM</code>. When using <code>CCM</code>, the\n<code>plaintextLength</code> option must be specified and its value must match the length\nof the ciphertext in bytes. See <a href=\"#ccm-mode\">CCM mode</a>.</p>\n<p>The <code>decipher.setAAD()</code> method must be called before <a href=\"#decipherupdatedata-inputencoding-outputencoding\"><code>decipher.update()</code></a>.</p>\n<p>When passing a string as the <code>buffer</code>, please consider\n<a href=\"#using-strings-as-inputs-to-cryptographic-apis\">caveats when using strings as inputs to cryptographic APIs</a>.</p>"
+              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are\ncurrently supported), the <code>decipher.setAAD()</code> method sets the value used for the\n<em>additional authenticated data</em> (AAD) input parameter.</p>\n<p>The <code>options</code> argument is optional for <code>GCM</code>. When using <code>CCM</code>, the\n<code>plaintextLength</code> option must be specified and its value must match the length\nof the ciphertext in bytes. See <a href=\"#ccm-mode\">CCM mode</a>.</p>\n<p>The <code>decipher.setAAD()</code> method must be called before <a href=\"#decipherupdatedata-inputencoding-outputencoding\"><code>decipher.update()</code></a>.</p>\n<p>When passing a string as the <code>buffer</code>, please consider\n<a href=\"#using-strings-as-inputs-to-cryptographic-apis\">caveats when using strings as inputs to cryptographic APIs</a>.</p>"
             },
             {
               "textRaw": "`decipher.setAuthTag(buffer[, encoding])`",
@@ -3441,7 +3434,7 @@
                   ]
                 }
               ],
-              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are\ncurrently supported), the <code>decipher.setAuthTag()</code> method is used to pass in the\nreceived <em>authentication tag</em>. If no tag is provided, or if the cipher text\nhas been tampered with, <a href=\"#decipherfinaloutputencoding\"><code>decipher.final()</code></a> will throw, indicating that the\ncipher text should be discarded due to failed authentication. If the tag length\nis invalid according to <a href=\"https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf\">NIST SP 800-38D</a> or does not match the value of the\n<code>authTagLength</code> option, <code>decipher.setAuthTag()</code> will throw an error.</p>\n<p>The <code>decipher.setAuthTag()</code> method must be called before <a href=\"#decipherupdatedata-inputencoding-outputencoding\"><code>decipher.update()</code></a>\nfor <code>CCM</code> mode or before <a href=\"#decipherfinaloutputencoding\"><code>decipher.final()</code></a> for <code>GCM</code> and <code>OCB</code> modes.\n<code>decipher.setAuthTag()</code> can only be called once.</p>\n<p>When passing a string as the authentication tag, please consider\n<a href=\"#using-strings-as-inputs-to-cryptographic-apis\">caveats when using strings as inputs to cryptographic APIs</a>.</p>"
+              "desc": "<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are\ncurrently supported), the <code>decipher.setAuthTag()</code> method is used to pass in the\nreceived <em>authentication tag</em>. If no tag is provided, or if the cipher text\nhas been tampered with, <a href=\"#decipherfinaloutputencoding\"><code>decipher.final()</code></a> will throw, indicating that the\ncipher text should be discarded due to failed authentication. If the tag length\nis invalid according to <a href=\"https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf\">NIST SP 800-38D</a> or does not match the value of the\n<code>authTagLength</code> option, <code>decipher.setAuthTag()</code> will throw an error.</p>\n<p>The <code>decipher.setAuthTag()</code> method must be called before <a href=\"#decipherupdatedata-inputencoding-outputencoding\"><code>decipher.update()</code></a>\nfor <code>CCM</code> mode or before <a href=\"#decipherfinaloutputencoding\"><code>decipher.final()</code></a> for <code>GCM</code> and <code>OCB</code> modes.\n<code>decipher.setAuthTag()</code> can only be called once.</p>\n<p>When passing a string as the authentication tag, please consider\n<a href=\"#using-strings-as-inputs-to-cryptographic-apis\">caveats when using strings as inputs to cryptographic APIs</a>.</p>"
             },
             {
               "textRaw": "`decipher.setAutoPadding([autoPadding])`",
@@ -4694,7 +4687,7 @@
           "desc": "<p>Encapsulates an X509 certificate and provides read-only access to\nits information.</p>\n<pre><code class=\"language-mjs\">const { X509Certificate } = await import('crypto');\n\nconst x509 = new X509Certificate('{... pem encoded cert ...}');\n\nconsole.log(x509.subject);\n</code></pre>\n<pre><code class=\"language-cjs\">const { X509Certificate } = require('crypto');\n\nconst x509 = new X509Certificate('{... pem encoded cert ...}');\n\nconsole.log(x509.subject);\n</code></pre>",
           "properties": [
             {
-              "textRaw": "`ca` Type: {boolean} Will be `true` if this is a Certificate Authority (ca) certificate.",
+              "textRaw": "`ca` Type: {boolean} Will be `true` if this is a Certificate Authority (CA) certificate.",
               "type": "boolean",
               "name": "Type",
               "meta": {
@@ -4703,7 +4696,7 @@
                 ],
                 "changes": []
               },
-              "desc": "Will be `true` if this is a Certificate Authority (ca) certificate."
+              "desc": "Will be `true` if this is a Certificate Authority (CA) certificate."
             },
             {
               "textRaw": "`fingerprint` Type: {string}",
@@ -4895,7 +4888,13 @@
                 "added": [
                   "v15.6.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.14.1",
+                    "pr-url": "https://github.com/nodejs/node/pull/41599",
+                    "description": "The `wildcards`, `partialWildcards`, `multiLabelWildcards`, and `singleLabelSubdomains` options have been removed since they had no effect."
+                  }
+                ]
               },
               "signatures": [
                 {
@@ -4922,30 +4921,6 @@
                           "type": "string",
                           "default": "`'always'`",
                           "desc": "`'always'` or `'never'`."
-                        },
-                        {
-                          "textRaw": "`wildcards` {boolean} **Default:** `true`.",
-                          "name": "wildcards",
-                          "type": "boolean",
-                          "default": "`true`"
-                        },
-                        {
-                          "textRaw": "`partialWildcards` {boolean} **Default:** `true`.",
-                          "name": "partialWildcards",
-                          "type": "boolean",
-                          "default": "`true`"
-                        },
-                        {
-                          "textRaw": "`multiLabelWildcards` {boolean} **Default:** `false`.",
-                          "name": "multiLabelWildcards",
-                          "type": "boolean",
-                          "default": "`false`"
-                        },
-                        {
-                          "textRaw": "`singleLabelSubdomains` {boolean} **Default:** `false`.",
-                          "name": "singleLabelSubdomains",
-                          "type": "boolean",
-                          "default": "`false`"
                         }
                       ]
                     }
@@ -5022,14 +4997,20 @@
               "desc": "<p>Checks whether the certificate matches the given host name.</p>\n<p>If the certificate matches the given host name, the matching subject name is\nreturned. The returned name might be an exact match (e.g., <code>foo.example.com</code>)\nor it might contain wildcards (e.g., <code>*.example.com</code>). Because host name\ncomparisons are case-insensitive, the returned subject name might also differ\nfrom the given <code>name</code> in capitalization.</p>"
             },
             {
-              "textRaw": "`x509.checkIP(ip[, options])`",
+              "textRaw": "`x509.checkIP(ip)`",
               "type": "method",
               "name": "checkIP",
               "meta": {
                 "added": [
                   "v15.6.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v16.14.1",
+                    "pr-url": "https://github.com/nodejs/node/pull/41571",
+                    "description": "The `options` argument has been removed since it had no effect."
+                  }
+                ]
               },
               "signatures": [
                 {
@@ -5044,49 +5025,11 @@
                       "textRaw": "`ip` {string}",
                       "name": "ip",
                       "type": "string"
-                    },
-                    {
-                      "textRaw": "`options` {Object}",
-                      "name": "options",
-                      "type": "Object",
-                      "options": [
-                        {
-                          "textRaw": "`subject` {string} `'always'` or `'never'`. **Default:** `'always'`.",
-                          "name": "subject",
-                          "type": "string",
-                          "default": "`'always'`",
-                          "desc": "`'always'` or `'never'`."
-                        },
-                        {
-                          "textRaw": "`wildcards` {boolean} **Default:** `true`.",
-                          "name": "wildcards",
-                          "type": "boolean",
-                          "default": "`true`"
-                        },
-                        {
-                          "textRaw": "`partialWildcards` {boolean} **Default:** `true`.",
-                          "name": "partialWildcards",
-                          "type": "boolean",
-                          "default": "`true`"
-                        },
-                        {
-                          "textRaw": "`multiLabelWildcards` {boolean} **Default:** `false`.",
-                          "name": "multiLabelWildcards",
-                          "type": "boolean",
-                          "default": "`false`"
-                        },
-                        {
-                          "textRaw": "`singleLabelSubdomains` {boolean} **Default:** `false`.",
-                          "name": "singleLabelSubdomains",
-                          "type": "boolean",
-                          "default": "`false`"
-                        }
-                      ]
                     }
                   ]
                 }
               ],
-              "desc": "<p>Checks whether the certificate matches the given IP address (IPv4 or IPv6).</p>"
+              "desc": "<p>Checks whether the certificate matches the given IP address (IPv4 or IPv6).</p>\n<p>Only <a href=\"https://www.rfc-editor.org/rfc/rfc5280.txt\">RFC 5280</a> <code>iPAddress</code> subject alternative names are considered, and they\nmust match the given <code>ip</code> address exactly. Other subject alternative names as\nwell as the subject field of the certificate are ignored.</p>"
             },
             {
               "textRaw": "`x509.checkIssued(otherCert)`",

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Asynchronous context tracking | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Asynchronous context tracking | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="async_context" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -166,7 +166,7 @@
         <h2>Asynchronous context tracking<span><a class="mark" href="#asynchronous-context-tracking" id="asynchronous-context-tracking">#</a></span><a aria-hidden="true" class="legacy" id="async_context_asynchronous_context_tracking"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/async_hooks.js">lib/async_hooks.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/async_hooks.js">lib/async_hooks.js</a></p>
 <section><h3>Introduction<span><a class="mark" href="#introduction" id="introduction">#</a></span><a aria-hidden="true" class="legacy" id="async_context_introduction"></a></h3>
 <p>These classes are used to associate state and propagate it throughout
 callbacks and promise chains.
@@ -399,20 +399,17 @@ the following pattern should be used:</p>
 functions called by <code>foo</code>. Outside of <code>run</code>, calling <code>getStore</code> will return
 <code>undefined</code>.</p>
 <h4>Troubleshooting: Context loss<span><a class="mark" href="#troubleshooting-context-loss" id="troubleshooting-context-loss">#</a></span><a aria-hidden="true" class="legacy" id="async_context_troubleshooting_context_loss"></a></h4>
-<p>In most cases your application or library code should have no issues with
-<code>AsyncLocalStorage</code>. But in rare cases you may face situations when the
-current store is lost in one of the asynchronous operations. In those cases,
-consider the following options.</p>
+<p>In most cases, <code>AsyncLocalStorage</code> works without issues. In rare situations, the
+current store is lost in one of the asynchronous operations.</p>
 <p>If your code is callback-based, it is enough to promisify it with
-<a href="util.html#utilpromisifyoriginal"><code>util.promisify()</code></a>, so it starts working with native promises.</p>
-<p>If you need to keep using callback-based API, or your code assumes
+<a href="util.html#utilpromisifyoriginal"><code>util.promisify()</code></a> so it starts working with native promises.</p>
+<p>If you need to use a callback-based API or your code assumes
 a custom thenable implementation, use the <a href="#class-asyncresource"><code>AsyncResource</code></a> class
-to associate the asynchronous operation with the correct execution context. To
-do so, you will need to identify the function call responsible for the
-context loss. You can do that by logging the content of
-<code>asyncLocalStorage.getStore()</code> after the calls you suspect are responsible for
-the loss. When the code logs <code>undefined</code>, the last callback called is probably
-responsible for the context loss.</p>
+to associate the asynchronous operation with the correct execution context.
+Find the function call responsible for the context loss by logging the content
+of <code>asyncLocalStorage.getStore()</code> after the calls you suspect are responsible
+for the loss. When the code logs <code>undefined</code>, the last callback called is
+probably responsible for the context loss.</p>
 </section><section><h3>Class: <code>AsyncResource</code><span><a class="mark" href="#class-asyncresource" id="class-asyncresource">#</a></span><a aria-hidden="true" class="legacy" id="async_context_class_asyncresource"></a></h3>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>

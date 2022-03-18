@@ -4,8 +4,8 @@
   "introduced_in": "v5.9.1",
   "miscs": [
     {
-      "textRaw": "Command-line options",
-      "name": "Command-line options",
+      "textRaw": "Command-line API",
+      "name": "Command-line API",
       "introduced_in": "v5.9.1",
       "type": "misc",
       "desc": "<p>Node.js comes with a variety of CLI options. These options expose built-in\ndebugging, multiple ways to execute scripts, and other helpful runtime options.</p>\n<p>To view this documentation as a manual page in a terminal, run <code>man node</code>.</p>",
@@ -13,9 +13,25 @@
         {
           "textRaw": "Synopsis",
           "name": "synopsis",
-          "desc": "<p><code>node [options] [V8 options] [script.js | -e \"script\" | -] [--] [arguments]</code></p>\n<p><code>node inspect [script.js | -e \"script\" | &#x3C;host>:&#x3C;port>] …</code></p>\n<p><code>node --v8-options</code></p>\n<p>Execute without arguments to start the <a href=\"repl.html\">REPL</a>.</p>\n<p>For more info about <code>node inspect</code>, see the <a href=\"debugger.html\">debugger</a> documentation.</p>",
+          "desc": "<p><code>node [options] [V8 options] [&#x3C;program-entry-point> | -e \"script\" | -] [--] [arguments]</code></p>\n<p><code>node inspect [&#x3C;program-entry-point> | -e \"script\" | &#x3C;host>:&#x3C;port>] …</code></p>\n<p><code>node --v8-options</code></p>\n<p>Execute without arguments to start the <a href=\"repl.html\">REPL</a>.</p>\n<p>For more info about <code>node inspect</code>, see the <a href=\"debugger.html\">debugger</a> documentation.</p>",
           "type": "misc",
           "displayName": "Synopsis"
+        },
+        {
+          "textRaw": "Program entry point",
+          "name": "program_entry_point",
+          "desc": "<p>The program entry point is a specifier-like string. If the string is not an\nabsolute path, it's resolved as a relative path from the current working\ndirectory. That path is then resolved by <a href=\"modules.html\">CommonJS</a> module loader. If no\ncorresponding file is found, an error is thrown.</p>\n<p>If a file is found, its path will be passed to the <a href=\"esm.html#loaders\">ECMAScript module loader</a>\nunder any of the following conditions:</p>\n<ul>\n<li>The program was started with a command-line flag that forces the entry\npoint to be loaded with ECMAScript module loader.</li>\n<li>The file has an <code>.mjs</code> extension.</li>\n<li>The file does not have a <code>.cjs</code> extension, and the nearest parent\n<code>package.json</code> file contains a top-level <a href=\"packages.html#type\"><code>\"type\"</code></a> field with a value of\n<code>\"module\"</code>.</li>\n</ul>\n<p>Otherwise, the file is loaded using the CommonJS module loader. See\n<a href=\"packages.html#modules-loaders\">Modules loaders</a> for more details.</p>",
+          "modules": [
+            {
+              "textRaw": "ECMAScript modules loader entry point caveat",
+              "name": "ecmascript_modules_loader_entry_point_caveat",
+              "desc": "<p>When loading <a href=\"esm.html#loaders\">ECMAScript module loader</a> loads the program entry point, the <code>node</code>\ncommand will only accept as input only files with <code>.js</code>, <code>.mjs</code>, or <code>.cjs</code>\nextensions; and with <code>.wasm</code> extensions when\n<a href=\"#--experimental-wasm-modules\"><code>--experimental-wasm-modules</code></a> is enabled.</p>",
+              "type": "module",
+              "displayName": "ECMAScript modules loader entry point caveat"
+            }
+          ],
+          "type": "misc",
+          "displayName": "Program entry point"
         },
         {
           "textRaw": "Options",
@@ -274,7 +290,7 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>Specify the <code>module</code> of a custom experimental <a href=\"esm.html#loaders\">ECMAScript Module loader</a>.\n<code>module</code> may be either a path to a file, or an ECMAScript Module name.</p>",
+              "desc": "<p>Specify the <code>module</code> of a custom experimental <a href=\"esm.html#loaders\">ECMAScript module loader</a>.\n<code>module</code> may be any string accepted as an <a href=\"esm.html#import-specifiers\"><code>import</code> specifier</a>.</p>",
               "type": "module",
               "displayName": "`--experimental-loader=module`"
             },

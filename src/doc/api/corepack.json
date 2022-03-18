@@ -2,6 +2,13 @@
   "type": "module",
   "source": "doc/api/corepack.md",
   "introduced_in": "v16.9.0",
+  "meta": {
+    "added": [
+      "v16.9.0",
+      "v14.19.0"
+    ],
+    "changes": []
+  },
   "stability": 1,
   "stabilityText": "Experimental",
   "miscs": [
@@ -10,6 +17,13 @@
       "name": "Corepack",
       "introduced_in": "v16.9.0",
       "type": "misc",
+      "meta": {
+        "added": [
+          "v16.9.0",
+          "v14.19.0"
+        ],
+        "changes": []
+      },
       "stability": 1,
       "stabilityText": "Experimental",
       "desc": "<p><em><a href=\"https://github.com/nodejs/corepack\">Corepack</a></em> is an experimental tool to help with\nmanaging versions of your package managers. It exposes binary proxies for\neach <a href=\"#supported-package-managers\">supported package manager</a> that, when called, will identify whatever\npackage manager is configured for the current project, transparently install\nit if needed, and finally run it without requiring explicit user interactions.</p>\n<p>This feature simplifies two core workflows:</p>\n<ul>\n<li>\n<p>It eases new contributor onboarding, since they won't have to follow\nsystem-specific installation processes anymore just to have the package\nmanager you want them to.</p>\n</li>\n<li>\n<p>It allows you to ensure that everyone in your team will use exactly the\npackage manager version you intend them to, without them having to\nmanually synchronize it each time you need to make an update.</p>\n</li>\n</ul>",

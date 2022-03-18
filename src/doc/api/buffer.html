@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Buffer | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Buffer | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="buffer" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -287,7 +287,7 @@
         <h2>Buffer<span><a class="mark" href="#buffer" id="buffer">#</a></span><a aria-hidden="true" class="legacy" id="buffer_buffer"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/buffer.js">lib/buffer.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/buffer.js">lib/buffer.js</a></p>
 <p><code>Buffer</code> objects are used to represent a fixed-length sequence of bytes. Many
 Node.js APIs support <code>Buffer</code>s.</p>
 <p>The <code>Buffer</code> class is a subclass of JavaScript's <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array"><code>Uint8Array</code></a> class and
@@ -443,8 +443,8 @@ encoding a <code>Buffer</code> to a string, this encoding will omit padding.</p>
 </li>
 <li>
 <p><code>'hex'</code>: Encode each byte as two hexadecimal characters. Data truncation
-may occur when decoding strings that do exclusively contain valid hexadecimal
-characters. See below for an example.</p>
+may occur when decoding strings that do not exclusively consist of an even
+number of hexadecimal characters. See below for an example.</p>
 </li>
 </ul>
 <p>The following legacy character encodings are also supported:</p>
@@ -474,21 +474,21 @@ U+FFFF. In Node.js, these code points are always supported.</p>
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">Buffer</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'buffer'</span>;
 
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1ag'</span>, <span class="hljs-string">'hex'</span>);
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1ag123'</span>, <span class="hljs-string">'hex'</span>);
 <span class="hljs-comment">// Prints &#x3C;Buffer 1a>, data truncated when first non-hexadecimal value</span>
 <span class="hljs-comment">// ('g') encountered.</span>
 
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1a7g'</span>, <span class="hljs-string">'hex'</span>);
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1a7'</span>, <span class="hljs-string">'hex'</span>);
 <span class="hljs-comment">// Prints &#x3C;Buffer 1a>, data truncated when data ends in single digit ('7').</span>
 
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1634'</span>, <span class="hljs-string">'hex'</span>);
 <span class="hljs-comment">// Prints &#x3C;Buffer 16 34>, all data represented.</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1ag'</span>, <span class="hljs-string">'hex'</span>);
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1ag123'</span>, <span class="hljs-string">'hex'</span>);
 <span class="hljs-comment">// Prints &#x3C;Buffer 1a>, data truncated when first non-hexadecimal value</span>
 <span class="hljs-comment">// ('g') encountered.</span>
 
-<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1a7g'</span>, <span class="hljs-string">'hex'</span>);
+<span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1a7'</span>, <span class="hljs-string">'hex'</span>);
 <span class="hljs-comment">// Prints &#x3C;Buffer 1a>, data truncated when data ends in single digit ('7').</span>
 
 <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'1634'</span>, <span class="hljs-string">'hex'</span>);
@@ -3146,7 +3146,15 @@ copiedBuf[<span class="hljs-number">0</span>]++;
 <span class="hljs-comment">// Prints: cuffer</span>
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-title function_">toString</span>());
-<span class="hljs-comment">// Prints: buffer</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
+<span class="hljs-comment">// Prints: buffer</span>
+
+<span class="hljs-comment">// With buf.slice(), the original buffer is modified.</span>
+<span class="hljs-keyword">const</span> notReallyCopiedBuf = buf.<span class="hljs-title function_">slice</span>();
+notReallyCopiedBuf[<span class="hljs-number">0</span>]++;
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(notReallyCopiedBuf.<span class="hljs-title function_">toString</span>());
+<span class="hljs-comment">// Prints: cuffer</span>
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-title function_">toString</span>());
+<span class="hljs-comment">// Also prints: cuffer (!)</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { <span class="hljs-title class_">Buffer</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'buffer'</span>);
 
 <span class="hljs-keyword">const</span> buf = <span class="hljs-title class_">Buffer</span>.<span class="hljs-title function_">from</span>(<span class="hljs-string">'buffer'</span>);
 
@@ -3156,7 +3164,15 @@ copiedBuf[<span class="hljs-number">0</span>]++;
 <span class="hljs-comment">// Prints: cuffer</span>
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-title function_">toString</span>());
-<span class="hljs-comment">// Prints: buffer</span></code></pre>
+<span class="hljs-comment">// Prints: buffer</span>
+
+<span class="hljs-comment">// With buf.slice(), the original buffer is modified.</span>
+<span class="hljs-keyword">const</span> notReallyCopiedBuf = buf.<span class="hljs-title function_">slice</span>();
+notReallyCopiedBuf[<span class="hljs-number">0</span>]++;
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(notReallyCopiedBuf.<span class="hljs-title function_">toString</span>());
+<span class="hljs-comment">// Prints: cuffer</span>
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(buf.<span class="hljs-title function_">toString</span>());
+<span class="hljs-comment">// Also prints: cuffer (!)</span></code></pre>
 <h4><code>buf.swap16()</code><span><a class="mark" href="#bufswap16" id="bufswap16">#</a></span><a aria-hidden="true" class="legacy" id="buffer_buf_swap16"></a></h4>
 <div class="api_metadata">
 <span>Added in: v5.10.0</span>

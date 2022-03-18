@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Console | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Console | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="console" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -186,7 +186,7 @@
         <h2>Console<span><a class="mark" href="#console" id="console">#</a></span><a aria-hidden="true" class="legacy" id="console_console"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/console.js">lib/console.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/console.js">lib/console.js</a></p>
 <p>The <code>console</code> module provides a simple debugging console that is similar to the
 JavaScript console mechanism provided by web browsers.</p>
 <p>The module exports two specific components:</p>
@@ -577,10 +577,10 @@ time is 3869ms, <code>console.timeEnd()</code> displays "3.869s".</p>
 </ul>
 <p>Stops a timer that was previously started by calling <a href="#consoletimelabel"><code>console.time()</code></a> and
 prints the result to <code>stdout</code>:</p>
-<pre><code class="language-js"><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">time</span>(<span class="hljs-string">'100-elements'</span>);
-<span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &#x3C; <span class="hljs-number">100</span>; i++) {}
-<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">timeEnd</span>(<span class="hljs-string">'100-elements'</span>);
-<span class="hljs-comment">// prints 100-elements: 225.438ms</span></code></pre>
+<pre><code class="language-js"><span class="hljs-variable language_">console</span>.<span class="hljs-title function_">time</span>(<span class="hljs-string">'bunch-of-stuff'</span>);
+<span class="hljs-comment">// Do a bunch of stuff.</span>
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">timeEnd</span>(<span class="hljs-string">'bunch-of-stuff'</span>);
+<span class="hljs-comment">// Prints: bunch-of-stuff: 225.438ms</span></code></pre>
 <h4><code>console.timeLog([label][, ...data])</code><span><a class="mark" href="#consoletimeloglabel-data" id="consoletimeloglabel-data">#</a></span><a aria-hidden="true" class="legacy" id="console_console_timelog_label_data"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.7.0</span>

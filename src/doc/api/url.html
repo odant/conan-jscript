@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>URL | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>URL | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="url" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -244,7 +244,7 @@
         <h2>URL<span><a class="mark" href="#url" id="url">#</a></span><a aria-hidden="true" class="legacy" id="url_url"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/url.js">lib/url.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/url.js">lib/url.js</a></p>
 <p>The <code>url</code> module provides utilities for URL resolution and parsing. It can be
 accessed using:</p>
 
@@ -328,9 +328,9 @@ return <code>true</code>.</p>
 <ul>
 <li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The absolute or relative input URL to parse. If <code>input</code>
 is relative, then <code>base</code> is required. If <code>input</code> is absolute, the <code>base</code>
-is ignored.</li>
-<li><code>base</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="url.html#the-whatwg-url-api" class="type">&#x3C;URL></a> The base URL to resolve against if the <code>input</code> is not
-absolute.</li>
+is ignored. If <code>input</code> is not a string, it is <a href="https://tc39.es/ecma262/#sec-tostring">converted to a string</a> first.</li>
+<li><code>base</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The base URL to resolve against if the <code>input</code> is not
+absolute. If <code>base</code> is not a string, it is <a href="https://tc39.es/ecma262/#sec-tostring">converted to a string</a> first.</li>
 </ul>
 <p>Creates a new <code>URL</code> object by parsing the <code>input</code> relative to the <code>base</code>. If
 <code>base</code> is passed as a string, it will be parsed equivalent to <code>new URL(base)</code>.</p>
@@ -1509,16 +1509,16 @@ incorrect handling of usernames and passwords have been identified.</p>
 </div>
 <p></p><div class="api_stability api_stability_3"><a href="documentation.html#stability-index">Stability: 3</a> - Legacy: Use the WHATWG URL API instead.</div><p></p>
 <ul>
-<li><code>from</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The Base URL being resolved against.</li>
-<li><code>to</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The HREF URL being resolved.</li>
+<li><code>from</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The base URL to use if <code>to</code> is a relative URL.</li>
+<li><code>to</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The target URL to resolve.</li>
 </ul>
 <p>The <code>url.resolve()</code> method resolves a target URL relative to a base URL in a
-manner similar to that of a Web browser resolving an anchor tag HREF.</p>
+manner similar to that of a web browser resolving an anchor tag.</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> url = <span class="hljs-built_in">require</span>(<span class="hljs-string">'url'</span>);
 url.<span class="hljs-title function_">resolve</span>(<span class="hljs-string">'/one/two/three'</span>, <span class="hljs-string">'four'</span>);         <span class="hljs-comment">// '/one/two/four'</span>
 url.<span class="hljs-title function_">resolve</span>(<span class="hljs-string">'http://example.com/'</span>, <span class="hljs-string">'/one'</span>);    <span class="hljs-comment">// 'http://example.com/one'</span>
 url.<span class="hljs-title function_">resolve</span>(<span class="hljs-string">'http://example.com/one'</span>, <span class="hljs-string">'/two'</span>); <span class="hljs-comment">// 'http://example.com/two'</span></code></pre>
-<p>You can achieve the same result using the WHATWG URL API:</p>
+<p>To achieve the same result using the WHATWG URL API:</p>
 <pre><code class="language-js"><span class="hljs-keyword">function</span> <span class="hljs-title function_">resolve</span>(<span class="hljs-params"><span class="hljs-keyword">from</span>, to</span>) {
   <span class="hljs-keyword">const</span> resolvedUrl = <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(to, <span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-keyword">from</span>, <span class="hljs-string">'resolve://'</span>));
   <span class="hljs-keyword">if</span> (resolvedUrl.<span class="hljs-property">protocol</span> === <span class="hljs-string">'resolve:'</span>) {

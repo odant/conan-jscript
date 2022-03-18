@@ -8,7 +8,7 @@
       "introduced_in": "v16.4.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/async_hooks.js\">lib/async_hooks.js</a></p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.2/lib/async_hooks.js\">lib/async_hooks.js</a></p>",
       "modules": [
         {
           "textRaw": "Introduction",
@@ -184,7 +184,7 @@
             {
               "textRaw": "Troubleshooting: Context loss",
               "name": "troubleshooting:_context_loss",
-              "desc": "<p>In most cases your application or library code should have no issues with\n<code>AsyncLocalStorage</code>. But in rare cases you may face situations when the\ncurrent store is lost in one of the asynchronous operations. In those cases,\nconsider the following options.</p>\n<p>If your code is callback-based, it is enough to promisify it with\n<a href=\"util.html#utilpromisifyoriginal\"><code>util.promisify()</code></a>, so it starts working with native promises.</p>\n<p>If you need to keep using callback-based API, or your code assumes\na custom thenable implementation, use the <a href=\"#class-asyncresource\"><code>AsyncResource</code></a> class\nto associate the asynchronous operation with the correct execution context. To\ndo so, you will need to identify the function call responsible for the\ncontext loss. You can do that by logging the content of\n<code>asyncLocalStorage.getStore()</code> after the calls you suspect are responsible for\nthe loss. When the code logs <code>undefined</code>, the last callback called is probably\nresponsible for the context loss.</p>",
+              "desc": "<p>In most cases, <code>AsyncLocalStorage</code> works without issues. In rare situations, the\ncurrent store is lost in one of the asynchronous operations.</p>\n<p>If your code is callback-based, it is enough to promisify it with\n<a href=\"util.html#utilpromisifyoriginal\"><code>util.promisify()</code></a> so it starts working with native promises.</p>\n<p>If you need to use a callback-based API or your code assumes\na custom thenable implementation, use the <a href=\"#class-asyncresource\"><code>AsyncResource</code></a> class\nto associate the asynchronous operation with the correct execution context.\nFind the function call responsible for the context loss by logging the content\nof <code>asyncLocalStorage.getStore()</code> after the calls you suspect are responsible\nfor the loss. When the code logs <code>undefined</code>, the last callback called is\nprobably responsible for the context loss.</p>",
               "type": "module",
               "displayName": "Troubleshooting: Context loss"
             }

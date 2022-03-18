@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.0/lib/os.js\">lib/os.js</a></p>\n<p>The <code>os</code> module provides operating system-related utility methods and\nproperties. It can be accessed using:</p>\n<pre><code class=\"language-js\">const os = require('os');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.2/lib/os.js\">lib/os.js</a></p>\n<p>The <code>os</code> module provides operating system-related utility methods and\nproperties. It can be accessed using:</p>\n<pre><code class=\"language-js\">const os = require('os');\n</code></pre>",
       "properties": [
         {
           "textRaw": "`EOL` {string}",
@@ -274,7 +274,7 @@
               "params": []
             }
           ],
-          "desc": "<p>Returns a string identifying the operating system platform. The value is set\nat compile time. Possible values are <code>'aix'</code>, <code>'darwin'</code>, <code>'freebsd'</code>,\n<code>'linux'</code>, <code>'openbsd'</code>, <code>'sunos'</code>, and <code>'win32'</code>.</p>\n<p>The return value is equivalent to <a href=\"process.html#processplatform\"><code>process.platform</code></a>.</p>\n<p>The value <code>'android'</code> may also be returned if Node.js is built on the Android\noperating system. <a href=\"https://github.com/nodejs/node/blob/HEAD/BUILDING.md#androidandroid-based-devices-eg-firefox-os\">Android support is experimental</a>.</p>"
+          "desc": "<p>Returns a string identifying the operating system platform for which\nthe Node.js binary was compiled. The value is set at compile time.\nPossible values are <code>'aix'</code>, <code>'darwin'</code>, <code>'freebsd'</code>,<code>'linux'</code>,\n<code>'openbsd'</code>, <code>'sunos'</code>, and <code>'win32'</code>.</p>\n<p>The return value is equivalent to <a href=\"process.html#processplatform\"><code>process.platform</code></a>.</p>\n<p>The value <code>'android'</code> may also be returned if Node.js is built on the Android\noperating system. <a href=\"https://github.com/nodejs/node/blob/HEAD/BUILDING.md#androidandroid-based-devices-eg-firefox-os\">Android support is experimental</a>.</p>"
         },
         {
           "textRaw": "`os.release()`",

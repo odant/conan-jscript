@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Errors | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Errors | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="errors" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -394,7 +394,7 @@
 <li><a href="#err_missing_passphrase"><code>ERR_MISSING_PASSPHRASE</code></a></li>
 <li><a href="#err_missing_platform_for_worker"><code>ERR_MISSING_PLATFORM_FOR_WORKER</code></a></li>
 <li><a href="#err_missing_transferable_in_transfer_list"><code>ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST</code></a></li>
-<li><span class="stability_1"><a href="#err_module_not_found"><code>ERR_MODULE_NOT_FOUND</code></a></span></li>
+<li><a href="#err_module_not_found"><code>ERR_MODULE_NOT_FOUND</code></a></li>
 <li><a href="#err_multiple_callback"><code>ERR_MULTIPLE_CALLBACK</code></a></li>
 <li><a href="#err_napi_cons_function"><code>ERR_NAPI_CONS_FUNCTION</code></a></li>
 <li><a href="#err_napi_invalid_dataview_args"><code>ERR_NAPI_INVALID_DATAVIEW_ARGS</code></a></li>
@@ -1980,8 +1980,8 @@ transferable object types has been expanded to cover more types than
 <code>MessagePort</code>.</p>
 <p><a id="ERR_MODULE_NOT_FOUND"></a></p>
 <h4><code>ERR_MODULE_NOT_FOUND</code><span><a class="mark" href="#err_module_not_found" id="err_module_not_found">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_module_not_found"></a></h4>
-<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
-<p>An <a href="esm.html">ES Module</a> could not be resolved.</p>
+<p>A module file could not be resolved by the ECMAScript modules loader while
+attempting an <code>import</code> operation or when loading the program entry point.</p>
 <p><a id="ERR_MULTIPLE_CALLBACK"></a></p>
 <h4><code>ERR_MULTIPLE_CALLBACK</code><span><a class="mark" href="#err_multiple_callback" id="err_multiple_callback">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_multiple_callback"></a></h4>
 <p>A callback was called more than once.</p>
@@ -2398,8 +2398,8 @@ In this case, the <code>Content-Length</code> HTTP header cannot be used.</p>
 </tbody></table>
 </details>
 </div>
-<p>A module file could not be resolved while attempting a <a href="modules.html#requireid"><code>require()</code></a> or
-<code>import</code> operation.</p>
+<p>A module file could not be resolved by the CommonJS modules loader while
+attempting a <a href="modules.html#requireid"><code>require()</code></a> operation or when loading the program entry point.</p>
 </section><section><h3>Legacy Node.js error codes<span><a class="mark" href="#legacy-nodejs-error-codes" id="legacy-nodejs-error-codes">#</a></span><a aria-hidden="true" class="legacy" id="errors_legacy_node_js_error_codes"></a></h3>
 <p></p><div class="api_stability api_stability_0"><a href="documentation.html#stability-index">Stability: 0</a> - Deprecated. These error codes are either inconsistent, or have
 been removed.</div><p></p>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Util | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Util | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="util" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -281,7 +281,7 @@
         <h2>Util<span><a class="mark" href="#util" id="util">#</a></span><a aria-hidden="true" class="legacy" id="util_util"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/util.js">lib/util.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/util.js">lib/util.js</a></p>
 <p>The <code>util</code> module supports the needs of Node.js internal APIs. Many of the
 utilities are useful for application and module developers as well. To access
 it:</p>
@@ -327,7 +327,7 @@ is wrapped in an <code>Error</code> with the original value stored in a field na
 <span class="hljs-title function_">callbackFunction</span>(<span class="hljs-function">(<span class="hljs-params">err, ret</span>) =></span> {
   <span class="hljs-comment">// When the Promise was rejected with `null` it is wrapped with an Error and</span>
   <span class="hljs-comment">// the original value is stored in `reason`.</span>
-  err &#x26;&#x26; err.<span class="hljs-title function_">hasOwnProperty</span>(<span class="hljs-string">'reason'</span>) &#x26;&#x26; err.<span class="hljs-property">reason</span> === <span class="hljs-literal">null</span>;  <span class="hljs-comment">// true</span>
+  err &#x26;&#x26; <span class="hljs-title class_">Object</span>.<span class="hljs-title function_">hasOwn</span>(err, <span class="hljs-string">'reason'</span>) &#x26;&#x26; err.<span class="hljs-property">reason</span> === <span class="hljs-literal">null</span>;  <span class="hljs-comment">// true</span>
 });</code></pre>
 </section><section><h3><code>util.debuglog(section[, callback])</code><span><a class="mark" href="#utildebuglogsection-callback" id="utildebuglogsection-callback">#</a></span><a aria-hidden="true" class="legacy" id="util_util_debuglog_section_callback"></a></h3>
 <div class="api_metadata">
@@ -1222,13 +1222,9 @@ doSomething[kCustomPromisifiedSymbol] = <span class="hljs-function">(<span class
 <span>Added in: v8.3.0</span>
 </div>
 <p>An implementation of the <a href="https://encoding.spec.whatwg.org/">WHATWG Encoding Standard</a> <code>TextDecoder</code> API.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> decoder = <span class="hljs-keyword">new</span> <span class="hljs-title class_">TextDecoder</span>(<span class="hljs-string">'shift_jis'</span>);
-<span class="hljs-keyword">let</span> string = <span class="hljs-string">''</span>;
-<span class="hljs-keyword">let</span> buffer;
-<span class="hljs-keyword">while</span> (buffer = <span class="hljs-title function_">getNextChunkSomehow</span>()) {
-  string += decoder.<span class="hljs-title function_">decode</span>(buffer, { <span class="hljs-attr">stream</span>: <span class="hljs-literal">true</span> });
-}
-string += decoder.<span class="hljs-title function_">decode</span>(); <span class="hljs-comment">// end-of-stream</span></code></pre>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> decoder = <span class="hljs-keyword">new</span> <span class="hljs-title class_">TextDecoder</span>();
+<span class="hljs-keyword">const</span> u8arr = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Uint8Array</span>([<span class="hljs-number">72</span>, <span class="hljs-number">101</span>, <span class="hljs-number">108</span>, <span class="hljs-number">108</span>, <span class="hljs-number">111</span>]);
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(decoder.<span class="hljs-title function_">decode</span>(u8arr)); <span class="hljs-comment">// Hello</span></code></pre>
 <h4>WHATWG supported encodings<span><a class="mark" href="#whatwg-supported-encodings" id="whatwg-supported-encodings">#</a></span><a aria-hidden="true" class="legacy" id="util_whatwg_supported_encodings"></a></h4>
 <p>Per the <a href="https://encoding.spec.whatwg.org/">WHATWG Encoding Standard</a>, the encodings supported by the
 <code>TextDecoder</code> API are outlined in the tables below. For each encoding,
@@ -2306,7 +2302,7 @@ util.<span class="hljs-title function_">isNumber</span>(<span class="hljs-title 
 <span class="hljs-comment">// Returns: true</span>
 util.<span class="hljs-title function_">isNumber</span>(<span class="hljs-number">0</span>);
 <span class="hljs-comment">// Returns: true</span>
-util.<span class="hljs-title function_">isNumber</span>(<span class="hljs-title class_">Na</span>N);
+util.<span class="hljs-title function_">isNumber</span>(<span class="hljs-title class_">NaN</span>);
 <span class="hljs-comment">// Returns: true</span></code></pre>
 <h4><code>util.isObject(object)</code><span><a class="mark" href="#utilisobjectobject" id="utilisobjectobject">#</a></span><a aria-hidden="true" class="legacy" id="util_util_isobject_object"></a></h4>
 <div class="api_metadata">

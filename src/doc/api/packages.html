@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Modules: Packages | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Modules: Packages | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="packages" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -139,6 +139,7 @@
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#determining-module-system">Determining module system</a>
 <ul>
+<li><a href="#modules-loaders">Modules loaders</a></li>
 <li><a href="#packagejson-and-file-extensions"><code>package.json</code> and file extensions</a></li>
 <li><a href="#--input-type-flag"><code>--input-type</code> flag</a></li>
 </ul>
@@ -216,14 +217,15 @@ named <code>node_modules</code>.</p>
 along with a reference for the <a href="#nodejs-packagejson-field-definitions"><code>package.json</code></a> fields defined by Node.js.</p>
 </section><section><h3>Determining module system<span><a class="mark" href="#determining-module-system" id="determining-module-system">#</a></span><a aria-hidden="true" class="legacy" id="packages_determining_module_system"></a></h3>
 <p>Node.js will treat the following as <a href="esm.html">ES modules</a> when passed to <code>node</code> as the
-initial input, or when referenced by <code>import</code> statements within ES module code:</p>
+initial input, or when referenced by <code>import</code> statements or <code>import()</code>
+expressions:</p>
 <ul>
 <li>
-<p>Files ending in <code>.mjs</code>.</p>
+<p>Files with an <code>.mjs</code> extension.</p>
 </li>
 <li>
-<p>Files ending in <code>.js</code> when the nearest parent <code>package.json</code> file contains a
-top-level <a href="#type"><code>"type"</code></a> field with a value of <code>"module"</code>.</p>
+<p>Files with a <code>.js</code> extension when the nearest parent <code>package.json</code> file
+contains a top-level <a href="#type"><code>"type"</code></a> field with a value of <code>"module"</code>.</p>
 </li>
 <li>
 <p>Strings passed in as an argument to <code>--eval</code>, or piped to <code>node</code> via <code>STDIN</code>,
@@ -236,14 +238,15 @@ field, or string input without the flag <code>--input-type</code>. This behavior
 preserve backward compatibility. However, now that Node.js supports both
 CommonJS and ES modules, it is best to be explicit whenever possible. Node.js
 will treat the following as CommonJS when passed to <code>node</code> as the initial input,
-or when referenced by <code>import</code> statements within ES module code:</p>
+or when referenced by <code>import</code> statements, <code>import()</code> expressions, or
+<code>require()</code> expressions:</p>
 <ul>
 <li>
-<p>Files ending in <code>.cjs</code>.</p>
+<p>Files with a <code>.cjs</code> extension.</p>
 </li>
 <li>
-<p>Files ending in <code>.js</code> when the nearest parent <code>package.json</code> file contains a
-top-level field <a href="#type"><code>"type"</code></a> with a value of <code>"commonjs"</code>.</p>
+<p>Files with a <code>.js</code> extension when the nearest parent <code>package.json</code> file
+contains a top-level field <a href="#type"><code>"type"</code></a> with a value of <code>"commonjs"</code>.</p>
 </li>
 <li>
 <p>Strings passed in as an argument to <code>--eval</code> or <code>--print</code>, or piped to <code>node</code>
@@ -255,6 +258,46 @@ all sources are CommonJS. Being explicit about the <code>type</code> of the pack
 future-proof the package in case the default type of Node.js ever changes, and
 it will also make things easier for build tools and loaders to determine how the
 files in the package should be interpreted.</p>
+<h4>Modules loaders<span><a class="mark" href="#modules-loaders" id="modules-loaders">#</a></span><a aria-hidden="true" class="legacy" id="packages_modules_loaders"></a></h4>
+<p>Node.js has two systems for resolving a specifier and loading modules.</p>
+<p>There is the CommonJS module loader:</p>
+<ul>
+<li>It is fully synchronous.</li>
+<li>It is responsible for handling <code>require()</code> calls.</li>
+<li>It is monkey patchable.</li>
+<li>It supports <a href="modules.html#folders-as-modules">folders as modules</a>.</li>
+<li>When resolving a specifier, if no exact match is found, it will try to add
+extensions (<code>.js</code>, <code>.json</code>, and finally <code>.node</code>) and then attempt to resolve
+<a href="modules.html#folders-as-modules">folders as modules</a>.</li>
+<li>It treats <code>.json</code> as JSON text files.</li>
+<li><code>.node</code> files are interpreted as compiled addon modules loaded with
+<code>process.dlopen()</code>.</li>
+<li>It treats all files that lack <code>.json</code> or <code>.node</code> extensions as JavaScript
+text files.</li>
+<li>It cannot be used to load ECMAScript modules (although it is possible to
+<a href="modules.html#the-mjs-extension">load ECMASCript modules from CommonJS modules</a>). When used to load a
+JavaScript text file that is not an ECMAScript module, it loads it as a
+CommonJS module.</li>
+</ul>
+<p>There is the ECMAScript module loader:</p>
+<ul>
+<li>It is asynchronous.</li>
+<li>It is responsible for handling <code>import</code> statements and <code>import()</code> expressions.</li>
+<li>It is not monkey patchable, can be customized using <a href="esm.html#loaders">loader hooks</a>.</li>
+<li>It does not support folders as modules, directory indexes (e.g.
+<code>'./startup/index.js'</code>) must be fully specified.</li>
+<li>It does no extension searching. A file extension must be provided
+when the specifier is a relative or absolute file URL.</li>
+<li>It can load JSON modules, but an import assertion is required (behind
+<code>--experimental-json-modules</code> flag).</li>
+<li>It accepts only <code>.js</code>, <code>.mjs</code>, and <code>.cjs</code> extensions for JavaScript text
+files.</li>
+<li>It can be used to load JavaScript CommonJS modules. Such modules
+are passed through the <code>es-module-lexer</code> to try to identify named exports,
+which are available if they can be determined through static analysis.
+Imported CommonJS modules have their URLs converted to absolute
+paths and are then loaded via the CommonJS module loader.</li>
+</ul>
 <h4><code>package.json</code> and file extensions<span><a class="mark" href="#packagejson-and-file-extensions" id="packagejson-and-file-extensions">#</a></span><a aria-hidden="true" class="legacy" id="packages_package_json_and_file_extensions"></a></h4>
 <p>Within a package, the <a href="#nodejs-packagejson-field-definitions"><code>package.json</code></a> <a href="#type"><code>"type"</code></a> field defines how
 Node.js should interpret <code>.js</code> files. If a <code>package.json</code> file does not have a
@@ -968,7 +1011,7 @@ conditional exports for consumers could be to add an export, e.g.
 <span class="hljs-punctuation">}</span></code></pre>
 </section><section><h3>Node.js <code>package.json</code> field definitions<span><a class="mark" href="#nodejs-packagejson-field-definitions" id="nodejs-packagejson-field-definitions">#</a></span><a aria-hidden="true" class="legacy" id="packages_node_js_package_json_field_definitions"></a></h3>
 <p>This section describes the fields used by the Node.js runtime. Other tools (such
-as <a href="https://docs.npmjs.com/creating-a-package-json-file">npm</a>) use
+as <a href="https://docs.npmjs.com/cli/v8/configuring-npm/package-json">npm</a>) use
 additional fields which are ignored by Node.js and not documented here.</p>
 <p>The following fields in <code>package.json</code> files are used in Node.js:</p>
 <ul>
@@ -1018,12 +1061,13 @@ itself.</li>
 <pre><code class="language-json"><span class="hljs-punctuation">{</span>
   <span class="hljs-attr">"main"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"./main.js"</span>
 <span class="hljs-punctuation">}</span></code></pre>
-<p>The <code>"main"</code> field defines the script that is used when the <a href="modules.html#folders-as-modules">package directory
-is loaded via <code>require()</code></a>. Its value
-is a path.</p>
-<pre><code class="language-js cjs"><span class="hljs-built_in">require</span>(<span class="hljs-string">'./path/to/directory'</span>); <span class="hljs-comment">// This resolves to ./path/to/directory/main.js.</span></code></pre>
+<p>The <code>"main"</code> field defines the entry point of a package when imported by name
+via a <code>node_modules</code> lookup.  Its value is a path.</p>
 <p>When a package has an <a href="#exports"><code>"exports"</code></a> field, this will take precedence over the
 <code>"main"</code> field when importing the package by name.</p>
+<p>It also defines the script that is used when the <a href="modules.html#folders-as-modules">package directory is loaded
+via <code>require()</code></a>.</p>
+<pre><code class="language-js cjs"><span class="hljs-built_in">require</span>(<span class="hljs-string">'./path/to/directory'</span>); <span class="hljs-comment">// This resolves to ./path/to/directory/main.js.</span></code></pre>
 <h4><code>"packageManager"</code><span><a class="mark" href="#packagemanager" id="packagemanager">#</a></span><a aria-hidden="true" class="legacy" id="packages_packagemanager"></a></h4>
 <div class="api_metadata">
 <span>Added in: v16.9.0</span>

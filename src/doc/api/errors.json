@@ -1850,9 +1850,7 @@
             {
               "textRaw": "`ERR_MODULE_NOT_FOUND`",
               "name": "`err_module_not_found`",
-              "stability": 1,
-              "stabilityText": "Experimental",
-              "desc": "<p>An <a href=\"esm.html\">ES Module</a> could not be resolved.</p>\n<p><a id=\"ERR_MULTIPLE_CALLBACK\"></a></p>",
+              "desc": "<p>A module file could not be resolved by the ECMAScript modules loader while\nattempting an <code>import</code> operation or when loading the program entry point.</p>\n<p><a id=\"ERR_MULTIPLE_CALLBACK\"></a></p>",
               "type": "module",
               "displayName": "`ERR_MODULE_NOT_FOUND`"
             },
@@ -2586,7 +2584,7 @@
                   }
                 ]
               },
-              "desc": "<p>A module file could not be resolved while attempting a <a href=\"modules.html#requireid\"><code>require()</code></a> or\n<code>import</code> operation.</p>",
+              "desc": "<p>A module file could not be resolved by the CommonJS modules loader while\nattempting a <a href=\"modules.html#requireid\"><code>require()</code></a> operation or when loading the program entry point.</p>",
               "type": "module",
               "displayName": "`MODULE_NOT_FOUND`"
             }

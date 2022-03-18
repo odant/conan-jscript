@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Node-API | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Node-API | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="n-api" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -4005,7 +4005,7 @@ Language Specification.</p>
 <li><code>[in-out] argc</code>: Specifies the length of the provided <code>argv</code> array and
 receives the actual count of arguments. <code>argc</code> can
 optionally be ignored by passing <code>NULL</code>.</li>
-<li><code>[out] argv</code>: Buffer to which the <code>napi_value</code> representing the arguments are
+<li><code>[out] argv</code>: C array of <code>napi_value</code>s to which the arguments will be
 copied. If there are more arguments than the provided count, only the
 requested number of arguments are copied. If there are fewer arguments
 provided than claimed, the rest of <code>argv</code> is filled with <code>napi_value</code> values

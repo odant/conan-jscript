@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Crypto | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Crypto | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="crypto" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -246,7 +246,7 @@
 <li><a href="#x509ca"><code>x509.ca</code></a></li>
 <li><a href="#x509checkemailemail-options"><code>x509.checkEmail(email[, options])</code></a></li>
 <li><a href="#x509checkhostname-options"><code>x509.checkHost(name[, options])</code></a></li>
-<li><a href="#x509checkipip-options"><code>x509.checkIP(ip[, options])</code></a></li>
+<li><a href="#x509checkipip"><code>x509.checkIP(ip)</code></a></li>
 <li><a href="#x509checkissuedothercert"><code>x509.checkIssued(otherCert)</code></a></li>
 <li><a href="#x509checkprivatekeyprivatekey"><code>x509.checkPrivateKey(privateKey)</code></a></li>
 <li><a href="#x509fingerprint"><code>x509.fingerprint</code></a></li>
@@ -332,7 +332,6 @@
 <ul>
 <li><a href="#using-strings-as-inputs-to-cryptographic-apis">Using strings as inputs to cryptographic APIs</a></li>
 <li><a href="#legacy-streams-api-prior-to-nodejs-010">Legacy streams API (prior to Node.js 0.10)</a></li>
-<li><a href="#recent-ecdh-changes">Recent ECDH changes</a></li>
 <li><a href="#support-for-weak-or-compromised-algorithms">Support for weak or compromised algorithms</a></li>
 <li><a href="#ccm-mode">CCM mode</a></li>
 </ul>
@@ -353,7 +352,7 @@
         <h2>Crypto<span><a class="mark" href="#crypto" id="crypto">#</a></span><a aria-hidden="true" class="legacy" id="crypto_crypto"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/crypto.js">lib/crypto.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/crypto.js">lib/crypto.js</a></p>
 <p>The <code>crypto</code> module provides cryptographic functionality that includes a set of
 wrappers for OpenSSL's hash, HMAC, cipher, decipher, sign, and verify functions.</p>
 
@@ -797,7 +796,7 @@ once will result in an error being thrown.</p>
 <span>Added in: v1.0.0</span>
 </div>
 <ul>
-<li>Returns: <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>
+<li>Returns: <a href="buffer.html#class-buffer" class="type">&#x3C;Buffer></a> When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>,
 and <code>OCB</code> are currently supported), the <code>cipher.getAuthTag()</code> method returns a
 <a href="buffer.html"><code>Buffer</code></a> containing the <em>authentication tag</em> that has been computed from
 the given data.</li>
@@ -820,7 +819,7 @@ this function will return exactly <code>authTagLength</code> bytes.</p>
 </li>
 <li>Returns: <a href="crypto.html#class-cipher" class="type">&#x3C;Cipher></a> for method chaining.</li>
 </ul>
-<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are
+<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are
 currently supported), the <code>cipher.setAAD()</code> method sets the value used for the
 <em>additional authenticated data</em> (AAD) input parameter.</p>
 <p>The <code>plaintextLength</code> option is optional for <code>GCM</code> and <code>OCB</code>. When using <code>CCM</code>,
@@ -1089,7 +1088,7 @@ than once will result in an error being thrown.</p>
 </li>
 <li>Returns: <a href="crypto.html#class-decipher" class="type">&#x3C;Decipher></a> for method chaining.</li>
 </ul>
-<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are
+<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are
 currently supported), the <code>decipher.setAAD()</code> method sets the value used for the
 <em>additional authenticated data</em> (AAD) input parameter.</p>
 <p>The <code>options</code> argument is optional for <code>GCM</code>. When using <code>CCM</code>, the
@@ -1119,7 +1118,7 @@ of the ciphertext in bytes. See <a href="#ccm-mode">CCM mode</a>.</p>
 <li><code>encoding</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> String encoding to use when <code>buffer</code> is a string.</li>
 <li>Returns: <a href="crypto.html#class-decipher" class="type">&#x3C;Decipher></a> for method chaining.</li>
 </ul>
-<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code> and <code>OCB</code> are
+<p>When using an authenticated encryption mode (<code>GCM</code>, <code>CCM</code>, and <code>OCB</code> are
 currently supported), the <code>decipher.setAuthTag()</code> method is used to pass in the
 received <em>authentication tag</em>. If no tag is provided, or if the cipher text
 has been tampered with, <a href="#decipherfinaloutputencoding"><code>decipher.final()</code></a> will throw, indicating that the
@@ -2485,22 +2484,26 @@ X509 Certificate.</li>
 <span>Added in: v15.6.0</span>
 </div>
 <ul>
-<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Will be <code>true</code> if this is a Certificate Authority (ca)
+<li>Type: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Will be <code>true</code> if this is a Certificate Authority (CA)
 certificate.</li>
 </ul>
 <h4><code>x509.checkEmail(email[, options])</code><span><a class="mark" href="#x509checkemailemail-options" id="x509checkemailemail-options">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_checkemail_email_options"></a></h4>
 <div class="api_metadata">
-<span>Added in: v15.6.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.1</td>
+<td><p>The <code>wildcards</code>, <code>partialWildcards</code>, <code>multiLabelWildcards</code>, and <code>singleLabelSubdomains</code> options have been removed since they had no effect.</p></td></tr>
+<tr><td>v15.6.0</td>
+<td><p><span>Added in: v15.6.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li><code>email</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
 <li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
 <ul>
 <li><code>subject</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> <code>'always'</code> or <code>'never'</code>. <strong>Default:</strong> <code>'always'</code>.</li>
-<li><code>wildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>true</code>.</li>
-<li><code>partialWildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>true</code>.</li>
-<li><code>multiLabelWildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>false</code>.</li>
-<li><code>singleLabelSubdomains</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>false</code>.</li>
 </ul>
 </li>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Returns <code>email</code> if the certificate matches,
@@ -2531,25 +2534,27 @@ returned. The returned name might be an exact match (e.g., <code>foo.example.com
 or it might contain wildcards (e.g., <code>*.example.com</code>). Because host name
 comparisons are case-insensitive, the returned subject name might also differ
 from the given <code>name</code> in capitalization.</p>
-<h4><code>x509.checkIP(ip[, options])</code><span><a class="mark" href="#x509checkipip-options" id="x509checkipip-options">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_checkip_ip_options"></a></h4>
+<h4><code>x509.checkIP(ip)</code><span><a class="mark" href="#x509checkipip" id="x509checkipip">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_checkip_ip"></a></h4>
 <div class="api_metadata">
-<span>Added in: v15.6.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v16.14.1</td>
+<td><p>The <code>options</code> argument has been removed since it had no effect.</p></td></tr>
+<tr><td>v15.6.0</td>
+<td><p><span>Added in: v15.6.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <ul>
 <li><code>ip</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
-<li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
-<ul>
-<li><code>subject</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> <code>'always'</code> or <code>'never'</code>. <strong>Default:</strong> <code>'always'</code>.</li>
-<li><code>wildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>true</code>.</li>
-<li><code>partialWildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>true</code>.</li>
-<li><code>multiLabelWildcards</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>false</code>.</li>
-<li><code>singleLabelSubdomains</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> <strong>Default:</strong> <code>false</code>.</li>
-</ul>
-</li>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Returns <code>ip</code> if the certificate matches,
 <code>undefined</code> if it does not.</li>
 </ul>
 <p>Checks whether the certificate matches the given IP address (IPv4 or IPv6).</p>
+<p>Only <a href="https://www.rfc-editor.org/rfc/rfc5280.txt">RFC 5280</a> <code>iPAddress</code> subject alternative names are considered, and they
+must match the given <code>ip</code> address exactly. Other subject alternative names as
+well as the subject field of the certificate are ignored.</p>
 <h4><code>x509.checkIssued(otherCert)</code><span><a class="mark" href="#x509checkissuedothercert" id="x509checkissuedothercert">#</a></span><a aria-hidden="true" class="legacy" id="crypto_x509_checkissued_othercert"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.6.0</span>
@@ -4959,7 +4964,8 @@ would allow an attacker to guess one of the values. This is suitable for
 comparing HMAC digests or secret values like authentication cookies or
 <a href="https://www.w3.org/TR/capability-urls/">capability urls</a>.</p>
 <p><code>a</code> and <code>b</code> must both be <code>Buffer</code>s, <code>TypedArray</code>s, or <code>DataView</code>s, and they
-must have the same byte length.</p>
+must have the same byte length. An error is thrown if <code>a</code> and <code>b</code> have
+different byte lengths.</p>
 <p>If at least one of <code>a</code> and <code>b</code> is a <code>TypedArray</code> with more than one byte per
 entry, such as <code>Uint16Array</code>, the result will be computed using the platform
 byte order.</p>
@@ -5092,18 +5098,6 @@ API (e.g. <code>update()</code>, <code>final()</code>, or <code>digest()</code>)
 and returned <code>'latin1'</code> encoded strings by default rather than <code>Buffer</code>s. This
 default was changed after Node.js v0.8 to use <a href="buffer.html"><code>Buffer</code></a> objects by default
 instead.</p>
-<h4>Recent ECDH changes<span><a class="mark" href="#recent-ecdh-changes" id="recent-ecdh-changes">#</a></span><a aria-hidden="true" class="legacy" id="crypto_recent_ecdh_changes"></a></h4>
-<p>Usage of <code>ECDH</code> with non-dynamically generated key pairs has been simplified.
-Now, <a href="#ecdhsetprivatekeyprivatekey-encoding"><code>ecdh.setPrivateKey()</code></a> can be called with a preselected private key
-and the associated public point (key) will be computed and stored in the object.
-This allows code to only store and provide the private part of the EC key pair.
-<a href="#ecdhsetprivatekeyprivatekey-encoding"><code>ecdh.setPrivateKey()</code></a> now also validates that the private key is valid for
-the selected curve.</p>
-<p>The <a href="#ecdhsetpublickeypublickey-encoding"><code>ecdh.setPublicKey()</code></a> method is now deprecated as its inclusion in the
-API is not useful. Either a previously stored private key should be set, which
-automatically generates the associated public key, or <a href="#ecdhgeneratekeysencoding-format"><code>ecdh.generateKeys()</code></a>
-should be called. The main drawback of using <a href="#ecdhsetpublickeypublickey-encoding"><code>ecdh.setPublicKey()</code></a> is that
-it can be used to put the ECDH key pair into an inconsistent state.</p>
 <h4>Support for weak or compromised algorithms<span><a class="mark" href="#support-for-weak-or-compromised-algorithms" id="support-for-weak-or-compromised-algorithms">#</a></span><a aria-hidden="true" class="legacy" id="crypto_support_for_weak_or_compromised_algorithms"></a></h4>
 <p>The <code>crypto</code> module still supports some algorithms which are already
 compromised and are not currently recommended for use. The API also allows
@@ -5382,8 +5376,8 @@ the <code>crypto</code>, <code>tls</code>, and <code>https</code> modules and ar
   </tr>
   <tr>
     <td><code>SSL_OP_PRIORITIZE_CHACHA</code></td>
-    <td>Instructs OpenSSL server to prioritize ChaCha20Poly1305
-    when client does.
+    <td>Instructs OpenSSL server to prioritize ChaCha20-Poly1305
+    when the client does.
     This option has no effect if
     <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code>
     is not enabled.</td>

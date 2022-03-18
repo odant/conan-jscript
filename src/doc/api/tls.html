@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>TLS (SSL) | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>TLS (SSL) | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="tls" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -161,7 +161,7 @@
 </ul>
 </li>
 <li><a href="#modifying-the-default-tls-cipher-suite">Modifying the default TLS cipher suite</a></li>
-<li><a href="#x509-certificate-error-codes">X509 Certificate Error codes</a></li>
+<li><a href="#x509-certificate-error-codes">X509 certificate error codes</a></li>
 <li><span class="stability_0"><a href="#class-tlscryptostream">Class: <code>tls.CryptoStream</code></a></span>
 <ul>
 <li><a href="#cryptostreambyteswritten"><code>cryptoStream.bytesWritten</code></a></li>
@@ -250,14 +250,15 @@
         <h2>TLS (SSL)<span><a class="mark" href="#tls-ssl" id="tls-ssl">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_ssl"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/tls.js">lib/tls.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/tls.js">lib/tls.js</a></p>
 <p>The <code>tls</code> module provides an implementation of the Transport Layer Security
 (TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.
 The module can be accessed using:</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> tls = <span class="hljs-built_in">require</span>(<span class="hljs-string">'tls'</span>);</code></pre>
 <section><h3>TLS/SSL concepts<span><a class="mark" href="#tlsssl-concepts" id="tlsssl-concepts">#</a></span><a aria-hidden="true" class="legacy" id="tls_tls_ssl_concepts"></a></h3>
-<p>The TLS/SSL is a public/private key infrastructure (PKI). For most common
-cases, each server must have a <em>private key</em>.</p>
+<p>TLS/SSL is a set of protocols that rely on a public key infrastructure (PKI) to
+enable secure communication between a client and a server. For most common
+cases, each server must have a private key.</p>
 <p>Private keys can be generated in multiple ways. The example below illustrates
 use of the OpenSSL command-line interface to generate a 2048-bit RSA private
 key:</p>
@@ -306,8 +307,6 @@ the character "E" appended to the traditional abbreviations):</p>
 <li><a href="https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman">ECDHE</a>: An ephemeral version of the Elliptic Curve Diffie-Hellman
 key-agreement protocol.</li>
 </ul>
-<p>Ephemeral methods may have some performance drawbacks, because key generation
-is expensive.</p>
 <p>To use perfect forward secrecy using <code>DHE</code> with the <code>tls</code> module, it is required
 to generate Diffie-Hellman parameters and specify them with the <code>dhparam</code>
 option to <a href="#tlscreatesecurecontextoptions"><code>tls.createSecureContext()</code></a>. The following illustrates the use of
@@ -326,7 +325,7 @@ SNI (Server Name Indication) are TLS handshake extensions:</p>
 <ul>
 <li>ALPN: Allows the use of one TLS server for multiple protocols (HTTP, HTTP/2)</li>
 <li>SNI: Allows the use of one TLS server for multiple hostnames with different
-SSL certificates.</li>
+certificates.</li>
 </ul>
 <h4>Pre-shared keys<span><a class="mark" href="#pre-shared-keys" id="pre-shared-keys">#</a></span><a aria-hidden="true" class="legacy" id="tls_pre_shared_keys"></a></h4>
 
@@ -337,8 +336,8 @@ TLS-PSK and public key infrastructure are not mutually exclusive. Clients and
 servers can accommodate both, choosing either of them during the normal cipher
 negotiation step.</p>
 <p>TLS-PSK is only a good choice where means exist to securely share a
-key with every connecting machine, so it does not replace PKI
-(Public Key Infrastructure) for the majority of TLS uses.
+key with every connecting machine, so it does not replace the public key
+infrastructure (PKI) for the majority of TLS uses.
 The TLS-PSK implementation in OpenSSL has seen many security flaws in
 recent years, mostly because it is used only by a minority of applications.
 Please consider all alternative solutions before switching to PSK ciphers.
@@ -510,7 +509,7 @@ attacks affecting larger AES key sizes</a>.</p>
 the default configuration. If these clients <em>must</em> be supported, the
 <a href="https://wiki.mozilla.org/Security/Server_Side_TLS">TLS recommendations</a> may offer a compatible cipher suite. For more details
 on the format, see the OpenSSL <a href="https://www.openssl.org/docs/man1.1.1/man1/ciphers.html#CIPHER-LIST-FORMAT">cipher list format</a> documentation.</p>
-<p>There are only 5 TLSv1.3 cipher suites:</p>
+<p>There are only five TLSv1.3 cipher suites:</p>
 <ul>
 <li><code>'TLS_AES_256_GCM_SHA384'</code></li>
 <li><code>'TLS_CHACHA20_POLY1305_SHA256'</code></li>
@@ -518,10 +517,10 @@ on the format, see the OpenSSL <a href="https://www.openssl.org/docs/man1.1.1/ma
 <li><code>'TLS_AES_128_CCM_SHA256'</code></li>
 <li><code>'TLS_AES_128_CCM_8_SHA256'</code></li>
 </ul>
-<p>The first 3 are enabled by default. The last 2 <code>CCM</code>-based suites are supported
+<p>The first three are enabled by default. The two <code>CCM</code>-based suites are supported
 by TLSv1.3 because they may be more performant on constrained systems, but they
 are not enabled by default since they offer less security.</p>
-</section><section><h3>X509 Certificate Error codes<span><a class="mark" href="#x509-certificate-error-codes" id="x509-certificate-error-codes">#</a></span><a aria-hidden="true" class="legacy" id="tls_x509_certificate_error_codes"></a></h3>
+</section><section><h3>X509 certificate error codes<span><a class="mark" href="#x509-certificate-error-codes" id="x509-certificate-error-codes">#</a></span><a aria-hidden="true" class="legacy" id="tls_x509_certificate_error_codes"></a></h3>
 <p>Multiple functions can fail due to certificate errors that are reported by
 OpenSSL. In such a case, the function provides an <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error" class="type">&#x3C;Error></a> via its callback that
 has the property <code>code</code> which can take one of the following values:</p>
@@ -1350,7 +1349,7 @@ for more information.</p>
 <span>Added in: v0.11.4</span>
 </div>
 <ul>
-<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;integer></a></li>
 </ul>
 <p>Returns the numeric representation of the local port.</p>
 <h4><code>tlsSocket.remoteAddress</code><span><a class="mark" href="#tlssocketremoteaddress" id="tlssocketremoteaddress">#</a></span><a aria-hidden="true" class="legacy" id="tls_tlssocket_remoteaddress"></a></h4>
@@ -1375,7 +1374,7 @@ for more information.</p>
 <span>Added in: v0.11.4</span>
 </div>
 <ul>
-<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;integer></a></li>
 </ul>
 <p>Returns the numeric representation of the remote port. For example, <code>443</code>.</p>
 <h4><code>tlsSocket.renegotiate(options, callback)</code><span><a class="mark" href="#tlssocketrenegotiateoptions-callback" id="tlssocketrenegotiateoptions-callback">#</a></span><a aria-hidden="true" class="legacy" id="tls_tlssocket_renegotiate_options_callback"></a></h4>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Assert | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Assert | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="assert" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -196,7 +196,7 @@
         <h2>Assert<span><a class="mark" href="#assert" id="assert">#</a></span><a aria-hidden="true" class="legacy" id="assert_assert"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/assert.js">lib/assert.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/assert.js">lib/assert.js</a></p>
 <p>The <code>assert</code> module provides a set of assertion functions for verifying
 invariants.</p>
 <section><h3>Strict assertion mode<span><a class="mark" href="#strict-assertion-mode" id="strict-assertion-mode">#</a></span><a aria-hidden="true" class="legacy" id="assert_strict_assertion_mode"></a></h3>
@@ -279,7 +279,7 @@ more on color support in terminal environments, read the tty
 <a href="#assertdeepequalactual-expected-message"><code>assert.deepEqual()</code></a>:</p>
 <pre><code class="language-js cjs"><span class="hljs-comment">// WARNING: This does not throw an AssertionError in legacy assertion mode!</span>
 assert.<span class="hljs-title function_">deepEqual</span>(<span class="hljs-regexp">/a/gi</span>, <span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>());</code></pre>
-</section><section><h3>Class: assert.AssertionError<a class="srclink" href="https://github.com/nodejs/node/blob/418ff70b810f0e7112d48baaa72932a56cfa213b/lib/assert.js#L176">[src]</a><span><a class="mark" href="#class-assertassertionerror" id="class-assertassertionerror">#</a></span><a aria-hidden="true" class="legacy" id="assert_class_assert_assertionerror"></a></h3>
+</section><section><h3>Class: assert.AssertionError<a class="srclink" href="https://github.com/nodejs/node/blob/442e84a358d75152556b5d087e4dd6a51615330d/lib/assert.js#L176">[src]</a><span><a class="mark" href="#class-assertassertionerror" id="class-assertassertionerror">#</a></span><a aria-hidden="true" class="legacy" id="assert_class_assert_assertionerror"></a></h3>
 <ul>
 <li>Extends: <a href="errors.html#class-error" class="type">&#x3C;errors.Error></a></li>
 </ul>
@@ -780,7 +780,7 @@ assert.<span class="hljs-title function_">deepStrictEqual</span>(date, fakeDate)
 <span class="hljs-comment">// + 2018-04-26T00:49:08.604Z</span>
 <span class="hljs-comment">// - Date {}</span>
 
-assert.<span class="hljs-title function_">deepStrictEqual</span>(<span class="hljs-title class_">Na</span>N, <span class="hljs-title class_">Na</span>N);
+assert.<span class="hljs-title function_">deepStrictEqual</span>(<span class="hljs-title class_">NaN</span>, <span class="hljs-title class_">NaN</span>);
 <span class="hljs-comment">// OK because Object.is(NaN, NaN) is true.</span>
 
 <span class="hljs-comment">// Different unwrapped numbers:</span>
@@ -868,7 +868,7 @@ assert.<span class="hljs-title function_">deepStrictEqual</span>(date, fakeDate)
 <span class="hljs-comment">// + 2018-04-26T00:49:08.604Z</span>
 <span class="hljs-comment">// - Date {}</span>
 
-assert.<span class="hljs-title function_">deepStrictEqual</span>(<span class="hljs-title class_">Na</span>N, <span class="hljs-title class_">Na</span>N);
+assert.<span class="hljs-title function_">deepStrictEqual</span>(<span class="hljs-title class_">NaN</span>, <span class="hljs-title class_">NaN</span>);
 <span class="hljs-comment">// OK because Object.is(NaN, NaN) is true.</span>
 
 <span class="hljs-comment">// Different unwrapped numbers:</span>
@@ -1151,7 +1151,7 @@ assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number"
 <span class="hljs-comment">// OK, 1 == 1</span>
 assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number">1</span>, <span class="hljs-string">'1'</span>);
 <span class="hljs-comment">// OK, 1 == '1'</span>
-assert.<span class="hljs-title function_">equal</span>(<span class="hljs-title class_">Na</span>N, <span class="hljs-title class_">Na</span>N);
+assert.<span class="hljs-title function_">equal</span>(<span class="hljs-title class_">NaN</span>, <span class="hljs-title class_">NaN</span>);
 <span class="hljs-comment">// OK</span>
 
 assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>);
@@ -1163,7 +1163,7 @@ assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number"
 <span class="hljs-comment">// OK, 1 == 1</span>
 assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number">1</span>, <span class="hljs-string">'1'</span>);
 <span class="hljs-comment">// OK, 1 == '1'</span>
-assert.<span class="hljs-title function_">equal</span>(<span class="hljs-title class_">Na</span>N, <span class="hljs-title class_">Na</span>N);
+assert.<span class="hljs-title function_">equal</span>(<span class="hljs-title class_">NaN</span>, <span class="hljs-title class_">NaN</span>);
 <span class="hljs-comment">// OK</span>
 
 assert.<span class="hljs-title function_">equal</span>(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>);

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Cluster | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Cluster | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="cluster" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -191,10 +191,11 @@
         <h2>Cluster<span><a class="mark" href="#cluster" id="cluster">#</a></span><a aria-hidden="true" class="legacy" id="cluster_cluster"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/cluster.js">lib/cluster.js</a></p>
-<p>A single instance of Node.js runs in a single thread. To take advantage of
-multi-core systems, the user will sometimes want to launch a cluster of Node.js
-processes to handle the load.</p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/cluster.js">lib/cluster.js</a></p>
+<p>Clusters of Node.js processes can be used to run multiple instances of Node.js
+that can distribute workloads among their application threads. When process
+isolation is not needed, use the <a href="worker_threads.html"><code>worker_threads</code></a> module instead, which
+allows running multiple application threads within a single Node.js instance.</p>
 <p>The cluster module allows easy creation of child processes that all share
 server ports.</p>
 
@@ -717,9 +718,9 @@ the following properties:
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Send a message to a worker or primary, optionally with a handle.</p>
-<p>In the primary this sends a message to a specific worker. It is identical to
+<p>In the primary, this sends a message to a specific worker. It is identical to
 <a href="child_process.html#subprocesssendmessage-sendhandle-options-callback"><code>ChildProcess.send()</code></a>.</p>
-<p>In a worker this sends a message to the primary. It is identical to
+<p>In a worker, this sends a message to the primary. It is identical to
 <code>process.send()</code>.</p>
 <p>This example will echo back all messages from the primary:</p>
 <pre><code class="language-js"><span class="hljs-keyword">if</span> (cluster.<span class="hljs-property">isPrimary</span>) {
@@ -798,7 +799,7 @@ cluster.<span class="hljs-title function_">on</span>(<span class="hljs-string">'
 <li><code>address</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a></li>
 </ul>
 <p>After calling <code>listen()</code> from a worker, when the <code>'listening'</code> event is emitted
-on the server a <code>'listening'</code> event will also be emitted on <code>cluster</code> in the
+on the server, a <code>'listening'</code> event will also be emitted on <code>cluster</code> in the
 primary.</p>
 <p>The event handler is executed with two arguments, the <code>worker</code> contains the
 worker object and the <code>address</code> object contains the following connection
@@ -813,7 +814,7 @@ worker is listening on more than one address.</p>
 <li><code>4</code> (TCPv4)</li>
 <li><code>6</code> (TCPv6)</li>
 <li><code>-1</code> (Unix domain socket)</li>
-<li><code>'udp4'</code> or <code>'udp6'</code> (UDP v4 or v6)</li>
+<li><code>'udp4'</code> or <code>'udp6'</code> (UDPv4 or UDPv6)</li>
 </ul>
 </section><section><h3>Event: <code>'message'</code><span><a class="mark" href="#event-message_1" id="event-message_1">#</a></span><a aria-hidden="true" class="legacy" id="cluster_event_message_1"></a></h3>
 <div class="api_metadata">
@@ -888,8 +889,7 @@ finished.</p>
 <div class="api_metadata">
 <span>Added in: v0.8.1</span><span>Deprecated since: v16.0.0</span>
 </div>
-<p>Deprecated alias for <a href="#clusterisprimary"><code>cluster.isPrimary</code></a>.
-details.</p>
+<p>Deprecated alias for <a href="#clusterisprimary"><code>cluster.isPrimary</code></a>.</p>
 </section><section><h3><code>cluster.isPrimary</code><span><a class="mark" href="#clusterisprimary" id="clusterisprimary">#</a></span><a aria-hidden="true" class="legacy" id="cluster_cluster_isprimary"></a></h3>
 <div class="api_metadata">
 <span>Added in: v16.0.0</span>
@@ -1065,39 +1065,23 @@ cluster.<span class="hljs-title function_">fork</span>(); <span class="hljs-comm
 <ul>
 <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a></li>
 </ul>
-<p>A hash that stores the active worker objects, keyed by <code>id</code> field. Makes it
+<p>A hash that stores the active worker objects, keyed by <code>id</code> field. This makes it
 easy to loop through all the workers. It is only available in the primary
 process.</p>
 <p>A worker is removed from <code>cluster.workers</code> after the worker has disconnected
 <em>and</em> exited. The order between these two events cannot be determined in
 advance. However, it is guaranteed that the removal from the <code>cluster.workers</code>
-list happens before last <code>'disconnect'</code> or <code>'exit'</code> event is emitted.</p>
+list happens before the last <code>'disconnect'</code> or <code>'exit'</code> event is emitted.</p>
 
 <pre><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> cluster <span class="hljs-keyword">from</span> <span class="hljs-string">'cluster'</span>;
 
-<span class="hljs-comment">// Go through all workers</span>
-<span class="hljs-keyword">function</span> <span class="hljs-title function_">eachWorker</span>(<span class="hljs-params">callback</span>) {
-  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> id <span class="hljs-keyword">in</span> cluster.<span class="hljs-property">workers</span>) {
-    <span class="hljs-title function_">callback</span>(cluster.<span class="hljs-property">workers</span>[id]);
-  }
-}
-<span class="hljs-title function_">eachWorker</span>(<span class="hljs-function">(<span class="hljs-params">worker</span>) =></span> {
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> worker <span class="hljs-keyword">of</span> <span class="hljs-title class_">Object</span>.<span class="hljs-title function_">values</span>(cluster.<span class="hljs-property">workers</span>)) {
   worker.<span class="hljs-title function_">send</span>(<span class="hljs-string">'big announcement to all workers'</span>);
-});</code><code class="language-js cjs"><span class="hljs-keyword">const</span> cluster = <span class="hljs-built_in">require</span>(<span class="hljs-string">'cluster'</span>);
+}</code><code class="language-js cjs"><span class="hljs-keyword">const</span> cluster = <span class="hljs-built_in">require</span>(<span class="hljs-string">'cluster'</span>);
 
-<span class="hljs-comment">// Go through all workers</span>
-<span class="hljs-keyword">function</span> <span class="hljs-title function_">eachWorker</span>(<span class="hljs-params">callback</span>) {
-  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> id <span class="hljs-keyword">in</span> cluster.<span class="hljs-property">workers</span>) {
-    <span class="hljs-title function_">callback</span>(cluster.<span class="hljs-property">workers</span>[id]);
-  }
-}
-<span class="hljs-title function_">eachWorker</span>(<span class="hljs-function">(<span class="hljs-params">worker</span>) =></span> {
+<span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> worker <span class="hljs-keyword">of</span> <span class="hljs-title class_">Object</span>.<span class="hljs-title function_">values</span>(cluster.<span class="hljs-property">workers</span>)) {
   worker.<span class="hljs-title function_">send</span>(<span class="hljs-string">'big announcement to all workers'</span>);
-});</code></pre>
-<p>Using the worker's unique id is the easiest way to locate the worker.</p>
-<pre><code class="language-js">socket.<span class="hljs-title function_">on</span>(<span class="hljs-string">'data'</span>, <span class="hljs-function">(<span class="hljs-params">id</span>) =></span> {
-  <span class="hljs-keyword">const</span> worker = cluster.<span class="hljs-property">workers</span>[id];
-});</code></pre></section>
+}</code></pre></section>
         <!-- API END -->
       </div>
     </div>

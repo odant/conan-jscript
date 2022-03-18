@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Command-line options | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Command-line API | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="cli" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -141,9 +141,14 @@
       </header>
 
       <details id="toc" open><summary>Table of contents</summary><ul>
-<li><a href="#command-line-options">Command-line options</a>
+<li><a href="#command-line-api">Command-line API</a>
 <ul>
 <li><a href="#synopsis">Synopsis</a></li>
+<li><a href="#program-entry-point">Program entry point</a>
+<ul>
+<li><a href="#ecmascript-modules-loader-entry-point-caveat">ECMAScript modules loader entry point caveat</a></li>
+</ul>
+</li>
 <li><a href="#options">Options</a>
 <ul>
 <li><a href="#-"><code>-</code></a></li>
@@ -296,18 +301,40 @@
 </ul></details>
 
       <div id="apicontent">
-        <h2>Command-line options<span><a class="mark" href="#command-line-options" id="command-line-options">#</a></span><a aria-hidden="true" class="legacy" id="cli_command_line_options"></a></h2>
+        <h2>Command-line API<span><a class="mark" href="#command-line-api" id="command-line-api">#</a></span><a aria-hidden="true" class="legacy" id="cli_command_line_api"></a></h2>
 
 
 <p>Node.js comes with a variety of CLI options. These options expose built-in
 debugging, multiple ways to execute scripts, and other helpful runtime options.</p>
 <p>To view this documentation as a manual page in a terminal, run <code>man node</code>.</p>
 <section><h3>Synopsis<span><a class="mark" href="#synopsis" id="synopsis">#</a></span><a aria-hidden="true" class="legacy" id="cli_synopsis"></a></h3>
-<p><code>node [options] [V8 options] [script.js | -e "script" | -] [--] [arguments]</code></p>
-<p><code>node inspect [script.js | -e "script" | &#x3C;host>:&#x3C;port>] …</code></p>
+<p><code>node [options] [V8 options] [&#x3C;program-entry-point> | -e "script" | -] [--] [arguments]</code></p>
+<p><code>node inspect [&#x3C;program-entry-point> | -e "script" | &#x3C;host>:&#x3C;port>] …</code></p>
 <p><code>node --v8-options</code></p>
 <p>Execute without arguments to start the <a href="repl.html">REPL</a>.</p>
 <p>For more info about <code>node inspect</code>, see the <a href="debugger.html">debugger</a> documentation.</p>
+</section><section><h3>Program entry point<span><a class="mark" href="#program-entry-point" id="program-entry-point">#</a></span><a aria-hidden="true" class="legacy" id="cli_program_entry_point"></a></h3>
+<p>The program entry point is a specifier-like string. If the string is not an
+absolute path, it's resolved as a relative path from the current working
+directory. That path is then resolved by <a href="modules.html">CommonJS</a> module loader. If no
+corresponding file is found, an error is thrown.</p>
+<p>If a file is found, its path will be passed to the <a href="esm.html#loaders">ECMAScript module loader</a>
+under any of the following conditions:</p>
+<ul>
+<li>The program was started with a command-line flag that forces the entry
+point to be loaded with ECMAScript module loader.</li>
+<li>The file has an <code>.mjs</code> extension.</li>
+<li>The file does not have a <code>.cjs</code> extension, and the nearest parent
+<code>package.json</code> file contains a top-level <a href="packages.html#type"><code>"type"</code></a> field with a value of
+<code>"module"</code>.</li>
+</ul>
+<p>Otherwise, the file is loaded using the CommonJS module loader. See
+<a href="packages.html#modules-loaders">Modules loaders</a> for more details.</p>
+<h4>ECMAScript modules loader entry point caveat<span><a class="mark" href="#ecmascript-modules-loader-entry-point-caveat" id="ecmascript-modules-loader-entry-point-caveat">#</a></span><a aria-hidden="true" class="legacy" id="cli_ecmascript_modules_loader_entry_point_caveat"></a></h4>
+<p>When loading <a href="esm.html#loaders">ECMAScript module loader</a> loads the program entry point, the <code>node</code>
+command will only accept as input only files with <code>.js</code>, <code>.mjs</code>, or <code>.cjs</code>
+extensions; and with <code>.wasm</code> extensions when
+<a href="#--experimental-wasm-modules"><code>--experimental-wasm-modules</code></a> is enabled.</p>
 </section><section><h3>Options<span><a class="mark" href="#options" id="options">#</a></span><a aria-hidden="true" class="legacy" id="cli_options"></a></h3>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -477,8 +504,8 @@ modifying the stack trace.</p>
 <div class="api_metadata">
 <span>Added in: v9.0.0</span>
 </div>
-<p>Specify the <code>module</code> of a custom experimental <a href="esm.html#loaders">ECMAScript Module loader</a>.
-<code>module</code> may be either a path to a file, or an ECMAScript Module name.</p>
+<p>Specify the <code>module</code> of a custom experimental <a href="esm.html#loaders">ECMAScript module loader</a>.
+<code>module</code> may be any string accepted as an <a href="esm.html#import-specifiers"><code>import</code> specifier</a>.</p>
 <h4><code>--experimental-policy</code><span><a class="mark" href="#--experimental-policy" id="--experimental-policy">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_policy"></a></h4>
 <div class="api_metadata">
 <span>Added in: v11.8.0</span>

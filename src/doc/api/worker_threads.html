@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Worker threads | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Worker threads | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="worker_threads" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -217,7 +217,7 @@
         <h2>Worker threads<span><a class="mark" href="#worker-threads" id="worker-threads">#</a></span><a aria-hidden="true" class="legacy" id="worker_threads_worker_threads"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/worker_threads.js">lib/worker_threads.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/worker_threads.js">lib/worker_threads.js</a></p>
 <p>The <code>worker_threads</code> module enables the use of threads that execute JavaScript
 in parallel. To access it:</p>
 <pre><code class="language-js"><span class="hljs-keyword">const</span> worker = <span class="hljs-built_in">require</span>(<span class="hljs-string">'worker_threads'</span>);</code></pre>
@@ -1247,7 +1247,9 @@ Node.js event loop.</p>
 
 <span class="hljs-keyword">if</span> (isMainThread) {
   <span class="hljs-keyword">new</span> <span class="hljs-title class_">Worker</span>(<span class="hljs-keyword">new</span> <span class="hljs-title function_">URL</span>(<span class="hljs-keyword">import</span>.<span class="hljs-property">meta</span>.<span class="hljs-property">url</span>));
-  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> n = <span class="hljs-number">0</span>; n &#x3C; <span class="hljs-number">1e10</span>; n++) {}
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> n = <span class="hljs-number">0</span>; n &#x3C; <span class="hljs-number">1e10</span>; n++) {
+    <span class="hljs-comment">// Looping to simulate work.</span>
+  }
 } <span class="hljs-keyword">else</span> {
   <span class="hljs-comment">// This output will be blocked by the for loop in the main thread.</span>
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'foo'</span>);
@@ -1260,7 +1262,9 @@ Node.js event loop.</p>
 
 <span class="hljs-keyword">if</span> (isMainThread) {
   <span class="hljs-keyword">new</span> <span class="hljs-title class_">Worker</span>(__filename);
-  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> n = <span class="hljs-number">0</span>; n &#x3C; <span class="hljs-number">1e10</span>; n++) {}
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">let</span> n = <span class="hljs-number">0</span>; n &#x3C; <span class="hljs-number">1e10</span>; n++) {
+    <span class="hljs-comment">// Looping to simulate work.</span>
+  }
 } <span class="hljs-keyword">else</span> {
   <span class="hljs-comment">// This output will be blocked by the for loop in the main thread.</span>
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'foo'</span>);

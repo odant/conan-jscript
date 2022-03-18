@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Modules: CommonJS modules | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Modules: CommonJS modules | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="modules" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -146,6 +146,7 @@
       <details id="toc" open><summary>Table of contents</summary><ul>
 <li><span class="stability_2"><a href="#modules-commonjs-modules">Modules: CommonJS modules</a></span>
 <ul>
+<li><a href="#enabling">Enabling</a></li>
 <li><a href="#accessing-the-main-module">Accessing the main module</a></li>
 <li><a href="#package-manager-tips">Package manager tips</a></li>
 <li><a href="#the-mjs-extension">The <code>.mjs</code> extension</a></li>
@@ -158,7 +159,7 @@
 <li><a href="#core-modules">Core modules</a></li>
 <li><a href="#cycles">Cycles</a></li>
 <li><a href="#file-modules">File modules</a></li>
-<li><a href="#folders-as-modules">Folders as modules</a></li>
+<li><span class="stability_3"><a href="#folders-as-modules">Folders as modules</a></span></li>
 <li><a href="#loading-from-node_modules-folders">Loading from <code>node_modules</code> folders</a></li>
 <li><a href="#loading-from-the-global-folders">Loading from the global folders</a></li>
 <li><a href="#the-module-wrapper">The module wrapper</a></li>
@@ -246,8 +247,39 @@ or object).</p>
     <span class="hljs-keyword">return</span> <span class="hljs-variable language_">this</span>.<span class="hljs-property">width</span> ** <span class="hljs-number">2</span>;
   }
 };</code></pre>
-<p>The module system is implemented in the <code>require('module')</code> module.</p>
-<section><h3>Accessing the main module<span><a class="mark" href="#accessing-the-main-module" id="accessing-the-main-module">#</a></span><a aria-hidden="true" class="legacy" id="modules_accessing_the_main_module"></a></h3>
+<p>The CommonJS module system is implemented in the <a href="module.html"><code>module</code> core module</a>.</p>
+<section><h3>Enabling<span><a class="mark" href="#enabling" id="enabling">#</a></span><a aria-hidden="true" class="legacy" id="modules_enabling"></a></h3>
+
+<p>Node.js has two module systems: CommonJS modules and <a href="esm.html">ECMAScript modules</a>.</p>
+<p>By default, Node.js will treat the following as CommonJS modules:</p>
+<ul>
+<li>
+<p>Files with a <code>.cjs</code> extension;</p>
+</li>
+<li>
+<p>Files with a <code>.js</code> extension when the nearest parent <code>package.json</code> file
+contains a top-level field <a href="packages.html#type"><code>"type"</code></a> with a value of <code>"commonjs"</code>.</p>
+</li>
+<li>
+<p>Files with a <code>.js</code> extension when the nearest parent <code>package.json</code> file
+doesn't contain a top-level field <a href="packages.html#type"><code>"type"</code></a>. Package authors should include
+the <a href="packages.html#type"><code>"type"</code></a> field, even in packages where all sources are CommonJS. Being
+explicit about the <code>type</code> of the package will make things easier for build
+tools and loaders to determine how the files in the package should be
+interpreted.</p>
+</li>
+<li>
+<p>Files with an extension that is not <code>.mjs</code>, <code>.cjs</code>, <code>.json</code>, <code>.node</code>, or <code>.js</code>
+(when the nearest parent <code>package.json</code> file contains a top-level field
+<a href="packages.html#type"><code>"type"</code></a> with a value of <code>"module"</code>, those files will be recognized as
+CommonJS modules only if they are being <code>require</code>d, not when used as the
+command-line entry point of the program).</p>
+</li>
+</ul>
+<p>See <a href="packages.html#determining-module-system">Determining module system</a> for more details.</p>
+<p>Calling <code>require()</code> always use the CommonJS module loader. Calling <code>import()</code>
+always use the ECMAScript module loader.</p>
+</section><section><h3>Accessing the main module<span><a class="mark" href="#accessing-the-main-module" id="accessing-the-main-module">#</a></span><a aria-hidden="true" class="legacy" id="modules_accessing_the_main_module"></a></h3>
 
 <p>When a file is run directly from Node.js, <code>require.main</code> is set to its
 <code>module</code>. That means that it is possible to determine whether a file has been
@@ -514,13 +546,12 @@ example, <code>require('/home/marco/foo.js')</code> will load the file at
 <code>require('./circle')</code> to find it.</p>
 <p>Without a leading <code>'/'</code>, <code>'./'</code>, or <code>'../'</code> to indicate a file, the module must
 either be a core module or is loaded from a <code>node_modules</code> folder.</p>
-<p>If the given path does not exist, <code>require()</code> will throw an <a href="errors.html#class-error"><code>Error</code></a> with its
-<code>code</code> property set to <code>'MODULE_NOT_FOUND'</code>.</p>
+<p>If the given path does not exist, <code>require()</code> will throw a
+<a href="errors.html#module_not_found"><code>MODULE_NOT_FOUND</code></a> error.</p>
 </section><section><h3>Folders as modules<span><a class="mark" href="#folders-as-modules" id="folders-as-modules">#</a></span><a aria-hidden="true" class="legacy" id="modules_folders_as_modules"></a></h3>
 
-<p>It is convenient to organize programs and libraries into self-contained
-directories, and then provide a single entry point to those directories.
-There are three ways in which a folder may be passed to <code>require()</code> as
+<p></p><div class="api_stability api_stability_3"><a href="documentation.html#stability-index">Stability: 3</a> - Legacy: Use <a href="packages.html#subpath-exports">subpath exports</a> or <a href="packages.html#subpath-imports">subpath imports</a> instead.</div><p></p>
+<p>There are three ways in which a folder may be passed to <code>require()</code> as
 an argument.</p>
 <p>The first is to create a <a href="packages.html#nodejs-packagejson-field-definitions"><code>package.json</code></a> file in the root of the folder,
 which specifies a <code>main</code> module. An example <a href="packages.html#nodejs-packagejson-field-definitions"><code>package.json</code></a> file might
@@ -530,7 +561,6 @@ look like this:</p>
 <p>If this was in a folder at <code>./some-library</code>, then
 <code>require('./some-library')</code> would attempt to load
 <code>./some-library/lib/some-library.js</code>.</p>
-<p>This is the extent of the awareness of <code>package.json</code> files within Node.js.</p>
 <p>If there is no <a href="packages.html#nodejs-packagejson-field-definitions"><code>package.json</code></a> file present in the directory, or if the
 <a href="packages.html#main"><code>"main"</code></a> entry is missing or cannot be resolved, then Node.js
 will attempt to load an <code>index.js</code> or <code>index.node</code> file out of that
@@ -543,11 +573,15 @@ example, then <code>require('./some-library')</code> would attempt to load:</p>
 <p>If these attempts fail, then Node.js will report the entire module as missing
 with the default error:</p>
 <pre><code class="language-console">Error: Cannot find module 'some-library'</code></pre>
+<p>In all three above cases, an <code>import('./some-library')</code> call would result in a
+<a href="errors.html#err_unsupported_dir_import"><code>ERR_UNSUPPORTED_DIR_IMPORT</code></a> error. Using package <a href="packages.html#subpath-exports">subpath exports</a> or
+<a href="packages.html#subpath-imports">subpath imports</a> can provide the same containment organization benefits as
+folders as modules, and work for both <code>require</code> and <code>import</code>.</p>
 </section><section><h3>Loading from <code>node_modules</code> folders<span><a class="mark" href="#loading-from-node_modules-folders" id="loading-from-node_modules-folders">#</a></span><a aria-hidden="true" class="legacy" id="modules_loading_from_node_modules_folders"></a></h3>
 
 <p>If the module identifier passed to <code>require()</code> is not a
 <a href="#core-modules">core</a> module, and does not begin with <code>'/'</code>, <code>'../'</code>, or
-<code>'./'</code>, then Node.js starts at the parent directory of the current module, and
+<code>'./'</code>, then Node.js starts at the directory of the current module, and
 adds <code>/node_modules</code>, and attempts to load the module from that location.
 Node.js will not append <code>node_modules</code> to a path already ending in
 <code>node_modules</code>.</p>

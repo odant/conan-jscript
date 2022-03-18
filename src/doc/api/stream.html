@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.0">
-  <title>Stream | Node.js v16.14.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v16.14.2">
+  <title>Stream | Node.js v16.14.2 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -92,7 +92,7 @@
     <div id="column1" data-id="stream" class="interior">
       <header>
         <div class="header-container">
-          <h1>Node.js v16.14.0 documentation</h1>
+          <h1>Node.js v16.14.2 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -322,10 +322,10 @@
 </ul></details>
 
       <div id="apicontent">
-        <h2>Stream<a class="srclink" href="https://github.com/nodejs/node/blob/418ff70b810f0e7112d48baaa72932a56cfa213b/lib/stream.js#L44">[src]</a><span><a class="mark" href="#stream" id="stream">#</a></span><a aria-hidden="true" class="legacy" id="stream_stream"></a></h2>
+        <h2>Stream<a class="srclink" href="https://github.com/nodejs/node/blob/442e84a358d75152556b5d087e4dd6a51615330d/lib/stream.js#L44">[src]</a><span><a class="mark" href="#stream" id="stream">#</a></span><a aria-hidden="true" class="legacy" id="stream_stream"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.0/lib/stream.js">lib/stream.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/stream.js">lib/stream.js</a></p>
 <p>A stream is an abstract interface for working with streaming data in Node.js.
 The <code>stream</code> module provides an API for implementing the stream interface.</p>
 <p>There are many stream objects provided by Node.js. For instance, a
@@ -1138,7 +1138,7 @@ readable.<span class="hljs-title function_">on</span>(<span class="hljs-string">
   <span class="hljs-comment">// There is some data to read now.</span>
   <span class="hljs-keyword">let</span> data;
 
-  <span class="hljs-keyword">while</span> (data = <span class="hljs-variable language_">this</span>.<span class="hljs-title function_">read</span>()) {
+  <span class="hljs-keyword">while</span> ((data = <span class="hljs-variable language_">this</span>.<span class="hljs-title function_">read</span>()) !== <span class="hljs-literal">null</span>) {
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(data);
   }
 });</code></pre>
@@ -1745,7 +1745,7 @@ promise will be <code>await</code>ed before being passed to the result stream.</
 }
 <span class="hljs-comment">// With an asynchronous mapper, making at most 2 queries at a time.</span>
 <span class="hljs-keyword">const</span> resolver = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Resolver</span>();
-<span class="hljs-keyword">const</span> dnsResults = <span class="hljs-keyword">await</span> <span class="hljs-title class_">Readable</span>.<span class="hljs-title function_">from</span>([
+<span class="hljs-keyword">const</span> dnsResults = <span class="hljs-title class_">Readable</span>.<span class="hljs-title function_">from</span>([
   <span class="hljs-string">'nodejs.org'</span>,
   <span class="hljs-string">'openjsf.org'</span>,
   <span class="hljs-string">'www.linuxfoundation.org'</span>,
@@ -1793,7 +1793,7 @@ promise will be <code>await</code>ed.</p>
 }
 <span class="hljs-comment">// With an asynchronous predicate, making at most 2 queries at a time.</span>
 <span class="hljs-keyword">const</span> resolver = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Resolver</span>();
-<span class="hljs-keyword">const</span> dnsResults = <span class="hljs-keyword">await</span> <span class="hljs-title class_">Readable</span>.<span class="hljs-title function_">from</span>([
+<span class="hljs-keyword">const</span> dnsResults = <span class="hljs-title class_">Readable</span>.<span class="hljs-title function_">from</span>([
   <span class="hljs-string">'nodejs.org'</span>,
   <span class="hljs-string">'openjsf.org'</span>,
   <span class="hljs-string">'www.linuxfoundation.org'</span>,
@@ -2103,6 +2103,24 @@ pipeline (i.e. first argument) or the pipeline will never complete.</p>
 <p><code>stream.pipeline()</code> leaves dangling event listeners on the streams
 after the <code>callback</code> has been invoked. In the case of reuse of streams after
 failure, this can cause event listener leaks and swallowed errors.</p>
+<p><code>stream.pipeline()</code> closes all the streams when an error is raised.
+The <code>IncomingRequest</code> usage with <code>pipeline</code> could lead to an unexpected behavior
+once it would destroy the socket without sending the expected response.
+See the example below:</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);
+<span class="hljs-keyword">const</span> http = <span class="hljs-built_in">require</span>(<span class="hljs-string">'http'</span>);
+<span class="hljs-keyword">const</span> { pipeline } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'stream'</span>);
+
+<span class="hljs-keyword">const</span> server = http.<span class="hljs-title function_">createServer</span>(<span class="hljs-function">(<span class="hljs-params">req, res</span>) =></span> {
+  <span class="hljs-keyword">const</span> fileStream = fs.<span class="hljs-title function_">createReadStream</span>(<span class="hljs-string">'./fileNotExist.txt'</span>);
+  <span class="hljs-title function_">pipeline</span>(fileStream, res, <span class="hljs-function">(<span class="hljs-params">err</span>) =></span> {
+    <span class="hljs-keyword">if</span> (err) {
+      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(err); <span class="hljs-comment">// No such file</span>
+      <span class="hljs-comment">// this message can't be sent once `pipeline` already destroyed the socket</span>
+      <span class="hljs-keyword">return</span> res.<span class="hljs-title function_">end</span>(<span class="hljs-string">'error!!!'</span>);
+    }
+  });
+});</code></pre>
 <h4><code>stream.compose(...streams)</code><span><a class="mark" href="#streamcomposestreams" id="streamcomposestreams">#</a></span><a aria-hidden="true" class="legacy" id="stream_stream_compose_streams"></a></h4>
 <div class="api_metadata">
 <span>Added in: v16.9.0</span>
