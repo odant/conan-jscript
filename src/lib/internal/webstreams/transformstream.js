@@ -4,7 +4,6 @@ const {
   FunctionPrototypeBind,
   FunctionPrototypeCall,
   ObjectDefineProperties,
-  PromisePrototypeCatch,
   PromisePrototypeThen,
   PromiseResolve,
   ReflectConstruct,
@@ -27,6 +26,7 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -45,7 +45,6 @@ const {
   nonOpFlush,
   kType,
   kState,
-  kEnumerableProperty,
 } = require('internal/webstreams/util');
 
 const {
@@ -496,19 +495,17 @@ function transformStreamDefaultControllerError(controller, error) {
   transformStreamError(controller[kState].stream, error);
 }
 
-function transformStreamDefaultControllerPerformTransform(controller, chunk) {
-  const transformPromise =
-    ensureIsPromise(
+async function transformStreamDefaultControllerPerformTransform(controller, chunk) {
+  try {
+    return await ensureIsPromise(
       controller[kState].transformAlgorithm,
       controller,
       chunk,
       controller);
-  return PromisePrototypeCatch(
-    transformPromise,
-    (error) => {
-      transformStreamError(controller[kState].stream, error);
-      throw error;
-    });
+  } catch (error) {
+    transformStreamError(controller[kState].stream, error);
+    throw error;
+  }
 }
 
 function transformStreamDefaultControllerTerminate(controller) {

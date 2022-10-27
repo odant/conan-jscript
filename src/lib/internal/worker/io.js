@@ -13,10 +13,16 @@ const {
   ObjectGetOwnPropertyDescriptors,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
+  ObjectValues,
   ReflectApply,
   Symbol,
   SymbolFor,
 } = primordials;
+
+const {
+  kEmptyObject,
+  kEnumerableProperty,
+} = require('internal/util');
 
 const {
   handle_onclose: handleOnCloseSymbol,
@@ -89,11 +95,18 @@ const messageTypes = {
 // We have to mess with the MessagePort prototype a bit, so that a) we can make
 // it inherit from NodeEventTarget, even though it is a C++ class, and b) we do
 // not provide methods that are not present in the Browser and not documented
-// on our side (e.g. hasRef).
+// on our side (e.g. stopMessagePort).
+const messagePortPrototypePropertyDescriptors = ObjectGetOwnPropertyDescriptors(MessagePort.prototype);
+const propertiesValues = ObjectValues(messagePortPrototypePropertyDescriptors);
+for (let i = 0; i < propertiesValues.length; i++) {
+  // We want to use null-prototype objects to not rely on globally mutable
+  // %Object.prototype%.
+  ObjectSetPrototypeOf(propertiesValues[i], null);
+}
 // Save a copy of the original set of methods as a shallow clone.
 const MessagePortPrototype = ObjectCreate(
   ObjectGetPrototypeOf(MessagePort.prototype),
-  ObjectGetOwnPropertyDescriptors(MessagePort.prototype));
+  messagePortPrototypePropertyDescriptors);
 // Set up the new inheritance chain.
 ObjectSetPrototypeOf(MessagePort, NodeEventTarget);
 ObjectSetPrototypeOf(MessagePort.prototype, NodeEventTarget.prototype);
@@ -101,6 +114,9 @@ ObjectSetPrototypeOf(MessagePort.prototype, NodeEventTarget.prototype);
 // changing the prototype of MessagePort.prototype implicitly removed them.
 MessagePort.prototype.ref = MessagePortPrototype.ref;
 MessagePort.prototype.unref = MessagePortPrototype.unref;
+MessagePort.prototype.hasRef = function() {
+  return !!FunctionPrototypeCall(MessagePortPrototype.hasRef, this);
+};
 
 function validateMessagePort(port, name) {
   if (!checkMessagePort(port))
@@ -118,7 +134,7 @@ class MessageEvent extends Event {
     lastEventId = '',
     source = null,
     ports = [],
-  } = {}) {
+  } = kEmptyObject) {
     super(type);
     this[kData] = data;
     this[kOrigin] = `${origin}`;
@@ -135,6 +151,7 @@ class MessageEvent extends Event {
 
 ObjectDefineProperties(MessageEvent.prototype, {
   data: {
+    __proto__: null,
     get() {
       if (!isMessageEvent(this))
         throw new ERR_INVALID_THIS('MessageEvent');
@@ -145,6 +162,7 @@ ObjectDefineProperties(MessageEvent.prototype, {
     set: undefined,
   },
   origin: {
+    __proto__: null,
     get() {
       if (!isMessageEvent(this))
         throw new ERR_INVALID_THIS('MessageEvent');
@@ -155,6 +173,7 @@ ObjectDefineProperties(MessageEvent.prototype, {
     set: undefined,
   },
   lastEventId: {
+    __proto__: null,
     get() {
       if (!isMessageEvent(this))
         throw new ERR_INVALID_THIS('MessageEvent');
@@ -165,6 +184,7 @@ ObjectDefineProperties(MessageEvent.prototype, {
     set: undefined,
   },
   source: {
+    __proto__: null,
     get() {
       if (!isMessageEvent(this))
         throw new ERR_INVALID_THIS('MessageEvent');
@@ -175,6 +195,7 @@ ObjectDefineProperties(MessageEvent.prototype, {
     set: undefined,
   },
   ports: {
+    __proto__: null,
     get() {
       if (!isMessageEvent(this))
         throw new ERR_INVALID_THIS('MessageEvent');
@@ -191,6 +212,7 @@ ObjectDefineProperty(
   MessagePort.prototype,
   kCreateEvent,
   {
+    __proto__: null,
     value: function(data, type) {
       if (type !== 'message' && type !== 'messageerror') {
         return ReflectApply(originalCreateEvent, this, arguments);
@@ -215,6 +237,7 @@ defineEventHandler(MessagePort.prototype, 'message');
 defineEventHandler(MessagePort.prototype, 'messageerror');
 
 ObjectDefineProperty(MessagePort.prototype, onInitSymbol, {
+  __proto__: null,
   enumerable: true,
   writable: false,
   value: oninit
@@ -232,6 +255,7 @@ function onclose() {
 }
 
 ObjectDefineProperty(MessagePort.prototype, handleOnCloseSymbol, {
+  __proto__: null,
   enumerable: false,
   writable: false,
   value: onclose
@@ -244,6 +268,7 @@ MessagePort.prototype.close = function(cb) {
 };
 
 ObjectDefineProperty(MessagePort.prototype, inspect.custom, {
+  __proto__: null,
   enumerable: false,
   writable: false,
   value: function inspect() {  // eslint-disable-line func-name-matching
@@ -395,6 +420,9 @@ function isBroadcastChannel(value) {
 }
 
 class BroadcastChannel extends EventTarget {
+  /**
+   * @param {string} name
+   */
   constructor(name) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('name');
@@ -426,12 +454,18 @@ class BroadcastChannel extends EventTarget {
     }, opts)}`;
   }
 
+  /**
+   * @type {string}
+   */
   get name() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
     return this[kName];
   }
 
+  /**
+   * @returns {void}
+   */
   close() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -445,6 +479,11 @@ class BroadcastChannel extends EventTarget {
     this[kHandle] = undefined;
   }
 
+  /**
+   *
+   * @param {any} message
+   * @returns {void}
+   */
   postMessage(message) {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -460,6 +499,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   ref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -472,6 +514,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   unref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -480,9 +525,6 @@ class BroadcastChannel extends EventTarget {
     return this;
   }
 }
-
-const kEnumerableProperty = ObjectCreate(null);
-kEnumerableProperty.enumerable = true;
 
 ObjectDefineProperties(BroadcastChannel.prototype, {
   name: kEnumerableProperty,

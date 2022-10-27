@@ -29,7 +29,7 @@ The stability indices are as follows:
 <!-- separator -->
 
 > Stability: 1 - Experimental. The feature is not subject to
-> [Semantic Versioning][] rules. Non-backward compatible changes or removal may
+> [semantic versioning][] rules. Non-backward compatible changes or removal may
 > occur in any future release. Use of the feature is not recommended in
 > production environments.
 
@@ -40,9 +40,13 @@ The stability indices are as follows:
 
 <!-- separator -->
 
-> Stability: 3 - Legacy. The feature is no longer recommended for use. While it
-> likely will not be removed, and is still covered by semantic-versioning
-> guarantees, use of the feature should be avoided.
+> Stability: 3 - Legacy. Although this feature is unlikely to be removed and is
+> still covered by semantic versioning guarantees, it is no longer actively
+> maintained, and other alternatives are available.
+
+Features are marked as legacy rather than being deprecated if their use does no
+harm, and they are widely relied upon within the npm ecosystem. Bugs found in
+legacy features are unlikely to be fixed.
 
 Use caution when making use of Experimental features, particularly within
 modules. Users may not be aware that experimental features are being used.
@@ -77,11 +81,12 @@ a command-line flag. Experimental features may also emit a [warning][].
 | [path](path.html) | (2) Stable |
 | [performance_measurement_apis](perf_hooks.html) | (2) Stable |
 | [punycode](punycode.html) | (0) Deprecated |
-| [querystring](querystring.html) | (3) Legacy |
+| [querystring](querystring.html) | (2) Stable |
 | [readline](readline.html) | (2) Stable |
 | [repl](repl.html) | (2) Stable |
 | [stream](stream.html) | (2) Stable |
 | [string_decoder](string_decoder.html) | (2) Stable |
+| [test_runner](test.html) | (1) Experimental |
 | [timers](timers.html) | (2) Stable |
 | [tls_(ssl)](tls.html) | (2) Stable |
 | [trace_events](tracing.html) | (1) Experimental |
@@ -90,7 +95,7 @@ a command-line flag. Experimental features may also emit a [warning][].
 | [util](util.html) | (2) Stable |
 | [vm](vm.html) | (2) Stable |
 | [web_crypto_api](webcrypto.html) | (1) Experimental |
-| [web_streams_api](webstreams.html) | (1) Experimental |
+| [web_streams_api](webstreams.html) | (1) Experimental. |
 | [webassembly_system_interface_(wasi)](wasi.html) | (1) Experimental |
 | [worker_threads](worker_threads.html) | (2) Stable |
 | [zlib](zlib.html) | (2) Stable |
@@ -113,8 +118,8 @@ to the corresponding man pages which describe how the system call works.
 Most Unix system calls have Windows analogues. Still, behavior differences may
 be unavoidable.
 
-[Semantic Versioning]: https://semver.org/
 [V8 JavaScript engine]: https://v8.dev/
+[semantic versioning]: https://semver.org/
 [the contributing guide]: https://github.com/nodejs/node/blob/HEAD/CONTRIBUTING.md
 [the issue tracker]: https://github.com/nodejs/node/issues/new
 [warning]: process.md#event-warning

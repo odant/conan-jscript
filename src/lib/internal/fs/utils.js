@@ -12,14 +12,15 @@ const {
   NumberIsFinite,
   NumberIsInteger,
   MathMin,
+  MathRound,
   ObjectIs,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   ReflectApply,
   ReflectOwnKeys,
+  RegExpPrototypeSymbolReplace,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
-  StringPrototypeReplace,
   Symbol,
   TypedArrayPrototypeIncludes,
 } = primordials;
@@ -29,6 +30,7 @@ const {
   codes: {
     ERR_FS_EISDIR,
     ERR_FS_INVALID_SYMLINK_TYPE,
+    ERR_INCOMPATIBLE_OPTION_PAIR,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE
@@ -38,11 +40,14 @@ const {
 } = require('internal/errors');
 const {
   isArrayBufferView,
-  isUint8Array,
+  isBigInt64Array,
   isDate,
-  isBigUint64Array
+  isUint8Array,
 } = require('internal/util/types');
-const { once } = require('internal/util');
+const {
+  kEmptyObject,
+  once,
+} = require('internal/util');
 const { toPathIfFileURL } = require('internal/url');
 const {
   validateAbortSignal,
@@ -121,7 +126,7 @@ const kMaximumCopyMode = COPYFILE_EXCL |
                          COPYFILE_FICLONE |
                          COPYFILE_FICLONE_FORCE;
 
-// Most platforms don't allow reads or writes >= 2 GB.
+// Most platforms don't allow reads or writes >= 2 GiB.
 // See https://github.com/libuv/libuv/pull/1501.
 const kIoMaxLength = 2 ** 31 - 1;
 
@@ -311,9 +316,8 @@ function getDirent(path, name, type, callback) {
   }
 }
 
-function getOptions(options, defaultOptions) {
-  if (options === null || options === undefined ||
-      typeof options === 'function') {
+function getOptions(options, defaultOptions = kEmptyObject) {
+  if (options == null || typeof options === 'function') {
     return defaultOptions;
   }
 
@@ -393,7 +397,7 @@ function preprocessSymlinkDestination(path, type, linkPath) {
     return pathModule.toNamespacedPath(path);
   }
   // Windows symlinks don't tolerate forward slashes.
-  return StringPrototypeReplace(path, /\//g, '\\');
+  return RegExpPrototypeSymbolReplace(/\//g, path, '\\');
 }
 
 // Constructor for file stats.
@@ -451,14 +455,16 @@ function nsFromTimeSpecBigInt(sec, nsec) {
   return sec * kNsPerSecBigInt + nsec;
 }
 
-// The Date constructor performs Math.floor() to the timestamp.
-// https://www.ecma-international.org/ecma-262/#sec-timeclip
+// The Date constructor performs Math.floor() on the absolute value
+// of the timestamp: https://tc39.es/ecma262/#sec-timeclip
 // Since there may be a precision loss when the timestamp is
 // converted to a floating point number, we manually round
 // the timestamp here before passing it to Date().
 // Refs: https://github.com/nodejs/node/pull/12607
+// Refs: https://github.com/nodejs/node/pull/43714
 function dateFromMs(ms) {
-  return new Date(Number(ms) + 0.5);
+  // Coercing to number, ms can be bigint
+  return new Date(MathRound(Number(ms)));
 }
 
 function BigIntStats(dev, mode, nlink, uid, gid, rdev, blksize,
@@ -523,12 +529,12 @@ Stats.prototype._checkModeProperty = function(property) {
 };
 
 /**
- * @param {Float64Array | BigUint64Array} stats
+ * @param {Float64Array | BigInt64Array} stats
  * @param {number} offset
  * @returns {BigIntStats | Stats}
  */
 function getStatsFromBinding(stats, offset = 0) {
-  if (isBigUint64Array(stats)) {
+  if (isBigInt64Array(stats)) {
     return new BigIntStats(
       stats[0 + offset], stats[1 + offset], stats[2 + offset],
       stats[3 + offset], stats[4 + offset], stats[5 + offset],
@@ -724,6 +730,7 @@ const defaultCpOptions = {
   force: true,
   preserveTimestamps: false,
   recursive: false,
+  verbatimSymlinks: false,
 };
 
 const defaultRmOptions = {
@@ -749,6 +756,10 @@ const validateCpOptions = hideStackFrames((options) => {
   validateBoolean(options.force, 'options.force');
   validateBoolean(options.preserveTimestamps, 'options.preserveTimestamps');
   validateBoolean(options.recursive, 'options.recursive');
+  validateBoolean(options.verbatimSymlinks, 'options.verbatimSymlinks');
+  if (options.dereference === true && options.verbatimSymlinks === true) {
+    throw new ERR_INCOMPATIBLE_OPTION_PAIR('dereference', 'verbatimSymlinks');
+  }
   if (options.filter !== undefined) {
     validateFunction(options.filter, 'options.filter');
   }
@@ -883,19 +894,27 @@ const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   );
 });
 
+const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
+  if (typeof buffer !== 'string') {
+    throw new ERR_INVALID_ARG_TYPE(
+      name,
+      ['string', 'Buffer', 'TypedArray', 'DataView'],
+      buffer
+    );
+  }
+});
+
 const validatePosition = hideStackFrames((position, name) => {
   if (typeof position === 'number') {
-    validateInteger(position, 'position');
+    validateInteger(position, name);
   } else if (typeof position === 'bigint') {
     if (!(position >= -(2n ** 63n) && position <= 2n ** 63n - 1n)) {
-      throw new ERR_OUT_OF_RANGE('position',
+      throw new ERR_OUT_OF_RANGE(name,
                                  `>= ${-(2n ** 63n)} && <= ${2n ** 63n - 1n}`,
                                  position);
     }
   } else {
-    throw new ERR_INVALID_ARG_TYPE('position',
-                                   ['integer', 'bigint'],
-                                   position);
+    throw new ERR_INVALID_ARG_TYPE(name, ['integer', 'bigint'], position);
   }
 });
 
@@ -937,5 +956,6 @@ module.exports = {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
+  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate
 };

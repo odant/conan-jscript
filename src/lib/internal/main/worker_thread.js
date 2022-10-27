@@ -8,7 +8,8 @@ const {
   ArrayPrototypePushApply,
   ArrayPrototypeSplice,
   ObjectDefineProperty,
-  PromisePrototypeCatch,
+  PromisePrototypeThen,
+  RegExpPrototypeExec,
   globalThis: { Atomics },
 } = primordials;
 
@@ -17,6 +18,9 @@ const {
   setupCoverageHooks,
   setupInspectorHooks,
   setupWarningHandler,
+  setupFetch,
+  setupWebCrypto,
+  setupCustomEvent,
   setupDebugEnv,
   setupPerfHooks,
   initializeDeprecations,
@@ -27,8 +31,9 @@ const {
   initializeReport,
   initializeSourceMapsHandlers,
   loadPreloadModules,
-  setupTraceCategoryState
-} = require('internal/bootstrap/pre_execution');
+  setupTraceCategoryState,
+  markBootstrapComplete
+} = require('internal/process/pre_execution');
 
 const {
   threadId,
@@ -67,6 +72,9 @@ setupInspectorHooks();
 setupDebugEnv();
 
 setupWarningHandler();
+setupFetch();
+setupWebCrypto();
+setupCustomEvent();
 initializeSourceMapsHandlers();
 
 // Since worker threads cannot switch cwd, we do not need to
@@ -86,11 +94,13 @@ const port = getEnvMessagePort();
 if (process.env.NODE_CHANNEL_FD) {
   const workerThreadSetup = require('internal/process/worker_thread_only');
   ObjectDefineProperty(process, 'channel', {
+    __proto__: null,
     enumerable: false,
     get: workerThreadSetup.unavailable('process.channel')
   });
 
   ObjectDefineProperty(process, 'connected', {
+    __proto__: null,
     enumerable: false,
     get: workerThreadSetup.unavailable('process.connected')
   });
@@ -124,6 +134,9 @@ port.on('message', (message) => {
     }
     initializeDeprecations();
     initializeWASI();
+
+    require('internal/dns/utils').initializeDns();
+
     initializeCJSLoader();
     initializeESMLoader();
 
@@ -160,7 +173,7 @@ port.on('message', (message) => {
       process.stdin.push(null);
 
     debug(`[${threadId}] starts worker script ${filename} ` +
-          `(eval = ${eval}) at cwd = ${process.cwd()}`);
+          `(eval = ${doEval}) at cwd = ${process.cwd()}`);
     port.postMessage({ type: UP_AND_RUNNING });
     if (doEval === 'classic') {
       const { evalScript } = require('internal/process/execution');
@@ -168,6 +181,7 @@ port.on('message', (message) => {
       // This is necessary for CJS module compilation.
       // TODO: pass this with something really internal.
       ObjectDefineProperty(process, '_eval', {
+        __proto__: null,
         configurable: true,
         enumerable: true,
         value: filename,
@@ -176,7 +190,7 @@ port.on('message', (message) => {
       evalScript(name, filename);
     } else if (doEval === 'module') {
       const { evalModule } = require('internal/process/execution');
-      PromisePrototypeCatch(evalModule(filename), (e) => {
+      PromisePrototypeThen(evalModule(filename), undefined, (e) => {
         workerOnGlobalUncaughtException(e, true);
       });
     } else {
@@ -256,5 +270,8 @@ function workerOnGlobalUncaughtException(error, fromPromise) {
 process._fatalException = workerOnGlobalUncaughtException;
 
 markBootstrapComplete();
+
+// Necessary to reset RegExp statics before user code runs.
+RegExpPrototypeExec(/^/, '');
 
 port.start();

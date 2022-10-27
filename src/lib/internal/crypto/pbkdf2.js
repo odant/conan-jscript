@@ -14,7 +14,8 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
+  validateInt32,
   validateInteger,
   validateString,
   validateUint32,
@@ -42,7 +43,7 @@ function pbkdf2(password, salt, iterations, keylen, digest, callback) {
   ({ password, salt, iterations, keylen, digest } =
     check(password, salt, iterations, keylen, digest));
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new PBKDF2Job(
     kCryptoJobAsync,
@@ -91,20 +92,25 @@ function check(password, salt, iterations, keylen, digest) {
 
   password = getArrayBufferOrView(password, 'password');
   salt = getArrayBufferOrView(salt, 'salt');
-  validateUint32(iterations, 'iterations', true);
-  validateUint32(keylen, 'keylen');
+  // OpenSSL uses a signed int to represent these values, so we are restricted
+  // to the 31-bit range here (which is plenty).
+  validateInt32(iterations, 'iterations', 1);
+  validateInt32(keylen, 'keylen', 0);
 
   return { password, salt, iterations, keylen, digest };
 }
 
 async function pbkdf2DeriveBits(algorithm, baseKey, length) {
-  validateUint32(length, 'length');
   const { iterations } = algorithm;
   let { hash } = algorithm;
   const salt = getArrayBufferOrView(algorithm.salt, 'algorithm.salt');
   if (hash === undefined)
     throw new ERR_MISSING_OPTION('algorithm.hash');
-  validateInteger(iterations, 'algorithm.iterations', 1);
+  validateInteger(iterations, 'algorithm.iterations');
+  if (iterations === 0)
+    throw lazyDOMException(
+      'iterations cannot be zero',
+      'OperationError');
 
   hash = normalizeHashName(hash.name);
 
@@ -114,6 +120,9 @@ async function pbkdf2DeriveBits(algorithm, baseKey, length) {
   if (length !== undefined) {
     if (length === 0)
       throw lazyDOMException('length cannot be zero', 'OperationError');
+    if (length === null)
+      throw lazyDOMException('length cannot be null', 'OperationError');
+    validateUint32(length, 'length');
     if (length % 8) {
       throw lazyDOMException(
         'length must be a multiple of 8',

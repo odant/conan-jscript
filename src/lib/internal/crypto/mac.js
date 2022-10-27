@@ -2,7 +2,6 @@
 
 const {
   ArrayFrom,
-  Promise,
   SafeSet,
 } = primordials;
 
@@ -27,25 +26,26 @@ const {
 
 const {
   lazyDOMException,
+  promisify,
 } = require('internal/util');
 
 const {
   codes: {
     ERR_MISSING_OPTION,
-    ERR_INVALID_ARG_TYPE,
   }
 } = require('internal/errors');
 
 const {
-  generateKey,
+  generateKey: _generateKey,
 } = require('internal/crypto/keygen');
 
 const {
   InternalCryptoKey,
   SecretKeyObject,
   createSecretKey,
-  isKeyObject,
 } = require('internal/crypto/keys');
+
+const generateKey = promisify(_generateKey);
 
 async function hmacGenerateKey(algorithm, extractable, keyUsages) {
   const { hash, name } = algorithm;
@@ -64,21 +64,18 @@ async function hmacGenerateKey(algorithm, extractable, keyUsages) {
       'Unsupported key usage for an HMAC key',
       'SyntaxError');
   }
-  return new Promise((resolve, reject) => {
-    generateKey('hmac', { length }, (err, key) => {
-      if (err) {
-        return reject(lazyDOMException(
-          'The operation failed for an operation-specific reason',
-          'OperationError'));
-      }
 
-      resolve(new InternalCryptoKey(
-        key,
-        { name, length, hash: { name: hash.name } },
-        ArrayFrom(usageSet),
-        extractable));
-    });
+  const key = await generateKey('hmac', { length }).catch((err) => {
+    throw lazyDOMException(
+      'The operation failed for an operation-specific reason',
+      { name: 'OperationError', cause: err });
   });
+
+  return new InternalCryptoKey(
+    key,
+    { name, length, hash: { name: hash.name } },
+    ArrayFrom(usageSet),
+    extractable);
 }
 
 async function hmacImportKey(
@@ -99,18 +96,6 @@ async function hmacImportKey(
   }
   let keyObject;
   switch (format) {
-    case 'node.keyObject': {
-      if (!isKeyObject(keyData))
-        throw new ERR_INVALID_ARG_TYPE('keyData', 'KeyObject', keyData);
-
-      if (keyData.type !== 'secret') {
-        throw lazyDOMException(
-          `Unable to import HMAC key with format ${format}`);
-      }
-
-      keyObject = keyData;
-      break;
-    }
     case 'raw': {
       const checkLength = keyData.byteLength * 8;
 

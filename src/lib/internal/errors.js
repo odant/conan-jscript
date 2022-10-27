@@ -33,6 +33,7 @@ const {
   MathMax,
   Number,
   NumberIsInteger,
+  ObjectAssign,
   ObjectDefineProperty,
   ObjectDefineProperties,
   ObjectIsExtensible,
@@ -41,14 +42,13 @@ const {
   ObjectPrototypeHasOwnProperty,
   RangeError,
   ReflectApply,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   SafeArrayIterator,
   SafeMap,
   SafeWeakMap,
   String,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
-  StringPrototypeMatch,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -151,7 +151,7 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
 };
 
 const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
-  if (innerError && outerError) {
+  if (innerError && outerError && innerError !== outerError) {
     if (ArrayIsArray(outerError.errors)) {
       // If `outerError` is already an `AggregateError`.
       ArrayPrototypePush(outerError.errors, innerError);
@@ -174,28 +174,29 @@ let assert;
 
 let internalUtil = null;
 function lazyInternalUtil() {
-  if (!internalUtil) {
-    internalUtil = require('internal/util');
-  }
+  internalUtil ??= require('internal/util');
   return internalUtil;
 }
 
 let internalUtilInspect = null;
 function lazyInternalUtilInspect() {
-  if (!internalUtilInspect) {
-    internalUtilInspect = require('internal/util/inspect');
-  }
+  internalUtilInspect ??= require('internal/util/inspect');
   return internalUtilInspect;
 }
 
 let buffer;
 function lazyBuffer() {
-  if (buffer === undefined)
-    buffer = require('buffer').Buffer;
+  buffer ??= require('buffer').Buffer;
   return buffer;
 }
 
 function isErrorStackTraceLimitWritable() {
+  // Do no touch Error.stackTraceLimit as V8 would attempt to install
+  // it again during deserialization.
+  if (require('v8').startupSnapshot.isBuildingSnapshot()) {
+    return false;
+  }
+
   const desc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
   if (desc === undefined) {
     return ObjectIsExtensible(Error);
@@ -204,6 +205,16 @@ function isErrorStackTraceLimitWritable() {
   return ObjectPrototypeHasOwnProperty(desc, 'writable') ?
     desc.writable :
     desc.set !== undefined;
+}
+
+function inspectWithNoCustomRetry(obj, options) {
+  const utilInspect = lazyInternalUtilInspect();
+
+  try {
+    return utilInspect.inspect(obj, options);
+  } catch {
+    return utilInspect.inspect(obj, { ...options, customInspect: false });
+  }
 }
 
 // A specialized Error that includes an additional info property with
@@ -236,30 +247,35 @@ class SystemError extends Error {
 
     ObjectDefineProperties(this, {
       [kIsNodeError]: {
+        __proto__: null,
         value: true,
         enumerable: false,
         writable: false,
         configurable: true,
       },
       name: {
+        __proto__: null,
         value: 'SystemError',
         enumerable: false,
         writable: true,
         configurable: true,
       },
       message: {
+        __proto__: null,
         value: message,
         enumerable: false,
         writable: true,
         configurable: true,
       },
       info: {
+        __proto__: null,
         value: context,
         enumerable: true,
         configurable: true,
         writable: false,
       },
       errno: {
+        __proto__: null,
         get() {
           return context.errno;
         },
@@ -270,6 +286,7 @@ class SystemError extends Error {
         configurable: true,
       },
       syscall: {
+        __proto__: null,
         get() {
           return context.syscall;
         },
@@ -288,6 +305,7 @@ class SystemError extends Error {
       // `.toString()` and `Buffer.from()` operations and set the value on the
       // context as the user did.
       ObjectDefineProperty(this, 'path', {
+        __proto__: null,
         get() {
           return context.path != null ?
             context.path.toString() : context.path;
@@ -303,6 +321,7 @@ class SystemError extends Error {
 
     if (context.dest !== undefined) {
       ObjectDefineProperty(this, 'dest', {
+        __proto__: null,
         get() {
           return context.dest != null ?
             context.dest.toString() : context.dest;
@@ -348,18 +367,21 @@ function makeNodeErrorWithCode(Base, key) {
     const message = getMessage(key, args, error);
     ObjectDefineProperties(error, {
       [kIsNodeError]: {
+        __proto__: null,
         value: true,
         enumerable: false,
         writable: false,
         configurable: true,
       },
       message: {
+        __proto__: null,
         value: message,
         enumerable: false,
         writable: true,
         configurable: true,
       },
       toString: {
+        __proto__: null,
         value() {
           return `${this.name} [${key}]: ${this.message}`;
         },
@@ -376,14 +398,15 @@ function makeNodeErrorWithCode(Base, key) {
 
 /**
  * This function removes unnecessary frames from Node.js core errors.
- * @template {(...args: any[]) => any} T
- * @type {(fn: T) => T}
+ * @template {(...args: unknown[]) => unknown} T
+ * @param {T} fn
+ * @returns {T}
  */
 function hideStackFrames(fn) {
   // We rename the functions that will be hidden to cut off the stacktrace
   // at the outermost one
   const hidden = nodeInternalPrefix + fn.name;
-  ObjectDefineProperty(fn, 'name', { value: hidden });
+  ObjectDefineProperty(fn, 'name', { __proto__: null, value: hidden });
   return fn;
 }
 
@@ -410,7 +433,7 @@ function E(sym, val, def, ...otherClasses) {
 function getMessage(key, args, self) {
   const msg = messages.get(key);
 
-  if (assert === undefined) assert = require('internal/assert');
+  assert ??= require('internal/assert');
 
   if (typeof msg === 'function') {
     assert(
@@ -421,8 +444,9 @@ function getMessage(key, args, self) {
     return ReflectApply(msg, self, args);
   }
 
-  const expectedLength =
-    (StringPrototypeMatch(msg, /%[dfijoOs]/g) || []).length;
+  const regex = /%[dfijoOs]/g;
+  let expectedLength = 0;
+  while (RegExpPrototypeExec(regex, msg) !== null) expectedLength++;
   assert(
     expectedLength === args.length,
     `Code: ${key}; The provided arguments length (${args.length}) does not ` +
@@ -438,9 +462,7 @@ function getMessage(key, args, self) {
 let uvBinding;
 
 function lazyUv() {
-  if (!uvBinding) {
-    uvBinding = internalBinding('uv');
-  }
+  uvBinding ??= internalBinding('uv');
   return uvBinding;
 }
 
@@ -448,9 +470,7 @@ const uvUnmappedError = ['UNKNOWN', 'unknown error'];
 
 function uvErrmapGet(name) {
   uvBinding = lazyUv();
-  if (!uvBinding.errmap) {
-    uvBinding.errmap = uvBinding.getErrorMap();
-  }
+  uvBinding.errmap ??= uvBinding.getErrorMap();
   return MapPrototypeGet(uvBinding.errmap, name);
 }
 
@@ -577,7 +597,7 @@ const errnoException = hideStackFrames(
     // getSystemErrorName(err) to guard against invalid arguments from users.
     // This can be replaced with [ code ] = errmap.get(err) when this method
     // is no longer exposed to user land.
-    if (util === undefined) util = require('util');
+    util ??= require('util');
     const code = util.getSystemErrorName(err);
     const message = original ?
       `${syscall} ${code} ${original}` : `${syscall} ${code}`;
@@ -611,7 +631,7 @@ const exceptionWithHostPort = hideStackFrames(
     // getSystemErrorName(err) to guard against invalid arguments from users.
     // This can be replaced with [ code ] = errmap.get(err) when this method
     // is no longer exposed to user land.
-    if (util === undefined) util = require('util');
+    util ??= require('util');
     const code = util.getSystemErrorName(err);
     let details = '';
     if (port && port > 0) {
@@ -821,40 +841,86 @@ function hideInternalStackFrames(error) {
 // to make usage of the error in userland and readable-stream easier.
 // It is a regular error with `.code` and `.name`.
 class AbortError extends Error {
-  constructor() {
-    super('The operation was aborted');
+  constructor(message = 'The operation was aborted', options = undefined) {
+    if (options !== undefined && typeof options !== 'object') {
+      throw new codes.ERR_INVALID_ARG_TYPE('options', 'Object', options);
+    }
+    super(message, options);
     this.code = 'ABORT_ERR';
     this.name = 'AbortError';
   }
 }
+
+/**
+ * This creates a generic Node.js error.
+ *
+ * @param {string} message The error message.
+ * @param {object} errorProperties Object with additional properties to be added to the error.
+ * @returns {Error}
+ */
+const genericNodeError = hideStackFrames(function genericNodeError(message, errorProperties) {
+  // eslint-disable-next-line no-restricted-syntax
+  const err = new Error(message);
+  ObjectAssign(err, errorProperties);
+  return err;
+});
+
+/**
+ * Determine the specific type of a value for type-mismatch errors.
+ * @param {*} value
+ * @returns {string}
+ */
+function determineSpecificType(value) {
+  if (value == null) {
+    return '' + value;
+  }
+  if (typeof value === 'function' && value.name) {
+    return `function ${value.name}`;
+  }
+  if (typeof value === 'object') {
+    if (value.constructor?.name) {
+      return `an instance of ${value.constructor.name}`;
+    }
+    return `${lazyInternalUtilInspect().inspect(value, { depth: -1 })}`;
+  }
+  let inspected = lazyInternalUtilInspect()
+    .inspect(value, { colors: false });
+  if (inspected.length > 28) { inspected = `${StringPrototypeSlice(inspected, 0, 25)}...`; }
+
+  return `type ${typeof value} (${inspected})`;
+}
+
 module.exports = {
+  AbortError,
   aggregateTwoErrors,
+  captureLargerStackTrace,
   codes,
+  connResetException,
   dnsException,
+  // This is exported only to facilitate testing.
+  determineSpecificType,
+  E,
   errnoException,
   exceptionWithHostPort,
+  fatalExceptionStackEnhancers,
+  genericNodeError,
   getMessage,
-  hideStackFrames,
   hideInternalStackFrames,
+  hideStackFrames,
+  inspectWithNoCustomRetry,
   isErrorStackTraceLimitWritable,
   isStackOverflowError,
+  kEnhanceStackBeforeInspector,
+  kIsNodeError,
+  kNoOverride,
+  maybeOverridePrepareStackTrace,
+  overrideStackTrace,
+  prepareStackTrace,
   setArrowMessage,
-  connResetException,
+  SystemError,
   uvErrmapGet,
   uvException,
   uvExceptionWithHostPort,
-  SystemError,
-  AbortError,
-  // This is exported only to facilitate testing.
-  E,
-  kNoOverride,
-  prepareStackTrace,
-  maybeOverridePrepareStackTrace,
-  overrideStackTrace,
-  kEnhanceStackBeforeInspector,
-  fatalExceptionStackEnhancers,
-  kIsNodeError,
-  captureLargerStackTrace,
 };
 
 // To declare an error message, use the E(sym, val, def) function above. The sym
@@ -877,6 +943,8 @@ module.exports = {
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
+E('ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED',
+  'Snapshot is not supported in this context ', TypeError);
 E('ERR_ASYNC_CALLBACK', '%s must be a function', TypeError);
 E('ERR_ASYNC_TYPE', 'Invalid name for async "type": %s', TypeError);
 E('ERR_BROTLI_INVALID_PARAM', '%s is not a valid Brotli parameter', RangeError);
@@ -945,6 +1013,8 @@ E('ERR_DOMAIN_CANNOT_SET_UNCAUGHT_EXCEPTION_CAPTURE',
   'The `domain` module is in use, which is mutually exclusive with calling ' +
      'process.setUncaughtExceptionCaptureCallback()',
   Error);
+E('ERR_DUPLICATE_STARTUP_SNAPSHOT_MAIN_FUNCTION',
+  'Deserialize main function is already configured.', Error);
 E('ERR_ENCODING_INVALID_ENCODED_DATA', function(encoding, ret) {
   this.errno = ret;
   return `The encoded data was not valid for encoding ${encoding}`;
@@ -973,7 +1043,7 @@ E('ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY',
   'Cannot overwrite symlink in subdirectory of self', SystemError);
 E('ERR_FS_CP_UNKNOWN', 'Cannot copy an unknown file type', SystemError);
 E('ERR_FS_EISDIR', 'Path is a directory', SystemError);
-E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GB', RangeError);
+E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GiB', RangeError);
 E('ERR_FS_INVALID_SYMLINK_TYPE',
   'Symlink type must be one of "dir", "file", or "junction". Received "%s"',
   Error); // Switch to TypeError. The current implementation does not seem right
@@ -1072,6 +1142,8 @@ E('ERR_HTTP2_TRAILERS_NOT_READY',
   'Trailing headers cannot be sent until after the wantTrailers event is ' +
   'emitted', Error);
 E('ERR_HTTP2_UNSUPPORTED_PROTOCOL', 'protocol "%s" is unsupported.', Error);
+E('ERR_HTTP_CONTENT_LENGTH_MISMATCH',
+  'Response body\'s content-length of %s byte(s) does not match the content-length of %s byte(s) set in header', Error);
 E('ERR_HTTP_HEADERS_SENT',
   'Cannot %s headers after they are sent to the client', Error);
 E('ERR_HTTP_INVALID_HEADER_VALUE',
@@ -1142,7 +1214,7 @@ E('ERR_INVALID_ARG_TYPE',
              'All expected entries have to be of type string');
       if (ArrayPrototypeIncludes(kTypes, value)) {
         ArrayPrototypePush(types, StringPrototypeToLowerCase(value));
-      } else if (RegExpPrototypeTest(classRegExp, value)) {
+      } else if (RegExpPrototypeExec(classRegExp, value) !== null) {
         ArrayPrototypePush(instances, value);
       } else {
         assert(value !== 'object',
@@ -1202,25 +1274,8 @@ E('ERR_INVALID_ARG_TYPE',
       }
     }
 
-    if (actual == null) {
-      msg += `. Received ${actual}`;
-    } else if (typeof actual === 'function' && actual.name) {
-      msg += `. Received function ${actual.name}`;
-    } else if (typeof actual === 'object') {
-      if (actual.constructor && actual.constructor.name) {
-        msg += `. Received an instance of ${actual.constructor.name}`;
-      } else {
-        const inspected = lazyInternalUtilInspect()
-          .inspect(actual, { depth: -1 });
-        msg += `. Received ${inspected}`;
-      }
-    } else {
-      let inspected = lazyInternalUtilInspect()
-        .inspect(actual, { colors: false });
-      if (inspected.length > 25)
-        inspected = `${StringPrototypeSlice(inspected, 0, 25)}...`;
-      msg += `. Received type ${typeof actual} (${inspected})`;
-    }
+    msg += `. Received ${determineSpecificType(actual)}`;
+
     return msg;
   }, TypeError);
 E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
@@ -1234,8 +1289,6 @@ E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
 E('ERR_INVALID_ASYNC_ID', 'Invalid %s value: %s', RangeError);
 E('ERR_INVALID_BUFFER_SIZE',
   'Buffer size must be a multiple of %s', RangeError);
-E('ERR_INVALID_CALLBACK',
-  'Callback must be a function. Received %O', TypeError);
 E('ERR_INVALID_CHAR',
   // Using a default argument here is important so the argument is not counted
   // towards `Function#length`.
@@ -1293,7 +1346,7 @@ E('ERR_INVALID_RETURN_PROPERTY', (input, name, prop, value) => {
 }, TypeError);
 E('ERR_INVALID_RETURN_PROPERTY_VALUE', (input, name, prop, value) => {
   let type;
-  if (value && value.constructor && value.constructor.name) {
+  if (value?.constructor?.name) {
     type = `instance of ${value.constructor.name}`;
   } else {
     type = `type ${typeof value}`;
@@ -1302,12 +1355,8 @@ E('ERR_INVALID_RETURN_PROPERTY_VALUE', (input, name, prop, value) => {
          ` "${name}" function but got ${type}.`;
 }, TypeError);
 E('ERR_INVALID_RETURN_VALUE', (input, name, value) => {
-  let type;
-  if (value && value.constructor && value.constructor.name) {
-    type = `instance of ${value.constructor.name}`;
-  } else {
-    type = `type ${typeof value}`;
-  }
+  const type = determineSpecificType(value);
+
   return `Expected ${input} to be returned from the "${name}"` +
          ` function but got ${type}.`;
 }, TypeError, RangeError);
@@ -1339,6 +1388,13 @@ E('ERR_IPC_CHANNEL_CLOSED', 'Channel closed', Error);
 E('ERR_IPC_DISCONNECTED', 'IPC channel is already disconnected', Error);
 E('ERR_IPC_ONE_PIPE', 'Child process can have only one IPC pipe', Error);
 E('ERR_IPC_SYNC_FORK', 'IPC cannot be used with synchronous forks', Error);
+E(
+  'ERR_LOADER_CHAIN_INCOMPLETE',
+  '"%s" did not call the next hook in its chain and did not' +
+  ' explicitly signal a short circuit. If this is intentional, include' +
+  ' `shortCircuit: true` in the hook\'s return.',
+  Error
+);
 E('ERR_MANIFEST_ASSERT_INTEGRITY',
   (moduleURL, realIntegrities) => {
     let msg = `The content of "${
@@ -1414,6 +1470,12 @@ E('ERR_NAPI_INVALID_TYPEDARRAY_ALIGNMENT',
   'start offset of %s should be a multiple of %s', RangeError);
 E('ERR_NAPI_INVALID_TYPEDARRAY_LENGTH',
   'Invalid typed array length', RangeError);
+E('ERR_NETWORK_IMPORT_BAD_RESPONSE',
+  "import '%s' received a bad response: %s", Error);
+E('ERR_NETWORK_IMPORT_DISALLOWED',
+  "import of '%s' by %s is not supported: %s", Error);
+E('ERR_NOT_BUILDING_SNAPSHOT',
+  'Operation cannot be invoked when not building startup snapshot', Error);
 E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
@@ -1450,6 +1512,15 @@ E('ERR_PACKAGE_PATH_NOT_EXPORTED', (pkgPath, subpath, base = undefined) => {
   return `Package subpath '${subpath}' is not defined by "exports" in ${
     pkgPath}package.json${base ? ` imported from ${base}` : ''}`;
 }, Error);
+E('ERR_PARSE_ARGS_INVALID_OPTION_VALUE', '%s', TypeError);
+E('ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL', "Unexpected argument '%s'. This " +
+  'command does not take positional arguments', TypeError);
+E('ERR_PARSE_ARGS_UNKNOWN_OPTION', (option, allowPositionals) => {
+  const suggestDashDash = allowPositionals ? '. To specify a positional ' +
+    "argument starting with a '-', place it at the end of the command after " +
+    `'--', as in '-- ${JSONStringify(option)}` : '';
+  return `Unknown option '${option}'${suggestDashDash}`;
+}, TypeError);
 E('ERR_PERFORMANCE_INVALID_TIMESTAMP',
   '%d is not a valid timestamp', TypeError);
 E('ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS', '%s', TypeError);
@@ -1522,6 +1593,21 @@ E('ERR_STREAM_WRAP', 'Stream has StringDecoder set or is in objectMode', Error);
 E('ERR_STREAM_WRITE_AFTER_END', 'write after end', Error);
 E('ERR_SYNTHETIC', 'JavaScript Callstack', Error);
 E('ERR_SYSTEM_ERROR', 'A system error occurred', SystemError);
+E('ERR_TEST_FAILURE', function(error, failureType) {
+  hideInternalStackFrames(this);
+  assert(typeof failureType === 'string',
+         "The 'failureType' argument must be of type string.");
+
+  let msg = error?.message ?? error;
+
+  if (typeof msg !== 'string') {
+    msg = inspectWithNoCustomRetry(msg);
+  }
+
+  this.failureType = failureType;
+  this.cause = error;
+  return msg;
+}, Error);
 E('ERR_TLS_CERT_ALTNAME_FORMAT', 'Invalid subject alternative name string',
   SyntaxError);
 E('ERR_TLS_CERT_ALTNAME_INVALID', function(reason, host, cert) {
@@ -1572,15 +1658,20 @@ E('ERR_UNHANDLED_ERROR',
 E('ERR_UNKNOWN_BUILTIN_MODULE', 'No such built-in module: %s', Error);
 E('ERR_UNKNOWN_CREDENTIAL', '%s identifier does not exist: %s', Error);
 E('ERR_UNKNOWN_ENCODING', 'Unknown encoding: %s', TypeError);
-E('ERR_UNKNOWN_FILE_EXTENSION',
-  'Unknown file extension "%s" for %s',
-  TypeError);
-E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s', RangeError);
+E('ERR_UNKNOWN_FILE_EXTENSION', (ext, path, suggestion) => {
+  let msg = `Unknown file extension "${ext}" for ${path}`;
+  if (suggestion) {
+    msg += `. ${suggestion}`;
+  }
+  return msg;
+}, TypeError);
+E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s for URL %s',
+  RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
 'resolving ES modules imported from %s', Error);
-E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url) => {
-  let msg = 'Only file and data URLs are supported by the default ESM loader';
+E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
+  let msg = `Only URLs with a scheme in: ${ArrayPrototypeJoin(supported, ', ')} are supported by the default ESM loader`;
   if (isWindows && url.protocol.length === 2) {
     msg +=
       '. On Windows, absolute paths must be valid file:// URLs';
@@ -1588,6 +1679,7 @@ E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url) => {
   msg += `. Received protocol '${url.protocol}'`;
   return msg;
 }, Error);
+E('ERR_USE_AFTER_CLOSE', '%s was closed', Error);
 
 // This should probably be a `TypeError`.
 E('ERR_VALID_PERFORMANCE_ENTRY_TYPE',
@@ -1599,12 +1691,15 @@ E('ERR_VM_MODULE_CANNOT_CREATE_CACHED_DATA',
   'Cached data cannot be created for a module which has been evaluated', Error);
 E('ERR_VM_MODULE_DIFFERENT_CONTEXT',
   'Linked modules must use the same context', Error);
-E('ERR_VM_MODULE_LINKING_ERRORED',
-  'Linking has already failed for the provided module', Error);
+E('ERR_VM_MODULE_LINK_FAILURE', function(message, cause) {
+  this.cause = cause;
+  return message;
+}, Error);
 E('ERR_VM_MODULE_NOT_MODULE',
   'Provided module is not an instance of Module', Error);
 E('ERR_VM_MODULE_STATUS', 'Module status %s', Error);
 E('ERR_WASI_ALREADY_STARTED', 'WASI instance has already started', Error);
+E('ERR_WEBASSEMBLY_RESPONSE', 'WebAssembly response %s', TypeError);
 E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
   `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,

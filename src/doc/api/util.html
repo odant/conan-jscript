@@ -3,12 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v16.14.2">
-  <title>Util | Node.js v16.14.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.12.0">
+  <title>Util | Node.js v18.12.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
   <link rel="canonical" href="https://nodejs.org/api/util.html">
+  <script async defer src="assets/api.js" type="text/javascript"></script>
+  <style>@media(max-width:566px){.with-43-chars>.js-flavor-selector{float:none;margin:0 0 1em auto;}}</style>
 </head>
 <body class="alt apidoc" id="api-section-util">
   <div id="content" class="clearfix">
@@ -53,13 +55,13 @@
 <li><a href="intl.html" class="nav-intl">Internationalization</a></li>
 <li><a href="modules.html" class="nav-modules">Modules: CommonJS modules</a></li>
 <li><a href="esm.html" class="nav-esm">Modules: ECMAScript modules</a></li>
-<li><a href="module.html" class="nav-module">Modules: <code>module</code> API</a></li>
+<li><a href="module.html" class="nav-module">Modules: <code>node:module</code> API</a></li>
 <li><a href="packages.html" class="nav-packages">Modules: Packages</a></li>
 <li><a href="net.html" class="nav-net">Net</a></li>
 <li><a href="os.html" class="nav-os">OS</a></li>
 <li><a href="path.html" class="nav-path">Path</a></li>
 <li><a href="perf_hooks.html" class="nav-perf_hooks">Performance hooks</a></li>
-<li><a href="policy.html" class="nav-policy">Policies</a></li>
+<li><a href="permissions.html" class="nav-permissions">Permissions</a></li>
 <li><a href="process.html" class="nav-process">Process</a></li>
 <li><a href="punycode.html" class="nav-punycode">Punycode</a></li>
 <li><a href="querystring.html" class="nav-querystring">Query strings</a></li>
@@ -68,6 +70,7 @@
 <li><a href="report.html" class="nav-report">Report</a></li>
 <li><a href="stream.html" class="nav-stream">Stream</a></li>
 <li><a href="string_decoder.html" class="nav-string_decoder">String decoder</a></li>
+<li><a href="test.html" class="nav-test">Test runner</a></li>
 <li><a href="timers.html" class="nav-timers">Timers</a></li>
 <li><a href="tls.html" class="nav-tls">TLS/SSL</a></li>
 <li><a href="tracing.html" class="nav-tracing">Trace events</a></li>
@@ -90,9 +93,9 @@
     </div>
 
     <div id="column1" data-id="util" class="interior">
-      <header>
+      <header class="header">
         <div class="header-container">
-          <h1>Node.js v16.14.2 documentation</h1>
+          <h1>Node.js v18.12.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -107,19 +110,249 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li>
-              <a href="index.html">Index</a>
-            </li>
-            <li>
-              <a href="all.html">View on single page</a>
-            </li>
-            <li>
-              <a href="util.json">View as JSON</a>
-            </li>
+            <li class="pinned-header">Node.js v18.12.0</li>
             
-    <li class="version-picker">
-      <a href="#">View another version <span>&#x25bc;</span></a>
-      <ol class="version-picker"><li><a href="https://nodejs.org/docs/latest-v17.x/api/util.html">17.x</a></li>
+    <li class="picker-header">
+      <a href="#">
+        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        Table of contents
+      </a>
+
+      <div class="picker"><div class="toc"><ul>
+<li><span class="stability_2"><a href="#util">Util</a></span>
+<ul>
+<li><a href="#utilcallbackifyoriginal"><code>util.callbackify(original)</code></a></li>
+<li><a href="#utildebuglogsection-callback"><code>util.debuglog(section[, callback])</code></a>
+<ul>
+<li><a href="#debuglogenabled"><code>debuglog().enabled</code></a></li>
+</ul>
+</li>
+<li><a href="#utildebugsection"><code>util.debug(section)</code></a></li>
+<li><a href="#utildeprecatefn-msg-code"><code>util.deprecate(fn, msg[, code])</code></a></li>
+<li><a href="#utilformatformat-args"><code>util.format(format[, ...args])</code></a></li>
+<li><a href="#utilformatwithoptionsinspectoptions-format-args"><code>util.formatWithOptions(inspectOptions, format[, ...args])</code></a></li>
+<li><a href="#utilgetsystemerrornameerr"><code>util.getSystemErrorName(err)</code></a></li>
+<li><a href="#utilgetsystemerrormap"><code>util.getSystemErrorMap()</code></a></li>
+<li><span class="stability_3"><a href="#utilinheritsconstructor-superconstructor"><code>util.inherits(constructor, superConstructor)</code></a></span></li>
+<li><a href="#utilinspectobject-options"><code>util.inspect(object[, options])</code></a></li>
+<li><a href="#utilinspectobject-showhidden-depth-colors"><code>util.inspect(object[, showHidden[, depth[, colors]]])</code></a>
+<ul>
+<li><a href="#customizing-utilinspect-colors">Customizing <code>util.inspect</code> colors</a>
+<ul>
+<li><a href="#modifiers">Modifiers</a></li>
+<li><a href="#foreground-colors">Foreground colors</a></li>
+<li><a href="#background-colors">Background colors</a></li>
+</ul>
+</li>
+<li><a href="#custom-inspection-functions-on-objects">Custom inspection functions on objects</a></li>
+<li><a href="#utilinspectcustom"><code>util.inspect.custom</code></a></li>
+<li><a href="#utilinspectdefaultoptions"><code>util.inspect.defaultOptions</code></a></li>
+</ul>
+</li>
+<li><a href="#utilisdeepstrictequalval1-val2"><code>util.isDeepStrictEqual(val1, val2)</code></a></li>
+<li><span class="stability_1"><a href="#utilparseargsconfig"><code>util.parseArgs([config])</code></a></span>
+<ul>
+<li><a href="#parseargs-tokens"><code>parseArgs</code> <code>tokens</code></a></li>
+</ul>
+</li>
+<li><a href="#utilpromisifyoriginal"><code>util.promisify(original)</code></a>
+<ul>
+<li><a href="#custom-promisified-functions">Custom promisified functions</a></li>
+<li><a href="#utilpromisifycustom"><code>util.promisify.custom</code></a></li>
+</ul>
+</li>
+<li><a href="#utilstripvtcontrolcharactersstr"><code>util.stripVTControlCharacters(str)</code></a></li>
+<li><a href="#class-utiltextdecoder">Class: <code>util.TextDecoder</code></a>
+<ul>
+<li><a href="#whatwg-supported-encodings">WHATWG supported encodings</a>
+<ul>
+<li><a href="#encodings-supported-by-default-with-full-icu-data">Encodings supported by default (with full ICU data)</a></li>
+<li><a href="#encodings-supported-when-nodejs-is-built-with-the-small-icu-option">Encodings supported when Node.js is built with the <code>small-icu</code> option</a></li>
+<li><a href="#encodings-supported-when-icu-is-disabled">Encodings supported when ICU is disabled</a></li>
+</ul>
+</li>
+<li><a href="#new-textdecoderencoding-options"><code>new TextDecoder([encoding[, options]])</code></a></li>
+<li><a href="#textdecoderdecodeinput-options"><code>textDecoder.decode([input[, options]])</code></a></li>
+<li><a href="#textdecoderencoding"><code>textDecoder.encoding</code></a></li>
+<li><a href="#textdecoderfatal"><code>textDecoder.fatal</code></a></li>
+<li><a href="#textdecoderignorebom"><code>textDecoder.ignoreBOM</code></a></li>
+</ul>
+</li>
+<li><a href="#class-utiltextencoder">Class: <code>util.TextEncoder</code></a>
+<ul>
+<li><a href="#textencoderencodeinput"><code>textEncoder.encode([input])</code></a></li>
+<li><a href="#textencoderencodeintosrc-dest"><code>textEncoder.encodeInto(src, dest)</code></a></li>
+<li><a href="#textencoderencoding"><code>textEncoder.encoding</code></a></li>
+</ul>
+</li>
+<li><a href="#utiltousvstringstring"><code>util.toUSVString(string)</code></a></li>
+<li><span class="stability_1"><a href="#utiltransferableabortcontroller"><code>util.transferableAbortController()</code></a></span></li>
+<li><span class="stability_1"><a href="#utiltransferableabortsignalsignal"><code>util.transferableAbortSignal(signal)</code></a></span></li>
+<li><a href="#utiltypes"><code>util.types</code></a>
+<ul>
+<li><a href="#utiltypesisanyarraybuffervalue"><code>util.types.isAnyArrayBuffer(value)</code></a></li>
+<li><a href="#utiltypesisarraybufferviewvalue"><code>util.types.isArrayBufferView(value)</code></a></li>
+<li><a href="#utiltypesisargumentsobjectvalue"><code>util.types.isArgumentsObject(value)</code></a></li>
+<li><a href="#utiltypesisarraybuffervalue"><code>util.types.isArrayBuffer(value)</code></a></li>
+<li><a href="#utiltypesisasyncfunctionvalue"><code>util.types.isAsyncFunction(value)</code></a></li>
+<li><a href="#utiltypesisbigint64arrayvalue"><code>util.types.isBigInt64Array(value)</code></a></li>
+<li><a href="#utiltypesisbiguint64arrayvalue"><code>util.types.isBigUint64Array(value)</code></a></li>
+<li><a href="#utiltypesisbooleanobjectvalue"><code>util.types.isBooleanObject(value)</code></a></li>
+<li><a href="#utiltypesisboxedprimitivevalue"><code>util.types.isBoxedPrimitive(value)</code></a></li>
+<li><a href="#utiltypesiscryptokeyvalue"><code>util.types.isCryptoKey(value)</code></a></li>
+<li><a href="#utiltypesisdataviewvalue"><code>util.types.isDataView(value)</code></a></li>
+<li><a href="#utiltypesisdatevalue"><code>util.types.isDate(value)</code></a></li>
+<li><a href="#utiltypesisexternalvalue"><code>util.types.isExternal(value)</code></a></li>
+<li><a href="#utiltypesisfloat32arrayvalue"><code>util.types.isFloat32Array(value)</code></a></li>
+<li><a href="#utiltypesisfloat64arrayvalue"><code>util.types.isFloat64Array(value)</code></a></li>
+<li><a href="#utiltypesisgeneratorfunctionvalue"><code>util.types.isGeneratorFunction(value)</code></a></li>
+<li><a href="#utiltypesisgeneratorobjectvalue"><code>util.types.isGeneratorObject(value)</code></a></li>
+<li><a href="#utiltypesisint8arrayvalue"><code>util.types.isInt8Array(value)</code></a></li>
+<li><a href="#utiltypesisint16arrayvalue"><code>util.types.isInt16Array(value)</code></a></li>
+<li><a href="#utiltypesisint32arrayvalue"><code>util.types.isInt32Array(value)</code></a></li>
+<li><a href="#utiltypesiskeyobjectvalue"><code>util.types.isKeyObject(value)</code></a></li>
+<li><a href="#utiltypesismapvalue"><code>util.types.isMap(value)</code></a></li>
+<li><a href="#utiltypesismapiteratorvalue"><code>util.types.isMapIterator(value)</code></a></li>
+<li><a href="#utiltypesismodulenamespaceobjectvalue"><code>util.types.isModuleNamespaceObject(value)</code></a></li>
+<li><a href="#utiltypesisnativeerrorvalue"><code>util.types.isNativeError(value)</code></a></li>
+<li><a href="#utiltypesisnumberobjectvalue"><code>util.types.isNumberObject(value)</code></a></li>
+<li><a href="#utiltypesispromisevalue"><code>util.types.isPromise(value)</code></a></li>
+<li><a href="#utiltypesisproxyvalue"><code>util.types.isProxy(value)</code></a></li>
+<li><a href="#utiltypesisregexpvalue"><code>util.types.isRegExp(value)</code></a></li>
+<li><a href="#utiltypesissetvalue"><code>util.types.isSet(value)</code></a></li>
+<li><a href="#utiltypesissetiteratorvalue"><code>util.types.isSetIterator(value)</code></a></li>
+<li><a href="#utiltypesissharedarraybuffervalue"><code>util.types.isSharedArrayBuffer(value)</code></a></li>
+<li><a href="#utiltypesisstringobjectvalue"><code>util.types.isStringObject(value)</code></a></li>
+<li><a href="#utiltypesissymbolobjectvalue"><code>util.types.isSymbolObject(value)</code></a></li>
+<li><a href="#utiltypesistypedarrayvalue"><code>util.types.isTypedArray(value)</code></a></li>
+<li><a href="#utiltypesisuint8arrayvalue"><code>util.types.isUint8Array(value)</code></a></li>
+<li><a href="#utiltypesisuint8clampedarrayvalue"><code>util.types.isUint8ClampedArray(value)</code></a></li>
+<li><a href="#utiltypesisuint16arrayvalue"><code>util.types.isUint16Array(value)</code></a></li>
+<li><a href="#utiltypesisuint32arrayvalue"><code>util.types.isUint32Array(value)</code></a></li>
+<li><a href="#utiltypesisweakmapvalue"><code>util.types.isWeakMap(value)</code></a></li>
+<li><a href="#utiltypesisweaksetvalue"><code>util.types.isWeakSet(value)</code></a></li>
+<li><span class="stability_0"><a href="#utiltypesiswebassemblycompiledmodulevalue"><code>util.types.isWebAssemblyCompiledModule(value)</code></a></span></li>
+</ul>
+</li>
+<li><a href="#deprecated-apis">Deprecated APIs</a>
+<ul>
+<li><span class="stability_0"><a href="#util_extendtarget-source"><code>util._extend(target, source)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisarrayobject"><code>util.isArray(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisbooleanobject"><code>util.isBoolean(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisbufferobject"><code>util.isBuffer(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisdateobject"><code>util.isDate(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utiliserrorobject"><code>util.isError(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisfunctionobject"><code>util.isFunction(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisnullobject"><code>util.isNull(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisnullorundefinedobject"><code>util.isNullOrUndefined(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisnumberobject"><code>util.isNumber(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisobjectobject"><code>util.isObject(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisprimitiveobject"><code>util.isPrimitive(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisregexpobject"><code>util.isRegExp(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisstringobject"><code>util.isString(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilissymbolobject"><code>util.isSymbol(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utilisundefinedobject"><code>util.isUndefined(object)</code></a></span></li>
+<li><span class="stability_0"><a href="#utillogstring"><code>util.log(string)</code></a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul></div></div>
+    </li>
+  
+            
+    <li class="picker-header">
+      <a href="#">
+        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        Index
+      </a>
+
+      <div class="picker"><ul>
+<li><a href="documentation.html" class="nav-documentation">About this documentation</a></li>
+<li><a href="synopsis.html" class="nav-synopsis">Usage and example</a></li>
+
+      <li>
+        <a href="index.html">Index</a>
+      </li>
+    </ul>
+  
+<hr class="line">
+<ul>
+<li><a href="assert.html" class="nav-assert">Assertion testing</a></li>
+<li><a href="async_context.html" class="nav-async_context">Asynchronous context tracking</a></li>
+<li><a href="async_hooks.html" class="nav-async_hooks">Async hooks</a></li>
+<li><a href="buffer.html" class="nav-buffer">Buffer</a></li>
+<li><a href="addons.html" class="nav-addons">C++ addons</a></li>
+<li><a href="n-api.html" class="nav-n-api">C/C++ addons with Node-API</a></li>
+<li><a href="embedding.html" class="nav-embedding">C++ embedder API</a></li>
+<li><a href="child_process.html" class="nav-child_process">Child processes</a></li>
+<li><a href="cluster.html" class="nav-cluster">Cluster</a></li>
+<li><a href="cli.html" class="nav-cli">Command-line options</a></li>
+<li><a href="console.html" class="nav-console">Console</a></li>
+<li><a href="corepack.html" class="nav-corepack">Corepack</a></li>
+<li><a href="crypto.html" class="nav-crypto">Crypto</a></li>
+<li><a href="debugger.html" class="nav-debugger">Debugger</a></li>
+<li><a href="deprecations.html" class="nav-deprecations">Deprecated APIs</a></li>
+<li><a href="diagnostics_channel.html" class="nav-diagnostics_channel">Diagnostics Channel</a></li>
+<li><a href="dns.html" class="nav-dns">DNS</a></li>
+<li><a href="domain.html" class="nav-domain">Domain</a></li>
+<li><a href="errors.html" class="nav-errors">Errors</a></li>
+<li><a href="events.html" class="nav-events">Events</a></li>
+<li><a href="fs.html" class="nav-fs">File system</a></li>
+<li><a href="globals.html" class="nav-globals">Globals</a></li>
+<li><a href="http.html" class="nav-http">HTTP</a></li>
+<li><a href="http2.html" class="nav-http2">HTTP/2</a></li>
+<li><a href="https.html" class="nav-https">HTTPS</a></li>
+<li><a href="inspector.html" class="nav-inspector">Inspector</a></li>
+<li><a href="intl.html" class="nav-intl">Internationalization</a></li>
+<li><a href="modules.html" class="nav-modules">Modules: CommonJS modules</a></li>
+<li><a href="esm.html" class="nav-esm">Modules: ECMAScript modules</a></li>
+<li><a href="module.html" class="nav-module">Modules: <code>node:module</code> API</a></li>
+<li><a href="packages.html" class="nav-packages">Modules: Packages</a></li>
+<li><a href="net.html" class="nav-net">Net</a></li>
+<li><a href="os.html" class="nav-os">OS</a></li>
+<li><a href="path.html" class="nav-path">Path</a></li>
+<li><a href="perf_hooks.html" class="nav-perf_hooks">Performance hooks</a></li>
+<li><a href="permissions.html" class="nav-permissions">Permissions</a></li>
+<li><a href="process.html" class="nav-process">Process</a></li>
+<li><a href="punycode.html" class="nav-punycode">Punycode</a></li>
+<li><a href="querystring.html" class="nav-querystring">Query strings</a></li>
+<li><a href="readline.html" class="nav-readline">Readline</a></li>
+<li><a href="repl.html" class="nav-repl">REPL</a></li>
+<li><a href="report.html" class="nav-report">Report</a></li>
+<li><a href="stream.html" class="nav-stream">Stream</a></li>
+<li><a href="string_decoder.html" class="nav-string_decoder">String decoder</a></li>
+<li><a href="test.html" class="nav-test">Test runner</a></li>
+<li><a href="timers.html" class="nav-timers">Timers</a></li>
+<li><a href="tls.html" class="nav-tls">TLS/SSL</a></li>
+<li><a href="tracing.html" class="nav-tracing">Trace events</a></li>
+<li><a href="tty.html" class="nav-tty">TTY</a></li>
+<li><a href="dgram.html" class="nav-dgram">UDP/datagram</a></li>
+<li><a href="url.html" class="nav-url">URL</a></li>
+<li><a href="util.html" class="nav-util active">Utilities</a></li>
+<li><a href="v8.html" class="nav-v8">V8</a></li>
+<li><a href="vm.html" class="nav-vm">VM</a></li>
+<li><a href="wasi.html" class="nav-wasi">WASI</a></li>
+<li><a href="webcrypto.html" class="nav-webcrypto">Web Crypto API</a></li>
+<li><a href="webstreams.html" class="nav-webstreams">Web Streams API</a></li>
+<li><a href="worker_threads.html" class="nav-worker_threads">Worker threads</a></li>
+<li><a href="zlib.html" class="nav-zlib">Zlib</a></li>
+</ul>
+<hr class="line">
+<ul>
+<li><a href="https://github.com/nodejs/node" class="nav-https-github-com-nodejs-node">Code repository and issue tracker</a></li>
+</ul></div>
+    </li>
+  
+            
+    <li class="picker-header">
+      <a href="#">
+        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        Other versions
+      </a>
+      <div class="picker"><ol id="alt-docs"><li><a href="https://nodejs.org/docs/latest-v19.x/api/util.html">19.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v18.x/api/util.html">18.x</a></li>
+<li><a href="https://nodejs.org/docs/latest-v17.x/api/util.html">17.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v16.x/api/util.html">16.x <b>LTS</b></a></li>
 <li><a href="https://nodejs.org/docs/latest-v15.x/api/util.html">15.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v14.x/api/util.html">14.x <b>LTS</b></a></li>
@@ -134,10 +367,27 @@
 <li><a href="https://nodejs.org/docs/latest-v5.x/api/util.html">5.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v4.x/api/util.html">4.x</a></li>
 <li><a href="https://nodejs.org/docs/latest-v0.12.x/api/util.html">0.12.x</a></li>
-<li><a href="https://nodejs.org/docs/latest-v0.10.x/api/util.html">0.10.x</a></li></ol>
+<li><a href="https://nodejs.org/docs/latest-v0.10.x/api/util.html">0.10.x</a></li></ol></div>
     </li>
   
-            <li class="edit_on_github"><a href="https://github.com/nodejs/node/edit/master/doc/api/util.md">Edit on GitHub</a></li>
+            <li class="picker-header">
+              <a href="#">
+                <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+                Options
+              </a>
+        
+              <div class="picker">
+                <ul>
+                  <li>
+                    <a href="all.html">View on single page</a>
+                  </li>
+                  <li>
+                    <a href="util.json">View as JSON</a>
+                  </li>
+                  <li class="edit_on_github"><a href="https://github.com/nodejs/node/edit/main/doc/api/util.md">Edit on GitHub</a></li>    
+                </ul>
+              </div>
+            </li>
           </ul>
         </div>
         <hr>
@@ -175,6 +425,11 @@
 </ul>
 </li>
 <li><a href="#utilisdeepstrictequalval1-val2"><code>util.isDeepStrictEqual(val1, val2)</code></a></li>
+<li><span class="stability_1"><a href="#utilparseargsconfig"><code>util.parseArgs([config])</code></a></span>
+<ul>
+<li><a href="#parseargs-tokens"><code>parseArgs</code> <code>tokens</code></a></li>
+</ul>
+</li>
 <li><a href="#utilpromisifyoriginal"><code>util.promisify(original)</code></a>
 <ul>
 <li><a href="#custom-promisified-functions">Custom promisified functions</a></li>
@@ -206,6 +461,8 @@
 </ul>
 </li>
 <li><a href="#utiltousvstringstring"><code>util.toUSVString(string)</code></a></li>
+<li><span class="stability_1"><a href="#utiltransferableabortcontroller"><code>util.transferableAbortController()</code></a></span></li>
+<li><span class="stability_1"><a href="#utiltransferableabortsignalsignal"><code>util.transferableAbortSignal(signal)</code></a></span></li>
 <li><a href="#utiltypes"><code>util.types</code></a>
 <ul>
 <li><a href="#utiltypesisanyarraybuffervalue"><code>util.types.isAnyArrayBuffer(value)</code></a></li>
@@ -281,11 +538,11 @@
         <h2>Util<span><a class="mark" href="#util" id="util">#</a></span><a aria-hidden="true" class="legacy" id="util_util"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v16.14.2/lib/util.js">lib/util.js</a></p>
-<p>The <code>util</code> module supports the needs of Node.js internal APIs. Many of the
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.12.0/lib/util.js">lib/util.js</a></p>
+<p>The <code>node:util</code> module supports the needs of Node.js internal APIs. Many of the
 utilities are useful for application and module developers as well. To access
 it:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);</code></pre>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);</code></pre>
 <section><h3><code>util.callbackify(original)</code><span><a class="mark" href="#utilcallbackifyoriginal" id="utilcallbackifyoriginal">#</a></span><a aria-hidden="true" class="legacy" id="util_util_callbackify_original"></a></h3>
 <div class="api_metadata">
 <span>Added in: v8.2.0</span>
@@ -299,7 +556,7 @@ function following the error-first callback style, i.e. taking
 an <code>(err, value) => ...</code> callback as the last argument. In the callback, the
 first argument will be the rejection reason (or <code>null</code> if the <code>Promise</code>
 resolved), and the second argument will be the resolved value.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">fn</span>(<span class="hljs-params"></span>) {
   <span class="hljs-keyword">return</span> <span class="hljs-string">'hello world'</span>;
@@ -345,7 +602,7 @@ writes debug messages to <code>stderr</code> based on the existence of the <code
 environment variable. If the <code>section</code> name appears within the value of that
 environment variable, then the returned function operates similar to
 <a href="console.html#consoleerrordata-args"><code>console.error()</code></a>. If not, then the returned function is a no-op.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">const</span> debuglog = util.<span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'foo'</span>);
 
 <span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'hello from foo [%d]'</span>, <span class="hljs-number">123</span>);</code></pre>
@@ -355,7 +612,7 @@ it will output something like:</p>
 <p>where <code>3245</code> is the process id. If it is not run with that
 environment variable set, then it will not print anything.</p>
 <p>The <code>section</code> supports wildcard also:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">const</span> debuglog = util.<span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'foo-bar'</span>);
 
 <span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'hi there, it\'s foo-bar [%d]'</span>, <span class="hljs-number">2333</span>);</code></pre>
@@ -367,7 +624,7 @@ environment variable: <code>NODE_DEBUG=fs,net,tls</code>.</p>
 <p>The optional <code>callback</code> argument can be used to replace the logging function
 with a different function that doesn't have any initialization or
 unnecessary wrapping.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">let</span> debuglog = util.<span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'internals'</span>, <span class="hljs-function">(<span class="hljs-params">debug</span>) =></span> {
   <span class="hljs-comment">// Replace with a logging function that optimizes out</span>
   <span class="hljs-comment">// testing if the section is enabled</span>
@@ -385,7 +642,7 @@ in conditionals based on the existence of the <code>NODE_DEBUG</code> environmen
 If the <code>section</code> name appears within the value of that environment variable,
 then the returned value will be <code>true</code>. If not, then the returned value will be
 <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">const</span> enabled = util.<span class="hljs-title function_">debuglog</span>(<span class="hljs-string">'foo'</span>).<span class="hljs-property">enabled</span>;
 <span class="hljs-keyword">if</span> (enabled) {
   <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'hello from foo [%d]'</span>, <span class="hljs-number">123</span>);
@@ -421,7 +678,7 @@ list of codes.</li>
 </ul>
 <p>The <code>util.deprecate()</code> method wraps <code>fn</code> (which may be a function or class) in
 such a way that it is marked as deprecated.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-built_in">exports</span>.<span class="hljs-property">obsoleteFunction</span> = util.<span class="hljs-title function_">deprecate</span>(<span class="hljs-function">() =></span> {
   <span class="hljs-comment">// Do something here.</span>
@@ -433,7 +690,7 @@ called. After the warning is emitted, the wrapped function is called without
 emitting a warning.</p>
 <p>If the same optional <code>code</code> is supplied in multiple calls to <code>util.deprecate()</code>,
 the warning will be emitted only once for that <code>code</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> fn1 = util.<span class="hljs-title function_">deprecate</span>(someFunction, someMessage, <span class="hljs-string">'DEP0001'</span>);
 <span class="hljs-keyword">const</span> fn2 = util.<span class="hljs-title function_">deprecate</span>(someOtherFunction, someOtherMessage, <span class="hljs-string">'DEP0001'</span>);
@@ -464,7 +721,7 @@ property take precedence over <code>--trace-deprecation</code> and
 <tr><td>v12.0.0</td>
 <td><p>If the <code>format</code> argument is not a format string, the output string's formatting is no longer dependent on the type of the first argument. This change removes previously present quotes from strings that were being output when the first argument was not a string.</p></td></tr>
 <tr><td>v11.4.0</td>
-<td><p>The <code>%d</code>, <code>%f</code> and <code>%i</code> specifiers now support Symbols properly.</p></td></tr>
+<td><p>The <code>%d</code>, <code>%f</code>, and <code>%i</code> specifiers now support Symbols properly.</p></td></tr>
 <tr><td>v11.4.0</td>
 <td><p>The <code>%o</code> specifier's <code>depth</code> has default depth of 4 again.</p></td></tr>
 <tr><td>v11.0.0</td>
@@ -560,7 +817,7 @@ See <a href="errors.html#common-system-errors">Common System Errors</a> for the 
 });</code></pre>
 </section><section><h3><code>util.getSystemErrorMap()</code><span><a class="mark" href="#utilgetsystemerrormap" id="utilgetsystemerrormap">#</a></span><a aria-hidden="true" class="legacy" id="util_util_getsystemerrormap"></a></h3>
 <div class="api_metadata">
-<span>Added in: v16.0.0</span>
+<span>Added in: v16.0.0, v14.17.0</span>
 </div>
 <ul>
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map" class="type">&#x3C;Map></a></li>
@@ -600,8 +857,8 @@ prototype of <code>constructor</code> will be set to a new object created from
 <code>Object.setPrototypeOf(constructor.prototype, superConstructor.prototype)</code>.
 As an additional convenience, <code>superConstructor</code> will be accessible
 through the <code>constructor.super_</code> property.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
-<span class="hljs-keyword">const</span> <span class="hljs-title class_">EventEmitter</span> = <span class="hljs-built_in">require</span>(<span class="hljs-string">'events'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+<span class="hljs-keyword">const</span> <span class="hljs-title class_">EventEmitter</span> = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:events'</span>);
 
 <span class="hljs-keyword">function</span> <span class="hljs-title function_">MyStream</span>(<span class="hljs-params"></span>) {
   <span class="hljs-title class_">EventEmitter</span>.<span class="hljs-title function_">call</span>(<span class="hljs-variable language_">this</span>);
@@ -623,7 +880,7 @@ stream.<span class="hljs-title function_">on</span>(<span class="hljs-string">'d
 });
 stream.<span class="hljs-title function_">write</span>(<span class="hljs-string">'It works!'</span>); <span class="hljs-comment">// Received data: "It works!"</span></code></pre>
 <p>ES6 example using <code>class</code> and <code>extends</code>:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> <span class="hljs-title class_">EventEmitter</span> = <span class="hljs-built_in">require</span>(<span class="hljs-string">'events'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> <span class="hljs-title class_">EventEmitter</span> = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:events'</span>);
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">MyStream</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_ inherited__">EventEmitter</span> {
   <span class="hljs-title function_">write</span>(<span class="hljs-params">data</span>) {
@@ -643,7 +900,7 @@ stream.<span class="hljs-title function_">write</span>(<span class="hljs-string"
 <details class="changelog"><summary>History</summary>
 <table>
 <tbody><tr><th>Version</th><th>Changes</th></tr>
-<tr><td>v16.14.0</td>
+<tr><td>v17.3.0, v16.14.0</td>
 <td><p>The <code>numericSeparator</code> option is supported now.</p></td></tr>
 <tr><td>v13.0.0</td>
 <td><p>Circular references now include a marker to the reference.</p></td></tr>
@@ -668,7 +925,7 @@ stream.<span class="hljs-title function_">write</span>(<span class="hljs-string"
 <tr><td>v11.0.0</td>
 <td><p>The <code>depth</code> default changed to <code>20</code>.</p></td></tr>
 <tr><td>v11.0.0</td>
-<td><p>The inspection output is now limited to about 128 MB. Data above that size will not be fully inspected.</p></td></tr>
+<td><p>The inspection output is now limited to about 128 MiB. Data above that size will not be fully inspected.</p></td></tr>
 <tr><td>v10.12.0</td>
 <td><p>The <code>sorted</code> option is supported now.</p></td></tr>
 <tr><td>v10.6.0</td>
@@ -711,7 +968,7 @@ codes. Colors are customizable. See <a href="#customizing-utilinspect-colors">Cu
 <li><code>showProxy</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> If <code>true</code>, <code>Proxy</code> inspection includes
 the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#Terminology"><code>target</code> and <code>handler</code></a> objects. <strong>Default:</strong> <code>false</code>.</li>
 <li><code>maxArrayLength</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;integer></a> Specifies the maximum number of <code>Array</code>,
-<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray"><code>TypedArray</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap"><code>WeakMap</code></a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet"><code>WeakSet</code></a> elements to include when
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray"><code>TypedArray</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap"><code>WeakMap</code></a>, and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet"><code>WeakSet</code></a> elements to include when
 formatting. Set to <code>null</code> or <code>Infinity</code> to show all elements. Set to <code>0</code> or
 negative to show no elements. <strong>Default:</strong> <code>100</code>.</li>
 <li><code>maxStringLength</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;integer></a> Specifies the maximum number of characters to
@@ -763,7 +1020,7 @@ util.<span class="hljs-title function_">inspect</span>(<span class="hljs-keyword
 util.<span class="hljs-title function_">inspect</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Bar</span>()); <span class="hljs-comment">// 'Bar {}'</span>
 util.<span class="hljs-title function_">inspect</span>(baz);       <span class="hljs-comment">// '[foo] {}'</span></code></pre>
 <p>Circular references point to their anchor by using a reference index:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> obj = {};
 obj.<span class="hljs-property">a</span> = [obj];
@@ -777,11 +1034,11 @@ obj.<span class="hljs-property">b</span>.<span class="hljs-property">obj</span> 
 <span class="hljs-comment">//   b: &#x3C;ref *2> { inner: [Circular *2], obj: [Circular *1] }</span>
 <span class="hljs-comment">// }</span></code></pre>
 <p>The following example inspects all properties of the <code>util</code> object:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(util.<span class="hljs-title function_">inspect</span>(util, { <span class="hljs-attr">showHidden</span>: <span class="hljs-literal">true</span>, <span class="hljs-attr">depth</span>: <span class="hljs-literal">null</span> }));</code></pre>
 <p>The following example highlights the effect of the <code>compact</code> option:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> o = {
   <span class="hljs-attr">a</span>: [<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, [[
@@ -833,7 +1090,7 @@ inspected. If there are more entries than <code>maxArrayLength</code>, there is 
 guarantee which entries are displayed. That means retrieving the same
 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet"><code>WeakSet</code></a> entries twice may result in different output. Furthermore, entries
 with no remaining strong references may be garbage collected at any time.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> obj = { <span class="hljs-attr">a</span>: <span class="hljs-number">1</span> };
 <span class="hljs-keyword">const</span> obj2 = { <span class="hljs-attr">b</span>: <span class="hljs-number">2</span> };
@@ -843,8 +1100,8 @@ with no remaining strong references may be garbage collected at any time.</p>
 <span class="hljs-comment">// WeakSet { { a: 1 }, { b: 2 } }</span></code></pre>
 <p>The <code>sorted</code> option ensures that an object's property insertion order does not
 impact the result of <code>util.inspect()</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
-<span class="hljs-keyword">const</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'assert'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+<span class="hljs-keyword">const</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:assert'</span>);
 
 <span class="hljs-keyword">const</span> o1 = {
   <span class="hljs-attr">b</span>: [<span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">1</span>],
@@ -867,7 +1124,7 @@ assert.<span class="hljs-property">strict</span>.<span class="hljs-title functio
 );</code></pre>
 <p>The <code>numericSeparator</code> option adds an underscore every three digits to all
 numbers.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> { inspect } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> thousand = <span class="hljs-number">1_000</span>;
 <span class="hljs-keyword">const</span> million = <span class="hljs-number">1_000_000</span>;
@@ -877,7 +1134,7 @@ numbers.</p>
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(thousand, million, bigNumber, bigDecimal);
 <span class="hljs-comment">// 1_000 1_000_000 123_456_789n 1_234.123_45</span></code></pre>
 <p><code>util.inspect()</code> is a synchronous method intended for debugging. Its maximum
-output length is approximately 128 MB. Inputs that result in longer output will
+output length is approximately 128 MiB. Inputs that result in longer output will
 be truncated.</p>
 <h4>Customizing <code>util.inspect</code> colors<span><a class="mark" href="#customizing-utilinspect-colors" id="customizing-utilinspect-colors">#</a></span><a aria-hidden="true" class="legacy" id="util_customizing_util_inspect_colors"></a></h4>
 
@@ -969,7 +1226,7 @@ double underlined (Alias: <code>doubleUnderline</code>)</li>
 <details class="changelog"><summary>History</summary>
 <table>
 <tbody><tr><th>Version</th><th>Changes</th></tr>
-<tr><td>v16.14.0</td>
+<tr><td>v17.3.0, v16.14.0</td>
 <td><p>The inspect argument is added for more interoperability.</p></td></tr>
 <tr><td>v0.1.97</td>
 <td><p><span>Added in: v0.1.97</span></p></td></tr>
@@ -980,7 +1237,7 @@ double underlined (Alias: <code>doubleUnderline</code>)</li>
 <a href="#utilinspectcustom"><code>[util.inspect.custom](depth, opts, inspect)</code></a> function,
 which <code>util.inspect()</code> will invoke and use the result of when inspecting
 the object.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">Box</span> {
   <span class="hljs-title function_">constructor</span>(<span class="hljs-params">value</span>) {
@@ -1011,7 +1268,7 @@ util.<span class="hljs-title function_">inspect</span>(box);
 <p>Custom <code>[util.inspect.custom](depth, opts, inspect)</code> functions typically return
 a string but may return a value of any type that will be formatted accordingly
 by <code>util.inspect()</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> obj = { <span class="hljs-attr">foo</span>: <span class="hljs-string">'this will not show up in the inspect() output'</span> };
 obj[util.<span class="hljs-property">inspect</span>.<span class="hljs-property">custom</span>] = <span class="hljs-function">(<span class="hljs-params">depth</span>) =></span> {
@@ -1071,7 +1328,7 @@ inspect function to allow further portability.</p>
 <code>util.format</code> which implicitly call into <code>util.inspect</code>. It shall be set to an
 object containing one or more valid <a href="#utilinspectobject-options"><code>util.inspect()</code></a> options. Setting
 option properties directly is also supported.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">const</span> arr = <span class="hljs-title class_">Array</span>(<span class="hljs-number">101</span>).<span class="hljs-title function_">fill</span>(<span class="hljs-number">0</span>);
 
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(arr); <span class="hljs-comment">// Logs the truncated array</span>
@@ -1090,6 +1347,209 @@ util.<span class="hljs-property">inspect</span>.<span class="hljs-property">defa
 Otherwise, returns <code>false</code>.</p>
 <p>See <a href="assert.html#assertdeepstrictequalactual-expected-message"><code>assert.deepStrictEqual()</code></a> for more information about deep strict
 equality.</p>
+</section><section><h3><code>util.parseArgs([config])</code><span><a class="mark" href="#utilparseargsconfig" id="utilparseargsconfig">#</a></span><a aria-hidden="true" class="legacy" id="util_util_parseargs_config"></a></h3>
+<div class="api_metadata">
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v18.11.0</td>
+<td><p>Add support for default values in input <code>config</code>.</p></td></tr>
+<tr><td>v18.3.0</td>
+<td><p><span>Added in: v18.3.0</span></p></td></tr>
+<tr><td>v18.7.0, v16.17.0</td>
+<td><p>add support for returning detailed parse information using <code>tokens</code> in input <code>config</code> and returned properties.</p></td></tr>
+</tbody></table>
+</details>
+</div>
+<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
+<ul>
+<li>
+<p><code>config</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> Used to provide arguments for parsing and to configure
+the parser. <code>config</code> supports the following properties:</p>
+<ul>
+<li><code>args</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> array of argument strings. <strong>Default:</strong> <code>process.argv</code>
+with <code>execPath</code> and <code>filename</code> removed.</li>
+<li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> Used to describe arguments known to the parser.
+Keys of <code>options</code> are the long names of options and values are an
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> accepting the following properties:
+<ul>
+<li><code>type</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> Type of argument, which must be either <code>boolean</code> or <code>string</code>.</li>
+<li><code>multiple</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Whether this option can be provided multiple
+times. If <code>true</code>, all values will be collected in an array. If
+<code>false</code>, values for the option are last-wins. <strong>Default:</strong> <code>false</code>.</li>
+<li><code>short</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> A single character alias for the option.</li>
+<li><code>default</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean[]></a> The default option
+value when it is not set by args. It must be of the same type as the
+the <code>type</code> property. When <code>multiple</code> is <code>true</code>, it must be an array.</li>
+</ul>
+</li>
+<li><code>strict</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Should an error be thrown when unknown arguments
+are encountered, or when arguments are passed that do not match the
+<code>type</code> configured in <code>options</code>.
+<strong>Default:</strong> <code>true</code>.</li>
+<li><code>allowPositionals</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Whether this command accepts positional
+arguments.
+<strong>Default:</strong> <code>false</code> if <code>strict</code> is <code>true</code>, otherwise <code>true</code>.</li>
+<li><code>tokens</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> Return the parsed tokens. This is useful for extending
+the built-in behavior, from adding additional checks through to reprocessing
+the tokens in different ways.
+<strong>Default:</strong> <code>false</code>.</li>
+</ul>
+</li>
+<li>
+<p>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> The parsed command line arguments:</p>
+<ul>
+<li><code>values</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a> A mapping of parsed option names with their <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a>
+or <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> values.</li>
+<li><code>positionals</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string[]></a> Positional arguments.</li>
+<li><code>tokens</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object[]></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> See <a href="#parseargs-tokens">parseArgs tokens</a>
+section. Only returned if <code>config</code> includes <code>tokens: true</code>.</li>
+</ul>
+</li>
+</ul>
+<p>Provides a higher level API for command-line argument parsing than interacting
+with <code>process.argv</code> directly. Takes a specification for the expected arguments
+and returns a structured object with the parsed options and positionals.</p>
+
+<pre class="with-43-chars"><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { parseArgs } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:util'</span>;
+<span class="hljs-keyword">const</span> args = [<span class="hljs-string">'-f'</span>, <span class="hljs-string">'--bar'</span>, <span class="hljs-string">'b'</span>];
+<span class="hljs-keyword">const</span> options = {
+  <span class="hljs-attr">foo</span>: {
+    <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span>,
+    <span class="hljs-attr">short</span>: <span class="hljs-string">'f'</span>
+  },
+  <span class="hljs-attr">bar</span>: {
+    <span class="hljs-attr">type</span>: <span class="hljs-string">'string'</span>
+  }
+};
+<span class="hljs-keyword">const</span> {
+  values,
+  positionals
+} = <span class="hljs-title function_">parseArgs</span>({ args, options });
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(values, positionals);
+<span class="hljs-comment">// Prints: [Object: null prototype] { foo: true, bar: 'b' } []</span></code><code class="language-js cjs"><span class="hljs-keyword">const</span> { parseArgs } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+<span class="hljs-keyword">const</span> args = [<span class="hljs-string">'-f'</span>, <span class="hljs-string">'--bar'</span>, <span class="hljs-string">'b'</span>];
+<span class="hljs-keyword">const</span> options = {
+  <span class="hljs-attr">foo</span>: {
+    <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span>,
+    <span class="hljs-attr">short</span>: <span class="hljs-string">'f'</span>
+  },
+  <span class="hljs-attr">bar</span>: {
+    <span class="hljs-attr">type</span>: <span class="hljs-string">'string'</span>
+  }
+};
+<span class="hljs-keyword">const</span> {
+  values,
+  positionals
+} = <span class="hljs-title function_">parseArgs</span>({ args, options });
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(values, positionals);
+<span class="hljs-comment">// Prints: [Object: null prototype] { foo: true, bar: 'b' } []</span></code></pre>
+<p><code>util.parseArgs</code> is experimental and behavior may change. Join the
+conversation in <a href="https://github.com/pkgjs/parseargs">pkgjs/parseargs</a> to contribute to the design.</p>
+<h4><code>parseArgs</code> <code>tokens</code><span><a class="mark" href="#parseargs-tokens" id="parseargs-tokens">#</a></span><a aria-hidden="true" class="legacy" id="util_parseargs_tokens"></a></h4>
+<p>Detailed parse information is available for adding custom behaviours by
+specifying <code>tokens: true</code> in the configuration.
+The returned tokens have properties describing:</p>
+<ul>
+<li>all tokens
+<ul>
+<li><code>kind</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> One of 'option', 'positional', or 'option-terminator'.</li>
+<li><code>index</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type" class="type">&#x3C;number></a> Index of element in <code>args</code> containing token. So the
+source argument for a token is <code>args[token.index]</code>.</li>
+</ul>
+</li>
+<li>option tokens
+<ul>
+<li><code>name</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> Long name of option.</li>
+<li><code>rawName</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> How option used in args, like <code>-f</code> of <code>--foo</code>.</li>
+<li><code>value</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Option value specified in args.
+Undefined for boolean options.</li>
+<li><code>inlineValue</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> Whether option value specified inline,
+like <code>--foo=bar</code>.</li>
+</ul>
+</li>
+<li>positional tokens
+<ul>
+<li><code>value</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> The value of the positional argument in args (i.e. <code>args[index]</code>).</li>
+</ul>
+</li>
+<li>option-terminator token</li>
+</ul>
+<p>The returned tokens are in the order encountered in the input args. Options
+that appear more than once in args produce a token for each use. Short option
+groups like <code>-xy</code> expand to a token for each option. So <code>-xxx</code> produces
+three tokens.</p>
+<p>For example to use the returned tokens to add support for a negated option
+like <code>--no-color</code>, the tokens can be reprocessed to change the value stored
+for the negated option.</p>
+
+<pre class="with-43-chars"><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> { parseArgs } <span class="hljs-keyword">from</span> <span class="hljs-string">'node:util'</span>;
+
+<span class="hljs-keyword">const</span> options = {
+  <span class="hljs-string">'color'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+  <span class="hljs-string">'no-color'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+  <span class="hljs-string">'logfile'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'string'</span> },
+  <span class="hljs-string">'no-logfile'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+};
+<span class="hljs-keyword">const</span> { values, tokens } = <span class="hljs-title function_">parseArgs</span>({ options, <span class="hljs-attr">tokens</span>: <span class="hljs-literal">true</span> });
+
+<span class="hljs-comment">// Reprocess the option tokens and overwrite the returned values.</span>
+tokens
+  .<span class="hljs-title function_">filter</span>(<span class="hljs-function">(<span class="hljs-params">token</span>) =></span> token.<span class="hljs-property">kind</span> === <span class="hljs-string">'option'</span>)
+  .<span class="hljs-title function_">forEach</span>(<span class="hljs-function">(<span class="hljs-params">token</span>) =></span> {
+    <span class="hljs-keyword">if</span> (token.<span class="hljs-property">name</span>.<span class="hljs-title function_">startsWith</span>(<span class="hljs-string">'no-'</span>)) {
+      <span class="hljs-comment">// Store foo:false for --no-foo</span>
+      <span class="hljs-keyword">const</span> positiveName = token.<span class="hljs-property">name</span>.<span class="hljs-title function_">slice</span>(<span class="hljs-number">3</span>);
+      values[positiveName] = <span class="hljs-literal">false</span>;
+      <span class="hljs-keyword">delete</span> values[token.<span class="hljs-property">name</span>];
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-comment">// Resave value so last one wins if both --foo and --no-foo.</span>
+      values[token.<span class="hljs-property">name</span>] = token.<span class="hljs-property">value</span> ?? <span class="hljs-literal">true</span>;
+    }
+  });
+
+<span class="hljs-keyword">const</span> color = values.<span class="hljs-property">color</span>;
+<span class="hljs-keyword">const</span> logfile = values.<span class="hljs-property">logfile</span> ?? <span class="hljs-string">'default.log'</span>;
+
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>({ logfile, color });</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { parseArgs } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+
+<span class="hljs-keyword">const</span> options = {
+  <span class="hljs-string">'color'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+  <span class="hljs-string">'no-color'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+  <span class="hljs-string">'logfile'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'string'</span> },
+  <span class="hljs-string">'no-logfile'</span>: { <span class="hljs-attr">type</span>: <span class="hljs-string">'boolean'</span> },
+};
+<span class="hljs-keyword">const</span> { values, tokens } = <span class="hljs-title function_">parseArgs</span>({ options, <span class="hljs-attr">tokens</span>: <span class="hljs-literal">true</span> });
+
+<span class="hljs-comment">// Reprocess the option tokens and overwrite the returned values.</span>
+tokens
+  .<span class="hljs-title function_">filter</span>(<span class="hljs-function">(<span class="hljs-params">token</span>) =></span> token.<span class="hljs-property">kind</span> === <span class="hljs-string">'option'</span>)
+  .<span class="hljs-title function_">forEach</span>(<span class="hljs-function">(<span class="hljs-params">token</span>) =></span> {
+    <span class="hljs-keyword">if</span> (token.<span class="hljs-property">name</span>.<span class="hljs-title function_">startsWith</span>(<span class="hljs-string">'no-'</span>)) {
+      <span class="hljs-comment">// Store foo:false for --no-foo</span>
+      <span class="hljs-keyword">const</span> positiveName = token.<span class="hljs-property">name</span>.<span class="hljs-title function_">slice</span>(<span class="hljs-number">3</span>);
+      values[positiveName] = <span class="hljs-literal">false</span>;
+      <span class="hljs-keyword">delete</span> values[token.<span class="hljs-property">name</span>];
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-comment">// Resave value so last one wins if both --foo and --no-foo.</span>
+      values[token.<span class="hljs-property">name</span>] = token.<span class="hljs-property">value</span> ?? <span class="hljs-literal">true</span>;
+    }
+  });
+
+<span class="hljs-keyword">const</span> color = values.<span class="hljs-property">color</span>;
+<span class="hljs-keyword">const</span> logfile = values.<span class="hljs-property">logfile</span> ?? <span class="hljs-string">'default.log'</span>;
+
+<span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>({ logfile, color });</code></pre>
+<p>Example usage showing negated options, and when an option is used
+multiple ways then last one wins.</p>
+<pre><code class="language-console"><span class="hljs-meta prompt_">$ </span><span class="language-bash">node negate.js</span>
+{ logfile: 'default.log', color: undefined }
+<span class="hljs-meta prompt_">$ </span><span class="language-bash">node negate.js --no-logfile --no-color</span>
+{ logfile: false, color: false }
+<span class="hljs-meta prompt_">$ </span><span class="language-bash">node negate.js --logfile=test.log --color</span>
+{ logfile: 'test.log', color: true }
+<span class="hljs-meta prompt_">$ </span><span class="language-bash">node negate.js --no-logfile --logfile=test.log --color --no-color</span>
+{ logfile: 'test.log', color: false }</code></pre>
 </section><section><h3><code>util.promisify(original)</code><span><a class="mark" href="#utilpromisifyoriginal" id="utilpromisifyoriginal">#</a></span><a aria-hidden="true" class="legacy" id="util_util_promisify_original"></a></h3>
 <div class="api_metadata">
 <span>Added in: v8.0.0</span>
@@ -1101,8 +1561,8 @@ equality.</p>
 <p>Takes a function following the common error-first callback style, i.e. taking
 an <code>(err, value) => ...</code> callback as the last argument, and returns a version
 that returns promises.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
-<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:fs'</span>);
 
 <span class="hljs-keyword">const</span> stat = util.<span class="hljs-title function_">promisify</span>(fs.<span class="hljs-property">stat</span>);
 <span class="hljs-title function_">stat</span>(<span class="hljs-string">'.'</span>).<span class="hljs-title function_">then</span>(<span class="hljs-function">(<span class="hljs-params">stats</span>) =></span> {
@@ -1111,8 +1571,8 @@ that returns promises.</p>
   <span class="hljs-comment">// Handle the error.</span>
 });</code></pre>
 <p>Or, equivalently using <code>async function</code>s:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
-<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'fs'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
+<span class="hljs-keyword">const</span> fs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:fs'</span>);
 
 <span class="hljs-keyword">const</span> stat = util.<span class="hljs-title function_">promisify</span>(fs.<span class="hljs-property">stat</span>);
 
@@ -1129,7 +1589,7 @@ an error-first callback, it will still be passed an error-first
 callback as its last argument.</p>
 <p>Using <code>promisify()</code> on class methods or other methods that use <code>this</code> may not
 work as expected unless handled specially:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">class</span> <span class="hljs-title class_">Foo</span> {
   <span class="hljs-title function_">constructor</span>(<span class="hljs-params"></span>) {
@@ -1154,7 +1614,7 @@ naiveBar.<span class="hljs-title function_">call</span>(foo).<span class="hljs-t
 <h4>Custom promisified functions<span><a class="mark" href="#custom-promisified-functions" id="custom-promisified-functions">#</a></span><a aria-hidden="true" class="legacy" id="util_custom_promisified_functions"></a></h4>
 <p>Using the <code>util.promisify.custom</code> symbol one can override the return value of
 <a href="#utilpromisifyoriginal"><code>util.promisify()</code></a>:</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">function</span> <span class="hljs-title function_">doSomething</span>(<span class="hljs-params">foo, callback</span>) {
   <span class="hljs-comment">// ...</span>
@@ -1445,16 +1905,16 @@ This option is not supported when ICU is disabled
 <li><code>ignoreBOM</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a> When <code>true</code>, the <code>TextDecoder</code> will include the byte
 order mark in the decoded result. When <code>false</code>, the byte order mark will
 be removed from the output. This option is only used when <code>encoding</code> is
-<code>'utf-8'</code>, <code>'utf-16be'</code> or <code>'utf-16le'</code>. <strong>Default:</strong> <code>false</code>.</li>
+<code>'utf-8'</code>, <code>'utf-16be'</code>, or <code>'utf-16le'</code>. <strong>Default:</strong> <code>false</code>.</li>
 </ul>
 </li>
 </ul>
-<p>Creates an new <code>TextDecoder</code> instance. The <code>encoding</code> may specify one of the
+<p>Creates a new <code>TextDecoder</code> instance. The <code>encoding</code> may specify one of the
 supported encodings or an alias.</p>
 <p>The <code>TextDecoder</code> class is also available on the global object.</p>
 <h4><code>textDecoder.decode([input[, options]])</code><span><a class="mark" href="#textdecoderdecodeinput-options" id="textdecoderdecodeinput-options">#</a></span><a aria-hidden="true" class="legacy" id="util_textdecoder_decode_input_options"></a></h4>
 <ul>
-<li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer" class="type">&#x3C;ArrayBuffer></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView" class="type">&#x3C;DataView></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray" class="type">&#x3C;TypedArray></a> An <code>ArrayBuffer</code>, <code>DataView</code> or
+<li><code>input</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer" class="type">&#x3C;ArrayBuffer></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView" class="type">&#x3C;DataView></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray" class="type">&#x3C;TypedArray></a> An <code>ArrayBuffer</code>, <code>DataView</code>, or
 <code>TypedArray</code> instance containing the encoded data.</li>
 <li><code>options</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object" class="type">&#x3C;Object></a>
 <ul>
@@ -1534,7 +1994,7 @@ containing the read Unicode code units and written UTF-8 bytes.</p>
 <p>The encoding supported by the <code>TextEncoder</code> instance. Always set to <code>'utf-8'</code>.</p>
 </section><section><h3><code>util.toUSVString(string)</code><span><a class="mark" href="#utiltousvstringstring" id="utiltousvstringstring">#</a></span><a aria-hidden="true" class="legacy" id="util_util_tousvstring_string"></a></h3>
 <div class="api_metadata">
-<span>Added in: v16.8.0</span>
+<span>Added in: v16.8.0, v14.18.0</span>
 </div>
 <ul>
 <li><code>string</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a></li>
@@ -1542,6 +2002,27 @@ containing the read Unicode code units and written UTF-8 bytes.</p>
 <p>Returns the <code>string</code> after replacing any surrogate code points
 (or equivalently, any unpaired surrogate code units) with the
 Unicode "replacement character" U+FFFD.</p>
+</section><section><h3><code>util.transferableAbortController()</code><span><a class="mark" href="#utiltransferableabortcontroller" id="utiltransferableabortcontroller">#</a></span><a aria-hidden="true" class="legacy" id="util_util_transferableabortcontroller"></a></h3>
+<div class="api_metadata">
+<span>Added in: v18.11.0</span>
+</div>
+<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
+<p>Creates and returns an <a href="globals.html#class-abortcontroller" class="type">&#x3C;AbortController></a> instance whose <a href="globals.html#class-abortsignal" class="type">&#x3C;AbortSignal></a> is marked
+as transferable and can be used with <code>structuredClone()</code> or <code>postMessage()</code>.</p>
+</section><section><h3><code>util.transferableAbortSignal(signal)</code><span><a class="mark" href="#utiltransferableabortsignalsignal" id="utiltransferableabortsignalsignal">#</a></span><a aria-hidden="true" class="legacy" id="util_util_transferableabortsignal_signal"></a></h3>
+<div class="api_metadata">
+<span>Added in: v18.11.0</span>
+</div>
+<p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
+<ul>
+<li><code>signal</code> <a href="globals.html#class-abortsignal" class="type">&#x3C;AbortSignal></a></li>
+<li>Returns: <a href="globals.html#class-abortsignal" class="type">&#x3C;AbortSignal></a></li>
+</ul>
+<p>Marks the given <a href="globals.html#class-abortsignal" class="type">&#x3C;AbortSignal></a> as transferable so that it can be used with
+<code>structuredClone()</code> and <code>postMessage()</code>.</p>
+<pre><code class="language-js"><span class="hljs-keyword">const</span> signal = <span class="hljs-title function_">transferableAbortSignal</span>(<span class="hljs-title class_">AbortSignal</span>.<span class="hljs-title function_">timeout</span>(<span class="hljs-number">100</span>));
+<span class="hljs-keyword">const</span> channel = <span class="hljs-keyword">new</span> <span class="hljs-title class_">MessageChannel</span>();
+channel.<span class="hljs-property">port2</span>.<span class="hljs-title function_">postMessage</span>(signal, [signal]);</code></pre>
 </section><section><h3><code>util.types</code><span><a class="mark" href="#utiltypes" id="utiltypes">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types"></a></h3>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -1561,7 +2042,7 @@ their prototype), and usually have the overhead of calling into C++.</p>
 <p>The result generally does not make any guarantees about what kinds of
 properties or behavior a value exposes in JavaScript. They are primarily
 useful for addon developers who prefer to do type checking in JavaScript.</p>
-<p>The API is accessible via <code>require('util').types</code> or <code>require('util/types')</code>.</p>
+<p>The API is accessible via <code>require('node:util').types</code> or <code>require('node:util/types')</code>.</p>
 <h4><code>util.types.isAnyArrayBuffer(value)</code><span><a class="mark" href="#utiltypesisanyarraybuffervalue" id="utiltypesisanyarraybuffervalue">#</a></span><a aria-hidden="true" class="legacy" id="util_util_types_isanyarraybuffer_value"></a></h4>
 <div class="api_metadata">
 <span>Added in: v10.0.0</span>
@@ -2131,7 +2612,7 @@ similar built-in functionality through <a href="https://developer.mozilla.org/en
 </ul>
 <p>Alias for <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray"><code>Array.isArray()</code></a>.</p>
 <p>Returns <code>true</code> if the given <code>object</code> is an <code>Array</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isArray</span>([]);
 <span class="hljs-comment">// Returns: true</span>
@@ -2149,7 +2630,7 @@ util.<span class="hljs-title function_">isArray</span>({});
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Boolean</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isBoolean</span>(<span class="hljs-number">1</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2167,7 +2648,7 @@ util.<span class="hljs-title function_">isBoolean</span>(<span class="hljs-liter
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Buffer</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isBuffer</span>({ <span class="hljs-attr">length</span>: <span class="hljs-number">0</span> });
 <span class="hljs-comment">// Returns: false</span>
@@ -2185,7 +2666,7 @@ util.<span class="hljs-title function_">isBuffer</span>(<span class="hljs-title 
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Date</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isDate</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>());
 <span class="hljs-comment">// Returns: true</span>
@@ -2204,7 +2685,7 @@ util.<span class="hljs-title function_">isDate</span>({});
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is an <a href="errors.html#class-error"><code>Error</code></a>. Otherwise, returns
 <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isError</span>(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Error</span>());
 <span class="hljs-comment">// Returns: true</span>
@@ -2215,7 +2696,7 @@ util.<span class="hljs-title function_">isError</span>({ <span class="hljs-attr"
 <p>This method relies on <code>Object.prototype.toString()</code> behavior. It is
 possible to obtain an incorrect result when the <code>object</code> argument manipulates
 <code>@@toStringTag</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 <span class="hljs-keyword">const</span> obj = { <span class="hljs-attr">name</span>: <span class="hljs-string">'Error'</span>, <span class="hljs-attr">message</span>: <span class="hljs-string">'an error occurred'</span> };
 
 util.<span class="hljs-title function_">isError</span>(obj);
@@ -2234,7 +2715,7 @@ util.<span class="hljs-title function_">isError</span>(obj);
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Function</code>. Otherwise, returns
 <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">function</span> <span class="hljs-title function_">Foo</span>(<span class="hljs-params"></span>) {}
 <span class="hljs-keyword">const</span> <span class="hljs-title function_">Bar</span> = (<span class="hljs-params"></span>) => {};
@@ -2256,7 +2737,7 @@ util.<span class="hljs-title function_">isFunction</span>(<span class="hljs-titl
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is strictly <code>null</code>. Otherwise, returns
 <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isNull</span>(<span class="hljs-number">0</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2276,7 +2757,7 @@ util.<span class="hljs-title function_">isNull</span>(<span class="hljs-literal"
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is <code>null</code> or <code>undefined</code>. Otherwise,
 returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isNullOrUndefined</span>(<span class="hljs-number">0</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2294,7 +2775,7 @@ util.<span class="hljs-title function_">isNullOrUndefined</span>(<span class="hl
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Number</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isNumber</span>(<span class="hljs-literal">false</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2317,7 +2798,7 @@ Use <code>value !== null &#x26;&#x26; typeof value === 'object'</code> instead.<
 <p>Returns <code>true</code> if the given <code>object</code> is strictly an <code>Object</code> <strong>and</strong> not a
 <code>Function</code> (even though functions are objects in JavaScript).
 Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isObject</span>(<span class="hljs-number">5</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2340,7 +2821,7 @@ instead.</div><p></p>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a primitive type. Otherwise, returns
 <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isPrimitive</span>(<span class="hljs-number">5</span>);
 <span class="hljs-comment">// Returns: true</span>
@@ -2370,7 +2851,7 @@ util.<span class="hljs-title function_">isPrimitive</span>(<span class="hljs-key
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>RegExp</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isRegExp</span>(<span class="hljs-regexp">/some regexp/</span>);
 <span class="hljs-comment">// Returns: true</span>
@@ -2388,7 +2869,7 @@ util.<span class="hljs-title function_">isRegExp</span>({});
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>string</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isString</span>(<span class="hljs-string">''</span>);
 <span class="hljs-comment">// Returns: true</span>
@@ -2408,7 +2889,7 @@ util.<span class="hljs-title function_">isString</span>(<span class="hljs-number
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is a <code>Symbol</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">isSymbol</span>(<span class="hljs-number">5</span>);
 <span class="hljs-comment">// Returns: false</span>
@@ -2426,7 +2907,7 @@ util.<span class="hljs-title function_">isSymbol</span>(<span class="hljs-title 
 <li>Returns: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type" class="type">&#x3C;boolean></a></li>
 </ul>
 <p>Returns <code>true</code> if the given <code>object</code> is <code>undefined</code>. Otherwise, returns <code>false</code>.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 <span class="hljs-keyword">const</span> foo = <span class="hljs-literal">undefined</span>;
 util.<span class="hljs-title function_">isUndefined</span>(<span class="hljs-number">5</span>);
@@ -2445,48 +2926,12 @@ util.<span class="hljs-title function_">isUndefined</span>(<span class="hljs-lit
 </ul>
 <p>The <code>util.log()</code> method prints the given <code>string</code> to <code>stdout</code> with an included
 timestamp.</p>
-<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'util'</span>);
+<pre><code class="language-js"><span class="hljs-keyword">const</span> util = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:util'</span>);
 
 util.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Timestamped message.'</span>);</code></pre></section>
         <!-- API END -->
       </div>
     </div>
   </div>
-  <script>
-    'use strict';
-    {
-      const kCustomPreference = 'customDarkTheme';
-      const userSettings = sessionStorage.getItem(kCustomPreference);
-      const themeToggleButton = document.getElementById('theme-toggle-btn');
-      if (userSettings === null && window.matchMedia) {
-        const mq = window.matchMedia('(prefers-color-scheme: dark)');
-        if ('onchange' in mq) {
-          function mqChangeListener(e) {
-            document.body.classList.toggle('dark-mode', e.matches);
-          }
-          mq.addEventListener('change', mqChangeListener);
-          if (themeToggleButton) {
-            themeToggleButton.addEventListener('click', function() {
-              mq.removeEventListener('change', mqChangeListener);
-            }, { once: true });
-          }
-        }
-        if (mq.matches) {
-          document.body.classList.add('dark-mode');
-        }
-      } else if (userSettings === 'true') {
-        document.body.classList.add('dark-mode');
-      }
-      if (themeToggleButton) {
-        themeToggleButton.hidden = false;
-        themeToggleButton.addEventListener('click', function() {
-          sessionStorage.setItem(
-            kCustomPreference,
-            document.body.classList.toggle('dark-mode')
-          );
-        });
-      }
-    }
-  </script>
 </body>
 </html>

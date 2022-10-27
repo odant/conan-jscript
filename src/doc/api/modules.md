@@ -6,7 +6,11 @@
 
 <!--name=module-->
 
-In the Node.js module system, each file is treated as a separate module. For
+CommonJS modules are the original way to package JavaScript code for Node.js.
+Node.js also supports the [ECMAScript modules][] standard used by browsers
+and other JavaScript runtimes.
+
+In Node.js, each file is treated as a separate module. For
 example, consider a file named `foo.js`:
 
 ```js
@@ -171,7 +175,7 @@ The `.mjs` extension is reserved for [ECMAScript Modules][] which cannot be
 loaded via `require()`. See [Determining module system][] section for more info
 regarding which files are parsed as ECMAScript modules.
 
-## All together...
+## All together
 
 <!-- type=misc -->
 
@@ -316,7 +320,9 @@ irrespective of whether or not `./foo` and `./FOO` are the same file.
 
 <!-- YAML
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37246
     description: Added `node:` import support to `require(...)`.
 -->
@@ -327,14 +333,16 @@ described in greater detail elsewhere in this documentation.
 The core modules are defined within the Node.js source and are located in the
 `lib/` folder.
 
-Core modules are always preferentially loaded if their identifier is
-passed to `require()`. For instance, `require('http')` will always
-return the built in HTTP module, even if there is a file by that name.
-
-Core modules can also be identified using the `node:` prefix, in which case
+Core modules can be identified using the `node:` prefix, in which case
 it bypasses the `require` cache. For instance, `require('node:http')` will
 always return the built in HTTP module, even if there is `require.cache` entry
 by that name.
+
+Some core modules are always preferentially loaded if their identifier is
+passed to `require()`. For instance, `require('http')` will always
+return the built-in HTTP module, even if there is a file by that name. The list
+of core modules that can be loaded without using the `node:` prefix is exposed
+as [`module.builtinModules`][].
 
 ## Cycles
 
@@ -554,7 +562,7 @@ wrapper that looks like the following:
 
 By doing this, Node.js achieves a few things:
 
-* It keeps top-level variables (defined with `var`, `const` or `let`) scoped to
+* It keeps top-level variables (defined with `var`, `const`, or `let`) scoped to
   the module rather than the global object.
 * It helps to provide some global-looking variables that are actually specific
   to the module, such as:
@@ -682,7 +690,7 @@ const myLocalModule = require('./path/myLocalModule');
 const jsonData = require('./path/filename.json');
 
 // Importing a module from node_modules or Node.js built-in module:
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 ```
 
 #### `require.cache`
@@ -699,15 +707,15 @@ This does not apply to [native addons][], for which reloading will result in an
 error.
 
 Adding or replacing entries is also possible. This cache is checked before
-native modules and if a name matching a native module is added to the cache,
-only `node:`-prefixed require calls are going to receive the native module.
+built-in modules and if a name matching a built-in module is added to the cache,
+only `node:`-prefixed require calls are going to receive the built-in module.
 Use with care!
 
 <!-- eslint-disable node-core/no-duplicate-requires -->
 
 ```js
-const assert = require('assert');
-const realFs = require('fs');
+const assert = require('node:assert');
+const realFs = require('node:fs');
 
 const fakeFs = {};
 require.cache.fs = { exports: fakeFs };
@@ -865,7 +873,7 @@ which is probably not what is desired.
 For example, suppose we were making a module called `a.js`:
 
 ```js
-const EventEmitter = require('events');
+const EventEmitter = require('node:events');
 
 module.exports = new EventEmitter();
 
@@ -976,7 +984,9 @@ filename.
 ### `module.isPreloading`
 
 <!-- YAML
-added: v15.4.0
+added:
+  - v15.4.0
+  - v14.17.0
 -->
 
 * Type: {boolean} `true` if the module is running during the Node.js preload
@@ -1083,7 +1093,8 @@ This section was moved to
 [`MODULE_NOT_FOUND`]: errors.md#module_not_found
 [`__dirname`]: #__dirname
 [`__filename`]: #__filename
-[`import()`]: https://wiki.developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#Dynamic_Imports
+[`import()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import
+[`module.builtinModules`]: module.md#modulebuiltinmodules
 [`module.children`]: #modulechildren
 [`module.id`]: #moduleid
 [`module` core module]: module.md

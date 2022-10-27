@@ -201,9 +201,9 @@ GitHub projects using CMake.js.
 #### prebuildify
 
 [prebuildify][] is a tool based on node-gyp. The advantage of prebuildify is
-that the built binaries are bundled with the native module when it's
+that the built binaries are bundled with the native addon when it's
 uploaded to npm. The binaries are downloaded from npm and are immediately
-available to the module user when the native module is installed.
+available to the module user when the native addon is installed.
 
 ## Usage
 
@@ -1182,13 +1182,18 @@ This API throws a JavaScript `RangeError` with the text provided.
 #### `node_api_throw_syntax_error`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.2.0
+  - v16.14.0
 -->
 
-````c
+> Stability: 1 - Experimental
+
+```c
 NAPI_EXTERN napi_status node_api_throw_syntax_error(napi_env env,
                                                     const char* code,
                                                     const char* msg);
+```
 
 * `[in] env`: The environment that the API is invoked under.
 * `[in] code`: Optional error code to be set on the error.
@@ -1209,7 +1214,7 @@ napiVersion: 1
 NAPI_EXTERN napi_status napi_is_error(napi_env env,
                                       napi_value value,
                                       bool* result);
-````
+```
 
 * `[in] env`: The environment that the API is invoked under.
 * `[in] value`: The `napi_value` to be checked.
@@ -1298,8 +1303,12 @@ This API returns a JavaScript `RangeError` with the text provided.
 #### `node_api_create_syntax_error`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.2.0
+  - v16.14.0
 -->
+
+> Stability: 1 - Experimental
 
 ```c
 NAPI_EXTERN napi_status node_api_create_syntax_error(napi_env env,
@@ -1375,7 +1384,7 @@ callback throws an exception with no way to recover.
 
 ### Fatal errors
 
-In the event of an unrecoverable error in a native module, a fatal error can be
+In the event of an unrecoverable error in a native addon, a fatal error can be
 thrown to immediately terminate the process.
 
 #### `napi_fatal_error`
@@ -1645,7 +1654,14 @@ the corresponding object on the heap being retained forever.
 
 There can be multiple persistent references created which refer to the same
 object, each of which will either keep the object live or not based on its
-individual count.
+individual count. Multiple persistent references to the same object
+can result in unexpectedly keeping alive native memory. The native structures
+for a persistent reference must be kept alive until finalizers for the
+referenced object are executed. If a new persistent reference is created
+for the same object, the finalizers for that object will not be
+run and the native memory pointed by the earlier persistent reference
+will not be freed. This can be avoided by calling
+`napi_delete_reference` in addition to `napi_reference_unref` when possible.
 
 #### `napi_create_reference`
 
@@ -2491,6 +2507,37 @@ This API creates a JavaScript `symbol` value from a UTF8-encoded C string.
 
 The JavaScript `symbol` type is described in [Section 19.4][]
 of the ECMAScript Language Specification.
+
+#### `node_api_symbol_for`
+
+<!-- YAML
+added: v17.5.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status node_api_symbol_for(napi_env env,
+                                const char* utf8description,
+                                size_t length,
+                                napi_value* result)
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] utf8description`: UTF-8 C string representing the text to be used as the
+  description for the symbol.
+* `[in] length`: The length of the description string in bytes, or
+  `NAPI_AUTO_LENGTH` if it is null-terminated.
+* `[out] result`: A `napi_value` representing a JavaScript `symbol`.
+
+Returns `napi_ok` if the API succeeded.
+
+This API searches in the global registry for an existing symbol with the given
+description. If the symbol already exists it will be returned, otherwise a new
+symbol will be created in the registry.
+
+The JavaScript `symbol` type is described in [Section 19.4][] of the ECMAScript
+Language Specification.
 
 #### `napi_create_typedarray`
 
@@ -4684,8 +4731,8 @@ napi_status napi_get_cb_info(napi_env env,
   provided than claimed, the rest of `argv` is filled with `napi_value` values
   that represent `undefined`. `argv` can optionally be ignored by
   passing `NULL`.
-* `[out] this`: Receives the JavaScript `this` argument for the call. `this`
-  can optionally be ignored by passing `NULL`.
+* `[out] thisArg`: Receives the JavaScript `this` argument for the call.
+  `thisArg` can optionally be ignored by passing `NULL`.
 * `[out] data`: Receives the data pointer for the callback. `data` can
   optionally be ignored by passing `NULL`.
 
@@ -5079,6 +5126,11 @@ _Caution_: The optional returned reference (if obtained) should be deleted via
 invocation. If it is deleted before then, then the finalize callback may never
 be invoked. Therefore, when obtaining a reference a finalize callback is also
 required in order to enable correct disposal of the reference.
+
+Finalizer callbacks may be deferred, leaving a window where the object has
+been garbage collected (and the weak reference is invalid) but the finalizer
+hasn't been called yet. When using `napi_get_reference_value()` on weak
+references returned by `napi_wrap()`, you should still handle an empty result.
 
 Calling `napi_wrap()` a second time on an object will return an error. To
 associate another native instance with the object, use `napi_remove_wrap()`
@@ -5670,7 +5722,7 @@ Returns `napi_ok` if the API succeeded.
 
 This function gives V8 an indication of the amount of externally allocated
 memory that is kept alive by JavaScript objects (i.e. a JavaScript object
-that points to its own memory allocated by a native module). Registering
+that points to its own memory allocated by a native addon). Registering
 externally allocated memory will trigger global garbage collections more
 often than it would otherwise.
 
@@ -6220,6 +6272,7 @@ This API may only be called from the main thread.
 <!-- YAML
 added:
   - v15.9.0
+  - v14.18.0
   - v12.22.0
 -->
 

@@ -2,7 +2,10 @@
 
 const {
   ObjectDefineProperties,
+  String,
+  StringPrototypeCharCodeAt,
   Symbol,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -14,10 +17,7 @@ const {
   TransformStream,
 } = require('internal/webstreams/transformstream');
 
-const {
-  customInspect,
-  kEnumerableProperty,
-} = require('internal/webstreams/util');
+const { customInspect } = require('internal/webstreams/util');
 
 const {
   codes: {
@@ -26,12 +26,15 @@ const {
 } = require('internal/errors');
 
 const {
-  customInspectSymbol: kInspect
+  customInspectSymbol: kInspect,
+  kEmptyObject,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const kHandle = Symbol('kHandle');
 const kTransform = Symbol('kTransform');
 const kType = Symbol('kType');
+const kPendingHighSurrogate = Symbol('kPendingHighSurrogate');
 
 /**
  * @typedef {import('./readablestream').ReadableStream} ReadableStream
@@ -50,19 +53,46 @@ function isTextDecoderStream(value) {
 
 class TextEncoderStream {
   constructor() {
+    this[kPendingHighSurrogate] = null;
     this[kType] = 'TextEncoderStream';
     this[kHandle] = new TextEncoder();
     this[kTransform] = new TransformStream({
       transform: (chunk, controller) => {
-        const value = this[kHandle].encode(chunk);
-        if (value)
+        // https://encoding.spec.whatwg.org/#encode-and-enqueue-a-chunk
+        chunk = String(chunk);
+        let finalChunk = '';
+        for (let i = 0; i < chunk.length; i++) {
+          const item = chunk[i];
+          const codeUnit = StringPrototypeCharCodeAt(item, 0);
+          if (this[kPendingHighSurrogate] !== null) {
+            const highSurrogate = this[kPendingHighSurrogate];
+            this[kPendingHighSurrogate] = null;
+            if (0xDC00 <= codeUnit && codeUnit <= 0xDFFF) {
+              finalChunk += highSurrogate + item;
+              continue;
+            }
+            finalChunk += '\uFFFD';
+          }
+          if (0xD800 <= codeUnit && codeUnit <= 0xDBFF) {
+            this[kPendingHighSurrogate] = item;
+            continue;
+          }
+          if (0xDC00 <= codeUnit && codeUnit <= 0xDFFF) {
+            finalChunk += '\uFFFD';
+            continue;
+          }
+          finalChunk += item;
+        }
+        if (finalChunk) {
+          const value = this[kHandle].encode(finalChunk);
           controller.enqueue(value);
+        }
       },
       flush: (controller) => {
-        const value = this[kHandle].encode();
-        if (value.byteLength > 0)
-          controller.enqueue(value);
-        controller.terminate();
+        // https://encoding.spec.whatwg.org/#encode-and-flush
+        if (this[kPendingHighSurrogate] !== null) {
+          controller.enqueue(new Uint8Array([0xEF, 0xBF, 0xBD]));
+        }
       },
     });
   }
@@ -116,7 +146,7 @@ class TextDecoderStream {
    *   ignoreBOM? : boolean,
    * }} [options]
    */
-  constructor(encoding = 'utf-8', options = {}) {
+  constructor(encoding = 'utf-8', options = kEmptyObject) {
     this[kType] = 'TextDecoderStream';
     this[kHandle] = new TextDecoder(encoding, options);
     this[kTransform] = new TransformStream({

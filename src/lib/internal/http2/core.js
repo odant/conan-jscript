@@ -17,13 +17,13 @@ const {
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
   Promise,
-  PromisePrototypeCatch,
+  PromisePrototypeThen,
   Proxy,
   ReflectApply,
   ReflectGet,
   ReflectGetPrototypeOf,
   ReflectSet,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   SafeArrayIterator,
   SafeMap,
   SafeSet,
@@ -37,7 +37,8 @@ const {
 const {
   assertCrypto,
   customInspectSymbol: kInspect,
-  promisify
+  kEmptyObject,
+  promisify,
 } = require('internal/util');
 
 assertCrypto();
@@ -120,7 +121,7 @@ const {
 } = require('internal/errors');
 const {
   isUint32,
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateInteger,
   validateNumber,
@@ -189,10 +190,10 @@ let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
   debug = fn;
 });
 
-// TODO(addaleax): See if this can be made more efficient by figuring out
-// whether debugging is enabled before we perform any further steps. Currently,
-// this seems pretty fast, though.
 function debugStream(id, sessionType, message, ...args) {
+  if (!debug.enabled) {
+    return;
+  }
   debug('Http2Stream %s [Http2Session %s]: ' + message,
         id, sessionName(sessionType), ...new SafeArrayIterator(args));
 }
@@ -358,10 +359,12 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
       handle.destroy();
       return;
     }
-    const opts = { readable: !endOfStream };
     // session[kType] can be only one of two possible values
     if (type === NGHTTP2_SESSION_SERVER) {
-      stream = new ServerHttp2Stream(session, handle, id, opts, obj);
+      stream = new ServerHttp2Stream(session, handle, id, {}, obj);
+      if (endOfStream) {
+        stream.push(null);
+      }
       if (obj[HTTP2_HEADER_METHOD] === HTTP2_METHOD_HEAD) {
         // For head requests, there must not be a body...
         // end the writable side immediately.
@@ -369,7 +372,10 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
         stream[kState].flags |= STREAM_FLAGS_HEAD_REQUEST;
       }
     } else {
-      stream = new ClientHttp2Stream(session, handle, id, opts);
+      stream = new ClientHttp2Stream(session, handle, id, {});
+      if (endOfStream) {
+        stream.push(null);
+      }
       stream.end();
     }
     if (endOfStream)
@@ -602,6 +608,8 @@ function onFrameError(id, type, code) {
   const emitter = session[kState].streams.get(id) || session;
   emitter[kUpdateTimer]();
   emitter.emit('frameError', type, code, id);
+  session[kState].streams.get(id).close(code);
+  session.close();
 }
 
 function onAltSvc(stream, origin, alt) {
@@ -979,6 +987,7 @@ function trackAssignmentsTypedArray(typedArray) {
   }
 
   return new Proxy(typedArray, {
+    __proto__: null,
     get(obj, prop, receiver) {
       if (prop === 'copyAssigned') {
         return copyAssigned;
@@ -1369,7 +1378,7 @@ class Http2Session extends EventEmitter {
     if (payload && payload.length !== 8) {
       throw new ERR_HTTP2_PING_LENGTH();
     }
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
     const cb = pingCallback(callback);
     if (this.connecting || this.closed) {
@@ -1467,7 +1476,7 @@ class Http2Session extends EventEmitter {
     validateSettings(settings);
 
     if (callback) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
     }
     debugSessionObj(this, 'sending settings');
 
@@ -1656,7 +1665,7 @@ class ServerHttp2Session extends Http2Session {
     }
 
     validateString(alt, 'alt');
-    if (!RegExpPrototypeTest(kQuotedString, alt))
+    if (RegExpPrototypeExec(kQuotedString, alt) === null)
       throw new ERR_INVALID_CHAR('alt');
 
     // Max length permitted for ALTSVC
@@ -1790,7 +1799,9 @@ class ClientHttp2Session extends Http2Session {
     const { signal } = options;
     if (signal) {
       validateAbortSignal(signal, 'options.signal');
-      const aborter = () => stream.destroy(new AbortError());
+      const aborter = () => {
+        stream.destroy(new AbortError(undefined, { cause: signal.reason }));
+      };
       if (signal.aborted) {
         aborter();
       } else {
@@ -2268,7 +2279,7 @@ class Http2Stream extends Duplex {
     validateInteger(code, 'code', 0, kMaxInt);
 
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
     }
 
     if (this.closed)
@@ -2445,8 +2456,8 @@ function processHeaders(oldHeaders, options) {
 function onFileUnpipe() {
   const stream = this.sink[kOwner];
   if (stream.ownsFd)
-    PromisePrototypeCatch(this.source.close(),
-                          FunctionPrototypeBind(stream.destroy, stream));
+    PromisePrototypeThen(this.source.close(), undefined,
+                         FunctionPrototypeBind(stream.destroy, stream));
   else
     this.source.releaseFD();
 }
@@ -2671,7 +2682,7 @@ class ServerHttp2Stream extends Http2Stream {
       options = undefined;
     }
 
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
     assertIsObject(options, 'options');
     options = { ...options };
@@ -2692,7 +2703,6 @@ class ServerHttp2Stream extends Http2Stream {
     let headRequest = false;
     if (headers[HTTP2_HEADER_METHOD] === HTTP2_METHOD_HEAD)
       headRequest = options.endStream = true;
-    options.readable = false;
 
     const headersList = mapToHeaders(headers);
 
@@ -2719,6 +2729,8 @@ class ServerHttp2Stream extends Http2Stream {
     const id = ret.id();
     const stream = new ServerHttp2Stream(session, ret, id, options, headers);
     stream[kSentHeaders] = headers;
+
+    stream.push(null);
 
     if (options.endStream)
       stream.end();
@@ -3109,7 +3121,7 @@ function initializeTLSOptions(options, servername) {
   options.ALPNProtocols = ['h2'];
   if (options.allowHTTP1 === true)
     ArrayPrototypePush(options.ALPNProtocols, 'http/1.1');
-  if (servername !== undefined && options.servername === undefined)
+  if (servername !== undefined && !options.servername)
     options.servername = servername;
   return options;
 }
@@ -3134,7 +3146,7 @@ class Http2SecureServer extends TLSServer {
   setTimeout(msecs, callback) {
     this.timeout = msecs;
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.on('timeout', callback);
     }
     return this;
@@ -3161,7 +3173,7 @@ class Http2Server extends NETServer {
   setTimeout(msecs, callback) {
     this.timeout = msecs;
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.on('timeout', callback);
     }
     return this;
@@ -3292,6 +3304,7 @@ function connect(authority, options, listener) {
 
 // Support util.promisify
 ObjectDefineProperty(connect, promisify.custom, {
+  __proto__: null,
   value: (authority, options) => {
     return new Promise((resolve) => {
       const server = connect(authority, options, () => resolve(server));
@@ -3321,7 +3334,7 @@ function getPackedSettings(settings) {
   return binding.packSettings();
 }
 
-function getUnpackedSettings(buf, options = {}) {
+function getUnpackedSettings(buf, options = kEmptyObject) {
   if (!isArrayBufferView(buf) || buf.length === undefined) {
     throw new ERR_INVALID_ARG_TYPE('buf',
                                    ['Buffer', 'TypedArray'], buf);
@@ -3391,6 +3404,7 @@ module.exports = {
   sensitiveHeaders: kSensitiveHeaders,
   Http2Session,
   Http2Stream,
+  ServerHttp2Session,
   Http2ServerRequest,
   Http2ServerResponse
 };

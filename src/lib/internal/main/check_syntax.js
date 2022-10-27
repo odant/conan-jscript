@@ -4,8 +4,9 @@
 // instead of actually running the file.
 
 const {
-  prepareMainThreadExecution
-} = require('internal/bootstrap/pre_execution');
+  prepareMainThreadExecution,
+  markBootstrapComplete
+} = require('internal/process/pre_execution');
 
 const {
   readStdin
@@ -45,7 +46,7 @@ if (process.argv[1] && process.argv[1] !== '-') {
   });
 }
 
-function checkSyntax(source, filename) {
+async function checkSyntax(source, filename) {
   const { getOptionValue } = require('internal/options');
   let isModule = false;
   if (filename === '[stdin]' || filename === '[eval]') {
@@ -53,8 +54,8 @@ function checkSyntax(source, filename) {
   } else {
     const { defaultResolve } = require('internal/modules/esm/resolve');
     const { defaultGetFormat } = require('internal/modules/esm/get_format');
-    const { url } = defaultResolve(pathToFileURL(filename).toString());
-    const format = defaultGetFormat(url);
+    const { url } = await defaultResolve(pathToFileURL(filename).toString());
+    const format = await defaultGetFormat(url);
     isModule = format === 'module';
   }
   if (isModule) {

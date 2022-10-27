@@ -1,11 +1,10 @@
 'use strict';
 
 const {
-  ArrayPrototypeMap,
-  PromiseAll,
   PromisePrototypeThen,
-  PromisePrototypeFinally,
   PromiseResolve,
+  SafePromiseAll,
+  SafePromisePrototypeFinally,
   Uint8Array,
 } = primordials;
 
@@ -55,6 +54,7 @@ const {
 
 const {
   createDeferredPromise,
+  kEmptyObject,
 } = require('internal/util');
 
 const {
@@ -164,7 +164,7 @@ function newWritableStreamFromStreamWritable(streamWritable) {
     async write(chunk) {
       if (streamWritable.writableNeedDrain || !streamWritable.write(chunk)) {
         backpressurePromise = createDeferredPromise();
-        return PromisePrototypeFinally(
+        return SafePromisePrototypeFinally(
           backpressurePromise.promise, () => {
             backpressurePromise = undefined;
           });
@@ -198,7 +198,7 @@ function newWritableStreamFromStreamWritable(streamWritable) {
  * }} [options]
  * @returns {Writable}
  */
-function newStreamWritableFromWritableStream(writableStream, options = {}) {
+function newStreamWritableFromWritableStream(writableStream, options = kEmptyObject) {
   if (!isWritableStream(writableStream)) {
     throw new ERR_INVALID_ARG_TYPE(
       'writableStream',
@@ -228,8 +228,9 @@ function newStreamWritableFromWritableStream(writableStream, options = {}) {
 
     writev(chunks, callback) {
       function done(error) {
+        error = error.filter((e) => e);
         try {
-          callback(error);
+          callback(error.length === 0 ? undefined : error);
         } catch (error) {
           // In a next tick because this is happening within
           // a promise context, and if there are any errors
@@ -244,10 +245,9 @@ function newStreamWritableFromWritableStream(writableStream, options = {}) {
         writer.ready,
         () => {
           return PromisePrototypeThen(
-            PromiseAll(
-              ArrayPrototypeMap(
-                chunks,
-                (chunk) => writer.write(chunk))),
+            SafePromiseAll(
+              chunks,
+              (data) => writer.write(data.chunk)),
             done,
             done);
         },
@@ -357,10 +357,14 @@ function newStreamWritableFromWritableStream(writableStream, options = {}) {
 }
 
 /**
+ * @typedef {import('./queuingstrategies').QueuingStrategy} QueuingStrategy
  * @param {Readable} streamReadable
+ * @param {{
+ *  strategy : QueuingStrategy
+ * }} [options]
  * @returns {ReadableStream}
  */
-function newReadableStreamFromStreamReadable(streamReadable) {
+function newReadableStreamFromStreamReadable(streamReadable, options = kEmptyObject) {
   // Not using the internal/streams/utils isReadableNodeStream utility
   // here because it will return false if streamReadable is a Duplex
   // whose readable option is false. For a Duplex that is not readable,
@@ -380,14 +384,26 @@ function newReadableStreamFromStreamReadable(streamReadable) {
 
   const objectMode = streamReadable.readableObjectMode;
   const highWaterMark = streamReadable.readableHighWaterMark;
-  // When not running in objectMode explicitly, we just fall
-  // back to a minimal strategy that just specifies the highWaterMark
-  // and no size algorithm. Using a ByteLengthQueuingStrategy here
-  // is unnecessary.
-  const strategy =
-    objectMode ?
-      new CountQueuingStrategy({ highWaterMark }) :
-      { highWaterMark };
+
+  const evaluateStrategyOrFallback = (strategy) => {
+    // If there is a strategy available, use it
+    if (strategy)
+      return strategy;
+
+    if (objectMode) {
+      // When running in objectMode explicitly but no strategy, we just fall
+      // back to CountQueuingStrategy
+      return new CountQueuingStrategy({ highWaterMark });
+    }
+
+    // When not running in objectMode explicitly, we just fall
+    // back to a minimal strategy that just specifies the highWaterMark
+    // and no size algorithm. Using a ByteLengthQueuingStrategy here
+    // is unnecessary.
+    return { highWaterMark };
+  };
+
+  const strategy = evaluateStrategyOrFallback(options?.strategy);
 
   let controller;
 
@@ -440,7 +456,7 @@ function newReadableStreamFromStreamReadable(streamReadable) {
  * }} [options]
  * @returns {Readable}
  */
-function newStreamReadableFromReadableStream(readableStream, options = {}) {
+function newStreamReadableFromReadableStream(readableStream, options = kEmptyObject) {
   if (!isReadableStream(readableStream)) {
     throw new ERR_INVALID_ARG_TYPE(
       'readableStream',
@@ -584,7 +600,7 @@ function newReadableWritablePairFromDuplex(duplex) {
  * }} [options]
  * @returns {Duplex}
  */
-function newStreamDuplexFromReadableWritablePair(pair = {}, options = {}) {
+function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = kEmptyObject) {
   validateObject(pair, 'pair');
   const {
     readable: readableStream,
@@ -633,8 +649,9 @@ function newStreamDuplexFromReadableWritablePair(pair = {}, options = {}) {
 
     writev(chunks, callback) {
       function done(error) {
+        error = error.filter((e) => e);
         try {
-          callback(error);
+          callback(error.length === 0 ? undefined : error);
         } catch (error) {
           // In a next tick because this is happening within
           // a promise context, and if there are any errors
@@ -649,10 +666,9 @@ function newStreamDuplexFromReadableWritablePair(pair = {}, options = {}) {
         writer.ready,
         () => {
           return PromisePrototypeThen(
-            PromiseAll(
-              ArrayPrototypeMap(
-                chunks,
-                (chunk) => writer.write(chunk))),
+            SafePromiseAll(
+              chunks,
+              (data) => writer.write(data.chunk)),
             done,
             done);
         },
@@ -748,7 +764,7 @@ function newStreamDuplexFromReadableWritablePair(pair = {}, options = {}) {
 
       if (!writableClosed || !readableClosed) {
         PromisePrototypeThen(
-          PromiseAll([
+          SafePromiseAll([
             closeWriter(),
             closeReader(),
           ]),
@@ -874,7 +890,7 @@ function newWritableStreamFromStreamBase(streamBase, strategy) {
  * @param {QueuingStrategy} strategy
  * @returns {ReadableStream}
  */
-function newReadableStreamFromStreamBase(streamBase, strategy, options = {}) {
+function newReadableStreamFromStreamBase(streamBase, strategy, options = kEmptyObject) {
   validateObject(streamBase, 'streamBase');
   validateObject(options, 'options');
 

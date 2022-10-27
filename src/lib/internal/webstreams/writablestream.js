@@ -33,6 +33,7 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -64,7 +65,6 @@ const {
   nonOpWrite,
   kType,
   kState,
-  kEnumerableProperty,
 } = require('internal/webstreams/util');
 
 const {
@@ -509,15 +509,6 @@ class WritableStreamDefaultController {
   }
 
   /**
-   * @type {any}
-   */
-  get abortReason() {
-    if (!isWritableStreamDefaultController(this))
-      throw new ERR_INVALID_THIS('WritableStreamDefaultController');
-    return this[kState].abortReason;
-  }
-
-  /**
    * @type {AbortSignal}
    */
   get signal() {
@@ -545,7 +536,6 @@ class WritableStreamDefaultController {
 }
 
 ObjectDefineProperties(WritableStreamDefaultController.prototype, {
-  abortReason: kEnumerableProperty,
   signal: kEnumerableProperty,
   error: kEnumerableProperty,
 });
@@ -637,8 +627,7 @@ function writableStreamAbort(stream, reason) {
   if (state === 'closed' || state === 'errored')
     return PromiseResolve();
 
-  controller[kState].abortReason = reason;
-  controller[kState].abortController.abort();
+  controller[kState].abortController.abort(reason);
 
   if (stream[kState].pendingAbortRequest.abort.promise !== undefined)
     return stream[kState].pendingAbortRequest.abort.promise;
@@ -1250,7 +1239,6 @@ function setupWritableStreamDefaultController(
   assert(stream[kState].controller === undefined);
   controller[kState] = {
     abortAlgorithm,
-    abortReason: undefined,
     closeAlgorithm,
     highWaterMark,
     queue: [],

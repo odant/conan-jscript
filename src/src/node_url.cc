@@ -5,8 +5,10 @@
 #include "node_i18n.h"
 #include "util-inl.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -57,7 +59,7 @@ class URLHost {
  public:
   ~URLHost();
 
-  void ParseIPv4Host(const char* input, size_t length, bool* is_ipv4);
+  void ParseIPv4Host(const char* input, size_t length);
   void ParseIPv6Host(const char* input, size_t length);
   void ParseOpaqueHost(const char* input, size_t length);
   void ParseHost(const char* input,
@@ -141,19 +143,9 @@ URLHost::~URLHost() {
   XX(ARG_FRAGMENT)                                                            \
   XX(ARG_COUNT)  // This one has to be last.
 
-#define ERR_ARGS(XX)                                                          \
-  XX(ERR_ARG_FLAGS)                                                           \
-  XX(ERR_ARG_INPUT)                                                           \
-
 enum url_cb_args {
 #define XX(name) name,
   ARGS(XX)
-#undef XX
-};
-
-enum url_error_cb_args {
-#define XX(name) name,
-  ERR_ARGS(XX)
 #undef XX
 };
 
@@ -173,6 +165,9 @@ enum url_error_cb_args {
 
 // https://infra.spec.whatwg.org/#ascii-tab-or-newline
 CHAR_TEST(8, IsASCIITabOrNewline, (ch == '\t' || ch == '\n' || ch == '\r'))
+
+// https://infra.spec.whatwg.org/#c0-control
+CHAR_TEST(8, IsC0Control, (ch >= '\0' && ch <= '\x1f'))
 
 // https://infra.spec.whatwg.org/#c0-control-or-space
 CHAR_TEST(8, IsC0ControlOrSpace, (ch >= '\0' && ch <= ' '))
@@ -199,12 +194,18 @@ T ASCIILowercase(T ch) {
 }
 
 // https://url.spec.whatwg.org/#forbidden-host-code-point
-CHAR_TEST(8, IsForbiddenHostCodePoint,
-          ch == '\0' || ch == '\t' || ch == '\n' || ch == '\r' ||
-          ch == ' ' || ch == '#' || ch == '%' || ch == '/' ||
-          ch == ':' || ch == '?' || ch == '@' || ch == '[' ||
-          ch == '<' || ch == '>' || ch == '\\' || ch == ']' ||
-          ch == '^' || ch == '|')
+CHAR_TEST(8,
+          IsForbiddenHostCodePoint,
+          ch == '\0' || ch == '\t' || ch == '\n' || ch == '\r' || ch == ' ' ||
+              ch == '#' || ch == '/' || ch == ':' || ch == '?' || ch == '@' ||
+              ch == '[' || ch == '<' || ch == '>' || ch == '\\' || ch == ']' ||
+              ch == '^' || ch == '|')
+
+// https://url.spec.whatwg.org/#forbidden-domain-code-point
+CHAR_TEST(8,
+          IsForbiddenDomainCodePoint,
+          IsForbiddenHostCodePoint(ch) || IsC0Control(ch) || ch == '%' ||
+              ch == '\x7f')
 
 // https://url.spec.whatwg.org/#windows-drive-letter
 TWO_CHAR_STRING_TEST(8, IsWindowsDriveLetter,
@@ -231,15 +232,14 @@ void AppendOrEscape(std::string* str,
     *str += ch;
 }
 
-template <typename T>
-unsigned hex2bin(const T ch) {
+unsigned hex2bin(const char ch) {
   if (ch >= '0' && ch <= '9')
     return ch - '0';
   if (ch >= 'A' && ch <= 'F')
     return 10 + (ch - 'A');
   if (ch >= 'a' && ch <= 'f')
     return 10 + (ch - 'a');
-  return static_cast<unsigned>(-1);
+  UNREACHABLE();
 }
 
 std::string PercentDecode(const char* input, size_t len) {
@@ -369,18 +369,21 @@ void URLHost::ParseIPv6Host(const char* input, size_t length) {
   type_ = HostType::H_IPV6;
 }
 
-int64_t ParseNumber(const char* start, const char* end) {
+// https://url.spec.whatwg.org/#ipv4-number-parser
+int64_t ParseIPv4Number(const char* start, const char* end) {
+  if (end - start == 0) return -1;
+
   unsigned R = 10;
   if (end - start >= 2 && start[0] == '0' && (start[1] | 0x20) == 'x') {
     start += 2;
     R = 16;
-  }
-  if (end - start == 0) {
-    return 0;
-  } else if (R == 10 && end - start > 1 && start[0] == '0') {
+  } else if (end - start >= 2 && start[0] == '0') {
     start++;
     R = 8;
   }
+
+  if (end - start == 0) return 0;
+
   const char* p = start;
 
   while (p < end) {
@@ -404,9 +407,33 @@ int64_t ParseNumber(const char* start, const char* end) {
   return strtoll(start, nullptr, R);
 }
 
-void URLHost::ParseIPv4Host(const char* input, size_t length, bool* is_ipv4) {
+// https://url.spec.whatwg.org/#ends-in-a-number-checker
+bool EndsInANumber(const std::string& input) {
+  std::vector<std::string> parts = SplitString(input, '.', false);
+
+  if (parts.empty()) return false;
+
+  if (parts.back().empty()) {
+    if (parts.size() == 1) return false;
+    parts.pop_back();
+  }
+
+  const std::string& last = parts.back();
+
+  // If last is non-empty and contains only ASCII digits, then return true
+  if (!last.empty() && std::all_of(last.begin(), last.end(), ::isdigit)) {
+    return true;
+  }
+
+  const char* last_str = last.c_str();
+  int64_t num = ParseIPv4Number(last_str, last_str + last.size());
+  if (num >= 0) return true;
+
+  return false;
+}
+
+void URLHost::ParseIPv4Host(const char* input, size_t length) {
   CHECK_EQ(type_, HostType::H_FAILED);
-  *is_ipv4 = false;
   const char* pointer = input;
   const char* mark = input;
   const char* end = pointer + length;
@@ -425,7 +452,7 @@ void URLHost::ParseIPv4Host(const char* input, size_t length, bool* is_ipv4) {
         return;
       if (pointer == mark)
         return;
-      int64_t n = ParseNumber(mark, pointer);
+      int64_t n = ParseIPv4Number(mark, pointer);
       if (n < 0)
         return;
 
@@ -440,7 +467,6 @@ void URLHost::ParseIPv4Host(const char* input, size_t length, bool* is_ipv4) {
     pointer++;
   }
   CHECK_GT(parts, 0);
-  *is_ipv4 = true;
 
   // If any but the last item in numbers is greater than 255, return failure.
   // If the last item in numbers is greater than or equal to
@@ -468,7 +494,7 @@ void URLHost::ParseOpaqueHost(const char* input, size_t length) {
   output.reserve(length);
   for (size_t i = 0; i < length; i++) {
     const char ch = input[i];
-    if (ch != '%' && IsForbiddenHostCodePoint(ch)) {
+    if (IsForbiddenHostCodePoint(ch)) {
       return;
     } else {
       AppendOrEscape(&output, ch, C0_CONTROL_ENCODE_SET);
@@ -507,16 +533,15 @@ void URLHost::ParseHost(const char* input,
   // If any of the following characters are still present, we have to fail
   for (size_t n = 0; n < decoded.size(); n++) {
     const char ch = decoded[n];
-    if (IsForbiddenHostCodePoint(ch)) {
+    if (IsForbiddenDomainCodePoint(ch)) {
       return;
     }
   }
 
-  // Check to see if it's an IPv4 IP address
-  bool is_ipv4;
-  ParseIPv4Host(decoded.c_str(), decoded.length(), &is_ipv4);
-  if (is_ipv4)
-    return;
+  // If domain ends in a number, then return the result of IPv4 parsing domain
+  if (EndsInANumber(decoded)) {
+    return ParseIPv4Host(decoded.c_str(), decoded.length());
+  }
 
   // If the unicode flag is set, run the result through punycode ToUnicode
   if (unicode && !ToUnicode(decoded, &decoded))
@@ -931,7 +956,10 @@ void URL::Parse(const char* input,
             url->flags &= ~URL_FLAGS_SPECIAL;
             special = false;
           }
-          special_back_slash = (special && ch == '\\');
+          // `special_back_slash` equals to `(special && ch == '\\')` and `ch`
+          // here always not equals to `\\`. So `special_back_slash` here always
+          // equals to `false`.
+          special_back_slash = false;
           buffer.clear();
           if (has_state_override)
             return;
@@ -1543,44 +1571,61 @@ void URL::Parse(const char* input,
 }  // NOLINT(readability/fn_size)
 
 // https://url.spec.whatwg.org/#url-serializing
-std::string URL::SerializeURL(const struct url_data* url,
+std::string URL::SerializeURL(const url_data& url,
                               bool exclude = false) {
-  std::string output = url->scheme;
-  if (url->flags & URL_FLAGS_HAS_HOST) {
+  std::string output;
+  output.reserve(
+    10 +  // We generally insert < 10 separator characters between URL parts
+    url.scheme.size() +
+    url.username.size() +
+    url.password.size() +
+    url.host.size() +
+    url.query.size() +
+    url.fragment.size() +
+    url.href.size() +
+    std::accumulate(
+        url.path.begin(),
+        url.path.end(),
+        0,
+        [](size_t sum, const auto& str) { return sum + str.size(); }));
+
+  output += url.scheme;
+  if (url.flags & URL_FLAGS_HAS_HOST) {
     output += "//";
-    if (url->flags & URL_FLAGS_HAS_USERNAME ||
-        url->flags & URL_FLAGS_HAS_PASSWORD) {
-      if (url->flags & URL_FLAGS_HAS_USERNAME) {
-        output += url->username;
+    if (url.flags & URL_FLAGS_HAS_USERNAME ||
+        url.flags & URL_FLAGS_HAS_PASSWORD) {
+      if (url.flags & URL_FLAGS_HAS_USERNAME) {
+        output += url.username;
       }
-      if (url->flags & URL_FLAGS_HAS_PASSWORD) {
-        output += ":" + url->password;
+      if (url.flags & URL_FLAGS_HAS_PASSWORD) {
+        output += ":" + url.password;
       }
       output += "@";
     }
-    output += url->host;
-    if (url->port != -1) {
-      output += ":" + std::to_string(url->port);
+    output += url.host;
+    if (url.port != -1) {
+      output += ":" + std::to_string(url.port);
     }
   }
-  if (url->flags & URL_FLAGS_CANNOT_BE_BASE) {
-    output += url->path[0];
+  if (url.flags & URL_FLAGS_CANNOT_BE_BASE) {
+    output += url.path[0];
   } else {
-    if (!(url->flags & URL_FLAGS_HAS_HOST) &&
-          url->path.size() > 1 &&
-          url->path[0].empty()) {
+    if (!(url.flags & URL_FLAGS_HAS_HOST) &&
+          url.path.size() > 1 &&
+          url.path[0].empty()) {
       output += "/.";
     }
-    for (size_t i = 1; i < url->path.size(); i++) {
-      output += "/" + url->path[i];
+    for (size_t i = 1; i < url.path.size(); i++) {
+      output += "/" + url.path[i];
     }
   }
-  if (url->flags & URL_FLAGS_HAS_QUERY) {
-    output = "?" + url->query;
+  if (url.flags & URL_FLAGS_HAS_QUERY) {
+    output += "?" + url.query;
   }
-  if (!exclude && url->flags & URL_FLAGS_HAS_FRAGMENT) {
-    output = "#" + url->fragment;
+  if (!exclude && (url.flags & URL_FLAGS_HAS_FRAGMENT)) {
+    output += "#" + url.fragment;
   }
+  output.shrink_to_fit();
   return output;
 }
 
@@ -1656,14 +1701,10 @@ void Parse(Environment* env,
       null,  // fragment defaults to null
     };
     SetArgs(env, argv, url);
-    cb->Call(context, recv, arraysize(argv), argv).FromMaybe(Local<Value>());
+    USE(cb->Call(context, recv, arraysize(argv), argv));
   } else if (error_cb->IsFunction()) {
-    Local<Value> argv[2] = { undef, undef };
-    argv[ERR_ARG_FLAGS] = Integer::NewFromUnsigned(isolate, url.flags);
-    argv[ERR_ARG_INPUT] =
-      String::NewFromUtf8(env->isolate(), input).ToLocalChecked();
-    error_cb.As<Function>()->Call(context, recv, arraysize(argv), argv)
-        .FromMaybe(Local<Value>());
+    Local<Value> flags = Integer::NewFromUnsigned(isolate, url.flags);
+    USE(error_cb.As<Function>()->Call(context, recv, 1, &flags));
   }
 }
 
@@ -1759,12 +1800,11 @@ void Initialize(Local<Object> target,
                 Local<Value> unused,
                 Local<Context> context,
                 void* priv) {
-  Environment* env = Environment::GetCurrent(context);
-  env->SetMethod(target, "parse", Parse);
-  env->SetMethodNoSideEffect(target, "encodeAuth", EncodeAuthSet);
-  env->SetMethodNoSideEffect(target, "domainToASCII", DomainToASCII);
-  env->SetMethodNoSideEffect(target, "domainToUnicode", DomainToUnicode);
-  env->SetMethod(target, "setURLConstructor", SetURLConstructor);
+  SetMethod(context, target, "parse", Parse);
+  SetMethodNoSideEffect(context, target, "encodeAuth", EncodeAuthSet);
+  SetMethodNoSideEffect(context, target, "domainToASCII", DomainToASCII);
+  SetMethodNoSideEffect(context, target, "domainToUnicode", DomainToUnicode);
+  SetMethod(context, target, "setURLConstructor", SetURLConstructor);
 
 #define XX(name, _) NODE_DEFINE_CONSTANT(target, name);
   FLAGS(XX)

@@ -24,6 +24,7 @@ using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Int32;
+using v8::Isolate;
 using v8::Just;
 using v8::Local;
 using v8::Maybe;
@@ -305,7 +306,7 @@ MaybeLocal<Value> WritePrivateKey(
   char* pass = nullptr;
   size_t pass_len = 0;
   if (!config.passphrase_.IsEmpty()) {
-    pass = const_cast<char*>(config.passphrase_->get());
+    pass = const_cast<char*>(config.passphrase_->data<char>());
     pass_len = config.passphrase_->size();
     if (pass == nullptr) {
       // OpenSSL will not actually dereference this pointer, so it can be any
@@ -497,7 +498,8 @@ Maybe<bool> ExportJWKAsymmetricKey(
       break;
     }
     case EVP_PKEY_RSA: return ExportJWKRsaKey(env, key, target);
-    case EVP_PKEY_EC: return ExportJWKEcKey(env, key, target);
+    case EVP_PKEY_EC: return ExportJWKEcKey(env, key, target).IsJust() ?
+                               Just(true) : Nothing<bool>();
     case EVP_PKEY_ED25519:
       // Fall through
     case EVP_PKEY_ED448:
@@ -631,44 +633,42 @@ Maybe<bool> ExportJWKInner(Environment* env,
 
 Maybe<bool> ManagedEVPPKey::ToEncodedPublicKey(
     Environment* env,
-    ManagedEVPPKey key,
     const PublicKeyEncodingConfig& config,
     Local<Value>* out) {
-  if (!key) return Nothing<bool>();
+  if (!*this) return Nothing<bool>();
   if (config.output_key_object_) {
     // Note that this has the downside of containing sensitive data of the
     // private key.
     std::shared_ptr<KeyObjectData> data =
-          KeyObjectData::CreateAsymmetric(kKeyTypePublic, std::move(key));
+        KeyObjectData::CreateAsymmetric(kKeyTypePublic, *this);
     return Tristate(KeyObjectHandle::Create(env, data).ToLocal(out));
   } else if (config.format_ == kKeyFormatJWK) {
     std::shared_ptr<KeyObjectData> data =
-        KeyObjectData::CreateAsymmetric(kKeyTypePublic, std::move(key));
+        KeyObjectData::CreateAsymmetric(kKeyTypePublic, *this);
     *out = Object::New(env->isolate());
     return ExportJWKInner(env, data, *out, false);
   }
 
-  return Tristate(WritePublicKey(env, key.get(), config).ToLocal(out));
+  return Tristate(WritePublicKey(env, get(), config).ToLocal(out));
 }
 
 Maybe<bool> ManagedEVPPKey::ToEncodedPrivateKey(
     Environment* env,
-    ManagedEVPPKey key,
     const PrivateKeyEncodingConfig& config,
     Local<Value>* out) {
-  if (!key) return Nothing<bool>();
+  if (!*this) return Nothing<bool>();
   if (config.output_key_object_) {
     std::shared_ptr<KeyObjectData> data =
-        KeyObjectData::CreateAsymmetric(kKeyTypePrivate, std::move(key));
+        KeyObjectData::CreateAsymmetric(kKeyTypePrivate, *this);
     return Tristate(KeyObjectHandle::Create(env, data).ToLocal(out));
   } else if (config.format_ == kKeyFormatJWK) {
     std::shared_ptr<KeyObjectData> data =
-        KeyObjectData::CreateAsymmetric(kKeyTypePrivate, std::move(key));
+        KeyObjectData::CreateAsymmetric(kKeyTypePrivate, *this);
     *out = Object::New(env->isolate());
     return ExportJWKInner(env, data, *out, false);
   }
 
-  return Tristate(WritePrivateKey(env, key.get(), config).ToLocal(out));
+  return Tristate(WritePrivateKey(env, get(), config).ToLocal(out));
 }
 
 NonCopyableMaybe<PrivateKeyEncodingConfig>
@@ -743,7 +743,7 @@ ManagedEVPPKey ManagedEVPPKey::GetPrivateKeyFromJs(
 
     EVPKeyPointer pkey;
     ParseKeyResult ret =
-        ParsePrivateKey(&pkey, config.Release(), key.get(), key.size());
+        ParsePrivateKey(&pkey, config.Release(), key.data<char>(), key.size());
     return GetParsedKey(env, std::move(pkey), ret,
                         "Failed to read private key");
   } else {
@@ -839,20 +839,13 @@ ManagedEVPPKey ManagedEVPPKey::GetParsedKey(Environment* env,
   return ManagedEVPPKey(std::move(pkey));
 }
 
-KeyObjectData::KeyObjectData(
-    ByteSource symmetric_key)
+KeyObjectData::KeyObjectData(ByteSource symmetric_key)
     : key_type_(KeyType::kKeyTypeSecret),
       symmetric_key_(std::move(symmetric_key)),
-      symmetric_key_len_(symmetric_key_.size()),
       asymmetric_key_() {}
 
-KeyObjectData::KeyObjectData(
-    KeyType type,
-    const ManagedEVPPKey& pkey)
-    : key_type_(type),
-      symmetric_key_(),
-      symmetric_key_len_(0),
-      asymmetric_key_{pkey} {}
+KeyObjectData::KeyObjectData(KeyType type, const ManagedEVPPKey& pkey)
+    : key_type_(type), symmetric_key_(), asymmetric_key_{pkey} {}
 
 void KeyObjectData::MemoryInfo(MemoryTracker* tracker) const {
   switch (GetKeyType()) {
@@ -870,7 +863,6 @@ void KeyObjectData::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 std::shared_ptr<KeyObjectData> KeyObjectData::CreateSecret(ByteSource key) {
-  CHECK(key);
   return std::shared_ptr<KeyObjectData>(new KeyObjectData(std::move(key)));
 }
 
@@ -892,12 +884,12 @@ ManagedEVPPKey KeyObjectData::GetAsymmetricKey() const {
 
 const char* KeyObjectData::GetSymmetricKey() const {
   CHECK_EQ(key_type_, kKeyTypeSecret);
-  return symmetric_key_.get();
+  return symmetric_key_.data<char>();
 }
 
 size_t KeyObjectData::GetSymmetricKeySize() const {
   CHECK_EQ(key_type_, kKeyTypeSecret);
-  return symmetric_key_len_;
+  return symmetric_key_.size();
 }
 
 v8::Local<v8::Function> KeyObjectHandle::Initialize(Environment* env) {
@@ -905,22 +897,24 @@ v8::Local<v8::Function> KeyObjectHandle::Initialize(Environment* env) {
   if (!templ.IsEmpty()) {
     return templ;
   }
-  Local<FunctionTemplate> t = env->NewFunctionTemplate(New);
+  Isolate* isolate = env->isolate();
+  Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
   t->InstanceTemplate()->SetInternalFieldCount(
       KeyObjectHandle::kInternalFieldCount);
   t->Inherit(BaseObject::GetConstructorTemplate(env));
 
-  env->SetProtoMethod(t, "init", Init);
-  env->SetProtoMethodNoSideEffect(t, "getSymmetricKeySize",
-                                  GetSymmetricKeySize);
-  env->SetProtoMethodNoSideEffect(t, "getAsymmetricKeyType",
-                                  GetAsymmetricKeyType);
-  env->SetProtoMethod(t, "export", Export);
-  env->SetProtoMethod(t, "exportJwk", ExportJWK);
-  env->SetProtoMethod(t, "initECRaw", InitECRaw);
-  env->SetProtoMethod(t, "initEDRaw", InitEDRaw);
-  env->SetProtoMethod(t, "initJwk", InitJWK);
-  env->SetProtoMethod(t, "keyDetail", GetKeyDetail);
+  SetProtoMethod(isolate, t, "init", Init);
+  SetProtoMethodNoSideEffect(
+      isolate, t, "getSymmetricKeySize", GetSymmetricKeySize);
+  SetProtoMethodNoSideEffect(
+      isolate, t, "getAsymmetricKeyType", GetAsymmetricKeyType);
+  SetProtoMethod(isolate, t, "export", Export);
+  SetProtoMethod(isolate, t, "exportJwk", ExportJWK);
+  SetProtoMethod(isolate, t, "initECRaw", InitECRaw);
+  SetProtoMethod(isolate, t, "initEDRaw", InitEDRaw);
+  SetProtoMethod(isolate, t, "initJwk", InitJWK);
+  SetProtoMethod(isolate, t, "keyDetail", GetKeyDetail);
+  SetProtoMethod(isolate, t, "equals", Equals);
 
   auto function = t->GetFunction(env->context()).ToLocalChecked();
   env->set_crypto_key_object_handle_constructor(function);
@@ -939,6 +933,7 @@ void KeyObjectHandle::RegisterExternalReferences(
   registry->Register(InitEDRaw);
   registry->Register(InitJWK);
   registry->Register(GetKeyDetail);
+  registry->Register(Equals);
 }
 
 MaybeLocal<Object> KeyObjectHandle::Create(
@@ -1134,6 +1129,54 @@ void KeyObjectHandle::InitEDRaw(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(true);
 }
 
+void KeyObjectHandle::Equals(const FunctionCallbackInfo<Value>& args) {
+  KeyObjectHandle* self_handle;
+  KeyObjectHandle* arg_handle;
+  ASSIGN_OR_RETURN_UNWRAP(&self_handle, args.Holder());
+  ASSIGN_OR_RETURN_UNWRAP(&arg_handle, args[0].As<Object>());
+  std::shared_ptr<KeyObjectData> key = self_handle->Data();
+  std::shared_ptr<KeyObjectData> key2 = arg_handle->Data();
+
+  KeyType key_type = key->GetKeyType();
+  CHECK_EQ(key_type, key2->GetKeyType());
+
+  bool ret;
+  switch (key_type) {
+    case kKeyTypeSecret: {
+      size_t size = key->GetSymmetricKeySize();
+      if (size == key2->GetSymmetricKeySize()) {
+        ret = CRYPTO_memcmp(
+          key->GetSymmetricKey(),
+          key2->GetSymmetricKey(),
+          size) == 0;
+      } else {
+        ret = false;
+      }
+      break;
+    }
+    case kKeyTypePublic:
+    case kKeyTypePrivate: {
+      EVP_PKEY* pkey = key->GetAsymmetricKey().get();
+      EVP_PKEY* pkey2 = key2->GetAsymmetricKey().get();
+#if OPENSSL_VERSION_MAJOR >= 3
+      int ok = EVP_PKEY_eq(pkey, pkey2);
+#else
+      int ok = EVP_PKEY_cmp(pkey, pkey2);
+#endif
+      if (ok == -2) {
+        Environment* env = Environment::GetCurrent(args);
+        return THROW_ERR_CRYPTO_UNSUPPORTED_OPERATION(env);
+      }
+      ret = ok == 1;
+      break;
+    }
+    default:
+      UNREACHABLE("unsupported key type");
+  }
+
+  args.GetReturnValue().Set(ret);
+}
+
 void KeyObjectHandle::GetKeyDetail(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   KeyObjectHandle* key;
@@ -1266,8 +1309,10 @@ void KeyObjectHandle::ExportJWK(
 }
 
 void NativeKeyObject::Initialize(Environment* env, Local<Object> target) {
-  env->SetMethod(target, "createNativeKeyObjectClass",
-                 NativeKeyObject::CreateNativeKeyObjectClass);
+  SetMethod(env->context(),
+            target,
+            "createNativeKeyObjectClass",
+            NativeKeyObject::CreateNativeKeyObjectClass);
 }
 
 void NativeKeyObject::RegisterExternalReferences(
@@ -1287,12 +1332,14 @@ void NativeKeyObject::New(const FunctionCallbackInfo<Value>& args) {
 void NativeKeyObject::CreateNativeKeyObjectClass(
     const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
 
   CHECK_EQ(args.Length(), 1);
   Local<Value> callback = args[0];
   CHECK(callback->IsFunction());
 
-  Local<FunctionTemplate> t = env->NewFunctionTemplate(NativeKeyObject::New);
+  Local<FunctionTemplate> t =
+      NewFunctionTemplate(isolate, NativeKeyObject::New);
   t->InstanceTemplate()->SetInternalFieldCount(
       KeyObjectHandle::kInternalFieldCount);
   t->Inherit(BaseObject::GetConstructorTemplate(env));
@@ -1333,8 +1380,9 @@ BaseObjectPtr<BaseObject> NativeKeyObject::KeyObjectTransferData::Deserialize(
   Local<Function> key_ctor;
   Local<Value> arg = FIXED_ONE_BYTE_STRING(env->isolate(),
                                            "internal/crypto/keys");
-  if (env->native_module_require()->
-      Call(context, Null(env->isolate()), 1, &arg).IsEmpty()) {
+  if (env->builtin_module_require()
+          ->Call(context, Null(env->isolate()), 1, &arg)
+          .IsEmpty()) {
     return {};
   }
   switch (data_->GetKeyType()) {
@@ -1374,6 +1422,7 @@ WebCryptoKeyExportStatus PKEY_SPKI_Export(
   ManagedEVPPKey m_pkey = key_data->GetAsymmetricKey();
   Mutex::ScopedLock lock(*m_pkey.mutex());
   BIOPointer bio(BIO_new(BIO_s_mem()));
+  CHECK(bio);
   if (!i2d_PUBKEY_bio(bio.get(), m_pkey.get()))
     return WebCryptoKeyExportStatus::FAILED;
 
@@ -1389,6 +1438,7 @@ WebCryptoKeyExportStatus PKEY_PKCS8_Export(
   Mutex::ScopedLock lock(*m_pkey.mutex());
 
   BIOPointer bio(BIO_new(BIO_s_mem()));
+  CHECK(bio);
   PKCS8Pointer p8inf(EVP_PKEY2PKCS8(m_pkey.get()));
   if (!i2d_PKCS8_PRIV_KEY_INFO_bio(bio.get(), p8inf.get()))
     return WebCryptoKeyExportStatus::FAILED;

@@ -7,6 +7,7 @@
     'node_use_dtrace%': 'false',
     'node_use_etw%': 'false',
     'node_no_browser_globals%': 'false',
+    'node_snapshot_main%': '',
     'node_use_node_snapshot%': 'false',
     'node_use_v8_platform%': 'true',
     'node_use_bundled_v8%': 'true',
@@ -51,9 +52,9 @@
       'deps/acorn/acorn-walk/dist/walk.js',
       'deps/cjs-module-lexer/lexer.js',
       'deps/cjs-module-lexer/dist/lexer.js',
+      'deps/undici/undici.js',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
-    'mkcodecache_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mkcodecache<(EXECUTABLE_SUFFIX)',
     'conditions': [
       ['GENERATOR == "ninja"', {
         'node_text_start_object_path': 'src/large_pages/node_text_start.node_text_start.o'
@@ -171,6 +172,12 @@
           'RandomizedBaseAddress': 2, # enable ASLR
           'DataExecutionPrevention': 2, # enable DEP
           'AllowIsolation': 'true',
+          # By default, the MSVC linker only reserves 1 MiB of stack memory for
+          # each thread, whereas other platforms typically allow much larger
+          # stack memory sections. We raise the limit to make it more consistent
+          # across platforms and to support the few use cases that require large
+          # amounts of stack memory, without having to modify the node binary.
+          'StackReserveSize': 0x800000,
         },
       },
 
@@ -194,6 +201,16 @@
           'dependencies': [ 'node_aix_shared' ],
         }, {
           'dependencies': [ '<(node_lib_target_name)' ],
+          'conditions': [
+            ['OS=="win" and node_shared=="true"', {
+              'dependencies': ['generate_node_def'],
+              'msvs_settings': {
+                'VCLinkerTool': {
+                  'ModuleDefinitionFile': '<(PRODUCT_DIR)/<(node_core_target_name).def',
+                },
+              },
+            }],
+          ],
         }],
         [ 'node_intermediate_lib_type=="static_library" and node_shared=="false"', {
           'xcode_settings': {
@@ -211,7 +228,7 @@
             },
           },
           'conditions': [
-            ['OS != "aix" and OS != "mac"', {
+            ['OS != "aix" and OS != "mac" and OS != "ios"', {
               'ldflags': [
                 '-Wl,--whole-archive',
                 '<(obj_dir)/<(STATIC_LIB_PREFIX)<(node_core_target_name)<(STATIC_LIB_SUFFIX)',
@@ -233,8 +250,15 @@
         }],
         [ 'node_shared=="true"', {
           'xcode_settings': {
-            'OTHER_LDFLAGS': [ '-Wl,-rpath,@loader_path', ],
+            'OTHER_LDFLAGS': [ '-Wl,-rpath,@loader_path', '-Wl,-rpath,@loader_path/../lib'],
           },
+          'conditions': [
+            ['OS=="linux"', {
+               'ldflags': [
+                 '-Wl,-rpath,\\$$ORIGIN/../lib'
+               ],
+            }],
+          ],
         }],
         [ 'enable_lto=="true"', {
           'xcode_settings': {
@@ -285,52 +309,51 @@
             },
           },
          }],
-        ['node_use_node_code_cache=="true"', {
-          'dependencies': [
-            'mkcodecache',
-          ],
-          'actions': [
-            {
-              'action_name': 'run_mkcodecache',
-              'process_outputs_as_sources': 1,
-              'inputs': [
-                '<(mkcodecache_exec)',
-              ],
-              'outputs': [
-                '<(SHARED_INTERMEDIATE_DIR)/node_code_cache.cc',
-              ],
-              'action': [
-                '<@(_inputs)',
-                '<@(_outputs)',
-              ],
-            },
-          ],
-        }, {
-          'sources': [
-            'src/node_code_cache_stub.cc'
-          ],
-        }],
-        ['node_use_node_snapshot=="true"', {
+         ['node_use_node_snapshot=="true"', {
           'dependencies': [
             'node_mksnapshot',
           ],
-          'actions': [
-            {
-              'action_name': 'node_mksnapshot',
-              'process_outputs_as_sources': 1,
-              'inputs': [
-                '<(node_mksnapshot_exec)',
+          'conditions': [
+            ['node_snapshot_main!=""', {
+              'actions': [
+                {
+                  'action_name': 'node_mksnapshot',
+                  'process_outputs_as_sources': 1,
+                  'inputs': [
+                    '<(node_mksnapshot_exec)',
+                    '<(node_snapshot_main)',
+                  ],
+                  'outputs': [
+                    '<(SHARED_INTERMEDIATE_DIR)/node_snapshot.cc',
+                  ],
+                  'action': [
+                    '<(node_mksnapshot_exec)',
+                    '--build-snapshot',
+                    '<(node_snapshot_main)',
+                    '<@(_outputs)',
+                  ],
+                },
               ],
-              'outputs': [
-                '<(SHARED_INTERMEDIATE_DIR)/node_snapshot.cc',
+            }, {
+              'actions': [
+                {
+                  'action_name': 'node_mksnapshot',
+                  'process_outputs_as_sources': 1,
+                  'inputs': [
+                    '<(node_mksnapshot_exec)',
+                  ],
+                  'outputs': [
+                    '<(SHARED_INTERMEDIATE_DIR)/node_snapshot.cc',
+                  ],
+                  'action': [
+                    '<@(_inputs)',
+                    '<@(_outputs)',
+                  ],
+                },
               ],
-              'action': [
-                '<@(_inputs)',
-                '<@(_outputs)',
-              ],
-            },
+            }],
           ],
-        }, {
+          }, {
           'sources': [
             'src/node_snapshot_stub.cc'
           ],
@@ -342,6 +365,88 @@
             '<(obj_dir)/<(node_text_start_object_path)'
           ]
         }],
+
+        ['node_fipsinstall=="true"', {
+          'variables': {
+            'openssl-cli': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)openssl-cli<(EXECUTABLE_SUFFIX)',
+            'provider_name': 'libopenssl-fipsmodule',
+            'opensslconfig': './deps/openssl/nodejs-openssl.cnf',
+            'conditions': [
+              ['GENERATOR == "ninja"', {
+	        'fipsmodule_internal': '<(PRODUCT_DIR)/lib/<(provider_name).so',
+                'fipsmodule': '<(PRODUCT_DIR)/obj/lib/openssl-modules/fips.so',
+                'fipsconfig': '<(PRODUCT_DIR)/obj/lib/fipsmodule.cnf',
+                'opensslconfig_internal': '<(PRODUCT_DIR)/obj/lib/openssl.cnf',
+             }, {
+	        'fipsmodule_internal': '<(PRODUCT_DIR)/obj.target/deps/openssl/<(provider_name).so',
+                'fipsmodule': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules/fips.so',
+                'fipsconfig': '<(PRODUCT_DIR)/obj.target/deps/openssl/fipsmodule.cnf',
+                'opensslconfig_internal': '<(PRODUCT_DIR)/obj.target/deps/openssl/openssl.cnf',
+             }],
+            ],
+          },
+          'actions': [
+            {
+              'action_name': 'fipsinstall',
+              'process_outputs_as_sources': 1,
+              'inputs': [
+                '<(fipsmodule_internal)',
+              ],
+              'outputs': [
+                '<(fipsconfig)',
+              ],
+              'action': [
+                '<(openssl-cli)', 'fipsinstall',
+                '-provider_name', '<(provider_name)',
+                '-module', '<(fipsmodule_internal)',
+                '-out', '<(fipsconfig)',
+                #'-quiet',
+              ],
+            },
+            {
+              'action_name': 'copy_fips_module',
+              'inputs': [
+                '<(fipsmodule_internal)',
+              ],
+              'outputs': [
+                '<(fipsmodule)',
+              ],
+              'action': [
+                'python', 'tools/copyfile.py',
+                '<(fipsmodule_internal)',
+                '<(fipsmodule)',
+              ],
+            },
+            {
+              'action_name': 'copy_openssl_cnf_and_include_fips_cnf',
+              'inputs': [ '<(opensslconfig)', ],
+              'outputs': [ '<(opensslconfig_internal)', ],
+              'action': [
+                'python', 'tools/enable_fips_include.py',
+                '<(opensslconfig)',
+                '<(opensslconfig_internal)',
+                '<(fipsconfig)',
+              ],
+            },
+          ],
+         }, {
+           'variables': {
+              'opensslconfig_internal': '<(obj_dir)/deps/openssl/openssl.cnf',
+              'opensslconfig': './deps/openssl/nodejs-openssl.cnf',
+           },
+           'actions': [
+             {
+               'action_name': 'reset_openssl_cnf',
+               'inputs': [ '<(opensslconfig)', ],
+               'outputs': [ '<(opensslconfig_internal)', ],
+               'action': [
+                 'python', 'tools/copyfile.py',
+                 '<(opensslconfig)',
+                 '<(opensslconfig_internal)',
+               ],
+             },
+           ],
+         }],
       ],
     }, # node_core_target_name
     {
@@ -356,6 +461,7 @@
         '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
       ],
       'dependencies': [
+        'deps/base64/base64.gyp:base64',
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
@@ -372,6 +478,7 @@
         'src/api/utils.cc',
         'src/async_wrap.cc',
         'src/cares_wrap.cc',
+        'src/cleanup_queue.cc',
         'src/connect_wrap.cc',
         'src/connection_wrap.cc',
         'src/debug_utils.cc',
@@ -394,6 +501,7 @@
         'src/node_binding.cc',
         'src/node_blob.cc',
         'src/node_buffer.cc',
+        'src/node_builtins.cc',
         'src/node_config.cc',
         'src/node_constants.cc',
         'src/node_contextify.cc',
@@ -409,8 +517,6 @@
         'src/node_main_instance.cc',
         'src/node_messaging.cc',
         'src/node_metadata.cc',
-        'src/node_native_module.cc',
-        'src/node_native_module_env.cc',
         'src/node_options.cc',
         'src/node_os.cc',
         'src/node_perf.cc',
@@ -435,6 +541,7 @@
         'src/node_util.cc',
         'src/node_v8.cc',
         'src/node_wasi.cc',
+        'src/node_wasm_web_api.cc',
         'src/node_watchdog.cc',
         'src/node_worker.cc',
         'src/node_zlib.cc',
@@ -463,8 +570,6 @@
         'src/aliased_buffer.h',
         'src/aliased_struct.h',
         'src/aliased_struct-inl.h',
-        'src/allocated_buffer.h',
-        'src/allocated_buffer-inl.h',
         'src/async_wrap.h',
         'src/async_wrap-inl.h',
         'src/base_object.h',
@@ -473,6 +578,8 @@
         'src/base64-inl.h',
         'src/callback_queue.h',
         'src/callback_queue-inl.h',
+        'src/cleanup_queue.h',
+        'src/cleanup_queue-inl.h',
         'src/connect_wrap.h',
         'src/connection_wrap.h',
         'src/debug_utils.h',
@@ -495,6 +602,7 @@
         'src/node_binding.h',
         'src/node_blob.h',
         'src/node_buffer.h',
+        'src/node_builtins.h',
         'src/node_constants.h',
         'src/node_context_data.h',
         'src/node_contextify.h',
@@ -515,8 +623,6 @@
         'src/node_messaging.h',
         'src/node_metadata.h',
         'src/node_mutex.h',
-        'src/node_native_module.h',
-        'src/node_native_module_env.h',
         'src/node_object_wrap.h',
         'src/node_options.h',
         'src/node_options-inl.h',
@@ -529,6 +635,7 @@
         'src/node_revert.h',
         'src/node_root_certs.h',
         'src/node_snapshotable.h',
+        'src/node_snapshot_builder.h',
         'src/node_sockaddr.h',
         'src/node_sockaddr-inl.h',
         'src/node_stat_watcher.h',
@@ -579,6 +686,8 @@
         'openssl_default_cipher_list%': '',
       },
 
+      'cflags': ['-Werror=unused-result'],
+
       'defines': [
         'NODE_ARCH="<(target_arch)"',
         'NODE_PLATFORM="<(OS)"',
@@ -610,7 +719,6 @@
         [ 'node_shared=="true"', {
           'sources': [
             'src/node_snapshot_stub.cc',
-            'src/node_code_cache_stub.cc',
           ]
         }],
         [ 'node_shared=="true" and node_module_version!="" and OS!="win"', {
@@ -619,6 +727,11 @@
             'LD_DYLIB_INSTALL_NAME':
               '@rpath/lib<(node_core_target_name).<(shlib_suffix)'
           },
+        }],
+        [ 'node_use_node_code_cache=="true"', {
+          'defines': [
+            'NODE_USE_NODE_CODE_CACHE=1',
+          ],
         }],
         ['node_shared=="true" and OS=="aix"', {
           'product_name': 'node_base',
@@ -639,6 +752,7 @@
           'libraries': [
             'Dbghelp',
             'Psapi',
+            'Winmm',
             'Ws2_32',
           ],
         }],
@@ -738,7 +852,6 @@
             'src/crypto/crypto_bio.h',
             'src/crypto/crypto_clienthello-inl.h',
             'src/crypto/crypto_dh.h',
-            'src/crypto/crypto_groups.h',
             'src/crypto/crypto_hmac.h',
             'src/crypto/crypto_rsa.h',
             'src/crypto/crypto_spkac.h',
@@ -790,7 +903,7 @@
             ],
           },
           'conditions': [
-            ['openssl_fips!=""', {
+            ['openssl_is_fips!=""', {
               'variables': { 'mkssldef_flags': ['-DOPENSSL_FIPS'] },
             }],
           ],
@@ -1019,7 +1132,6 @@
       ],
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/fuzzers/fuzz_url.cc',
       ],
       'conditions': [
@@ -1062,7 +1174,6 @@
       ],
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/fuzzers/fuzz_env.cc',
       ],
       'conditions': [
@@ -1081,6 +1192,7 @@
 
       'dependencies': [
         '<(node_lib_target_name)',
+        'deps/base64/base64.gyp:base64',
         'deps/googletest/googletest.gyp:gtest',
         'deps/googletest/googletest.gyp:gtest_main',
         'deps/histogram/histogram.gyp:histogram',
@@ -1112,7 +1224,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/cctest/node_test_fixture.cc',
         'test/cctest/node_test_fixture.h',
         'test/cctest/test_aliased_buffer.cc',
@@ -1125,6 +1236,7 @@
         'test/cctest/test_node_api.cc',
         'test/cctest/test_per_process.cc',
         'test/cctest/test_platform.cc',
+        'test/cctest/test_report.cc',
         'test/cctest/test_json_utils.cc',
         'test/cctest/test_sockaddr.cc',
         'test/cctest/test_traced_value.cc',
@@ -1138,6 +1250,7 @@
             'HAVE_OPENSSL=1',
           ],
           'sources': [
+            'test/cctest/test_crypto_clienthello.cc',
             'test/cctest/test_node_crypto.cc',
           ]
         }],
@@ -1205,7 +1318,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/embedding/embedtest.cc',
       ],
 
@@ -1249,68 +1361,6 @@
         }],
       ]
     }, # overlapped-checker
-
-    # TODO(joyeecheung): do not depend on node_lib,
-    # instead create a smaller static library node_lib_base that does
-    # just enough for node_native_module.cc and the cache builder to
-    # compile without compiling the generated code cache C++ file.
-    # So generate_code_cache -> mkcodecache -> node_lib_base,
-    #    node_lib -> node_lib_base & generate_code_cache
-    {
-      'target_name': 'mkcodecache',
-      'type': 'executable',
-
-      'dependencies': [
-        '<(node_lib_target_name)',
-        'deps/histogram/histogram.gyp:histogram',
-        'deps/uvwasi/uvwasi.gyp:uvwasi',
-      ],
-
-      'includes': [
-        'node.gypi'
-      ],
-
-      'include_dirs': [
-        'src',
-        'tools/msvs/genfiles',
-        'deps/v8/include',
-        'deps/cares/include',
-        'deps/uv/include',
-        'deps/uvwasi/include',
-      ],
-
-      'defines': [
-        'NODE_WANT_INTERNALS=1'
-      ],
-      'sources': [
-        'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
-        'tools/code_cache/mkcodecache.cc',
-        'tools/code_cache/cache_builder.cc',
-        'tools/code_cache/cache_builder.h',
-      ],
-
-      'conditions': [
-        [ 'node_use_openssl=="true"', {
-          'defines': [
-            'HAVE_OPENSSL=1',
-          ],
-        }],
-        ['v8_enable_inspector==1', {
-          'defines': [
-            'HAVE_INSPECTOR=1',
-          ],
-        }],
-        ['OS=="win"', {
-          'libraries': [
-            'dbghelp.lib',
-            'PsApi.lib',
-            'winmm.lib',
-            'Ws2_32.lib',
-          ],
-        }],
-      ],
-    }, # mkcodecache
     {
       'target_name': 'node_mksnapshot',
       'type': 'executable',
@@ -1338,7 +1388,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'tools/snapshot/node_mksnapshot.cc',
       ],
 
@@ -1346,6 +1395,11 @@
         [ 'node_use_openssl=="true"', {
           'defines': [
             'HAVE_OPENSSL=1',
+          ],
+        }],
+        [ 'node_use_node_code_cache=="true"', {
+          'defines': [
+            'NODE_USE_NODE_CODE_CACHE=1',
           ],
         }],
         ['v8_enable_inspector==1', {
@@ -1392,31 +1446,40 @@
         },
       ]
     }], # end aix section
-    # TODO(RaisinTen): Enable this to build on other platforms as well.
-    ['(OS=="mac" or (OS=="linux" and target_arch=="x64")) and \
-      node_use_openssl=="true"', {
-      'targets': [
-        {
-          'target_name': 'test_crypto_engine',
-          'type': 'shared_library',
-          'include_dirs': ['deps/openssl/openssl/include'],
-          'sources': ['test/fixtures/test_crypto_engine.c'],
-          'conditions': [
-            ['OS=="mac"', {
-              'dependencies': ['deps/openssl/openssl.gyp:openssl'],
-              'xcode_settings': {
-                'OTHER_CFLAGS': ['-Wno-deprecated-declarations'],
-              },
-            }],
-            ['OS=="linux" and target_arch=="x64"', {
-              'cflags': [
-                '-Wno-deprecated-declarations',
-                '-fPIC',
-              ],
-            }],
-          ],
-        }, # test_crypto_engine
-      ], # end targets
-    }], # end node_use_openssl section
+    ['OS=="win" and node_shared=="true"', {
+     'targets': [
+       {
+         'target_name': 'gen_node_def',
+         'type': 'executable',
+         'sources': [
+           'tools/gen_node_def.cc'
+         ],
+       },
+       {
+         'target_name': 'generate_node_def',
+         'dependencies': [
+           'gen_node_def',
+           '<(node_lib_target_name)',
+         ],
+         'type': 'none',
+         'actions': [
+           {
+             'action_name': 'generate_node_def_action',
+             'inputs': [
+               '<(PRODUCT_DIR)/<(node_lib_target_name).dll'
+             ],
+             'outputs': [
+               '<(PRODUCT_DIR)/<(node_core_target_name).def',
+             ],
+             'action': [
+               '<(PRODUCT_DIR)/gen_node_def.exe',
+               '<@(_inputs)',
+               '<@(_outputs)',
+             ],
+           },
+         ],
+       },
+     ],
+   }], # end win section
   ], # end conditions block
 }

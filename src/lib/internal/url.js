@@ -23,6 +23,7 @@ const {
   StringPrototypeCharCodeAt,
   StringPrototypeIncludes,
   StringPrototypeReplace,
+  StringPrototypeReplaceAll,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -43,6 +44,7 @@ const {
   getConstructorOf,
   removeColors,
   toUSVString,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -73,7 +75,7 @@ const {
 const path = require('path');
 
 const {
-  validateCallback,
+  validateFunction,
   validateObject,
 } = require('internal/validators');
 
@@ -219,6 +221,7 @@ class URLSearchParams {
       } else {
         // Record<USVString, USVString>
         // Need to use reflection APIs for full spec compliance.
+        const visited = {};
         this[searchParams] = [];
         const keys = ReflectOwnKeys(init);
         for (let i = 0; i < keys.length; i++) {
@@ -227,7 +230,16 @@ class URLSearchParams {
           if (desc !== undefined && desc.enumerable) {
             const typedKey = toUSVString(key);
             const typedValue = toUSVString(init[key]);
-            this[searchParams].push(typedKey, typedValue);
+
+            // Two different key may result same after `toUSVString()`, we only
+            // leave the later one. Refers to WPT.
+            if (visited[typedKey] !== undefined) {
+              this[searchParams][visited[typedKey]] = typedValue;
+            } else {
+              visited[typedKey] = ArrayPrototypePush(this[searchParams],
+                                                     typedKey,
+                                                     typedValue) - 1;
+            }
           }
         }
       }
@@ -466,7 +478,7 @@ class URLSearchParams {
     if (!isURLSearchParams(this))
       throw new ERR_INVALID_THIS('URLSearchParams');
 
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
     let list = this[searchParams];
 
@@ -507,22 +519,23 @@ class URLSearchParams {
 }
 
 ObjectDefineProperties(URLSearchParams.prototype, {
-  append: { enumerable: true },
-  delete: { enumerable: true },
-  get: { enumerable: true },
-  getAll: { enumerable: true },
-  has: { enumerable: true },
-  set: { enumerable: true },
-  sort: { enumerable: true },
-  entries: { enumerable: true },
-  forEach: { enumerable: true },
-  keys: { enumerable: true },
-  values: { enumerable: true },
-  toString: { enumerable: true },
-  [SymbolToStringTag]: { configurable: true, value: 'URLSearchParams' },
+  append: kEnumerableProperty,
+  delete: kEnumerableProperty,
+  get: kEnumerableProperty,
+  getAll: kEnumerableProperty,
+  has: kEnumerableProperty,
+  set: kEnumerableProperty,
+  sort: kEnumerableProperty,
+  entries: kEnumerableProperty,
+  forEach: kEnumerableProperty,
+  keys: kEnumerableProperty,
+  values: kEnumerableProperty,
+  toString: kEnumerableProperty,
+  [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'URLSearchParams' },
 
   // https://heycam.github.io/webidl/#es-iterable-entries
   [SymbolIterator]: {
+    __proto__: null,
     configurable: true,
     writable: true,
     value: URLSearchParams.prototype.entries,
@@ -548,7 +561,7 @@ function onParseComplete(flags, protocol, username, password,
   initSearchParams(this[searchParams], query);
 }
 
-function onParseError(flags, input) {
+function onParseError(input, flags) {
   throw new ERR_INVALID_URL(input);
 }
 
@@ -616,6 +629,10 @@ function onParseHashComplete(flags, protocol, username, password,
   this[context].fragment = fragment;
 }
 
+function isURLThis(self) {
+  return (self !== undefined && self !== null && self[context] !== undefined);
+}
+
 class URL {
   constructor(input, base = undefined) {
     // toUSVString is not needed.
@@ -626,7 +643,8 @@ class URL {
     }
     this[context] = new URLContext();
     parse(input, -1, base_context, undefined,
-          FunctionPrototypeBind(onParseComplete, this), onParseError);
+          FunctionPrototypeBind(onParseComplete, this),
+          FunctionPrototypeBind(onParseError, this, input));
   }
 
   get [special]() {
@@ -728,22 +746,31 @@ class URL {
 
   // https://heycam.github.io/webidl/#es-stringifier
   toString() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[kFormat]({});
   }
 
   get href() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[kFormat]({});
   }
 
   set href(input) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     input = `${input}`;
     parse(input, -1, undefined, undefined,
-          FunctionPrototypeBind(onParseComplete, this), onParseError);
+          FunctionPrototypeBind(onParseComplete, this),
+          FunctionPrototypeBind(onParseError, this, input));
   }
 
   // readonly
   get origin() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // Refs: https://url.spec.whatwg.org/#concept-url-origin
     const ctx = this[context];
     switch (ctx.scheme) {
@@ -767,10 +794,14 @@ class URL {
   }
 
   get protocol() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[context].scheme;
   }
 
   set protocol(scheme) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     scheme = `${scheme}`;
     if (scheme.length === 0)
@@ -781,10 +812,14 @@ class URL {
   }
 
   get username() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[context].username;
   }
 
   set username(username) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     username = `${username}`;
     if (this[cannotHaveUsernamePasswordPort])
@@ -800,10 +835,14 @@ class URL {
   }
 
   get password() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[context].password;
   }
 
   set password(password) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     password = `${password}`;
     if (this[cannotHaveUsernamePasswordPort])
@@ -819,6 +858,8 @@ class URL {
   }
 
   get host() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     let ret = ctx.host || '';
     if (ctx.port !== null)
@@ -827,6 +868,8 @@ class URL {
   }
 
   set host(host) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     // toUSVString is not needed.
     host = `${host}`;
@@ -839,10 +882,14 @@ class URL {
   }
 
   get hostname() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[context].host || '';
   }
 
   set hostname(host) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     // toUSVString is not needed.
     host = `${host}`;
@@ -854,11 +901,15 @@ class URL {
   }
 
   get port() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const port = this[context].port;
     return port === null ? '' : String(port);
   }
 
   set port(port) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     port = `${port}`;
     if (this[cannotHaveUsernamePasswordPort])
@@ -873,6 +924,8 @@ class URL {
   }
 
   get pathname() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     if (this[cannotBeBase])
       return ctx.path[0];
@@ -882,6 +935,8 @@ class URL {
   }
 
   set pathname(path) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     // toUSVString is not needed.
     path = `${path}`;
     if (this[cannotBeBase])
@@ -891,6 +946,8 @@ class URL {
   }
 
   get search() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const { query } = this[context];
     if (query === null || query === '')
       return '';
@@ -898,6 +955,8 @@ class URL {
   }
 
   set search(search) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     search = toUSVString(search);
     if (search === '') {
@@ -917,10 +976,14 @@ class URL {
 
   // readonly
   get searchParams() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[searchParams];
   }
 
   get hash() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const { fragment } = this[context];
     if (fragment === null || fragment === '')
       return '';
@@ -928,6 +991,8 @@ class URL {
   }
 
   set hash(hash) {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     const ctx = this[context];
     // toUSVString is not needed.
     hash = `${hash}`;
@@ -944,6 +1009,8 @@ class URL {
   }
 
   toJSON() {
+    if (!isURLThis(this))
+      throw new ERR_INVALID_THIS('URL');
     return this[kFormat]({});
   }
 
@@ -980,22 +1047,22 @@ class URL {
 }
 
 ObjectDefineProperties(URL.prototype, {
-  [kFormat]: { configurable: false, writable: false },
-  [SymbolToStringTag]: { configurable: true, value: 'URL' },
-  toString: { enumerable: true },
-  href: { enumerable: true },
-  origin: { enumerable: true },
-  protocol: { enumerable: true },
-  username: { enumerable: true },
-  password: { enumerable: true },
-  host: { enumerable: true },
-  hostname: { enumerable: true },
-  port: { enumerable: true },
-  pathname: { enumerable: true },
-  search: { enumerable: true },
-  searchParams: { enumerable: true },
-  hash: { enumerable: true },
-  toJSON: { enumerable: true },
+  [kFormat]: { __proto__: null, configurable: false, writable: false },
+  [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'URL' },
+  toString: kEnumerableProperty,
+  href: kEnumerableProperty,
+  origin: kEnumerableProperty,
+  protocol: kEnumerableProperty,
+  username: kEnumerableProperty,
+  password: kEnumerableProperty,
+  host: kEnumerableProperty,
+  hostname: kEnumerableProperty,
+  port: kEnumerableProperty,
+  pathname: kEnumerableProperty,
+  search: kEnumerableProperty,
+  searchParams: kEnumerableProperty,
+  hash: kEnumerableProperty,
+  toJSON: kEnumerableProperty,
 });
 
 function update(url, params) {
@@ -1164,6 +1231,7 @@ function serializeParams(array) {
 function defineIDLClass(proto, classStr, obj) {
   // https://heycam.github.io/webidl/#dfn-class-string
   ObjectDefineProperty(proto, SymbolToStringTag, {
+    __proto__: null,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -1173,6 +1241,7 @@ function defineIDLClass(proto, classStr, obj) {
   // https://heycam.github.io/webidl/#es-operations
   for (const key of ObjectKeys(obj)) {
     ObjectDefineProperty(proto, key, {
+      __proto__: null,
       writable: true,
       enumerable: true,
       configurable: true,
@@ -1181,6 +1250,7 @@ function defineIDLClass(proto, classStr, obj) {
   }
   for (const key of ObjectGetOwnPropertySymbols(obj)) {
     ObjectDefineProperty(proto, key, {
+      __proto__: null,
       writable: true,
       enumerable: false,
       configurable: true,
@@ -1355,8 +1425,6 @@ function urlToHttpOptions(url) {
   return options;
 }
 
-const forwardSlashRegEx = /\//g;
-
 function getPathFromURLWin32(url) {
   const hostname = url.hostname;
   let pathname = url.pathname;
@@ -1371,7 +1439,7 @@ function getPathFromURLWin32(url) {
       }
     }
   }
-  pathname = pathname.replace(forwardSlashRegEx, '\\');
+  pathname = StringPrototypeReplaceAll(pathname, '/', '\\');
   pathname = decodeURIComponent(pathname);
   if (hostname !== '') {
     // If hostname is set, then we have a UNC path

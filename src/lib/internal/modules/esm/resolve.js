@@ -2,6 +2,7 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeConcat,
   ArrayPrototypeJoin,
   ArrayPrototypeShift,
   JSONParse,
@@ -12,7 +13,6 @@ const {
   RegExp,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  RegExpPrototypeTest,
   SafeMap,
   SafeSet,
   String,
@@ -20,18 +20,20 @@ const {
   StringPrototypeIncludes,
   StringPrototypeIndexOf,
   StringPrototypeLastIndexOf,
+  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
 } = primordials;
 const internalFS = require('internal/fs/utils');
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   realpathSync,
   statSync,
   Stats,
 } = require('fs');
 const { getOptionValue } = require('internal/options');
+const pendingDeprecation = getOptionValue('--pending-deprecation');
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
@@ -39,8 +41,9 @@ const policy = getOptionValue('--experimental-policy') ?
 const { sep, relative, resolve } = require('path');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
+const experimentalNetworkImports =
+  getOptionValue('--experimental-network-imports');
 const typeFlag = getOptionValue('--input-type');
-const pendingDeprecation = getOptionValue('--pending-deprecation');
 const { URL, pathToFileURL, fileURLToPath } = require('internal/url');
 const {
   ERR_INPUT_TYPE_NOT_ALLOWED,
@@ -53,11 +56,19 @@ const {
   ERR_PACKAGE_IMPORT_NOT_DEFINED,
   ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_UNSUPPORTED_DIR_IMPORT,
+  ERR_NETWORK_IMPORT_DISALLOWED,
   ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
-const { Module: CJSModule } = require('internal/modules/cjs/loader');
 
+const { Module: CJSModule } = require('internal/modules/cjs/loader');
 const packageJsonReader = require('internal/modules/package_json_reader');
+const { getPackageConfig, getPackageScopeConfig } = require('internal/modules/esm/package_config');
+
+/**
+ * @typedef {import('internal/modules/esm/package_config.js').PackageConfig} PackageConfig
+ */
+
+
 const userConditions = getOptionValue('--conditions');
 const noAddons = getOptionValue('--no-addons');
 const addonConditions = noAddons ? [] : ['node-addons'];
@@ -71,55 +82,37 @@ const DEFAULT_CONDITIONS = ObjectFreeze([
 
 const DEFAULT_CONDITIONS_SET = new SafeSet(DEFAULT_CONDITIONS);
 
-/**
- * @typedef {string | string[] | Record<string, unknown>} Exports
- * @typedef {'module' | 'commonjs'} PackageType
- * @typedef {{
- *   exports?: ExportConfig;
- *   name?: string;
- *   main?: string;
- *   type?: PackageType;
- * }} PackageConfig
- */
-
 const emittedPackageWarnings = new SafeSet();
 
-/**
- * @param {string} match
- * @param {URL} pjsonUrl
- * @param {boolean} isExports
- * @param {string | URL | undefined} base
- * @returns {void}
- */
-function emitFolderMapDeprecation(match, pjsonUrl, isExports, base) {
-  const pjsonPath = fileURLToPath(pjsonUrl);
-
-  if (emittedPackageWarnings.has(pjsonPath + '|' + match))
-    return;
-  emittedPackageWarnings.add(pjsonPath + '|' + match);
-  process.emitWarning(
-    `Use of deprecated folder mapping "${match}" in the ${isExports ?
-      '"exports"' : '"imports"'} field module resolution of the package at ${
-      pjsonPath}${base ? ` imported from ${fileURLToPath(base)}` : ''}.\n` +
-      `Update this package.json to use a subpath pattern like "${match}*".`,
-    'DeprecationWarning',
-    'DEP0148'
-  );
-}
-
-function emitTrailingSlashPatternDeprecation(match, pjsonUrl, isExports, base) {
-  if (!pendingDeprecation) return;
+function emitTrailingSlashPatternDeprecation(match, pjsonUrl, base) {
   const pjsonPath = fileURLToPath(pjsonUrl);
   if (emittedPackageWarnings.has(pjsonPath + '|' + match))
     return;
   emittedPackageWarnings.add(pjsonPath + '|' + match);
   process.emitWarning(
-    `Use of deprecated trailing slash pattern mapping "${match}" in the ${
-      isExports ? '"exports"' : '"imports"'} field module resolution of the ` +
-      `package at ${pjsonPath}${base ? ` imported from ${fileURLToPath(base)}` :
+    `Use of deprecated trailing slash pattern mapping "${match}" in the ` +
+    `"exports" field module resolution of the package at ${pjsonPath}${
+      base ? ` imported from ${fileURLToPath(base)}` :
         ''}. Mapping specifiers ending in "/" is no longer supported.`,
     'DeprecationWarning',
     'DEP0155'
+  );
+}
+
+const doubleSlashRegEx = /[/\\][/\\]/;
+
+function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, base) {
+  if (!pendingDeprecation) { return; }
+  const pjsonPath = fileURLToPath(pjsonUrl);
+  const double = RegExpPrototypeExec(doubleSlashRegEx, target) !== null;
+  process.emitWarning(
+    `Use of deprecated ${double ? 'double slash' :
+      'leading or trailing slash matching'} resolving "${target}" for module ` +
+      `request "${request}" ${request !== match ? `matched to "${match}" ` : ''
+      }in the "exports" field module resolution of the package at ${pjsonPath}${
+        base ? ` imported from ${fileURLToPath(base)}` : ''}.`,
+    'DeprecationWarning',
+    'DEP0166'
   );
 }
 
@@ -174,7 +167,6 @@ function getConditionsSet(conditions) {
 }
 
 const realpathCache = new SafeMap();
-const packageJSONCache = new SafeMap();  /* string -> PackageConfig */
 
 /**
  * @param {string | URL} path
@@ -182,99 +174,6 @@ const packageJSONCache = new SafeMap();  /* string -> PackageConfig */
  */
 const tryStatSync =
   (path) => statSync(path, { throwIfNoEntry: false }) ?? new Stats();
-
-/**
- * @param {string} path
- * @param {string} specifier
- * @param {string | URL | undefined} base
- * @returns {PackageConfig}
- */
-function getPackageConfig(path, specifier, base) {
-  const existing = packageJSONCache.get(path);
-  if (existing !== undefined) {
-    return existing;
-  }
-  const source = packageJsonReader.read(path).string;
-  if (source === undefined) {
-    const packageConfig = {
-      pjsonPath: path,
-      exists: false,
-      main: undefined,
-      name: undefined,
-      type: 'none',
-      exports: undefined,
-      imports: undefined,
-    };
-    packageJSONCache.set(path, packageConfig);
-    return packageConfig;
-  }
-
-  let packageJSON;
-  try {
-    packageJSON = JSONParse(source);
-  } catch (error) {
-    throw new ERR_INVALID_PACKAGE_CONFIG(
-      path,
-      (base ? `"${specifier}" from ` : '') + fileURLToPath(base || specifier),
-      error.message
-    );
-  }
-
-  let { imports, main, name, type } = packageJSON;
-  const { exports } = packageJSON;
-  if (typeof imports !== 'object' || imports === null) imports = undefined;
-  if (typeof main !== 'string') main = undefined;
-  if (typeof name !== 'string') name = undefined;
-  // Ignore unknown types for forwards compatibility
-  if (type !== 'module' && type !== 'commonjs') type = 'none';
-
-  const packageConfig = {
-    pjsonPath: path,
-    exists: true,
-    main,
-    name,
-    type,
-    exports,
-    imports,
-  };
-  packageJSONCache.set(path, packageConfig);
-  return packageConfig;
-}
-
-/**
- * @param {URL | string} resolved
- * @returns {PackageConfig}
- */
-function getPackageScopeConfig(resolved) {
-  let packageJSONUrl = new URL('./package.json', resolved);
-  while (true) {
-    const packageJSONPath = packageJSONUrl.pathname;
-    if (StringPrototypeEndsWith(packageJSONPath, 'node_modules/package.json'))
-      break;
-    const packageConfig = getPackageConfig(fileURLToPath(packageJSONUrl),
-                                           resolved);
-    if (packageConfig.exists) return packageConfig;
-
-    const lastPackageJSONUrl = packageJSONUrl;
-    packageJSONUrl = new URL('../package.json', packageJSONUrl);
-
-    // Terminates at root where ../package.json equals ../../package.json
-    // (can't just check "/package.json" for Windows support).
-    if (packageJSONUrl.pathname === lastPackageJSONUrl.pathname) break;
-  }
-  const packageJSONPath = fileURLToPath(packageJSONUrl);
-  const packageConfig = {
-    pjsonPath: packageJSONPath,
-    exists: false,
-    main: undefined,
-    name: undefined,
-    type: 'none',
-    exports: undefined,
-    imports: undefined,
-  };
-  packageJSONCache.set(packageJSONPath, packageConfig);
-  return packageConfig;
-}
 
 /**
  * @param {string | URL} url
@@ -389,23 +288,29 @@ const encodedSepRegEx = /%2F|%5C/i;
  * @returns {URL | undefined}
  */
 function finalizeResolution(resolved, base, preserveSymlinks) {
-  if (RegExpPrototypeTest(encodedSepRegEx, resolved.pathname))
+  if (RegExpPrototypeExec(encodedSepRegEx, resolved.pathname) !== null)
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved.pathname, 'must not include encoded "/" or "\\" characters',
       fileURLToPath(base));
 
-  const path = fileURLToPath(resolved);
+  let path = fileURLToPath(resolved);
   if (getOptionValue('--experimental-specifier-resolution') === 'node') {
     let file = resolveExtensionsWithTryExactName(resolved);
-    if (file !== undefined) return file;
-    if (!StringPrototypeEndsWith(path, '/')) {
-      file = resolveDirectoryEntry(new URL(`${resolved}/`));
-      if (file !== undefined) return file;
-    } else {
-      return resolveDirectoryEntry(resolved) || resolved;
+
+    // Directory
+    if (file === undefined) {
+      file = StringPrototypeEndsWith(path, '/') ?
+        (resolveDirectoryEntry(resolved) || resolved) : resolveDirectoryEntry(new URL(`${resolved}/`));
+
+      if (file === resolved) return file;
+
+      if (file === undefined) {
+        throw new ERR_MODULE_NOT_FOUND(
+          resolved.pathname, fileURLToPath(base), 'module');
+      }
     }
-    throw new ERR_MODULE_NOT_FOUND(
-      resolved.pathname, fileURLToPath(base), 'module');
+
+    path = file;
   }
 
   const stats = tryStatSync(StringPrototypeEndsWith(path, '/') ?
@@ -457,15 +362,17 @@ function throwExportsNotFound(subpath, packageJSONUrl, base) {
 
 /**
  *
- * @param {string | URL} subpath
+ * @param {string} request
+ * @param {string} match
  * @param {URL} packageJSONUrl
  * @param {boolean} internal
  * @param {string | URL | undefined} base
  */
-function throwInvalidSubpath(subpath, packageJSONUrl, internal, base) {
-  const reason = `request is not a valid subpath for the "${internal ?
-    'imports' : 'exports'}" resolution of ${fileURLToPath(packageJSONUrl)}`;
-  throw new ERR_INVALID_MODULE_SPECIFIER(subpath, reason,
+function throwInvalidSubpath(request, match, packageJSONUrl, internal, base) {
+  const reason = `request is not a valid match in pattern "${match}" for the "${
+    internal ? 'imports' : 'exports'}" resolution of ${
+    fileURLToPath(packageJSONUrl)}`;
+  throw new ERR_INVALID_MODULE_SPECIFIER(request, reason,
                                          base && fileURLToPath(base));
 }
 
@@ -481,12 +388,22 @@ function throwInvalidPackageTarget(
     internal, base && fileURLToPath(base));
 }
 
-const invalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))(\\|\/|$)/i;
+const invalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))?(\\|\/|$)/i;
+const deprecatedInvalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o|%6f|%4f)(d|%64|%44)(e|%65|%45)(_|%5f)(m|%6d|%4d)(o|%6f|%4f)(d|%64|%44)(u|%75|%55)(l|%6c|%4c)(e|%65|%45)(s|%73|%53))(\\|\/|$)/i;
 const invalidPackageNameRegEx = /^\.|%|\\/;
 const patternRegEx = /\*/g;
 
 function resolvePackageTargetString(
-  target, subpath, match, packageJSONUrl, base, pattern, internal, conditions) {
+  target,
+  subpath,
+  match,
+  packageJSONUrl,
+  base,
+  pattern,
+  internal,
+  isPathMap,
+  conditions,
+) {
 
   if (subpath !== '' && !pattern && target[target.length - 1] !== '/')
     throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
@@ -512,8 +429,21 @@ function resolvePackageTargetString(
     throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
   }
 
-  if (RegExpPrototypeTest(invalidSegmentRegEx, StringPrototypeSlice(target, 2)))
-    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+  if (RegExpPrototypeExec(invalidSegmentRegEx, StringPrototypeSlice(target, 2)) !== null) {
+    if (RegExpPrototypeExec(deprecatedInvalidSegmentRegEx, StringPrototypeSlice(target, 2)) === null) {
+      if (!isPathMap) {
+        const request = pattern ?
+          StringPrototypeReplace(match, '*', () => subpath) :
+          match + subpath;
+        const resolvedTarget = pattern ?
+          RegExpPrototypeSymbolReplace(patternRegEx, target, () => subpath) :
+          target;
+        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, base);
+      }
+    } else {
+      throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+    }
+  }
 
   const resolved = new URL(target, packageJSONUrl);
   const resolvedPath = resolved.pathname;
@@ -524,16 +454,23 @@ function resolvePackageTargetString(
 
   if (subpath === '') return resolved;
 
-  if (RegExpPrototypeTest(invalidSegmentRegEx, subpath))
-    throwInvalidSubpath(match + subpath, packageJSONUrl, internal, base);
+  if (RegExpPrototypeExec(invalidSegmentRegEx, subpath) !== null) {
+    const request = pattern ? StringPrototypeReplace(match, '*', () => subpath) : match + subpath;
+    if (RegExpPrototypeExec(deprecatedInvalidSegmentRegEx, subpath) === null) {
+      if (!isPathMap) {
+        const resolvedTarget = pattern ?
+          RegExpPrototypeSymbolReplace(patternRegEx, target, () => subpath) :
+          target;
+        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, base);
+      }
+    } else {
+      throwInvalidSubpath(request, match, packageJSONUrl, internal, base);
+    }
+  }
 
   if (pattern) {
     return new URL(
-      RegExpPrototypeSymbolReplace(
-        patternRegEx,
-        resolved.href,
-        () => subpath
-      )
+      RegExpPrototypeSymbolReplace(patternRegEx, resolved.href, () => subpath)
     );
   }
 
@@ -551,14 +488,15 @@ function isArrayIndex(key) {
 }
 
 function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
-                              base, pattern, internal, conditions) {
+                              base, pattern, internal, isPathMap, conditions) {
   if (typeof target === 'string') {
     return resolvePackageTargetString(
       target, subpath, packageSubpath, packageJSONUrl, base, pattern, internal,
-      conditions);
+      isPathMap, conditions);
   } else if (ArrayIsArray(target)) {
-    if (target.length === 0)
+    if (target.length === 0) {
       return null;
+    }
 
     let lastException;
     for (let i = 0; i < target.length; i++) {
@@ -567,15 +505,17 @@ function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
       try {
         resolveResult = resolvePackageTarget(
           packageJSONUrl, targetItem, subpath, packageSubpath, base, pattern,
-          internal, conditions);
+          internal, isPathMap, conditions);
       } catch (e) {
         lastException = e;
-        if (e.code === 'ERR_INVALID_PACKAGE_TARGET')
+        if (e.code === 'ERR_INVALID_PACKAGE_TARGET') {
           continue;
+        }
         throw e;
       }
-      if (resolveResult === undefined)
+      if (resolveResult === undefined) {
         continue;
+      }
       if (resolveResult === null) {
         lastException = null;
         continue;
@@ -601,7 +541,7 @@ function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
         const conditionalTarget = target[key];
         const resolveResult = resolvePackageTarget(
           packageJSONUrl, conditionalTarget, subpath, packageSubpath, base,
-          pattern, internal, conditions);
+          pattern, internal, isPathMap, conditions);
         if (resolveResult === undefined)
           continue;
         return resolveResult;
@@ -617,7 +557,7 @@ function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
 
 /**
  *
- * @param {Exports} exports
+ * @param {import('internal/modules/esm/package_config.js').Exports} exports
  * @param {URL} packageJSONUrl
  * @param {string | URL | undefined} base
  * @returns {boolean}
@@ -663,15 +603,16 @@ function packageExportsResolve(
       !StringPrototypeIncludes(packageSubpath, '*') &&
       !StringPrototypeEndsWith(packageSubpath, '/')) {
     const target = exports[packageSubpath];
-    const resolved = resolvePackageTarget(
-      packageJSONUrl, target, '', packageSubpath, base, false, false, conditions
+    const resolveResult = resolvePackageTarget(
+      packageJSONUrl, target, '', packageSubpath, base, false, false, false,
+      conditions
     );
 
-    if (resolved == null) {
+    if (resolveResult == null) {
       throwExportsNotFound(packageSubpath, packageJSONUrl, base);
     }
 
-    return { resolved, exact: true };
+    return resolveResult;
   }
 
   let bestMatch = '';
@@ -683,9 +624,15 @@ function packageExportsResolve(
     if (patternIndex !== -1 &&
         StringPrototypeStartsWith(packageSubpath,
                                   StringPrototypeSlice(key, 0, patternIndex))) {
+      // When this reaches EOL, this can throw at the top of the whole function:
+      //
+      // if (StringPrototypeEndsWith(packageSubpath, '/'))
+      //   throwInvalidSubpath(packageSubpath)
+      //
+      // To match "imports" and the spec.
       if (StringPrototypeEndsWith(packageSubpath, '/'))
         emitTrailingSlashPatternDeprecation(packageSubpath, packageJSONUrl,
-                                            true, base);
+                                            base);
       const patternTrailer = StringPrototypeSlice(key, patternIndex + 1);
       if (packageSubpath.length >= key.length &&
           StringPrototypeEndsWith(packageSubpath, patternTrailer) &&
@@ -696,36 +643,26 @@ function packageExportsResolve(
           packageSubpath, patternIndex,
           packageSubpath.length - patternTrailer.length);
       }
-    } else if (key[key.length - 1] === '/' &&
-      StringPrototypeStartsWith(packageSubpath, key) &&
-      patternKeyCompare(bestMatch, key) === 1) {
-      bestMatch = key;
-      bestMatchSubpath = StringPrototypeSlice(packageSubpath, key.length);
     }
   }
 
   if (bestMatch) {
     const target = exports[bestMatch];
-    const pattern = StringPrototypeIncludes(bestMatch, '*');
-    const resolved = resolvePackageTarget(
+    const resolveResult = resolvePackageTarget(
       packageJSONUrl,
       target,
       bestMatchSubpath,
       bestMatch,
       base,
-      pattern,
+      true,
       false,
+      StringPrototypeEndsWith(packageSubpath, '/'),
       conditions);
 
-    if (resolved == null) {
+    if (resolveResult == null) {
       throwExportsNotFound(packageSubpath, packageJSONUrl, base);
     }
-
-    if (!pattern) {
-      emitFolderMapDeprecation(bestMatch, packageJSONUrl, true, base);
-    }
-
-    return { resolved, exact: pattern };
+    return resolveResult;
   }
 
   throwExportsNotFound(packageSubpath, packageJSONUrl, base);
@@ -752,7 +689,8 @@ function patternKeyCompare(a, b) {
  * @returns {URL}
  */
 function packageImportsResolve(name, base, conditions) {
-  if (name === '#' || StringPrototypeStartsWith(name, '#/')) {
+  if (name === '#' || StringPrototypeStartsWith(name, '#/') ||
+      StringPrototypeEndsWith(name, '/')) {
     const reason = 'is not a valid internal imports specifier name';
     throw new ERR_INVALID_MODULE_SPECIFIER(name, reason, fileURLToPath(base));
   }
@@ -763,13 +701,13 @@ function packageImportsResolve(name, base, conditions) {
     const imports = packageConfig.imports;
     if (imports) {
       if (ObjectPrototypeHasOwnProperty(imports, name) &&
-          !StringPrototypeIncludes(name, '*') &&
-          !StringPrototypeEndsWith(name, '/')) {
-        const resolved = resolvePackageTarget(
-          packageJSONUrl, imports[name], '', name, base, false, true, conditions
+          !StringPrototypeIncludes(name, '*')) {
+        const resolveResult = resolvePackageTarget(
+          packageJSONUrl, imports[name], '', name, base, false, true, false,
+          conditions
         );
-        if (resolved != null) {
-          return { resolved, exact: true };
+        if (resolveResult != null) {
+          return resolveResult;
         }
       } else {
         let bestMatch = '';
@@ -791,26 +729,17 @@ function packageImportsResolve(name, base, conditions) {
               bestMatchSubpath = StringPrototypeSlice(
                 name, patternIndex, name.length - patternTrailer.length);
             }
-          } else if (key[key.length - 1] === '/' &&
-            StringPrototypeStartsWith(name, key) &&
-            patternKeyCompare(bestMatch, key) === 1) {
-            bestMatch = key;
-            bestMatchSubpath = StringPrototypeSlice(name, key.length);
           }
         }
 
         if (bestMatch) {
           const target = imports[bestMatch];
-          const pattern = StringPrototypeIncludes(bestMatch, '*');
-          const resolved = resolvePackageTarget(
-            packageJSONUrl, target,
-            bestMatchSubpath, bestMatch,
-            base, pattern, true,
-            conditions);
-          if (resolved !== null) {
-            if (!pattern)
-              emitFolderMapDeprecation(bestMatch, packageJSONUrl, false, base);
-            return { resolved, exact: pattern };
+          const resolveResult = resolvePackageTarget(packageJSONUrl, target,
+                                                     bestMatchSubpath,
+                                                     bestMatch, base, true,
+                                                     true, false, conditions);
+          if (resolveResult != null) {
+            return resolveResult;
           }
         }
       }
@@ -821,7 +750,7 @@ function packageImportsResolve(name, base, conditions) {
 
 /**
  * @param {URL} url
- * @returns {PackageType}
+ * @returns {import('internal/modules/esm/package_config.js').PackageType}
  */
 function getPackageType(url) {
   const packageConfig = getPackageScopeConfig(url);
@@ -870,11 +799,13 @@ function parsePackageName(specifier, base) {
  * @param {string} specifier
  * @param {string | URL | undefined} base
  * @param {Set<string>} conditions
- * @returns {URL}
+ * @returns {resolved: URL, format? : string}
  */
 function packageResolve(specifier, base, conditions) {
-  if (NativeModule.canBeRequiredByUsers(specifier))
+  if (BuiltinModule.canBeRequiredByUsers(specifier) &&
+      BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
     return new URL('node:' + specifier);
+  }
 
   const { packageName, packageSubpath, isScoped } =
     parsePackageName(specifier, base);
@@ -886,8 +817,7 @@ function packageResolve(specifier, base, conditions) {
     if (packageConfig.name === packageName &&
         packageConfig.exports !== undefined && packageConfig.exports !== null) {
       return packageExportsResolve(
-        packageJSONUrl, packageSubpath, packageConfig, base, conditions
-      ).resolved;
+        packageJSONUrl, packageSubpath, packageConfig, base, conditions);
     }
   }
 
@@ -911,10 +841,8 @@ function packageResolve(specifier, base, conditions) {
     const packageConfig = getPackageConfig(packageJSONPath, specifier, base);
     if (packageConfig.exports !== undefined && packageConfig.exports !== null) {
       return packageExportsResolve(
-        packageJSONUrl, packageSubpath, packageConfig, base, conditions
-      ).resolved;
+        packageJSONUrl, packageSubpath, packageConfig, base, conditions);
     }
-
     if (packageSubpath === '.') {
       return legacyMainResolve(
         packageJSONUrl,
@@ -961,25 +889,30 @@ function shouldBeTreatedAsRelativeOrAbsolutePath(specifier) {
  * @param {string | URL | undefined} base
  * @param {Set<string>} conditions
  * @param {boolean} preserveSymlinks
- * @returns {URL}
+ * @returns {url: URL, format?: string}
  */
 function moduleResolve(specifier, base, conditions, preserveSymlinks) {
+  const isRemote = base.protocol === 'http:' ||
+    base.protocol === 'https:';
   // Order swapped from spec for minor perf gain.
   // Ok since relative URLs cannot parse as URLs.
   let resolved;
   if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
     resolved = new URL(specifier, base);
-  } else if (specifier[0] === '#') {
-    ({ resolved } = packageImportsResolve(specifier, base, conditions));
+  } else if (!isRemote && specifier[0] === '#') {
+    resolved = packageImportsResolve(specifier, base, conditions);
   } else {
     try {
       resolved = new URL(specifier);
     } catch {
-      resolved = packageResolve(specifier, base, conditions);
+      if (!isRemote) {
+        resolved = packageResolve(specifier, base, conditions);
+      }
     }
   }
-  if (resolved.protocol !== 'file:')
+  if (resolved.protocol !== 'file:') {
     return resolved;
+  }
   return finalizeResolution(resolved, base, preserveSymlinks);
 }
 
@@ -1029,6 +962,47 @@ function resolveAsCommonJS(specifier, parentURL) {
   }
 }
 
+// TODO(@JakobJingleheimer): de-dupe `specifier` & `parsed`
+function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
+  if (parsedParentURL) {
+    if (
+      parsedParentURL.protocol === 'http:' ||
+      parsedParentURL.protocol === 'https:'
+    ) {
+      if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
+        // data: and blob: disallowed due to allowing file: access via
+        // indirection
+        if (parsed &&
+          parsed.protocol !== 'https:' &&
+          parsed.protocol !== 'http:'
+        ) {
+          throw new ERR_NETWORK_IMPORT_DISALLOWED(
+            specifier,
+            parsedParentURL,
+            'remote imports cannot import from a local location.'
+          );
+        }
+
+        return { url: parsed.href };
+      }
+      if (BuiltinModule.canBeRequiredByUsers(specifier) &&
+          BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
+        throw new ERR_NETWORK_IMPORT_DISALLOWED(
+          specifier,
+          parsedParentURL,
+          'remote imports cannot import from a local location.'
+        );
+      }
+
+      throw new ERR_NETWORK_IMPORT_DISALLOWED(
+        specifier,
+        parsedParentURL,
+        'only relative and absolute specifiers are supported.'
+      );
+    }
+  }
+}
+
 function throwIfUnsupportedURLProtocol(url) {
   if (url.protocol !== 'file:' && url.protocol !== 'data:' &&
       url.protocol !== 'node:') {
@@ -1036,7 +1010,28 @@ function throwIfUnsupportedURLProtocol(url) {
   }
 }
 
-function defaultResolve(specifier, context = {}, defaultResolveUnused) {
+function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
+  if (
+    parsed &&
+    parsed.protocol !== 'file:' &&
+    parsed.protocol !== 'data:' &&
+    (
+      !experimentalNetworkImports ||
+      (
+        parsed.protocol !== 'https:' &&
+        parsed.protocol !== 'http:'
+      )
+    )
+  ) {
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, ArrayPrototypeConcat(
+      'file',
+      'data',
+      experimentalNetworkImports ? ['https', 'http'] : [],
+    ));
+  }
+}
+
+async function defaultResolve(specifier, context = {}) {
   let { parentURL, conditions } = context;
   if (parentURL && policy?.manifest) {
     const redirects = policy.manifest.getDependencyMapper(parentURL);
@@ -1051,6 +1046,9 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
         return { url: href };
       }
       if (missing) {
+        // Prevent network requests from firing if resolution would be banned.
+        // Network requests can extract data by doing things like putting
+        // secrets in query params
         reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
           parentURL,
           specifier,
@@ -1059,6 +1057,53 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
       }
     }
   }
+
+  let parsedParentURL;
+  if (parentURL) {
+    try {
+      parsedParentURL = new URL(parentURL);
+    } catch {
+      // Ignore exception
+    }
+  }
+
+  let parsed;
+  try {
+    if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
+      parsed = new URL(specifier, parsedParentURL);
+    } else {
+      parsed = new URL(specifier);
+    }
+
+    if (parsed.protocol === 'data:' ||
+      (experimentalNetworkImports &&
+        (
+          parsed.protocol === 'https:' ||
+          parsed.protocol === 'http:'
+        )
+      )
+    ) {
+      return { url: parsed.href };
+    }
+  } catch {
+    // Ignore exception
+  }
+
+  // There are multiple deep branches that can either throw or return; instead
+  // of duplicating that deeply nested logic for the possible returns, DRY and
+  // check for a return. This seems the least gnarly.
+  const maybeReturn = checkIfDisallowedImport(
+    specifier,
+    parsed,
+    parsedParentURL,
+  );
+
+  if (maybeReturn) return maybeReturn;
+
+  // This must come after checkIfDisallowedImport
+  if (parsed && parsed.protocol === 'node:') return { url: specifier };
+
+  throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports);
 
   const isMain = parentURL === undefined;
   if (isMain) {
@@ -1070,15 +1115,18 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
     // input, to avoid user confusion over how expansive the effect of the
     // flag should be (i.e. entry point only, package scope surrounding the
     // entry point, etc.).
-    if (typeFlag)
-      throw new ERR_INPUT_TYPE_NOT_ALLOWED();
+    if (typeFlag) throw new ERR_INPUT_TYPE_NOT_ALLOWED();
   }
 
   conditions = getConditionsSet(conditions);
   let url;
   try {
-    url = moduleResolve(specifier, parentURL, conditions,
-                        isMain ? preserveSymlinksMain : preserveSymlinks);
+    url = moduleResolve(
+      specifier,
+      parentURL,
+      conditions,
+      isMain ? preserveSymlinksMain : preserveSymlinks
+    );
   } catch (error) {
     // Try to give the user a hint of what would have been the
     // resolved CommonJS module
@@ -1105,8 +1153,10 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
   throwIfUnsupportedURLProtocol(url);
 
   return {
-    url: `${url}`,
-    format: defaultGetFormatWithoutErrors(url),
+    // Do NOT cast `url` to a string: that will work even when there are real
+    // problems, silencing them
+    url: url.href,
+    format: defaultGetFormatWithoutErrors(url, context),
   };
 }
 
@@ -1117,10 +1167,29 @@ module.exports = {
   getPackageScopeConfig,
   getPackageType,
   packageExportsResolve,
-  packageImportsResolve
+  packageImportsResolve,
 };
 
 // cycle
 const {
   defaultGetFormatWithoutErrors,
 } = require('internal/modules/esm/get_format');
+
+if (policy) {
+  const $defaultResolve = defaultResolve;
+  module.exports.defaultResolve = async function defaultResolve(
+    specifier,
+    context
+  ) {
+    const ret = await $defaultResolve(specifier, context);
+    // This is a preflight check to avoid data exfiltration by query params etc.
+    policy.manifest.mightAllow(ret.url, () =>
+      new ERR_MANIFEST_DEPENDENCY_MISSING(
+        context.parentURL,
+        specifier,
+        context.conditions
+      )
+    );
+    return ret;
+  };
+}

@@ -14,6 +14,11 @@ const {
   Immediate,
   insert
 } = require('internal/timers');
+const {
+  clearImmediate,
+  clearInterval,
+  clearTimeout,
+} = require('timers');
 
 const {
   AbortError,
@@ -30,16 +35,20 @@ const {
   validateObject,
 } = require('internal/validators');
 
+const {
+  kEmptyObject,
+} = require('internal/util');
+
 const kScheduler = Symbol('kScheduler');
 
 function cancelListenerHandler(clear, reject, signal) {
   if (!this._destroyed) {
     clear(this);
-    reject(new AbortError());
+    reject(new AbortError(undefined, { cause: signal?.reason }));
   }
 }
 
-function setTimeout(after, value, options = {}) {
+function setTimeout(after, value, options = kEmptyObject) {
   const args = value !== undefined ? [value] : value;
   if (options == null || typeof options !== 'object') {
     return PromiseReject(
@@ -65,7 +74,7 @@ function setTimeout(after, value, options = {}) {
   // to 12.x, then this can be converted to use optional chaining to
   // simplify the check.
   if (signal && signal.aborted) {
-    return PromiseReject(new AbortError());
+    return PromiseReject(new AbortError(undefined, { cause: signal.reason }));
   }
   let oncancel;
   const ret = new Promise((resolve, reject) => {
@@ -73,8 +82,7 @@ function setTimeout(after, value, options = {}) {
     insert(timeout, timeout._idleTimeout);
     if (signal) {
       oncancel = FunctionPrototypeBind(cancelListenerHandler,
-                                       // eslint-disable-next-line no-undef
-                                       timeout, clearTimeout, reject);
+                                       timeout, clearTimeout, reject, signal);
       signal.addEventListener('abort', oncancel);
     }
   });
@@ -84,7 +92,7 @@ function setTimeout(after, value, options = {}) {
       () => signal.removeEventListener('abort', oncancel)) : ret;
 }
 
-function setImmediate(value, options = {}) {
+function setImmediate(value, options = kEmptyObject) {
   if (options == null || typeof options !== 'object') {
     return PromiseReject(
       new ERR_INVALID_ARG_TYPE(
@@ -109,7 +117,7 @@ function setImmediate(value, options = {}) {
   // to 12.x, then this can be converted to use optional chaining to
   // simplify the check.
   if (signal && signal.aborted) {
-    return PromiseReject(new AbortError());
+    return PromiseReject(new AbortError(undefined, { cause: signal.reason }));
   }
   let oncancel;
   const ret = new Promise((resolve, reject) => {
@@ -117,8 +125,8 @@ function setImmediate(value, options = {}) {
     if (!ref) immediate.unref();
     if (signal) {
       oncancel = FunctionPrototypeBind(cancelListenerHandler,
-                                       // eslint-disable-next-line no-undef
-                                       immediate, clearImmediate, reject);
+                                       immediate, clearImmediate, reject,
+                                       signal);
       signal.addEventListener('abort', oncancel);
     }
   });
@@ -128,14 +136,14 @@ function setImmediate(value, options = {}) {
       () => signal.removeEventListener('abort', oncancel)) : ret;
 }
 
-async function* setInterval(after, value, options = {}) {
+async function* setInterval(after, value, options = kEmptyObject) {
   validateObject(options, 'options');
   const { signal, ref = true } = options;
   validateAbortSignal(signal, 'options.signal');
   validateBoolean(ref, 'options.ref');
 
   if (signal?.aborted)
-    throw new AbortError();
+    throw new AbortError(undefined, { cause: signal?.reason });
 
   let onCancel;
   let interval;
@@ -152,10 +160,11 @@ async function* setInterval(after, value, options = {}) {
     insert(interval, interval._idleTimeout);
     if (signal) {
       onCancel = () => {
-        // eslint-disable-next-line no-undef
         clearInterval(interval);
         if (callback) {
-          callback(PromiseReject(new AbortError()));
+          callback(
+            PromiseReject(
+              new AbortError(undefined, { cause: signal.reason })));
           callback = undefined;
         }
       };
@@ -170,9 +179,8 @@ async function* setInterval(after, value, options = {}) {
         yield value;
       }
     }
-    throw new AbortError();
+    throw new AbortError(undefined, { cause: signal?.reason });
   } finally {
-    // eslint-disable-next-line no-undef
     clearInterval(interval);
     signal?.removeEventListener('abort', onCancel);
   }

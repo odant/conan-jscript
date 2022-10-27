@@ -3,7 +3,6 @@
 const {
   FunctionPrototypeCall,
   Promise,
-  Uint8Array,
 } = primordials;
 
 const {
@@ -13,7 +12,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInteger,
   validateString,
   validateUint32,
@@ -53,13 +52,10 @@ const {
 } = require('internal/errors');
 
 const validateParameters = hideStackFrames((hash, key, salt, info, length) => {
-  key = prepareKey(key);
-  salt = toBuf(salt);
-  info = toBuf(info);
-
   validateString(hash, 'digest');
-  validateByteSource(salt, 'salt');
-  validateByteSource(info, 'info');
+  key = prepareKey(key);
+  salt = validateByteSource(salt, 'salt');
+  info = validateByteSource(info, 'info');
 
   validateInteger(length, 'length', 0, kMaxLength);
 
@@ -83,9 +79,8 @@ function prepareKey(key) {
   if (isKeyObject(key))
     return key;
 
-  // TODO(@jasnell): createSecretKey should allow using an ArrayBuffer
   if (isAnyArrayBuffer(key))
-    return createSecretKey(new Uint8Array(key));
+    return createSecretKey(key);
 
   key = toBuf(key);
 
@@ -115,7 +110,7 @@ function hkdf(hash, key, salt, info, length, callback) {
     length,
   } = validateParameters(hash, key, salt, info, length));
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new HKDFJob(kCryptoJobAsync, hash, key, salt, info, length);
 
@@ -145,7 +140,6 @@ function hkdfSync(hash, key, salt, info, length) {
 }
 
 async function hkdfDeriveBits(algorithm, baseKey, length) {
-  validateUint32(length, 'length');
   const { hash } = algorithm;
   const salt = getArrayBufferOrView(algorithm.salt, 'algorithm.salt');
   const info = getArrayBufferOrView(algorithm.info, 'algorithm.info');
@@ -156,6 +150,9 @@ async function hkdfDeriveBits(algorithm, baseKey, length) {
   if (length !== undefined) {
     if (length === 0)
       throw lazyDOMException('length cannot be zero', 'OperationError');
+    if (length === null)
+      throw lazyDOMException('length cannot be null', 'OperationError');
+    validateUint32(length, 'length');
     if (length % 8) {
       throw lazyDOMException(
         'length must be a multiple of 8',

@@ -6,8 +6,8 @@ if (!common.hasCrypto) {
   common.skip('missing crypto');
 }
 
-if (process.config.variables.arm_version === '7') {
-  common.skip('Too slow for armv7 bots');
+if (common.isPi) {
+  common.skip('Too slow for Raspberry Pi devices');
 }
 
 common.requireNoPackageJSONAbove();
@@ -174,6 +174,7 @@ function drainQueue() {
         console.log('exit code:', status, 'signal:', signal);
         console.log(`stdout: ${Buffer.concat(stdout)}`);
         console.log(`stderr: ${Buffer.concat(stderr)}`);
+        process.kill(process.pid, 'SIGKILL');
         throw e;
       }
       fs.rmSync(configDirPath, { maxRetries: 3, recursive: true, force: true });

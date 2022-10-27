@@ -3,7 +3,11 @@
 
 #include "env-inl.h"
 #include "node_binding.h"
+#include "node_external_reference.h"
 #include "node_internals.h"
+#if HAVE_OPENSSL
+#include "openssl/opensslv.h"
+#endif
 
 #include <errno.h>
 #include <sstream>
@@ -136,7 +140,49 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
   }
 
   if (heap_snapshot_near_heap_limit < 0) {
-    errors->push_back("--heap-snapshot-near-heap-limit must not be negative");
+    errors->push_back("--heapsnapshot-near-heap-limit must not be negative");
+  }
+
+  if (test_runner) {
+    if (syntax_check_only) {
+      errors->push_back("either --test or --check can be used, not both");
+    }
+
+    if (has_eval_string) {
+      errors->push_back("either --test or --eval can be used, not both");
+    }
+
+    if (force_repl) {
+      errors->push_back("either --test or --interactive can be used, not both");
+    }
+
+    if (watch_mode) {
+      // TODO(MoLow): Support (incremental?) watch mode within test runner
+      errors->push_back("either --test or --watch can be used, not both");
+    }
+
+#ifndef ALLOW_ATTACHING_DEBUGGER_IN_TEST_RUNNER
+    debug_options_.allow_attaching_debugger = false;
+#endif
+  }
+
+  if (watch_mode) {
+    if (syntax_check_only) {
+      errors->push_back("either --watch or --check can be used, not both");
+    }
+
+    if (has_eval_string) {
+      errors->push_back("either --watch or --eval can be used, not both");
+    }
+
+    if (force_repl) {
+      errors->push_back("either --watch or --interactive "
+                        "can be used, not both");
+    }
+
+#ifndef ALLOW_ATTACHING_DEBUGGER_IN_WATCH_MODE
+    debug_options_.allow_attaching_debugger = false;
+#endif
   }
 
 #if HAVE_INSPECTOR
@@ -312,18 +358,29 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             kAllowedInEnvironment);
   AddOption("--experimental-abortcontroller", "",
             NoOp{}, kAllowedInEnvironment);
-  AddOption("--experimental-json-modules",
-            "experimental JSON interop support for the ES Module loader",
-            &EnvironmentOptions::experimental_json_modules,
+  AddOption("--experimental-fetch",
+            "experimental Fetch API",
+            &EnvironmentOptions::experimental_fetch,
+            kAllowedInEnvironment,
+            true);
+  AddOption("--experimental-global-customevent",
+            "expose experimental CustomEvent on the global scope",
+            &EnvironmentOptions::experimental_global_customevent,
             kAllowedInEnvironment);
+  AddOption("--experimental-global-webcrypto",
+            "expose experimental Web Crypto API on the global scope",
+            &EnvironmentOptions::experimental_global_web_crypto,
+            kAllowedInEnvironment);
+  AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvironment);
   AddOption("--experimental-loader",
             "use the specified module as a custom loader",
-            &EnvironmentOptions::userland_loader,
+            &EnvironmentOptions::userland_loaders,
             kAllowedInEnvironment);
   AddAlias("--loader", "--experimental-loader");
-  AddOption("--experimental-modules",
-            "",
-            &EnvironmentOptions::experimental_modules,
+  AddOption("--experimental-modules", "", NoOp{}, kAllowedInEnvironment);
+  AddOption("--experimental-network-imports",
+            "experimental https: support for the ES Module loader",
+            &EnvironmentOptions::experimental_https_modules,
             kAllowedInEnvironment);
   AddOption("--experimental-wasm-modules",
             "experimental ES Module support for webassembly modules",
@@ -403,6 +460,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::force_async_hooks_checks,
             kAllowedInEnvironment,
             true);
+  AddOption(
+      "--force-node-api-uncaught-exceptions-policy",
+      "enforces 'uncaughtException' event on Node API asynchronous callbacks",
+      &EnvironmentOptions::force_node_api_uncaught_exceptions_policy,
+      kAllowedInEnvironment,
+      false);
   AddOption("--addons",
             "disable loading native addons",
             &EnvironmentOptions::allow_native_addons,
@@ -487,6 +550,16 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "write warnings to file instead of stderr",
             &EnvironmentOptions::redirect_warnings,
             kAllowedInEnvironment);
+  AddOption("--test",
+            "launch test runner on startup",
+            &EnvironmentOptions::test_runner);
+  AddOption("--test-name-pattern",
+            "run tests whose name matches this regular expression",
+            &EnvironmentOptions::test_name_pattern);
+  AddOption("--test-only",
+            "run tests with 'only' option set",
+            &EnvironmentOptions::test_only,
+            kAllowedInEnvironment);
   AddOption("--test-udp-no-try-send", "",  // For testing only.
             &EnvironmentOptions::test_udp_no_try_send);
   AddOption("--throw-deprecation",
@@ -494,7 +567,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::throw_deprecation,
             kAllowedInEnvironment);
   AddOption("--trace-atomics-wait",
-            "trace Atomics.wait() operations",
+            "(deprecated) trace Atomics.wait() operations",
             &EnvironmentOptions::trace_atomics_wait,
             kAllowedInEnvironment);
   AddOption("--trace-deprecation",
@@ -522,6 +595,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "show stack traces on process warnings",
             &EnvironmentOptions::trace_warnings,
             kAllowedInEnvironment);
+  AddOption("--extra-info-on-fatal-exception",
+            "hide extra information on fatal exception that causes exit",
+            &EnvironmentOptions::extra_info_on_fatal_exception,
+            kAllowedInEnvironment,
+            true);
   AddOption("--unhandled-rejections",
             "define unhandled rejections behavior. Options are 'strict' "
             "(always raise an error), 'throw' (raise an error unless "
@@ -535,7 +613,15 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "", /* undocumented, only for debugging */
             &EnvironmentOptions::verify_base_objects,
             kAllowedInEnvironment);
-
+  AddOption("--watch",
+            "run in watch mode",
+            &EnvironmentOptions::watch_mode,
+            kAllowedInEnvironment);
+  AddOption("--watch-path",
+            "path to watch",
+            &EnvironmentOptions::watch_mode_paths,
+            kAllowedInEnvironment);
+  Implies("--watch-path", "--watch");
   AddOption("--check",
             "syntax check script without executing",
             &EnvironmentOptions::syntax_check_only);
@@ -566,6 +652,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "to be a terminal",
             &EnvironmentOptions::force_repl);
   AddAlias("-i", "--interactive");
+
+  AddOption("--update-assert-snapshot",
+            "update assert snapshot files",
+            &EnvironmentOptions::update_assert_snapshot,
+            kAllowedInEnvironment);
 
   AddOption("--napi-modules", "", NoOp{}, kAllowedInEnvironment);
 
@@ -608,10 +699,6 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   AddOption("--track-heap-objects",
             "track heap object allocations for heap snapshots",
             &PerIsolateOptions::track_heap_objects,
-            kAllowedInEnvironment);
-  AddOption("--node-snapshot",
-            "",  // It's a debug-only option.
-            &PerIsolateOptions::node_snapshot,
             kAllowedInEnvironment);
 
   // Explicitly add some V8 flags to mark them as allowed in NODE_OPTIONS.
@@ -663,14 +750,8 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             kAllowedInEnvironment);
   Implies("--report-signal", "--report-on-signal");
 
-  AddOption("--experimental-top-level-await",
-            "",
-            &PerIsolateOptions::experimental_top_level_await,
-            kAllowedInEnvironment);
-  AddOption("--harmony-top-level-await", "", V8Option{});
-  Implies("--experimental-top-level-await", "--harmony-top-level-await");
-  Implies("--harmony-top-level-await", "--experimental-top-level-await");
-  ImpliesNot("--no-harmony-top-level-await", "--experimental-top-level-await");
+  AddOption(
+      "--experimental-top-level-await", "", NoOp{}, kAllowedInEnvironment);
 
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
@@ -708,6 +789,21 @@ PerProcessOptionsParser::PerProcessOptionsParser(
   AddOption("--disable-proto",
             "disable Object.prototype.__proto__",
             &PerProcessOptions::disable_proto,
+            kAllowedInEnvironment);
+  AddOption("--build-snapshot",
+            "Generate a snapshot blob when the process exits."
+            " Currently only supported in the node_mksnapshot binary.",
+            &PerProcessOptions::build_snapshot,
+            kDisallowedInEnvironment);
+  AddOption("--node-snapshot",
+            "",  // It's a debug-only option.
+            &PerProcessOptions::node_snapshot,
+            kAllowedInEnvironment);
+  AddOption("--snapshot-blob",
+            "Path to the snapshot blob that's either the result of snapshot"
+            "building, or the blob that is used to restore the application "
+            "state",
+            &PerProcessOptions::snapshot_blob,
             kAllowedInEnvironment);
 
   // 12.x renamed this inadvertently, so alias it for consistency within the
@@ -814,6 +910,10 @@ PerProcessOptionsParser::PerProcessOptionsParser(
   AddOption("--openssl-legacy-provider",
             "enable OpenSSL 3.0 legacy provider",
             &PerProcessOptions::openssl_legacy_provider,
+            kAllowedInEnvironment);
+  AddOption("--openssl-shared-config",
+            "enable OpenSSL shared configuration",
+            &PerProcessOptions::openssl_shared_config,
             kAllowedInEnvironment);
 
 #endif  // OPENSSL_VERSION_MAJOR
@@ -1094,8 +1194,9 @@ void Initialize(Local<Object> target,
                 void* priv) {
   Environment* env = Environment::GetCurrent(context);
   Isolate* isolate = env->isolate();
-  env->SetMethodNoSideEffect(target, "getCLIOptions", GetCLIOptions);
-  env->SetMethodNoSideEffect(target, "getEmbedderOptions", GetEmbedderOptions);
+  SetMethodNoSideEffect(context, target, "getCLIOptions", GetCLIOptions);
+  SetMethodNoSideEffect(
+      context, target, "getEmbedderOptions", GetEmbedderOptions);
 
   Local<Object> env_settings = Object::New(isolate);
   NODE_DEFINE_CONSTANT(env_settings, kAllowedInEnvironment);
@@ -1118,6 +1219,10 @@ void Initialize(Local<Object> target,
       .Check();
 }
 
+void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
+  registry->Register(GetCLIOptions);
+  registry->Register(GetEmbedderOptions);
+}
 }  // namespace options_parser
 
 void HandleEnvOptions(std::shared_ptr<EnvironmentOptions> env_options) {
@@ -1184,3 +1289,5 @@ std::vector<std::string> ParseNodeOptionsEnvVar(
 }  // namespace node
 
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(options, node::options_parser::Initialize)
+NODE_MODULE_EXTERNAL_REFERENCE(options,
+                               node::options_parser::RegisterExternalReferences)

@@ -23,6 +23,7 @@ const {
 
 const {
   customInspectSymbol: kInspect,
+  kEmptyObject,
 } = require('internal/util');
 
 const {
@@ -56,16 +57,18 @@ const {
   kHandle,
 } = require('internal/crypto/util');
 
+let lazyTranslatePeerCertificate;
+
 const kInternalState = Symbol('kInternalState');
 
 function isX509Certificate(value) {
   return value[kInternalState] !== undefined;
 }
 
-function getFlags(options = {}) {
+function getFlags(options = kEmptyObject) {
   validateObject(options, 'options');
   const {
-    subject = 'always',  // Can be 'always' or 'never'
+    subject = 'default',  // Can be 'default', 'always', or 'never'
     wildcards = true,
     partialWildcards = true,
     multiLabelWildcards = false,
@@ -78,6 +81,7 @@ function getFlags(options = {}) {
   validateBoolean(multiLabelWildcards, 'options.multiLabelWildcards');
   validateBoolean(singleLabelSubdomains, 'options.singleLabelSubdomains');
   switch (subject) {
+    case 'default': /* Matches OpenSSL's default, no flags. */ break;
     case 'always': flags |= X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT; break;
     case 'never': flags |= X509_CHECK_FLAG_NEVER_CHECK_SUBJECT; break;
     default:
@@ -344,7 +348,11 @@ class X509Certificate extends JSTransferable {
   }
 
   toLegacyObject() {
-    return this[kHandle].toLegacy();
+    // TODO(tniessen): do not depend on translatePeerCertificate here, return
+    // the correct legacy representation from the binding
+    lazyTranslatePeerCertificate ??=
+      require('_tls_common').translatePeerCertificate;
+    return lazyTranslatePeerCertificate(this[kHandle].toLegacy());
   }
 }
 

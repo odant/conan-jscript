@@ -22,7 +22,6 @@
 'use strict';
 
 const {
-  ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
@@ -33,7 +32,6 @@ const {
   ErrorCaptureStackTrace,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
-  MathMin,
   NumberIsNaN,
   ObjectCreate,
   ObjectDefineProperty,
@@ -52,7 +50,13 @@ const {
   SymbolAsyncIterator,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
-const { inspect } = require('internal/util/inspect');
+
+const { kEmptyObject } = require('internal/util');
+
+const {
+  inspect,
+  identicalSequenceRange,
+} = require('internal/util/inspect');
 
 let spliceOne;
 
@@ -65,6 +69,7 @@ const {
     ERR_OUT_OF_RANGE,
     ERR_UNHANDLED_ERROR
   },
+  genericNodeError,
 } = require('internal/errors');
 
 const {
@@ -218,6 +223,7 @@ EventEmitter.usingDomains = false;
 
 EventEmitter.captureRejectionSymbol = kRejection;
 ObjectDefineProperty(EventEmitter, 'captureRejections', {
+  __proto__: null,
   get() {
     return EventEmitter.prototype[kCapture];
   },
@@ -230,6 +236,7 @@ ObjectDefineProperty(EventEmitter, 'captureRejections', {
 });
 
 ObjectDefineProperty(EventEmitter, 'EventEmitterAsyncResource', {
+  __proto__: null,
   enumerable: true,
   get: lazyEventEmitterAsyncResource,
   set: undefined,
@@ -240,6 +247,7 @@ EventEmitter.errorMonitor = kErrorMonitor;
 
 // The default for captureRejections is false
 ObjectDefineProperty(EventEmitter.prototype, kCapture, {
+  __proto__: null,
   value: false,
   writable: true,
   enumerable: false
@@ -259,6 +267,7 @@ function checkListener(listener) {
 }
 
 ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
+  __proto__: null,
   enumerable: true,
   get: function() {
     return defaultMaxListeners;
@@ -275,12 +284,14 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
 
 ObjectDefineProperties(EventEmitter, {
   kMaxEventTargetListeners: {
+    __proto__: null,
     value: kMaxEventTargetListeners,
     enumerable: false,
     configurable: false,
     writable: false,
   },
   kMaxEventTargetListenersWarned: {
+    __proto__: null,
     value: kMaxEventTargetListenersWarned,
     enumerable: false,
     configurable: false,
@@ -414,31 +425,6 @@ EventEmitter.prototype.getMaxListeners = function getMaxListeners() {
   return _getMaxListeners(this);
 };
 
-// Returns the length and line number of the first sequence of `a` that fully
-// appears in `b` with a length of at least 4.
-function identicalSequenceRange(a, b) {
-  for (let i = 0; i < a.length - 3; i++) {
-    // Find the first entry of b that matches the current entry of a.
-    const pos = ArrayPrototypeIndexOf(b, a[i]);
-    if (pos !== -1) {
-      const rest = b.length - pos;
-      if (rest > 3) {
-        let len = 1;
-        const maxLen = MathMin(a.length - i, rest);
-        // Count the number of consecutive entries.
-        while (maxLen > len && a[i + len] === b[pos + len]) {
-          len++;
-        }
-        if (len > 3) {
-          return [len, i];
-        }
-      }
-    }
-  }
-
-  return [0, 0];
-}
-
 function enhanceStackTrace(err, own) {
   let ctorInfo = '';
   try {
@@ -455,9 +441,9 @@ function enhanceStackTrace(err, own) {
   const ownStack = ArrayPrototypeSlice(
     StringPrototypeSplit(own.stack, '\n'), 1);
 
-  const { 0: len, 1: off } = identicalSequenceRange(ownStack, errStack);
+  const { len, offset } = identicalSequenceRange(ownStack, errStack);
   if (len > 0) {
-    ArrayPrototypeSplice(ownStack, off + 1, len - 2,
+    ArrayPrototypeSplice(ownStack, offset + 1, len - 2,
                          '    [... lines matching original stack trace ...]');
   }
 
@@ -492,6 +478,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
         const capture = {};
         ErrorCaptureStackTrace(capture, EventEmitter.prototype.emit);
         ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
+          __proto__: null,
           value: FunctionPrototypeBind(enhanceStackTrace, this, er, capture),
           configurable: true
         });
@@ -597,15 +584,10 @@ function _addListener(target, type, listener, prepend) {
     if (m > 0 && existing.length > m && !existing.warned) {
       existing.warned = true;
       // No error code for this since it is a Warning
-      // eslint-disable-next-line no-restricted-syntax
-      const w = new Error('Possible EventEmitter memory leak detected. ' +
-                          `${existing.length} ${String(type)} listeners ` +
-                          `added to ${inspect(target, { depth: -1 })}. Use ` +
-                          'emitter.setMaxListeners() to increase limit');
-      w.name = 'MaxListenersExceededWarning';
-      w.emitter = target;
-      w.type = type;
-      w.count = existing.length;
+      const w = genericNodeError(
+        `Possible EventEmitter memory leak detected. ${existing.length} ${String(type)} listeners ` +
+        `added to ${inspect(target, { depth: -1 })}. Use emitter.setMaxListeners() to increase limit`,
+        { name: 'MaxListenersExceededWarning', emitter: target, type: type, count: existing.length });
       process.emitWarning(w);
     }
   }
@@ -942,11 +924,11 @@ function getEventListeners(emitterOrTarget, type) {
  * @param {{ signal: AbortSignal; }} [options]
  * @returns {Promise}
  */
-async function once(emitter, name, options = {}) {
+async function once(emitter, name, options = kEmptyObject) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
-    throw new AbortError();
+    throw new AbortError(undefined, { cause: signal?.reason });
   return new Promise((resolve, reject) => {
     const errorListener = (err) => {
       emitter.removeListener(name, resolver);
@@ -966,12 +948,14 @@ async function once(emitter, name, options = {}) {
     };
     eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
     if (name !== 'error' && typeof emitter.once === 'function') {
+      // EventTarget does not have `error` event semantics like Node
+      // EventEmitters, we listen to `error` events only on EventEmitters.
       emitter.once('error', errorListener);
     }
     function abortListener() {
       eventTargetAgnosticRemoveListener(emitter, name, resolver);
       eventTargetAgnosticRemoveListener(emitter, 'error', errorListener);
-      reject(new AbortError());
+      reject(new AbortError(undefined, { cause: signal?.reason }));
     }
     if (signal != null) {
       eventTargetAgnosticAddListener(
@@ -1005,9 +989,7 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
       emitter.on(name, listener);
     }
   } else if (typeof emitter.addEventListener === 'function') {
-    // EventTarget does not have `error` event semantics like Node
-    // EventEmitters, we do not listen to `error` events here.
-    emitter.addEventListener(name, (arg) => { listener(arg); }, flags);
+    emitter.addEventListener(name, listener, flags);
   } else {
     throw new ERR_INVALID_ARG_TYPE('emitter', 'EventEmitter', emitter);
   }
@@ -1024,7 +1006,7 @@ function on(emitter, event, options) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
-    throw new AbortError();
+    throw new AbortError(undefined, { cause: signal?.reason });
 
   const unconsumedEvents = [];
   const unconsumedPromises = [];
@@ -1112,7 +1094,7 @@ function on(emitter, event, options) {
   return iterator;
 
   function abortListener() {
-    errorHandler(new AbortError());
+    errorHandler(new AbortError(undefined, { cause: signal?.reason }));
   }
 
   function eventHandler(...args) {

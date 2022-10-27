@@ -10,11 +10,11 @@ const {
   ObjectKeys,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
-  RegExpPrototypeTest,
   SafeMap,
   SafeSet,
+  RegExpPrototypeSymbolReplace,
   StringPrototypeEndsWith,
-  StringPrototypeReplace,
+  StringPrototypeStartsWith,
   Symbol,
   uncurryThis,
 } = primordials;
@@ -201,7 +201,7 @@ class DependencyMapperInstance {
         let ret;
         if (parsedURLs && parsedURLs.has(to)) {
           ret = parsedURLs.get(to);
-        } else if (RegExpPrototypeTest(kRelativeURLStringPattern, to)) {
+        } else if (RegExpPrototypeExec(kRelativeURLStringPattern, to) !== null) {
           ret = resolve(to, manifest.href);
         } else {
           ret = resolve(to);
@@ -300,7 +300,7 @@ function findScopeHREF(href, scopeStore, allowSame) {
   if (href !== '') {
     // default URL parser does some stuff to special urls... skip if this is
     // just the protocol
-    if (RegExpPrototypeTest(/^[^:]*[:]$/, href)) {
+    if (RegExpPrototypeExec(/^[^:]*[:]$/, href) !== null) {
       protocol = href;
     } else {
       let currentURL = new URL(href);
@@ -532,6 +532,41 @@ class Manifest {
     };
   }
 
+  mightAllow(url, onreact) {
+    const href = `${url}`;
+    debug('Checking for entry of %s', href);
+    if (StringPrototypeStartsWith(href, 'node:')) {
+      return true;
+    }
+    if (this.#resourceIntegrities.has(href)) {
+      return true;
+    }
+    let scope = findScopeHREF(href, this.#scopeIntegrities, true);
+    while (scope !== null) {
+      if (this.#scopeIntegrities.has(scope)) {
+        const entry = this.#scopeIntegrities.get(scope);
+        if (entry === true) {
+          return true;
+        } else if (entry !== kCascade) {
+          break;
+        }
+      }
+      const nextScope = findScopeHREF(
+        new URL('..', scope),
+        this.#scopeIntegrities,
+        false,
+      );
+      if (!nextScope || nextScope === scope) {
+        break;
+      }
+      scope = nextScope;
+    }
+    if (onreact) {
+      this.#reaction(onreact());
+    }
+    return false;
+  }
+
   assertIntegrity(url, content) {
     const href = `${url}`;
     debug('Checking integrity of %s', href);
@@ -633,7 +668,7 @@ module.exports = ObjectFreeze({ Manifest });
  */
 function canonicalizeSpecifier(specifier, base) {
   try {
-    if (RegExpPrototypeTest(kRelativeURLStringPattern, specifier)) {
+    if (RegExpPrototypeExec(kRelativeURLStringPattern, specifier) !== null) {
       return resolve(specifier, base).href;
     }
     return resolve(specifier).href;
@@ -654,13 +689,13 @@ const emptyOrProtocolOrResolve = (resourceHREF, base) => {
   if (resourceHREF === '') return '';
   if (StringPrototypeEndsWith(resourceHREF, ':')) {
     // URL parse will trim these anyway, save the compute
-    resourceHREF = StringPrototypeReplace(
-      resourceHREF,
+    resourceHREF = RegExpPrototypeSymbolReplace(
       // eslint-disable-next-line
       /^[\x00-\x1F\x20]|\x09\x0A\x0D|[\x00-\x1F\x20]$/g,
+      resourceHREF,
       ''
     );
-    if (RegExpPrototypeTest(/^[a-zA-Z][a-zA-Z+\-.]*:$/, resourceHREF)) {
+    if (RegExpPrototypeExec(/^[a-zA-Z][a-zA-Z+\-.]*:$/, resourceHREF) !== null) {
       return resourceHREF;
     }
   }
@@ -682,7 +717,7 @@ const resolve = (originalHREF, base) => {
   parsedURLs = parsedURLs ?? new SafeMap();
   if (parsedURLs.has(originalHREF)) {
     return parsedURLs.get(originalHREF);
-  } else if (RegExpPrototypeTest(kRelativeURLStringPattern, originalHREF)) {
+  } else if (RegExpPrototypeExec(kRelativeURLStringPattern, originalHREF) !== null) {
     const resourceURL = new URL(originalHREF, base);
     parsedURLs.set(resourceURL.href, resourceURL);
     return resourceURL;

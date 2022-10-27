@@ -2,6 +2,7 @@
 
 const {
   ArrayBufferPrototype,
+  ArrayBufferPrototypeSlice,
   ArrayPrototypePush,
   ArrayPrototypeShift,
   AsyncIteratorPrototype,
@@ -14,6 +15,7 @@ const {
   PromiseReject,
   ReflectGet,
   Symbol,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -49,11 +51,13 @@ const kType = Symbol('kType');
 
 const AsyncIterator = ObjectCreate(AsyncIteratorPrototype, {
   next: {
+    __proto__: null,
     configurable: true,
     enumerable: true,
     writable: true,
   },
   return: {
+    __proto__: null,
     configurable: true,
     enumerable: true,
     writable: true,
@@ -109,6 +113,15 @@ function ArrayBufferGetByteLength(view) {
   return ReflectGet(ArrayBufferPrototype, 'byteLength', view);
 }
 
+function cloneAsUint8Array(view) {
+  const buffer = ArrayBufferViewGetBuffer(view);
+  const byteOffset = ArrayBufferViewGetByteOffset(view);
+  const byteLength = ArrayBufferViewGetByteLength(view);
+  return new Uint8Array(
+    ArrayBufferPrototypeSlice(buffer, byteOffset, byteOffset + byteLength)
+  );
+}
+
 function isBrandCheck(brand) {
   return (value) => {
     return value != null &&
@@ -124,6 +137,26 @@ function transferArrayBuffer(buffer) {
       'The ArrayBuffer could not be transferred');
   }
   return res;
+}
+
+function isDetachedBuffer(buffer) {
+  if (ArrayBufferGetByteLength(buffer) === 0) {
+    // TODO(daeyeon): Consider using C++ builtin to improve performance.
+    try {
+      new Uint8Array(buffer);
+    } catch (error) {
+      assert(error.name === 'TypeError');
+      return true;
+    }
+  }
+  return false;
+}
+
+function isViewedArrayBufferDetached(view) {
+  return (
+    ArrayBufferViewGetByteLength(view) === 0 &&
+    isDetachedBuffer(ArrayBufferViewGetBuffer(view))
+  );
 }
 
 function dequeueValue(controller) {
@@ -207,15 +240,13 @@ function lazyTransfer() {
   return transfer;
 }
 
-const kEnumerableProperty = ObjectCreate(null);
-kEnumerableProperty.enumerable = true;
-
 module.exports = {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
   ArrayBufferViewGetByteOffset,
   ArrayBufferGetByteLength,
   AsyncIterator,
+  cloneAsUint8Array,
   copyArrayBuffer,
   customInspect,
   dequeueValue,
@@ -225,7 +256,9 @@ module.exports = {
   extractSizeAlgorithm,
   lazyTransfer,
   isBrandCheck,
+  isDetachedBuffer,
   isPromisePending,
+  isViewedArrayBufferDetached,
   peekQueueValue,
   resetQueue,
   setPromiseHandled,
@@ -237,5 +270,4 @@ module.exports = {
   nonOpWrite,
   kType,
   kState,
-  kEnumerableProperty,
 };

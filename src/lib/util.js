@@ -40,6 +40,7 @@ const {
   ObjectKeys,
   ObjectPrototypeToString,
   ObjectSetPrototypeOf,
+  ObjectValues,
   ReflectApply,
   StringPrototypePadStart,
 } = primordials;
@@ -61,6 +62,7 @@ const {
   stripVTControlCharacters,
 } = require('internal/util/inspect');
 const { debuglog } = require('internal/util/debuglog');
+const { parseArgs } = require('internal/util/parse_args/parse_args');
 const {
   validateFunction,
   validateNumber,
@@ -76,6 +78,13 @@ const {
   promisify,
   toUSVString,
 } = require('internal/util');
+
+let abortController;
+
+function lazyAbortController() {
+  abortController ??= require('internal/abort_controller');
+  return abortController;
+}
 
 let internalDeepEqual;
 
@@ -243,6 +252,7 @@ function inherits(ctor, superCtor) {
                                    'Object', superCtor.prototype);
   }
   ObjectDefineProperty(ctor, 'super_', {
+    __proto__: null,
     value: superCtor,
     writable: true,
     configurable: true
@@ -315,6 +325,12 @@ function callbackify(original) {
   if (typeof descriptors.name.value === 'string') {
     descriptors.name.value += 'Callbackified';
   }
+  const propertiesValues = ObjectValues(descriptors);
+  for (let i = 0; i < propertiesValues.length; i++) {
+  // We want to use null-prototype objects to not rely on globally mutable
+  // %Object.prototype%.
+    ObjectSetPrototypeOf(propertiesValues[i], null);
+  }
   ObjectDefineProperties(callbackified, descriptors);
   return callbackified;
 }
@@ -369,10 +385,17 @@ module.exports = {
   isFunction,
   isPrimitive,
   log,
+  parseArgs,
   promisify,
   stripVTControlCharacters,
   toUSVString,
   TextDecoder,
   TextEncoder,
+  get transferableAbortSignal() {
+    return lazyAbortController().transferableAbortSignal;
+  },
+  get transferableAbortController() {
+    return lazyAbortController().transferableAbortController;
+  },
   types
 };

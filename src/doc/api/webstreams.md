@@ -2,25 +2,17 @@
 
 <!--introduced_in=v16.5.0-->
 
-> Stability: 1 - Experimental
+<!-- YAML
+added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: Use of this API no longer emit a runtime warning.
+-->
+
+> Stability: 1 - Experimental.
 
 An implementation of the [WHATWG Streams Standard][].
-
-```mjs
-import {
-  ReadableStream,
-  WritableStream,
-  TransformStream,
-} from 'node:stream/web';
-```
-
-```cjs
-const {
-  ReadableStream,
-  WritableStream,
-  TransformStream,
-} = require('stream/web');
-```
 
 ## Overview
 
@@ -29,7 +21,7 @@ streaming data. It is similar to the Node.js [Streams][] API but emerged later
 and has become the "standard" API for streaming data across many JavaScript
 environments.
 
-There are three primary types of objects
+There are three primary types of objects:
 
 * `ReadableStream` - Represents a source of streaming data.
 * `WritableStream` - Represents a destination for streaming data.
@@ -70,15 +62,15 @@ for await (const value of stream)
 ```cjs
 const {
   ReadableStream
-} = require('stream/web');
+} = require('node:stream/web');
 
 const {
   setInterval: every
-} = require('timers/promises');
+} = require('node:timers/promises');
 
 const {
   performance
-} = require('perf_hooks');
+} = require('node:perf_hooks');
 
 const SECOND = 1000;
 
@@ -101,6 +93,10 @@ const stream = new ReadableStream({
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new ReadableStream([underlyingSource [, strategy]])`
@@ -149,7 +145,7 @@ added: v16.5.0
   {ReadableStream}.
 
 The `readableStream.locked` property is `false` by default, and is
-switch to `true` while there is an active reader consuming the
+switched to `true` while there is an active reader consuming the
 stream's data.
 
 #### `readableStream.cancel([reason])`
@@ -183,7 +179,7 @@ console.log(await reader.read());
 ```
 
 ```cjs
-const { ReadableStream } = require('stream/web');
+const { ReadableStream } = require('node:stream/web');
 
 const stream = new ReadableStream();
 
@@ -210,10 +206,10 @@ added: v16.5.0
   * `preventAbort` {boolean} When `true`, errors in this `ReadableStream`
     will not cause `transform.writable` to be aborted.
   * `preventCancel` {boolean} When `true`, errors in the destination
-    `transform.writable` is not cause this `ReadableStream` to be
+    `transform.writable` do not cause this `ReadableStream` to be
     canceled.
   * `preventClose` {boolean} When `true`, closing this `ReadableStream`
-    will no cause `transform.writable` to be closed.
+    does not cause `transform.writable` to be closed.
   * `signal` {AbortSignal} Allows the transfer of data to be canceled
     using an {AbortController}.
 * Returns: {ReadableStream} From `transform.readable`.
@@ -255,7 +251,7 @@ for await (const chunk of transformedStream)
 const {
   ReadableStream,
   TransformStream,
-} = require('stream/web');
+} = require('node:stream/web');
 
 const stream = new ReadableStream({
   start(controller) {
@@ -287,12 +283,11 @@ added: v16.5.0
   `ReadableStream`'s data will be written.
 * `options` {Object}
   * `preventAbort` {boolean} When `true`, errors in this `ReadableStream`
-    will not cause `transform.writable` to be aborted.
-  * `preventCancel` {boolean} When `true`, errors in the destination
-    `transform.writable` is not cause this `ReadableStream` to be
-    canceled.
+    will not cause `destination` to be aborted.
+  * `preventCancel` {boolean} When `true`, errors in the `destination`
+    will not cause this `ReadableStream` to be canceled.
   * `preventClose` {boolean} When `true`, closing this `ReadableStream`
-    will no cause `transform.writable` to be closed.
+    does not cause `destination` to be closed.
   * `signal` {AbortSignal} Allows the transfer of data to be canceled
     using an {AbortController}.
 * Returns: A promise fulfilled with `undefined`
@@ -304,6 +299,10 @@ is active.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/44505
+    description: Support teeing a readable byte stream.
 -->
 
 * Returns: {ReadableStream\[]}
@@ -323,7 +322,7 @@ added: v16.5.0
 * `options` {Object}
   * `preventCancel` {boolean} When `true`, prevents the {ReadableStream}
     from being closed when the async iterator abruptly terminates.
-    **Defaults**: `false`
+    **Default**: `false`.
 
 Creates and returns an async iterator usable for consuming this
 `ReadableStream`'s data.
@@ -346,7 +345,7 @@ The {ReadableStream} object supports the async iterator protocol using
 `for await` syntax.
 
 ```mjs
-import { Buffer } from 'buffer';
+import { Buffer } from 'node:buffer';
 
 const stream = new ReadableStream(getSomeSource());
 
@@ -387,6 +386,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 By default, calling `readableStream.getReader()` with no arguments
@@ -425,7 +428,8 @@ added: v16.5.0
 -->
 
 * Type: {Promise} Fulfilled with `undefined` when the associated
-  {ReadableStream} is closed or this reader's lock is released.
+  {ReadableStream} is closed or rejected if the stream errors or the reader's
+  lock is released before the stream finishes closing.
 
 #### `readableStreamDefaultReader.read()`
 
@@ -453,10 +457,14 @@ Releases this reader's lock on the underlying {ReadableStream}.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `ReadableStreamBYOBReader` is an alternative consumer for
-byte-oriented {ReadableStream}'s (those that are created with
+byte-oriented {ReadableStream}s (those that are created with
 `underlyingSource.type` set equal to `'bytes'` when the
 `ReadableStream` was created).
 
@@ -552,7 +560,8 @@ added: v16.5.0
 -->
 
 * Type: {Promise} Fulfilled with `undefined` when the associated
-  {ReadableStream} is closed or this reader's lock is released.
+  {ReadableStream} is closed or rejected if the stream errors or the reader's
+  lock is released before the stream finishes closing.
 
 #### `readableStreamBYOBReader.read(view)`
 
@@ -571,7 +580,7 @@ available.
 
 Do not pass a pooled {Buffer} object instance in to this method.
 Pooled `Buffer` objects are created using `Buffer.allocUnsafe()`,
-or `Buffer.from()`, or are often returned by various `fs` module
+or `Buffer.from()`, or are often returned by various `node:fs` module
 callbacks. These types of `Buffer`s use a shared underlying
 {ArrayBuffer} object that contains all of the data from all of
 the pooled `Buffer` instances. When a `Buffer`, {TypedArray},
@@ -642,6 +651,10 @@ Signals an error that causes the {ReadableStream} to error and close.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/44702
+    description: Support handling a BYOB pull request from a released reader.
 -->
 
 Every {ReadableStream} has a controller that is responsible for
@@ -699,6 +712,10 @@ Signals an error that causes the {ReadableStream} to error and close.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 When using `ReadableByteStreamController` in byte-oriented
@@ -745,6 +762,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `WritableStream` is a destination to which stream data is sent.
@@ -861,6 +882,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new WritableStreamDefaultWriter(stream)`
@@ -902,9 +927,9 @@ Closes the `WritableStream` when no additional writes are expected.
 added: v16.5.0
 -->
 
-* Type: A promise that is fulfilled with `undefined` when the
-  associated {WritableStream} is closed or this writer's lock is
-  released.
+* Type: {Promise} Fulfilled with `undefined` when the associated
+  {WritableStream} is closed or rejected if the stream errors or the writer's
+  lock is released before the stream finishes closing.
 
 #### `writableStreamDefaultWriter.desiredSize`
 
@@ -948,14 +973,14 @@ Appends a new chunk of data to the {WritableStream}'s queue.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `WritableStreamDefaultController` manage's the {WritableStream}'s
 internal state.
-
-#### `writableStreamDefaultController.abortReason`
-
-* Type: {any} The `reason` value passed to `writableStream.abort()`.
 
 #### `writableStreamDefaultController.error(error)`
 
@@ -978,6 +1003,10 @@ with currently pending writes canceled.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 A `TransformStream` consists of a {ReadableStream} and a {WritableStream} that
@@ -1080,6 +1109,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `TransformStreamDefaultController` manages the internal state
@@ -1130,6 +1163,10 @@ to be abruptly closed with an error.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new ByteLengthQueuingStrategy(options)`
@@ -1163,6 +1200,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new CountQueuingStrategy(options)`
@@ -1196,6 +1237,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.6.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new TextEncoderStream()`
@@ -1236,6 +1281,10 @@ added: v16.6.0
 
 <!-- YAML
 added: v16.6.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new TextDecoderStream([encoding[, options]])`
@@ -1251,7 +1300,7 @@ added: v16.6.0
   * `ignoreBOM` {boolean} When `true`, the `TextDecoderStream` will include the
     byte order mark in the decoded result. When `false`, the byte order mark
     will be removed from the output. This option is only used when `encoding` is
-    `'utf-8'`, `'utf-16be'` or `'utf-16le'`. **Default:** `false`.
+    `'utf-8'`, `'utf-16be'`, or `'utf-16le'`. **Default:** `false`.
 
 Creates a new `TextDecoderStream` instance.
 
@@ -1303,6 +1352,74 @@ added: v16.6.0
 
 * Type: {WritableStream}
 
+### Class: `CompressionStream`
+
+<!-- YAML
+added: v17.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
+-->
+
+#### `new CompressionStream(format)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* `format` {string} One of either `'deflate'` or `'gzip'`.
+
+#### `compressionStream.readable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {ReadableStream}
+
+#### `compressionStream.writable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {WritableStream}
+
+### Class: `DecompressionStream`
+
+<!-- YAML
+added: v17.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
+-->
+
+#### `new DecompressionStream(format)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* `format` {string} One of either `'deflate'` or `'gzip'`.
+
+#### `decompressionStream.readable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {ReadableStream}
+
+#### `decompressionStream.writable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {WritableStream}
+
 ### Utility Consumers
 
 <!-- YAML
@@ -1318,6 +1435,7 @@ They are accessed using:
 import {
   arrayBuffer,
   blob,
+  buffer,
   json,
   text,
 } from 'node:stream/consumers';
@@ -1327,9 +1445,10 @@ import {
 const {
   arrayBuffer,
   blob,
+  buffer,
   json,
   text,
-} = require('stream/consumers');
+} = require('node:stream/consumers');
 ```
 
 #### `streamConsumers.arrayBuffer(stream)`
@@ -1342,6 +1461,32 @@ added: v16.7.0
 * Returns: {Promise} Fulfills with an `ArrayBuffer` containing the full
   contents of the stream.
 
+```mjs
+import { buffer as arrayBuffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
+import { TextEncoder } from 'node:util';
+
+const encoder = new TextEncoder();
+const dataArray = encoder.encode('hello world from consumers!');
+
+const readable = Readable.from(dataArray);
+const data = await arrayBuffer(readable);
+console.log(`from readable: ${data.byteLength}`);
+```
+
+```cjs
+const { arrayBuffer } = require('node:stream/consumers');
+const { Readable } = require('stream');
+const { TextEncoder } = require('util');
+
+const encoder = new TextEncoder();
+const dataArray = encoder.encode(['hello world from consumers!']);
+const readable = Readable.from(dataArray);
+arrayBuffer(readable).then((data) => {
+  console.log(`from readable: ${data.byteLength}`);
+});
+```
+
 #### `streamConsumers.blob(stream)`
 
 <!-- YAML
@@ -1351,6 +1496,27 @@ added: v16.7.0
 * `stream` {ReadableStream|stream.Readable|AsyncIterator}
 * Returns: {Promise} Fulfills with a {Blob} containing the full contents
   of the stream.
+
+```mjs
+import { blob } from 'node:stream/consumers';
+
+const dataBlob = new Blob(['hello world from consumers!']);
+
+const readable = dataBlob.stream();
+const data = await blob(readable);
+console.log(`from readable: ${data.size}`);
+```
+
+```cjs
+const { blob } = require('node:stream/consumers');
+
+const dataBlob = new Blob(['hello world from consumers!']);
+
+const readable = dataBlob.stream();
+blob(readable).then((data) => {
+  console.log(`from readable: ${data.size}`);
+});
+```
 
 #### `streamConsumers.buffer(stream)`
 
@@ -1362,6 +1528,31 @@ added: v16.7.0
 * Returns: {Promise} Fulfills with a {Buffer} containing the full
   contents of the stream.
 
+```mjs
+import { buffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
+import { Buffer } from 'node:buffer';
+
+const dataBuffer = Buffer.from('hello world from consumers!');
+
+const readable = Readable.from(dataBuffer);
+const data = await buffer(readable);
+console.log(`from readable: ${data.length}`);
+```
+
+```cjs
+const { buffer } = require('node:stream/consumers');
+const { Readable } = require('node:stream');
+const { Buffer } = require('node:buffer');
+
+const dataBuffer = Buffer.from('hello world from consumers!');
+
+const readable = Readable.from(dataBuffer);
+buffer(readable).then((data) => {
+  console.log(`from readable: ${data.length}`);
+});
+```
+
 #### `streamConsumers.json(stream)`
 
 <!-- YAML
@@ -1372,6 +1563,43 @@ added: v16.7.0
 * Returns: {Promise} Fulfills with the contents of the stream parsed as a
   UTF-8 encoded string that is then passed through `JSON.parse()`.
 
+```mjs
+import { json } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
+
+const items = Array.from(
+  {
+    length: 100
+  },
+  () => ({
+    message: 'hello world from consumers!'
+  })
+);
+
+const readable = Readable.from(JSON.stringify(items));
+const data = await json(readable);
+console.log(`from readable: ${data.length}`);
+```
+
+```cjs
+const { json } = require('node:stream/consumers');
+const { Readable } = require('node:stream');
+
+const items = Array.from(
+  {
+    length: 100
+  },
+  () => ({
+    message: 'hello world from consumers!'
+  })
+);
+
+const readable = Readable.from(JSON.stringify(items));
+json(readable).then((data) => {
+  console.log(`from readable: ${data.length}`);
+});
+```
+
 #### `streamConsumers.text(stream)`
 
 <!-- YAML
@@ -1381,6 +1609,25 @@ added: v16.7.0
 * `stream` {ReadableStream|stream.Readable|AsyncIterator}
 * Returns: {Promise} Fulfills with the contents of the stream parsed as a
   UTF-8 encoded string.
+
+```mjs
+import { json, text, blob, buffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
+
+const readable = Readable.from('Hello world from consumers!');
+const data = await text(readable);
+console.log(`from readable: ${data.length}`);
+```
+
+```cjs
+const { text } = require('node:stream/consumers');
+const { Readable } = require('node:stream');
+
+const readable = Readable.from('Hello world from consumers!');
+text(readable).then((data) => {
+  console.log(`from readable: ${data.length}`);
+});
+```
 
 [Streams]: stream.md
 [WHATWG Streams Standard]: https://streams.spec.whatwg.org/

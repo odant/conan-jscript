@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v16.14.2/lib/os.js\">lib/os.js</a></p>\n<p>The <code>os</code> module provides operating system-related utility methods and\nproperties. It can be accessed using:</p>\n<pre><code class=\"language-js\">const os = require('os');\n</code></pre>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v18.12.0/lib/os.js\">lib/os.js</a></p>\n<p>The <code>node:os</code> module provides operating system-related utility methods and\nproperties. It can be accessed using:</p>\n<pre><code class=\"language-js\">const os = require('node:os');\n</code></pre>",
       "properties": [
         {
           "textRaw": "`EOL` {string}",
@@ -40,7 +40,8 @@
           "name": "devNull",
           "meta": {
             "added": [
-              "v16.3.0"
+              "v16.3.0",
+              "v14.18.0"
             ],
             "changes": []
           },
@@ -68,7 +69,7 @@
               "params": []
             }
           ],
-          "desc": "<p>Returns the operating system CPU architecture for which the Node.js binary was\ncompiled. Possible values are <code>'arm'</code>, <code>'arm64'</code>, <code>'ia32'</code>, <code>'mips'</code>,\n<code>'mipsel'</code>, <code>'ppc'</code>, <code>'ppc64'</code>, <code>'s390'</code>, <code>'s390x'</code>, <code>'x32'</code>, and <code>'x64'</code>.</p>\n<p>The return value is equivalent to <a href=\"process.html#processarch\"><code>process.arch</code></a>.</p>"
+          "desc": "<p>Returns the operating system CPU architecture for which the Node.js binary was\ncompiled. Possible values are <code>'arm'</code>, <code>'arm64'</code>, <code>'ia32'</code>, <code>'mips'</code>,\n<code>'mipsel'</code>, <code>'ppc'</code>, <code>'ppc64'</code>, <code>'s390'</code>, <code>'s390x'</code>, and <code>'x64'</code>.</p>\n<p>The return value is equivalent to <a href=\"process.html#processarch\"><code>process.arch</code></a>.</p>"
         },
         {
           "textRaw": "`os.cpus()`",
@@ -240,7 +241,18 @@
             "added": [
               "v0.6.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.4.0",
+                "pr-url": "https://github.com/nodejs/node/pull/43054",
+                "description": "The `family` property now returns a string instead of a number."
+              },
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41431",
+                "description": "The `family` property now returns a number instead of a string."
+              }
+            ]
           },
           "signatures": [
             {
@@ -488,6 +500,28 @@
             }
           ],
           "desc": "<p>Returns a string identifying the kernel version.</p>\n<p>On POSIX systems, the operating system release is determined by calling\n<a href=\"https://linux.die.net/man/3/uname\"><code>uname(3)</code></a>. On Windows, <code>RtlGetVersion()</code> is used, and if it is not\navailable, <code>GetVersionExW()</code> will be used. See\n<a href=\"https://en.wikipedia.org/wiki/Uname#Examples\">https://en.wikipedia.org/wiki/Uname#Examples</a> for more information.</p>"
+        },
+        {
+          "textRaw": "`os.machine()`",
+          "type": "method",
+          "name": "machine",
+          "meta": {
+            "added": [
+              "v18.9.0"
+            ],
+            "changes": []
+          },
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns {string}",
+                "name": "return",
+                "type": "string"
+              },
+              "params": []
+            }
+          ],
+          "desc": "<p>Returns the machine type as a string, such as <code>arm</code>, <code>aarch64</code>, <code>mips</code>,\n<code>mips64</code>, <code>ppc64</code>, <code>ppc64le</code>, <code>s390</code>, <code>s390x</code>, <code>i386</code>, <code>i686</code>, <code>x86_64</code>.</p>\n<p>On POSIX systems, the machine type is determined by calling\n<a href=\"https://linux.die.net/man/3/uname\"><code>uname(3)</code></a>. On Windows, <code>RtlGetVersion()</code> is used, and if it is not\navailable, <code>GetVersionExW()</code> will be used. See\n<a href=\"https://en.wikipedia.org/wiki/Uname#Examples\">https://en.wikipedia.org/wiki/Uname#Examples</a> for more information.</p>"
         }
       ],
       "modules": [

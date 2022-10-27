@@ -8,24 +8,24 @@
 
 <!-- source_link=lib/net.js -->
 
-The `net` module provides an asynchronous network API for creating stream-based
+The `node:net` module provides an asynchronous network API for creating stream-based
 TCP or [IPC][] servers ([`net.createServer()`][]) and clients
 ([`net.createConnection()`][]).
 
 It can be accessed using:
 
 ```js
-const net = require('net');
+const net = require('node:net');
 ```
 
 ## IPC support
 
-The `net` module supports IPC with named pipes on Windows, and Unix domain
+The `node:net` module supports IPC with named pipes on Windows, and Unix domain
 sockets on other operating systems.
 
 ### Identifying paths for IPC connections
 
-[`net.connect()`][], [`net.createConnection()`][], [`server.listen()`][] and
+[`net.connect()`][], [`net.createConnection()`][], [`server.listen()`][], and
 [`socket.connect()`][] take a `path` parameter to identify IPC endpoints.
 
 On Unix, the local domain is also known as the Unix domain. The path is a
@@ -59,7 +59,9 @@ net.createServer().listen(
 ## Class: `net.BlockList`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 The `BlockList` object can be used with some network APIs to specify rules for
@@ -69,7 +71,9 @@ IP subnets.
 ### `blockList.addAddress(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} An IPv4 or IPv6 address.
@@ -80,7 +84,9 @@ Adds a rule to block the given IP address.
 ### `blockList.addRange(start, end[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `start` {string|net.SocketAddress} The starting IPv4 or IPv6 address in the
@@ -94,7 +100,9 @@ Adds a rule to block a range of IP addresses from `start` (inclusive) to
 ### `blockList.addSubnet(net, prefix[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `net` {string|net.SocketAddress} The network IPv4 or IPv6 address.
@@ -108,7 +116,9 @@ Adds a rule to block a range of IP addresses specified as a subnet mask.
 ### `blockList.check(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} The IP address to check
@@ -136,7 +146,9 @@ console.log(blockList.check('::ffff:123.123.123.123', 'ipv6')); // Prints: true
 ### `blockList.rules`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * Type: {string\[]}
@@ -146,13 +158,17 @@ The list of rules added to the blocklist.
 ## Class: `net.SocketAddress`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 ### `new net.SocketAddress([options])`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * `options` {Object}
@@ -167,7 +183,9 @@ added: v15.14.0
 ### `socketaddress.address`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string}
@@ -175,7 +193,9 @@ added: v15.14.0
 ### `socketaddress.family`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string} Either `'ipv4'` or `'ipv6'`.
@@ -183,7 +203,9 @@ added: v15.14.0
 ### `socketaddress.flowlabel`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -191,7 +213,9 @@ added: v15.14.0
 ### `socketaddress.port`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -257,10 +281,35 @@ added: v0.1.90
 
 Emitted when the server has been bound after calling [`server.listen()`][].
 
+### Event: `'drop'`
+
+<!-- YAML
+added: v18.6.0
+-->
+
+When the number of connections reaches the threshold of `server.maxConnections`,
+the server will drop new connections and emit `'drop'` event instead. If it is a
+TCP server, the argument is as follows, otherwise the argument is `undefined`.
+
+* `data` {Object} The argument passed to event listener.
+  * `localAddress` {string}  Local address.
+  * `localPort` {number} Local port.
+  * `localFamily` {string} Local family.
+  * `remoteAddress` {string} Remote address.
+  * `remotePort` {number} Remote port.
+  * `remoteFamily` {string} Remote IP family. `'IPv4'` or `'IPv6'`.
+
 ### `server.address()`
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object|string|null}
@@ -439,6 +488,10 @@ server.listen({
   exclusive: true
 });
 ```
+
+When `exclusive` is `true` and the underlying handle is shared, it is
+possible that several workers query a handle with different backlogs.
+In this case, the first `backlog` passed to the master process will be used.
 
 Starting an IPC server as root may cause the server path to be inaccessible for
 unprivileged users. Using `readableAll` and `writableAll` will make the server
@@ -682,7 +735,7 @@ Not applicable to Unix sockets.
 
 * `err` {Error|null} The error object. See [`dns.lookup()`][].
 * `address` {string} The IP address.
-* `family` {string|null} The address type. See [`dns.lookup()`][].
+* `family` {number|null} The address type. See [`dns.lookup()`][].
 * `host` {string} The host name.
 
 ### Event: `'ready'`
@@ -710,6 +763,13 @@ See also: [`socket.setTimeout()`][].
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -794,6 +854,10 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v17.7.0
+    pr-url: https://github.com/nodejs/node/pull/41310
+    description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
+                 options are supported now.
   - version: v12.10.0
     pr-url: https://github.com/nodejs/node/pull/25436
     description: Added `onread` option.
@@ -826,6 +890,14 @@ For TCP connections, available `options` are:
   `0` indicates that both IPv4 and IPv6 addresses are allowed. **Default:** `0`.
 * `hints` {number} Optional [`dns.lookup()` hints][].
 * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
+* `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
+  after the socket is established. **Default:** `false`.
+* `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on the socket
+  immediately after the connection is established, similarly on what is done in
+  [`socket.setKeepAlive([enable][, initialDelay])`][`socket.setKeepAlive(enable, initialDelay)`].
+  **Default:** `false`.
+* `keepAliveInitialDelay` {number} If set to a positive number, it sets the initial delay before
+  the first keepalive probe is sent on an idle socket.**Default:** `0`.
 
 For [IPC][] connections, available `options` are:
 
@@ -852,7 +924,7 @@ For both types, available `options` include:
 Following is an example of a client using the `onread` option:
 
 ```js
-const net = require('net');
+const net = require('node:net');
 net.connect({
   port: 80,
   onread: {
@@ -974,6 +1046,16 @@ added: v0.9.6
 
 The numeric representation of the local port. For example, `80` or `21`.
 
+### `socket.localFamily`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+* {string}
+
+The string representation of the local IP family. `'IPv4'` or `'IPv6'`.
+
 ### `socket.pause()`
 
 * Returns: {net.Socket} The socket itself.
@@ -1038,6 +1120,19 @@ added: v0.5.10
 * {integer}
 
 The numeric representation of the remote port. For example, `80` or `21`.
+
+### `socket.resetAndDestroy()`
+
+<!-- YAML
+added: v18.3.0
+-->
+
+* Returns: {net.Socket}
+
+Close the TCP connection by sending an RST packet and destroy the stream.
+If this TCP socket is in connecting status, it will send an RST packet and destroy this TCP socket once it is connected.
+Otherwise, it will call `socket.destroy` with an `ERR_SOCKET_CLOSED` Error.
+If this is not a TCP socket (for example, a pipe), calling this method will immediately throw an `ERR_INVALID_HANDLE_TYPE` Error.
 
 ### `socket.resume()`
 
@@ -1112,6 +1207,12 @@ algorithm.
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `timeout` {number}
@@ -1302,7 +1403,7 @@ Following is an example of a client of the echo server described
 in the [`net.createServer()`][] section:
 
 ```js
-const net = require('net');
+const net = require('node:net');
 const client = net.createConnection({ port: 8124 }, () => {
   // 'connect' listener.
   console.log('connected to server!');
@@ -1373,6 +1474,13 @@ then returns the `net.Socket` that starts the connection.
 
 <!-- YAML
 added: v0.5.0
+changes:
+  - version:
+    - v17.7.0
+    - v16.15.0
+    pr-url: https://github.com/nodejs/node/pull/41310
+    description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
+                 options are supported now.
 -->
 
 * `options` {Object}
@@ -1381,8 +1489,18 @@ added: v0.5.0
     **Default:** `false`.
   * `pauseOnConnect` {boolean} Indicates whether the socket should be
     paused on incoming connections. **Default:** `false`.
+  * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
+    after a new incoming connection is received. **Default:** `false`.
+  * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on the socket
+    immediately after a new incoming connection is received, similarly on what is done in
+    [`socket.setKeepAlive([enable][, initialDelay])`][`socket.setKeepAlive(enable, initialDelay)`].
+    **Default:** `false`.
+  * `keepAliveInitialDelay` {number} If set to a positive number, it sets the initial delay before
+    the first keepalive probe is sent on an idle socket.**Default:** `0`.
+
 * `connectionListener` {Function} Automatically set as a listener for the
   [`'connection'`][] event.
+
 * Returns: {net.Server}
 
 Creates a new TCP or [IPC][] server.
@@ -1404,11 +1522,11 @@ read by the original process. To begin reading data from a paused socket, call
 The server can be a TCP server or an [IPC][] server, depending on what it
 [`listen()`][`server.listen()`] to.
 
-Here is an example of an TCP echo server which listens for connections
+Here is an example of a TCP echo server which listens for connections
 on port 8124:
 
 ```js
-const net = require('net');
+const net = require('node:net');
 const server = net.createServer((c) => {
   // 'connection' listener.
   console.log('client connected');
@@ -1548,6 +1666,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.pause()`]: #socketpause
 [`socket.resume()`]: #socketresume
 [`socket.setEncoding()`]: #socketsetencodingencoding
+[`socket.setKeepAlive(enable, initialDelay)`]: #socketsetkeepaliveenable-initialdelay
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
 [`writable.destroy()`]: stream.md#writabledestroyerror

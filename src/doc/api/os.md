@@ -6,11 +6,11 @@
 
 <!-- source_link=lib/os.js -->
 
-The `os` module provides operating system-related utility methods and
+The `node:os` module provides operating system-related utility methods and
 properties. It can be accessed using:
 
 ```js
-const os = require('os');
+const os = require('node:os');
 ```
 
 ## `os.EOL`
@@ -36,7 +36,7 @@ added: v0.5.0
 
 Returns the operating system CPU architecture for which the Node.js binary was
 compiled. Possible values are `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,
-`'mipsel'`, `'ppc'`, `'ppc64'`, `'s390'`, `'s390x'`, `'x32'`, and `'x64'`.
+`'mipsel'`, `'ppc'`, `'ppc64'`, `'s390'`, `'s390x'`, and `'x64'`.
 
 The return value is equivalent to [`process.arch`][].
 
@@ -130,7 +130,9 @@ are always 0.
 ## `os.devNull`
 
 <!-- YAML
-added: v16.3.0
+added:
+  - v16.3.0
+  - v14.18.0
 -->
 
 * {string}
@@ -222,6 +224,13 @@ always `[0, 0, 0]`.
 
 <!-- YAML
 added: v0.6.0
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -439,6 +448,22 @@ added:
 Returns a string identifying the kernel version.
 
 On POSIX systems, the operating system release is determined by calling
+[`uname(3)`][]. On Windows, `RtlGetVersion()` is used, and if it is not
+available, `GetVersionExW()` will be used. See
+<https://en.wikipedia.org/wiki/Uname#Examples> for more information.
+
+## `os.machine()`
+
+<!-- YAML
+added: v18.9.0
+-->
+
+* Returns {string}
+
+Returns the machine type as a string, such as `arm`, `aarch64`, `mips`,
+`mips64`, `ppc64`, `ppc64le`, `s390`, `s390x`, `i386`, `i686`, `x86_64`.
+
+On POSIX systems, the machine type is determined by calling
 [`uname(3)`][]. On Windows, `RtlGetVersion()` is used, and if it is not
 available, `GetVersionExW()` will be used. See
 <https://en.wikipedia.org/wiki/Uname#Examples> for more information.

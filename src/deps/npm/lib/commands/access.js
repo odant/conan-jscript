@@ -3,9 +3,9 @@ const path = require('path')
 const libaccess = require('libnpmaccess')
 const readPackageJson = require('read-package-json-fast')
 
-const log = require('../utils/log-shim.js')
 const otplease = require('../utils/otplease.js')
 const getIdentity = require('../utils/get-identity.js')
+const log = require('../utils/log-shim.js')
 const BaseCommand = require('../base-command.js')
 
 const subcommands = [
@@ -20,6 +20,15 @@ const subcommands = [
   '2fa-not-required',
 ]
 
+const deprecated = [
+  '2fa-not-required',
+  '2fa-required',
+  'ls-collaborators',
+  'ls-packages',
+  'public',
+  'restricted',
+]
+
 class Access extends BaseCommand {
   static description = 'Set access level on published packages'
   static name = 'access'
@@ -27,6 +36,8 @@ class Access extends BaseCommand {
     'registry',
     'otp',
   ]
+
+  static ignoreImplicitWorkspace = true
 
   static usage = [
     'public [<package>]',
@@ -77,9 +88,12 @@ class Access extends BaseCommand {
       throw this.usageError(`${cmd} is not a recognized subcommand.`)
     }
 
+    if (deprecated.includes(cmd)) {
+      log.warn('access', `${cmd} subcommand will be removed in the next version of npm`)
+    }
+
     return this[cmd](args, {
       ...this.npm.flatOptions,
-      log,
     })
   }
 
@@ -175,12 +189,12 @@ class Access extends BaseCommand {
   }
 
   async edit () {
-    throw new Error('edit subcommand is not implemented yet')
+    throw new Error('edit subcommand is not implemented')
   }
 
   modifyPackage (pkg, opts, fn, requireScope = true) {
     return this.getPackage(pkg, requireScope)
-      .then(pkgName => otplease(opts, opts => fn(pkgName, opts)))
+      .then(pkgName => otplease(this.npm, opts, opts => fn(pkgName, opts)))
   }
 
   async getPackage (name, requireScope) {

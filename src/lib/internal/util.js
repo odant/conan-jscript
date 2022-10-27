@@ -7,18 +7,21 @@ const {
   ArrayPrototypeSlice,
   ArrayPrototypeSort,
   Error,
+  FunctionPrototypeCall,
   ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
   ObjectGetPrototypeOf,
+  ObjectFreeze,
+  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
+  ObjectValues,
   Promise,
   ReflectApply,
   ReflectConstruct,
   RegExpPrototypeExec,
-  RegExpPrototypeTest,
   SafeMap,
   SafeSet,
   StringPrototypeReplace,
@@ -259,8 +262,8 @@ function createClassWrapper(type) {
   }
   // Mask the wrapper function name and length values
   ObjectDefineProperties(fn, {
-    name: { value: type.name },
-    length: { value: type.length }
+    name: { __proto__: null, value: type.name },
+    length: { __proto__: null, value: type.length },
   });
   ObjectSetPrototypeOf(fn, type);
   fn.prototype = type.prototype;
@@ -334,6 +337,7 @@ function promisify(original) {
     validateFunction(fn, 'util.promisify.custom');
 
     return ObjectDefineProperty(fn, kCustomPromisifiedSymbol, {
+      __proto__: null,
       value: fn, enumerable: false, writable: false, configurable: true
     });
   }
@@ -364,12 +368,18 @@ function promisify(original) {
   ObjectSetPrototypeOf(fn, ObjectGetPrototypeOf(original));
 
   ObjectDefineProperty(fn, kCustomPromisifiedSymbol, {
+    __proto__: null,
     value: fn, enumerable: false, writable: false, configurable: true
   });
-  return ObjectDefineProperties(
-    fn,
-    ObjectGetOwnPropertyDescriptors(original)
-  );
+
+  const descriptors = ObjectGetOwnPropertyDescriptors(original);
+  const propertiesValues = ObjectValues(descriptors);
+  for (let i = 0; i < propertiesValues.length; i++) {
+    // We want to use null-prototype objects to not rely on globally mutable
+    // %Object.prototype%.
+    ObjectSetPrototypeOf(propertiesValues[i], null);
+  }
+  return ObjectDefineProperties(fn, descriptors);
 }
 
 promisify.custom = kCustomPromisifiedSymbol;
@@ -427,9 +437,9 @@ function isInsideNodeModules() {
       const filename = frame.getFileName();
       // If a filename does not start with / or contain \,
       // it's likely from Node.js core.
-      if (!RegExpPrototypeTest(/^\/|\\/, filename))
+      if (RegExpPrototypeExec(/^\/|\\/, filename) === null)
         continue;
-      return RegExpPrototypeTest(kNodeModulesRE, filename);
+      return RegExpPrototypeExec(kNodeModulesRE, filename) !== null;
     }
   }
   return false;
@@ -466,26 +476,87 @@ function createDeferredPromise() {
   return { promise, resolve, reject };
 }
 
-let DOMException;
+// https://heycam.github.io/webidl/#define-the-operations
+function defineOperation(target, name, method) {
+  ObjectDefineProperty(target, name, {
+    __proto__: null,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+    value: method
+  });
+}
+
+// https://heycam.github.io/webidl/#es-interfaces
+function exposeInterface(target, name, interfaceObject) {
+  ObjectDefineProperty(target, name, {
+    __proto__: null,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+    value: interfaceObject
+  });
+}
+
+let _DOMException;
+const lazyDOMExceptionClass = () => {
+  _DOMException ??= internalBinding('messaging').DOMException;
+  return _DOMException;
+};
+
 const lazyDOMException = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  return new DOMException(message, name);
+  _DOMException ??= internalBinding('messaging').DOMException;
+  return new _DOMException(message, name);
 });
 
-function structuredClone(value) {
-  const {
-    DefaultSerializer,
-    DefaultDeserializer,
-  } = require('v8');
-  const ser = new DefaultSerializer();
-  ser._getDataCloneError = hideStackFrames((message) =>
-    lazyDOMException(message, 'DataCloneError'));
-  ser.writeValue(value);
-  const serialized = ser.releaseBuffer();
+const kEnumerableProperty = ObjectCreate(null);
+kEnumerableProperty.enumerable = true;
+ObjectFreeze(kEnumerableProperty);
 
-  const des = new DefaultDeserializer(serialized);
-  return des.readValue();
+const kEmptyObject = ObjectFreeze(ObjectCreate(null));
+
+function filterOwnProperties(source, keys) {
+  const filtered = ObjectCreate(null);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (ObjectPrototypeHasOwnProperty(source, key)) {
+      filtered[key] = source[key];
+    }
+  }
+
+  return filtered;
+}
+
+/**
+ * Mimics `obj[key] = value` but ignoring potential prototype inheritance.
+ * @param {any} obj
+ * @param {string} key
+ * @param {any} value
+ * @returns {any}
+ */
+function setOwnProperty(obj, key, value) {
+  return ObjectDefineProperty(obj, key, {
+    __proto__: null,
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+}
+
+let internalGlobal;
+function getInternalGlobal() {
+  if (internalGlobal == null) {
+    // Lazy-load to avoid a circular dependency.
+    const { runInNewContext } = require('vm');
+    internalGlobal = runInNewContext('this', undefined, { contextName: 'internal' });
+  }
+  return internalGlobal;
+}
+
+function SideEffectFreeRegExpPrototypeExec(regex, string) {
+  const { RegExp: RegExpFromAnotherRealm } = getInternalGlobal();
+  return FunctionPrototypeCall(RegExpFromAnotherRealm.prototype.exec, regex, string);
 }
 
 module.exports = {
@@ -495,22 +566,27 @@ module.exports = {
   createClassWrapper,
   createDeferredPromise,
   decorateErrorStack,
+  defineOperation,
   deprecate,
   emitExperimentalWarning,
+  exposeInterface,
   filterDuplicateStrings,
+  filterOwnProperties,
   getConstructorOf,
+  getInternalGlobal,
   getSystemErrorMap,
   getSystemErrorName,
   isError,
   isInsideNodeModules,
   join,
   lazyDOMException,
+  lazyDOMExceptionClass,
   normalizeEncoding,
   once,
   promisify,
+  SideEffectFreeRegExpPrototypeExec,
   sleep,
   spliceOne,
-  structuredClone,
   toUSVString,
   removeColors,
 
@@ -524,5 +600,9 @@ module.exports = {
   // Used by the buffer module to capture an internal reference to the
   // default isEncoding implementation, just in case userland overrides it.
   kIsEncodingSymbol: Symbol('kIsEncodingSymbol'),
-  kVmBreakFirstLineSymbol: Symbol('kVmBreakFirstLineSymbol')
+  kVmBreakFirstLineSymbol: Symbol('kVmBreakFirstLineSymbol'),
+
+  kEmptyObject,
+  kEnumerableProperty,
+  setOwnProperty,
 };
