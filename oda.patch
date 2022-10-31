@@ -1,39 +1,8 @@
-diff --git a/src/common.gypi b/src/common.gypi
-index e610650a0..e3aa0ba46 100644
---- a/src/common.gypi
-+++ b/src/common.gypi
-@@ -281,7 +281,7 @@
-     ],
-     'msvs_settings': {
-       'VCCLCompilerTool': {
--        'AdditionalOptions': ['/Zc:__cplusplus'],
-+        'AdditionalOptions': ['/Zc:__cplusplus','/std:c++17'],
-         'BufferSecurityCheck': 'true',
-         'DebugInformationFormat': 1,          # /Z7 embed info in .obj files
-         'ExceptionHandling': 0,               # /EHsc
-@@ -399,7 +399,7 @@
-       }],
-       [ 'OS in "linux freebsd openbsd solaris android aix cloudabi"', {
-         'cflags': [ '-Wall', '-Wextra', '-Wno-unused-parameter', ],
--        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++14' ],
-+        'cflags_cc': [ '-fno-rtti', '-fno-exceptions', '-std=gnu++17' ],
-         'defines': [ '__STDC_FORMAT_MACROS' ],
-         'ldflags': [ '-rdynamic' ],
-         'target_conditions': [
-@@ -543,7 +543,7 @@
-           ['clang==1', {
-             'xcode_settings': {
-               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
--              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++14',  # -std=gnu++14
-+              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++17',  # -std=gnu++17
-               'CLANG_CXX_LIBRARY': 'libc++',
-             },
-           }],
 diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -701,6 +701,12 @@ parser.add_argument('--ninja',
+@@ -702,6 +702,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -46,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -792,6 +798,13 @@ parser.add_option('-C',
+@@ -823,6 +829,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -60,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1372,6 +1385,8 @@ def configure_node(o):
+@@ -1423,6 +1436,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -69,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2009,6 +2024,9 @@ if options.prefix:
+@@ -2061,6 +2076,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -79,10 +48,10 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2031,6 +2049,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2084,6 +2102,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
-   gyp_args += ['-f', 'ninja']
+   gyp_args += ['-f', 'ninja-' + flavor]
 +elif options.use_cmake:
 +  gyp_args += ['-f', 'cmake']
  elif flavor == 'win' and sys.platform != 'msys':
@@ -110,7 +79,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -146,13 +146,10 @@
+@@ -147,13 +147,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -126,7 +95,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -342,6 +339,36 @@
+@@ -365,6 +362,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -160,10 +129,10 @@ index f18a0d58a..c187559b1 100644
 +            '__POSIX__'
 +          ],
 +        }],
-       ],
-     }, # node_core_target_name
-     {
-@@ -361,6 +388,12 @@
+
+         ['node_fipsinstall=="true"', {
+           'variables': {
+@@ -467,6 +494,12 @@
          'deps/uvwasi/uvwasi.gyp:uvwasi',
        ],
  
@@ -176,7 +145,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -623,6 +656,13 @@
+@@ -736,6 +769,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -190,80 +159,10 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -640,6 +680,7 @@
-             'Dbghelp',
-             'Psapi',
-             'Ws2_32',
-+            'Winmm'
-           ],
-         }],
-         [ 'node_use_etw=="true"', {
-@@ -1249,119 +1290,6 @@
+@@ -1361,61 +1401,6 @@
          }],
        ]
      }, # overlapped-checker
--
--    # TODO(joyeecheung): do not depend on node_lib,
--    # instead create a smaller static library node_lib_base that does
--    # just enough for node_native_module.cc and the cache builder to
--    # compile without compiling the generated code cache C++ file.
--    # So generate_code_cache -> mkcodecache -> node_lib_base,
--    #    node_lib -> node_lib_base & generate_code_cache
--    {
--      'target_name': 'mkcodecache',
--      'type': 'executable',
--
--      'dependencies': [
--        '<(node_lib_target_name)',
--        'deps/histogram/histogram.gyp:histogram',
--        'deps/uvwasi/uvwasi.gyp:uvwasi',
--      ],
--
--      'includes': [
--        'node.gypi'
--      ],
--
--      'include_dirs': [
--        'src',
--        'tools/msvs/genfiles',
--        'deps/v8/include',
--        'deps/cares/include',
--        'deps/uv/include',
--        'deps/uvwasi/include',
--      ],
--
--      'defines': [
--        'NODE_WANT_INTERNALS=1'
--      ],
--      'sources': [
--        'src/node_snapshot_stub.cc',
--        'src/node_code_cache_stub.cc',
--        'tools/code_cache/mkcodecache.cc',
--        'tools/code_cache/cache_builder.cc',
--        'tools/code_cache/cache_builder.h',
--      ],
--
--      'conditions': [
--        [ 'node_use_openssl=="true"', {
--          'defines': [
--            'HAVE_OPENSSL=1',
--          ],
--        }],
--        ['v8_enable_inspector==1', {
--          'defines': [
--            'HAVE_INSPECTOR=1',
--          ],
--        }],
--        ['OS=="win"', {
--          'libraries': [
--            'dbghelp.lib',
--            'PsApi.lib',
--            'winmm.lib',
--            'Ws2_32.lib',
--          ],
--        }],
--      ],
--    }, # mkcodecache
 -    {
 -      'target_name': 'node_mksnapshot',
 -      'type': 'executable',
@@ -291,7 +190,6 @@ index f18a0d58a..c187559b1 100644
 -
 -      'sources': [
 -        'src/node_snapshot_stub.cc',
--        'src/node_code_cache_stub.cc',
 -        'tools/snapshot/node_mksnapshot.cc',
 -      ],
 -
@@ -299,6 +197,11 @@ index f18a0d58a..c187559b1 100644
 -        [ 'node_use_openssl=="true"', {
 -          'defines': [
 -            'HAVE_OPENSSL=1',
+-          ],
+-        }],
+-        [ 'node_use_node_code_cache=="true"', {
+-          'defines': [
+-            'NODE_USE_NODE_CODE_CACHE=1',
 -          ],
 -        }],
 -        ['v8_enable_inspector==1', {
@@ -322,7 +225,7 @@ diff --git a/src/node.gypi b/src/node.gypi
 index 43dbda7bb..23d1612cc 100644
 --- a/src/node.gypi
 +++ b/src/node.gypi
-@@ -308,7 +308,7 @@
+@@ -327,7 +327,7 @@
        'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
      }],
      [ 'OS=="linux"', {
@@ -356,7 +259,7 @@ diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
 index a601c5ecf..13a1a81da 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
-@@ -509,6 +509,12 @@ void FWrite(FILE* file, const std::string& str) {
+@@ -511,6 +511,12 @@ void FWrite(FILE* file, const std::string& str) {
    simple_fwrite();
  }
  
@@ -373,7 +276,7 @@ diff --git a/src/src/debug_utils.h b/src/src/debug_utils.h
 index ecc53b0c2..66932a957 100644
 --- a/src/src/debug_utils.h
 +++ b/src/src/debug_utils.h
-@@ -8,6 +8,7 @@
+@@ -9,6 +9,7 @@
  #include <algorithm>
  #include <sstream>
  #include <string>
@@ -381,10 +284,10 @@ index ecc53b0c2..66932a957 100644
  
  // Use FORCE_INLINE on functions that have a debug-category-enabled check first
  // and then ideally only a single function call following it, to maintain
-@@ -36,6 +37,7 @@ inline std::string SPrintF(const char* format, Args&&... args);
+@@ -37,6 +38,7 @@ inline std::string SPrintF(const char* format, Args&&... args);
  template <typename... Args>
  inline void FPrintF(FILE* file, const char* format, Args&&... args);
- void FWrite(FILE* file, const std::string& str);
+ void NODE_EXTERN_PRIVATE FWrite(FILE* file, const std::string& str);
 +void SetRedirectFPrintF(std::function<void(const std::string&)>);
  
  // Listing the AsyncWrap provider types first enables us to cast directly
@@ -393,7 +296,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1185,3 +1185,5 @@ void Initialize() {}
+@@ -1356,3 +1356,5 @@ void Initialize() {}
  
  NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -404,13 +307,13 @@ index 0f72abc0b..4375a1415 100644
 --- a/src/src/node_version.h
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
- #define NODE_MAJOR_VERSION 16
- #define NODE_MINOR_VERSION 14
- #define NODE_PATCH_VERSION 2
+ #define NODE_MAJOR_VERSION 18
+ #define NODE_MINOR_VERSION 12
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
- #define NODE_VERSION_LTS_CODENAME "Gallium"
+ #define NODE_VERSION_LTS_CODENAME "Hydrogen"
 @@ -52,16 +53,31 @@
                            NODE_STRINGIFY(NODE_MINOR_VERSION) "." \
                            NODE_STRINGIFY(NODE_PATCH_VERSION)     \
@@ -507,7 +410,7 @@ diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
 index 48ec392b6..73c3f072f 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
-@@ -1094,6 +1094,13 @@
+@@ -1089,6 +1089,13 @@
                '-lrt'
              ],
            },

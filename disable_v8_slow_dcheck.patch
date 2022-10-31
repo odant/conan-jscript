@@ -2,7 +2,7 @@ diff --git a/src/tools/v8_gypfiles/toolchain.gypi b/src/tools/v8_gypfiles/toolch
 index d10525af5..4c3d67955 100644
 --- a/src/tools/v8_gypfiles/toolchain.gypi
 +++ b/src/tools/v8_gypfiles/toolchain.gypi
-@@ -1196,7 +1196,7 @@
+@@ -1187,7 +1187,7 @@
                },
              },
              'variables': {

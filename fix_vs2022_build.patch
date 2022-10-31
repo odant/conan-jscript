@@ -2,7 +2,7 @@ diff --git a/src/deps/v8/src/objects/fixed-array-inl.h b/src/deps/v8/src/objects
 index dbf0222b8..63da478c1 100644
 --- a/src/deps/v8/src/objects/fixed-array-inl.h
 +++ b/src/deps/v8/src/objects/fixed-array-inl.h
-@@ -84,7 +84,7 @@ bool FixedArray::is_the_hole(Isolate* isolate, int index) {
+@@ -83,7 +83,7 @@ bool FixedArray::is_the_hole(Isolate* isolate, int index) {
    return get(isolate, index).IsTheHole(isolate);
  }
  

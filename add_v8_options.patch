@@ -2,7 +2,7 @@ diff --git a/src/src/node_options.cc b/src/src/node_options.cc
 index cd537ad68..47a63b6c0 100644
 --- a/src/src/node_options.cc
 +++ b/src/src/node_options.cc
-@@ -624,6 +624,9 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
+@@ -711,6 +711,9 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
              "help system profilers to translate JavaScript interpreted frames",
              V8Option{}, kAllowedInEnvironment);
    AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvironment);
