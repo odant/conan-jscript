@@ -78,8 +78,8 @@ class JScriptConan(ConanFile):
         for p in self.exports_patches:
             tools.patch(patch_file=p)
         if self.settings.build_type == "Debug":
-            if self.settings.os == "Windows":
-                tools.patch(patch_file="fix_no_optimization_build.patch")
+#            if self.settings.os == "Windows":
+#                tools.patch(patch_file="fix_no_optimization_build.patch")
             if self.options.disable_v8_slow_dcheck:    
                 tools.patch(patch_file="disable_v8_slow_dcheck.patch")
             
