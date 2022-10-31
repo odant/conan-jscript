@@ -617,10 +617,10 @@ NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
 
   // Initialized the enabled list for Debug() calls with system
   // environment variables.
-  per_process::enabled_debug_list.Parse(nullptr);
+  per_process::enabled_debug_list.Parse();
 
   atexit(ResetStdio);
-  PlatformInit();
+  PlatformInit(ProcessFlags::kNoFlags);
 
 #ifdef _DEBUG
   {
@@ -668,7 +668,14 @@ NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
 #endif  // NODE_FIPS_MODE
   // V8 on Windows doesn't have a good source of entropy. Seed it from
   // OpenSSL's pool.
-  v8::V8::SetEntropySource(crypto::EntropySource);
+  v8::V8::SetEntropySource([](unsigned char* buffer, size_t length) {
+      // V8 falls back to very weak entropy when this function fails
+      // and /dev/urandom isn't available. That wouldn't be so bad if
+      // the entropy was only used for Math.random() but it's also used for
+      // hash table and address space layout randomization. Better to abort.
+      CHECK(crypto::CSPRNG(buffer, length).is_ok());
+      return true;
+  });
 #endif  // HAVE_OPENSSL
 
   per_process::v8_platform.Initialize(
