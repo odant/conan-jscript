@@ -562,8 +562,9 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 
     v8::Local<v8::Array> array = data.As<v8::Array>();
-    DCHECK_GE(array->Length(), 3);
-    if (array->Length() < 3) {
+    const auto arraySize = array->Length();
+    DCHECK_GE(arraySize, 2);
+    if (arraySize < 2) {
         return;
     }
 
@@ -587,8 +588,19 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
     if (consoleCallback) {
-        v8::Local<v8::External> typeExt = array->Get(context, 2).ToLocalChecked().As<v8::External>();
-        auto type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(typeExt->Value()));
+        ConsoleType type{ ConsoleType::Default };
+        if (arraySize >= 3) {
+            auto maybeValue = array->Get(context, 2);
+            if (!maybeValue.IsEmpty()) {
+                auto localValue = maybeValue.ToLocalChecked();
+                if (!localValue.IsEmpty()) {
+                    v8::Local<v8::External> externalValue = localValue.As<v8::External>();
+                    if (!externalValue.IsEmpty()) {
+                        type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
+                    }
+                }
+            }
+        }
 
         consoleCallback->operator()(args, type);
     }
