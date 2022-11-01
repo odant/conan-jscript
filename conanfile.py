@@ -45,7 +45,8 @@ class JScriptConan(ConanFile):
         "win_delay_load_hook.cc",
         *exports_patches,
         "fix_no_optimization_build.patch",
-        "disable_v8_slow_dcheck.patch"
+        "disable_v8_slow_dcheck.patch",
+        "disable_gen_node_def.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -78,8 +79,9 @@ class JScriptConan(ConanFile):
         for p in self.exports_patches:
             tools.patch(patch_file=p)
         if self.settings.build_type == "Debug":
-#            if self.settings.os == "Windows":
+            if self.settings.os == "Windows":
 #                tools.patch(patch_file="fix_no_optimization_build.patch")
+                tools.patch(patch_file="disable_gen_node_def.patch")
             if self.options.disable_v8_slow_dcheck:    
                 tools.patch(patch_file="disable_v8_slow_dcheck.patch")
             
