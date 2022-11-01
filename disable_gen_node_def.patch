@@ -2,7 +2,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index e8e1d9f93..3e0782436 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -203,12 +203,12 @@
+@@ -200,12 +200,12 @@
            'dependencies': [ '<(node_lib_target_name)' ],
            'conditions': [
              ['OS=="win" and node_shared=="true"', {
@@ -21,7 +21,7 @@ index e8e1d9f93..3e0782436 100644
              }],
            ],
          }],
-@@ -1446,40 +1446,5 @@
+@@ -1431,40 +1431,5 @@
          },
        ]
      }], # end aix section
