@@ -67,9 +67,9 @@ NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& scri
 
 
 enum class ConsoleType {
-    Log,
-    Warn,
-    Error,
+    Log   = 1,
+    Warn  = 2,
+    Error = 3,
 
     Default = Log
 };
@@ -88,15 +88,15 @@ inline std::ostream& operator<< (std::ostream& os, const ConsoleType type) {
         } break;
 
         case ConsoleType::Warn: {
-                os << "Warn";
+            os << "Warn";
         } break;
 
         case ConsoleType::Error: {
-                os << "Error";
+            os << "Error";
         } break;
 
         default: {
-                os << "Default";
+            os << "Default";
         } break;
     }
 
