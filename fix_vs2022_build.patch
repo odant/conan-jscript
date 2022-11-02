@@ -24,3 +24,64 @@ index 6b0ac5d9a..247a4dd30 100644
    inline void set(int index, Smi value);
  #else
    inline void set(int index, Smi value) {
+diff --git a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-aix.cc b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-aix.cc
+index 5c4d1d3bb..c08beebfd 100644
+--- a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-aix.cc
++++ b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-aix.cc
+@@ -5,6 +5,7 @@
+ #include "src/snapshot/embedded/platform-embedded-file-writer-aix.h"
+ 
+ #include "src/objects/code.h"
++#include "src/objects/field-index-inl.h"
+ 
+ namespace v8 {
+ namespace internal {
+diff --git a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-generic.cc b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-generic.cc
+index 9309dbdd3..9bf8636e2 100644
+--- a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-generic.cc
++++ b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-generic.cc
+@@ -9,6 +9,7 @@
+ 
+ #include "src/common/globals.h"
+ #include "src/objects/code.h"
++#include "src/objects/field-index-inl.h"
+ 
+ namespace v8 {
+ namespace internal {
+diff --git a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-mac.cc b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-mac.cc
+index 76a051b84..819b08706 100644
+--- a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-mac.cc
++++ b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-mac.cc
+@@ -5,6 +5,7 @@
+ #include "src/snapshot/embedded/platform-embedded-file-writer-mac.h"
+ 
+ #include "src/objects/code.h"
++#include "src/objects/field-index-inl.h"
+ 
+ namespace v8 {
+ namespace internal {
+diff --git a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-win.cc b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-win.cc
+index d4232939a..43adfb38a 100644
+--- a/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-win.cc
++++ b/src/deps/v8/src/snapshot/embedded/platform-embedded-file-writer-win.cc
+@@ -15,6 +15,8 @@
+ #include "src/snapshot/embedded/embedded-file-writer.h"
+ #endif  // V8_OS_WIN64
+ 
++#include "src/objects/field-index-inl.h"
++
+ namespace v8 {
+ namespace internal {
+ 
+diff --git a/src/deps/v8/src/snapshot/mksnapshot.cc b/src/deps/v8/src/snapshot/mksnapshot.cc
+index 6e2faff28..e866115fe 100644
+--- a/src/deps/v8/src/snapshot/mksnapshot.cc
++++ b/src/deps/v8/src/snapshot/mksnapshot.cc
+@@ -21,6 +21,7 @@
+ #include "src/snapshot/embedded/embedded-file-writer.h"
+ #include "src/snapshot/snapshot.h"
+ #include "src/snapshot/startup-serializer.h"
++#include "src/objects/field-index-inl.h"
+ 
+ namespace {
+ 

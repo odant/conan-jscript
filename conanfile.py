@@ -36,7 +36,6 @@ class JScriptConan(ConanFile):
         "oda.patch",
         "experimental.patch",
         "use_nodepath_for_esm.patch",
-        "fix_vs2022_build.patch",
         "add_v8_options.patch"
     ]
     exports_sources = [
@@ -44,6 +43,7 @@ class JScriptConan(ConanFile):
         "FindJScript.cmake",
         "win_delay_load_hook.cc",
         *exports_patches,
+        "fix_vs2022_build.patch",
         "fix_no_optimization_build.patch",
         "disable_v8_slow_dcheck.patch",
         "disable_gen_node_def.patch"
@@ -78,10 +78,12 @@ class JScriptConan(ConanFile):
         self.patch_version()
         for p in self.exports_patches:
             tools.patch(patch_file=p)
+        if self.settings.os == "Windows":
+            tools.patch(patch_file="fix_vs2022_build.patch")
+            tools.patch(patch_file="disable_gen_node_def.patch")
         if self.settings.build_type == "Debug":
-            if self.settings.os == "Windows":
+#            if self.settings.os == "Windows":
 #                tools.patch(patch_file="fix_no_optimization_build.patch")
-                tools.patch(patch_file="disable_gen_node_def.patch")
             if self.options.disable_v8_slow_dcheck:    
                 tools.patch(patch_file="disable_v8_slow_dcheck.patch")
             
