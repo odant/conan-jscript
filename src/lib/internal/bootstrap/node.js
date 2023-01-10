@@ -77,8 +77,9 @@ const {
   exposeInterface,
 } = require('internal/util');
 const {
-  exiting_aliased_Uint32Array,
-  getHiddenValue,
+  privateSymbols: {
+    exiting_aliased_Uint32Array,
+  },
 } = internalBinding('util');
 
 setupProcessObject();
@@ -88,8 +89,7 @@ setupBuffer();
 
 process.domain = null;
 {
-  const exitingAliasedUint32Array =
-    getHiddenValue(process, exiting_aliased_Uint32Array);
+  const exitingAliasedUint32Array = process[exiting_aliased_Uint32Array];
   ObjectDefineProperty(process, '_exiting', {
     __proto__: null,
     get() {
@@ -103,9 +103,6 @@ process.domain = null;
   });
 }
 process._exiting = false;
-
-// process.config is serialized config.gypi
-const nativeModule = internalBinding('builtins');
 
 // TODO(@jasnell): Once this has gone through one full major
 // release cycle, remove the Proxy and setter and update the
@@ -162,9 +159,12 @@ const deprecationHandler = {
   }
 };
 
+// process.config is serialized config.gypi
+const binding = internalBinding('builtins');
+
 // eslint-disable-next-line node-core/prefer-primordials
 let processConfig = new Proxy(
-  JSONParse(nativeModule.config),
+  JSONParse(binding.config),
   deprecationHandler);
 
 ObjectDefineProperty(process, 'config', {
@@ -310,7 +310,7 @@ const features = {
   // This needs to be dynamic because --no-node-snapshot disables the
   // code cache even if the binary is built with embedded code cache.
   get cached_builtins() {
-    return nativeModule.hasCachedBuiltins();
+    return binding.hasCachedBuiltins();
   }
 };
 

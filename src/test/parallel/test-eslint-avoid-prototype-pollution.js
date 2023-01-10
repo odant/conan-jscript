@@ -52,6 +52,8 @@ new RuleTester({
       'new Proxy({}, someFactory())',
       'new Proxy({}, { __proto__: null })',
       'new Proxy({}, { __proto__: null, ...{} })',
+      'async function name(){return await SafePromiseAll([])}',
+      'async function name(){const val = await SafePromiseAll([])}',
     ],
     invalid: [
       {
@@ -164,7 +166,7 @@ new RuleTester({
       },
       {
         code: 'RegExpPrototypeSymbolSearch(/some regex/, "some string")',
-        errors: [{ message: /looks up the "exec" property/ }],
+        errors: [{ message: /SafeStringPrototypeSearch/ }],
       },
       {
         code: 'StringPrototypeMatch("some string", /some regex/)',
@@ -204,7 +206,7 @@ new RuleTester({
       },
       {
         code: 'StringPrototypeSearch("some string", /some regex/)',
-        errors: [{ message: /looks up the Symbol\.search property/ }],
+        errors: [{ message: /SafeStringPrototypeSearch/ }],
       },
       {
         code: 'StringPrototypeSplit("some string", /some regex/)',
@@ -233,6 +235,14 @@ new RuleTester({
       {
         code: 'PromiseAll([])',
         errors: [{ message: /\bSafePromiseAll\b/ }]
+      },
+      {
+        code: 'async function fn(){await SafePromiseAll([])}',
+        errors: [{ message: /\bSafePromiseAllReturnVoid\b/ }]
+      },
+      {
+        code: 'async function fn(){await SafePromiseAllSettled([])}',
+        errors: [{ message: /\bSafePromiseAllSettledReturnVoid\b/ }]
       },
       {
         code: 'PromiseAllSettled([])',

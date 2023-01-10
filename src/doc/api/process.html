@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.12.1">
-  <title>Process | Node.js v18.12.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.13.0">
+  <title>Process | Node.js v18.13.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="process" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.12.1 documentation</h1>
+          <h1>Node.js v18.13.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.12.1</li>
+            <li class="pinned-header">Node.js v18.13.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -522,7 +522,7 @@
         <h2>Process<span><a class="mark" href="#process" id="process">#</a></span><a aria-hidden="true" class="legacy" id="process_process"></a></h2>
 
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.12.1/lib/process.js">lib/process.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.13.0/lib/process.js">lib/process.js</a></p>
 <p>The <code>process</code> object provides information about, and control over, the current
 Node.js process.</p>
 
@@ -811,7 +811,7 @@ process.<span class="hljs-title function_">on</span>(<span class="hljs-string">'
   fs.<span class="hljs-title function_">writeSync</span>(
     process.<span class="hljs-property">stderr</span>.<span class="hljs-property">fd</span>,
     <span class="hljs-string">`Caught exception: <span class="hljs-subst">${err}</span>\n`</span> +
-    <span class="hljs-string">`Exception origin: <span class="hljs-subst">${origin}</span>`</span>
+    <span class="hljs-string">`Exception origin: <span class="hljs-subst">${origin}</span>`</span>,
   );
 });
 
@@ -827,7 +827,7 @@ process.<span class="hljs-title function_">on</span>(<span class="hljs-string">'
   fs.<span class="hljs-title function_">writeSync</span>(
     process.<span class="hljs-property">stderr</span>.<span class="hljs-property">fd</span>,
     <span class="hljs-string">`Caught exception: <span class="hljs-subst">${err}</span>\n`</span> +
-    <span class="hljs-string">`Exception origin: <span class="hljs-subst">${origin}</span>`</span>
+    <span class="hljs-string">`Exception origin: <span class="hljs-subst">${origin}</span>`</span>,
   );
 });
 
@@ -1567,7 +1567,7 @@ specific process warnings. These can be listened for by adding a handler to the
 <span class="hljs-comment">// Emit a warning with a code and additional detail.</span>
 <span class="hljs-title function_">emitWarning</span>(<span class="hljs-string">'Something happened!'</span>, {
   <span class="hljs-attr">code</span>: <span class="hljs-string">'MY_WARNING'</span>,
-  <span class="hljs-attr">detail</span>: <span class="hljs-string">'This is some additional information'</span>
+  <span class="hljs-attr">detail</span>: <span class="hljs-string">'This is some additional information'</span>,
 });
 <span class="hljs-comment">// Emits:</span>
 <span class="hljs-comment">// (node:56338) [MY_WARNING] Warning: Something happened!</span>
@@ -1576,7 +1576,7 @@ specific process warnings. These can be listened for by adding a handler to the
 <span class="hljs-comment">// Emit a warning with a code and additional detail.</span>
 <span class="hljs-title function_">emitWarning</span>(<span class="hljs-string">'Something happened!'</span>, {
   <span class="hljs-attr">code</span>: <span class="hljs-string">'MY_WARNING'</span>,
-  <span class="hljs-attr">detail</span>: <span class="hljs-string">'This is some additional information'</span>
+  <span class="hljs-attr">detail</span>: <span class="hljs-string">'This is some additional information'</span>,
 });
 <span class="hljs-comment">// Emits:</span>
 <span class="hljs-comment">// (node:56338) [MY_WARNING] Warning: Something happened!</span>
@@ -2622,18 +2622,18 @@ the source code of the current release.</li>
 only the source header files for the current release. This file is
 significantly smaller than the full source file and can be used for compiling
 Node.js native add-ons.</li>
-<li><code>libUrl</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> an absolute URL pointing to a <em><code>node.lib</code></em> file matching the
-architecture and version of the current release. This file is used for
-compiling Node.js native add-ons. <em>This property is only present on Windows
-builds of Node.js and will be missing on all other platforms.</em></li>
-<li><code>lts</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> a string label identifying the <a href="https://github.com/nodejs/Release">LTS</a> label for this release.
-This property only exists for LTS releases and is <code>undefined</code> for all other
-release types, including <em>Current</em> releases.
-Valid values include the LTS Release code names (including those
-that are no longer supported).
+<li><code>libUrl</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> an absolute URL pointing to a <em><code>node.lib</code></em> file
+matching the architecture and version of the current release. This file is
+used for compiling Node.js native add-ons. <em>This property is only present on
+Windows builds of Node.js and will be missing on all other platforms.</em></li>
+<li><code>lts</code> <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type" class="type">&#x3C;string></a> | <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Undefined_type" class="type">&#x3C;undefined></a> a string label identifying the <a href="https://github.com/nodejs/Release">LTS</a> label for this
+release. This property only exists for LTS releases and is <code>undefined</code> for all
+other release types, including <em>Current</em> releases. Valid values include the
+LTS Release code names (including those that are no longer supported).
 <ul>
-<li><code>'Dubnium'</code> for the 10.x LTS line beginning with 10.13.0.</li>
-<li><code>'Erbium'</code> for the 12.x LTS line beginning with 12.13.0.
+<li><code>'Fermium'</code> for the 14.x LTS line beginning with 14.15.0.</li>
+<li><code>'Gallium'</code> for the 16.x LTS line beginning with 16.13.0.</li>
+<li><code>'Hydrogen'</code> for the 18.x LTS line beginning with 18.12.0.
 For other LTS Release code names, see <a href="https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG_ARCHIVE.md">Node.js Changelog Archive</a></li>
 </ul>
 </li>
@@ -2641,10 +2641,10 @@ For other LTS Release code names, see <a href="https://github.com/nodejs/node/bl
 <!-- eslint-skip -->
 <pre><code class="language-js">{
   <span class="hljs-attr">name</span>: <span class="hljs-string">'node'</span>,
-  <span class="hljs-attr">lts</span>: <span class="hljs-string">'Erbium'</span>,
-  <span class="hljs-attr">sourceUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v12.18.1/node-v12.18.1.tar.gz'</span>,
-  <span class="hljs-attr">headersUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v12.18.1/node-v12.18.1-headers.tar.gz'</span>,
-  <span class="hljs-attr">libUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v12.18.1/win-x64/node.lib'</span>
+  <span class="hljs-attr">lts</span>: <span class="hljs-string">'Hydrogen'</span>,
+  <span class="hljs-attr">sourceUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v18.12.0/node-v18.12.0.tar.gz'</span>,
+  <span class="hljs-attr">headersUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v18.12.0/node-v18.12.0-headers.tar.gz'</span>,
+  <span class="hljs-attr">libUrl</span>: <span class="hljs-string">'https://nodejs.org/download/release/v18.12.0/win-x64/node.lib'</span>
 }</code></pre>
 <p>In custom builds from non-release versions of the source tree, only the
 <code>name</code> property may be present. The additional properties should not be
@@ -3042,7 +3042,7 @@ the associated a numeric ID.</p>
     process.<span class="hljs-title function_">setegid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New gid: <span class="hljs-subst">${process.getegid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> process = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
@@ -3052,7 +3052,7 @@ the associated a numeric ID.</p>
     process.<span class="hljs-title function_">setegid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New gid: <span class="hljs-subst">${process.getegid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code></pre>
 <p>This function is only available on POSIX platforms (i.e. not Windows or
@@ -3078,7 +3078,7 @@ associated numeric ID.</p>
     process.<span class="hljs-title function_">seteuid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New uid: <span class="hljs-subst">${process.geteuid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> process = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
@@ -3088,7 +3088,7 @@ associated numeric ID.</p>
     process.<span class="hljs-title function_">seteuid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New uid: <span class="hljs-subst">${process.geteuid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code></pre>
 <p>This function is only available on POSIX platforms (i.e. not Windows or
@@ -3114,7 +3114,7 @@ associated numeric ID.</p>
     process.<span class="hljs-title function_">setgid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New gid: <span class="hljs-subst">${process.getgid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> process = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
@@ -3124,7 +3124,7 @@ associated numeric ID.</p>
     process.<span class="hljs-title function_">setgid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New gid: <span class="hljs-subst">${process.getgid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set gid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code></pre>
 <p>This function is only available on POSIX platforms (i.e. not Windows or
@@ -3149,7 +3149,7 @@ process to have <code>root</code> or the <code>CAP_SETGID</code> capability.</p>
     process.<span class="hljs-title function_">setgroups</span>([<span class="hljs-number">501</span>]);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(process.<span class="hljs-title function_">getgroups</span>()); <span class="hljs-comment">// new groups</span>
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set groups: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set groups: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> process = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
@@ -3158,7 +3158,7 @@ process to have <code>root</code> or the <code>CAP_SETGID</code> capability.</p>
     process.<span class="hljs-title function_">setgroups</span>([<span class="hljs-number">501</span>]);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(process.<span class="hljs-title function_">getgroups</span>()); <span class="hljs-comment">// new groups</span>
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set groups: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set groups: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code></pre>
 <p>This function is only available on POSIX platforms (i.e. not Windows or
@@ -3184,7 +3184,7 @@ numeric ID.</p>
     process.<span class="hljs-title function_">setuid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New uid: <span class="hljs-subst">${process.getuid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> process = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
@@ -3194,7 +3194,7 @@ numeric ID.</p>
     process.<span class="hljs-title function_">setuid</span>(<span class="hljs-number">501</span>);
     <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`New uid: <span class="hljs-subst">${process.getuid()}</span>`</span>);
   } <span class="hljs-keyword">catch</span> (err) {
-    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">error</span>(<span class="hljs-string">`Failed to set uid: <span class="hljs-subst">${err}</span>`</span>);
   }
 }</code></pre>
 <p>This function is only available on POSIX platforms (i.e. not Windows or
@@ -3431,13 +3431,13 @@ processes inherit the mask from the parent process. Returns the previous mask.</
 <span class="hljs-keyword">const</span> newmask = <span class="hljs-number">0o022</span>;
 <span class="hljs-keyword">const</span> oldmask = <span class="hljs-title function_">umask</span>(newmask);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(
-  <span class="hljs-string">`Changed umask from <span class="hljs-subst">${oldmask.toString(<span class="hljs-number">8</span>)}</span> to <span class="hljs-subst">${newmask.toString(<span class="hljs-number">8</span>)}</span>`</span>
+  <span class="hljs-string">`Changed umask from <span class="hljs-subst">${oldmask.toString(<span class="hljs-number">8</span>)}</span> to <span class="hljs-subst">${newmask.toString(<span class="hljs-number">8</span>)}</span>`</span>,
 );</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { umask } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:process'</span>);
 
 <span class="hljs-keyword">const</span> newmask = <span class="hljs-number">0o022</span>;
 <span class="hljs-keyword">const</span> oldmask = <span class="hljs-title function_">umask</span>(newmask);
 <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(
-  <span class="hljs-string">`Changed umask from <span class="hljs-subst">${oldmask.toString(<span class="hljs-number">8</span>)}</span> to <span class="hljs-subst">${newmask.toString(<span class="hljs-number">8</span>)}</span>`</span>
+  <span class="hljs-string">`Changed umask from <span class="hljs-subst">${oldmask.toString(<span class="hljs-number">8</span>)}</span> to <span class="hljs-subst">${newmask.toString(<span class="hljs-number">8</span>)}</span>`</span>,
 );</code></pre>
 <p>In <a href="worker_threads.html#class-worker"><code>Worker</code></a> threads, <code>process.umask(mask)</code> will throw an exception.</p>
 </section><section><h3><code>process.uptime()</code><span><a class="mark" href="#processuptime" id="processuptime">#</a></span><a aria-hidden="true" class="legacy" id="process_process_uptime"></a></h3>

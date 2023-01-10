@@ -310,7 +310,7 @@
         "changes": []
       },
       "stability": 1,
-      "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-customevent`][] CLI flag.",
+      "stabilityText": "Experimental. Enable this API with the [`--experimental-global-customevent`][] CLI flag.",
       "type": "global",
       "desc": "<p>A browser-compatible implementation of the <a href=\"https://dom.spec.whatwg.org/#customevent\"><code>CustomEvent</code> Web API</a>.</p>"
     },
@@ -1149,7 +1149,7 @@
             "changes": []
           },
           "stability": 1,
-          "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-customevent`][] CLI flag.",
+          "stabilityText": "Experimental. Enable this API with the [`--experimental-global-customevent`][] CLI flag.",
           "type": "global",
           "desc": "<p>A browser-compatible implementation of the <a href=\"https://dom.spec.whatwg.org/#customevent\"><code>CustomEvent</code> Web API</a>.</p>"
         },
@@ -1660,7 +1660,7 @@
             "changes": []
           },
           "stability": 1,
-          "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-webcrypto`][] CLI flag.",
+          "stabilityText": "Experimental. Enable this API with the [`--experimental-global-webcrypto`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"webcrypto.html#class-crypto\" class=\"type\">&lt;Crypto&gt;</a>. This global is available\nonly if the Node.js binary was compiled with including support for the\n<code>node:crypto</code> module.</p>",
           "type": "misc",
           "displayName": "`Crypto`"
@@ -1675,7 +1675,7 @@
             "changes": []
           },
           "stability": 1,
-          "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-webcrypto`][] CLI flag.",
+          "stabilityText": "Experimental. Enable this API with the [`--experimental-global-webcrypto`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of the <a href=\"webcrypto.html\">Web Crypto API</a>.</p>",
           "type": "misc",
           "displayName": "`crypto`"
@@ -1690,7 +1690,7 @@
             "changes": []
           },
           "stability": 1,
-          "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-webcrypto`][] CLI flag.",
+          "stabilityText": "Experimental. Enable this API with the [`--experimental-global-webcrypto`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"webcrypto.html#class-cryptokey\" class=\"type\">&lt;CryptoKey&gt;</a>. This global is available\nonly if the Node.js binary was compiled with including support for the\n<code>node:crypto</code> module.</p>",
           "type": "misc",
           "displayName": "`CryptoKey`"
@@ -1709,10 +1709,16 @@
             "added": [
               "v17.5.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41811",
+                "description": "No longer behind `--experimental-global-fetch` CLI flag."
+              }
+            ]
           },
           "stability": 1,
-          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][]\nCLI flag.",
+          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of the <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/fetch\"><code>fetch()</code></a> function.</p>",
           "type": "misc",
           "displayName": "`fetch`"
@@ -1724,10 +1730,16 @@
             "added": [
               "v17.6.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41811",
+                "description": "No longer behind `--experimental-global-fetch` CLI flag."
+              }
+            ]
           },
           "stability": 1,
-          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][]\nCLI flag.",
+          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/FormData\" class=\"type\">&lt;FormData&gt;</a>.</p>",
           "type": "misc",
           "displayName": "Class `FormData`"
@@ -1739,10 +1751,16 @@
             "added": [
               "v17.5.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41811",
+                "description": "No longer behind `--experimental-global-fetch` CLI flag."
+              }
+            ]
           },
           "stability": 1,
-          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][]\nCLI flag.",
+          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/Headers\" class=\"type\">&lt;Headers&gt;</a>.</p>",
           "type": "misc",
           "displayName": "Class `Headers`"
@@ -1774,10 +1792,16 @@
             "added": [
               "v17.5.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41811",
+                "description": "No longer behind `--experimental-global-fetch` CLI flag."
+              }
+            ]
           },
           "stability": 1,
-          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][]\nCLI flag.",
+          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/Response\" class=\"type\">&lt;Response&gt;</a>.</p>",
           "type": "misc",
           "displayName": "`Response`"
@@ -1789,10 +1813,16 @@
             "added": [
               "v17.5.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.0.0",
+                "pr-url": "https://github.com/nodejs/node/pull/41811",
+                "description": "No longer behind `--experimental-global-fetch` CLI flag."
+              }
+            ]
           },
           "stability": 1,
-          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][]\nCLI flag.",
+          "stabilityText": "Experimental. Disable this API with the [`--no-experimental-fetch`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/Request\" class=\"type\">&lt;Request&gt;</a>.</p>",
           "type": "misc",
           "displayName": "`Request`"
@@ -1807,7 +1837,7 @@
             "changes": []
           },
           "stability": 1,
-          "stabilityText": "Experimental. Enable this API with the\n[`--experimental-global-webcrypto`][] CLI flag.",
+          "stabilityText": "Experimental. Enable this API with the [`--experimental-global-webcrypto`][] CLI flag.",
           "desc": "<p>A browser-compatible implementation of <a href=\"webcrypto.html#class-subtlecrypto\" class=\"type\">&lt;SubtleCrypto&gt;</a>. This global is available\nonly if the Node.js binary was compiled with including support for the\n<code>node:crypto</code> module.</p>",
           "type": "misc",
           "displayName": "`SubtleCrypto`"

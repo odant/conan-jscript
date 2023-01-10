@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.12.1">
-  <title>Command-line API | Node.js v18.12.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.13.0">
+  <title>Command-line API | Node.js v18.13.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="cli" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.12.1 documentation</h1>
+          <h1>Node.js v18.13.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.12.1</li>
+            <li class="pinned-header">Node.js v18.13.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -153,6 +153,7 @@
 <li><a href="#--experimental-policy"><code>--experimental-policy</code></a></li>
 <li><a href="#--no-experimental-fetch"><code>--no-experimental-fetch</code></a></li>
 <li><a href="#--no-experimental-repl-await"><code>--no-experimental-repl-await</code></a></li>
+<li><a href="#--experimental-shadow-realm"><code>--experimental-shadow-realm</code></a></li>
 <li><a href="#--experimental-specifier-resolutionmode"><code>--experimental-specifier-resolution=mode</code></a></li>
 <li><a href="#--experimental-vm-modules"><code>--experimental-vm-modules</code></a></li>
 <li><a href="#--experimental-wasi-unstable-preview1"><code>--experimental-wasi-unstable-preview1</code></a></li>
@@ -241,6 +242,7 @@
 <li><a href="#--v8-pool-sizenum"><code>--v8-pool-size=num</code></a></li>
 <li><span class="stability_1"><a href="#--watch"><code>--watch</code></a></span></li>
 <li><span class="stability_1"><a href="#--watch-path"><code>--watch-path</code></a></span></li>
+<li><a href="#--watch-preserve-output"><code>--watch-preserve-output</code></a></li>
 <li><a href="#--zero-fill-buffers"><code>--zero-fill-buffers</code></a></li>
 <li><a href="#-c---check"><code>-c</code>, <code>--check</code></a></li>
 <li><a href="#-e---eval-script"><code>-e</code>, <code>--eval "script"</code></a></li>
@@ -460,6 +462,7 @@
 <li><a href="#--experimental-policy"><code>--experimental-policy</code></a></li>
 <li><a href="#--no-experimental-fetch"><code>--no-experimental-fetch</code></a></li>
 <li><a href="#--no-experimental-repl-await"><code>--no-experimental-repl-await</code></a></li>
+<li><a href="#--experimental-shadow-realm"><code>--experimental-shadow-realm</code></a></li>
 <li><a href="#--experimental-specifier-resolutionmode"><code>--experimental-specifier-resolution=mode</code></a></li>
 <li><a href="#--experimental-vm-modules"><code>--experimental-vm-modules</code></a></li>
 <li><a href="#--experimental-wasi-unstable-preview1"><code>--experimental-wasi-unstable-preview1</code></a></li>
@@ -548,6 +551,7 @@
 <li><a href="#--v8-pool-sizenum"><code>--v8-pool-size=num</code></a></li>
 <li><span class="stability_1"><a href="#--watch"><code>--watch</code></a></span></li>
 <li><span class="stability_1"><a href="#--watch-path"><code>--watch-path</code></a></span></li>
+<li><a href="#--watch-preserve-output"><code>--watch-preserve-output</code></a></li>
 <li><a href="#--zero-fill-buffers"><code>--zero-fill-buffers</code></a></li>
 <li><a href="#-c---check"><code>-c</code>, <code>--check</code></a></li>
 <li><a href="#-e---eval-script"><code>-e</code>, <code>--eval "script"</code></a></li>
@@ -896,6 +900,11 @@ of <code>--enable-source-maps</code>.</p>
 <span>Added in: v16.6.0</span>
 </div>
 <p>Use this flag to disable top-level await in REPL.</p>
+<h4><code>--experimental-shadow-realm</code><span><a class="mark" href="#--experimental-shadow-realm" id="--experimental-shadow-realm">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_shadow_realm"></a></h4>
+<div class="api_metadata">
+<span>Added in: v18.13.0</span>
+</div>
+<p>Use this flag to enable <a href="https://github.com/tc39/proposal-shadowrealm">ShadowRealm</a> support.</p>
 <h4><code>--experimental-specifier-resolution=mode</code><span><a class="mark" href="#--experimental-specifier-resolutionmode" id="--experimental-specifier-resolutionmode">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_specifier_resolution_mode"></a></h4>
 <div class="api_metadata">
 <span>Added in: v13.4.0, v12.16.0</span>
@@ -1430,18 +1439,35 @@ The value given must be a power of two.</p>
 </div>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
 <p>When used with <code>--build-snapshot</code>, <code>--snapshot-blob</code> specifies the path
-where the generated snapshot blob will be written to. If not specified,
-the generated blob will be written, by default, to <code>snapshot.blob</code>
-in the current working directory.</p>
+where the generated snapshot blob is written to. If not specified, the
+generated blob is written to <code>snapshot.blob</code> in the current working directory.</p>
 <p>When used without <code>--build-snapshot</code>, <code>--snapshot-blob</code> specifies the
-path to the blob that will be used to restore the application state.</p>
+path to the blob that is used to restore the application state.</p>
+<p>When loading a snapshot, Node.js checks that:</p>
+<ol>
+<li>The version, architecture and platform of the running Node.js binary
+are exactly the same as that of the binary that generates the snapshot.</li>
+<li>The V8 flags and CPU features are compatible with that of the binary
+that generates the snapshot.</li>
+</ol>
+<p>If they don't match, Node.js refuses to load the snapshot and exits with
+status code 1.</p>
 <h4><code>--test</code><span><a class="mark" href="#--test" id="--test">#</a></span><a aria-hidden="true" class="legacy" id="cli_test"></a></h4>
 <div class="api_metadata">
-<span>Added in: v18.1.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v18.13.0</td>
+<td><p>Test runner now supports running in watch mode.</p></td></tr>
+<tr><td>v18.1.0</td>
+<td><p><span>Added in: v18.1.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <p>Starts the Node.js command line test runner. This flag cannot be combined with
-<code>--check</code>, <code>--eval</code>, <code>--interactive</code>, or the inspector. See the documentation
-on <a href="test.html#running-tests-from-the-command-line">running tests from the command line</a> for more details.</p>
+<code>--watch-path</code>, <code>--check</code>, <code>--eval</code>, <code>--interactive</code>, or the inspector.
+See the documentation on <a href="test.html#running-tests-from-the-command-line">running tests from the command line</a>
+for more details.</p>
 <h4><code>--test-name-pattern</code><span><a class="mark" href="#--test-name-pattern" id="--test-name-pattern">#</a></span><a aria-hidden="true" class="legacy" id="cli_test_name_pattern"></a></h4>
 <div class="api_metadata">
 <span>Added in: v18.11.0</span>
@@ -1674,13 +1700,22 @@ will be ignored and will not be reported.</li>
 <span>Added in: v5.10.0</span>
 </div>
 <p>Set V8's thread pool size which will be used to allocate background jobs.</p>
-<p>If set to <code>0</code> then V8 will choose an appropriate size of the thread pool based
-on the number of online processors.</p>
-<p>If the value provided is larger than V8's maximum, then the largest value
-will be chosen.</p>
+<p>If set to <code>0</code> then Node.js will choose an appropriate size of the thread pool
+based on an estimate of the amount of parallelism.</p>
+<p>The amount of parallelism refers to the number of computations that can be
+carried out simultaneously in a given machine. In general, it's the same as the
+amount of CPUs, but it may diverge in environments such as VMs or containers.</p>
 <h4><code>--watch</code><span><a class="mark" href="#--watch" id="--watch">#</a></span><a aria-hidden="true" class="legacy" id="cli_watch"></a></h4>
 <div class="api_metadata">
-<span>Added in: v18.11.0</span>
+<details class="changelog"><summary>History</summary>
+<table>
+<tbody><tr><th>Version</th><th>Changes</th></tr>
+<tr><td>v18.13.0</td>
+<td><p>Test runner now supports running in watch mode.</p></td></tr>
+<tr><td>v18.11.0</td>
+<td><p><span>Added in: v18.11.0</span></p></td></tr>
+</tbody></table>
+</details>
 </div>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
 <p>Starts Node.js in watch mode.
@@ -1703,11 +1738,14 @@ restart.
 This will turn off watching of required or imported modules, even when used in
 combination with <code>--watch</code>.</p>
 <p>This flag cannot be combined with
-<code>--check</code>, <code>--eval</code>, <code>--interactive</code>, or the REPL.</p>
+<code>--check</code>, <code>--eval</code>, <code>--interactive</code>, <code>--test</code>, or the REPL.</p>
 <pre><code class="language-console"><span class="hljs-meta prompt_">$ </span><span class="language-bash">node --watch-path=./src --watch-path=./tests index.js</span></code></pre>
 <p>This option is only supported on macOS and Windows.
 An <code>ERR_FEATURE_UNAVAILABLE_ON_PLATFORM</code> exception will be thrown
 when the option is used on a platform that does not support it.</p>
+<h4><code>--watch-preserve-output</code><span><a class="mark" href="#--watch-preserve-output" id="--watch-preserve-output">#</a></span><a aria-hidden="true" class="legacy" id="cli_watch_preserve_output"></a></h4>
+<p>Disable the clearing of the console when watch mode restarts the process.</p>
+<pre><code class="language-console"><span class="hljs-meta prompt_">$ </span><span class="language-bash">node --watch --watch-preserve-output test.js</span></code></pre>
 <h4><code>--zero-fill-buffers</code><span><a class="mark" href="#--zero-fill-buffers" id="--zero-fill-buffers">#</a></span><a aria-hidden="true" class="legacy" id="cli_zero_fill_buffers"></a></h4>
 <div class="api_metadata">
 <span>Added in: v6.0.0</span>
@@ -1872,6 +1910,7 @@ node --require <span class="hljs-string">"./a.js"</span> --require <span class="
 <li><code>--experimental-modules</code></li>
 <li><code>--experimental-network-imports</code></li>
 <li><code>--experimental-policy</code></li>
+<li><code>--experimental-shadow-realm</code></li>
 <li><code>--experimental-specifier-resolution</code></li>
 <li><code>--experimental-top-level-await</code></li>
 <li><code>--experimental-vm-modules</code></li>
@@ -1952,6 +1991,7 @@ node --require <span class="hljs-string">"./a.js"</span> --require <span class="
 <li><code>--use-openssl-ca</code></li>
 <li><code>--v8-pool-size</code></li>
 <li><code>--watch-path</code></li>
+<li><code>--watch-preserve-output</code></li>
 <li><code>--watch</code></li>
 <li><code>--zero-fill-buffers</code></li>
 </ul>
@@ -1965,6 +2005,7 @@ node --require <span class="hljs-string">"./a.js"</span> --require <span class="
 <li><code>--interpreted-frames-native-stack</code></li>
 <li><code>--jitless</code></li>
 <li><code>--max-old-space-size</code></li>
+<li><code>--max-semi-space-size</code></li>
 <li><code>--perf-basic-prof-only-functions</code></li>
 <li><code>--perf-basic-prof</code></li>
 <li><code>--perf-prof-unwinding-info</code></li>

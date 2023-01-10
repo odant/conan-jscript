@@ -1,6 +1,7 @@
 'use strict';
 
 const {
+  ArrayBufferPrototypeGetByteLength,
   ArrayFrom,
   ArrayIsArray,
   ArrayPrototypePush,
@@ -42,10 +43,11 @@ const {
 } = require('internal/errors');
 const { signals } = internalBinding('constants').os;
 const {
-  getHiddenValue,
-  setHiddenValue,
-  arrow_message_private_symbol: kArrowMessagePrivateSymbolIndex,
-  decorated_private_symbol: kDecoratedPrivateSymbolIndex,
+  isArrayBufferDetached: _isArrayBufferDetached,
+  privateSymbols: {
+    arrow_message_private_symbol,
+    decorated_private_symbol,
+  },
   sleep: _sleep,
   toUSVString: _toUSVString,
 } = internalBinding('util');
@@ -140,15 +142,14 @@ function deprecate(fn, msg, code) {
 }
 
 function decorateErrorStack(err) {
-  if (!(isError(err) && err.stack) ||
-      getHiddenValue(err, kDecoratedPrivateSymbolIndex) === true)
+  if (!(isError(err) && err.stack) || err[decorated_private_symbol])
     return;
 
-  const arrow = getHiddenValue(err, kArrowMessagePrivateSymbolIndex);
+  const arrow = err[arrow_message_private_symbol];
 
   if (arrow) {
     err.stack = arrow + err.stack;
-    setHiddenValue(err, kDecoratedPrivateSymbolIndex, true);
+    err[decorated_private_symbol] = true;
   }
 }
 
@@ -221,8 +222,7 @@ function slowCases(enc) {
 
 function emitExperimentalWarning(feature) {
   if (experimentalWarnings.has(feature)) return;
-  const msg = `${feature} is an experimental feature. This feature could ` +
-       'change at any time';
+  const msg = `${feature} is an experimental feature and might change at any time`;
   experimentalWarnings.add(feature);
   process.emitWarning(msg, 'ExperimentalWarning');
 }
@@ -450,7 +450,7 @@ function once(callback) {
   return function(...args) {
     if (called) return;
     called = true;
-    ReflectApply(callback, this, args);
+    return ReflectApply(callback, this, args);
   };
 }
 
@@ -559,6 +559,14 @@ function SideEffectFreeRegExpPrototypeExec(regex, string) {
   return FunctionPrototypeCall(RegExpFromAnotherRealm.prototype.exec, regex, string);
 }
 
+function isArrayBufferDetached(value) {
+  if (ArrayBufferPrototypeGetByteLength(value) === 0) {
+    return _isArrayBufferDetached(value);
+  }
+
+  return false;
+}
+
 module.exports = {
   assertCrypto,
   cachedResult,
@@ -576,6 +584,7 @@ module.exports = {
   getInternalGlobal,
   getSystemErrorMap,
   getSystemErrorName,
+  isArrayBufferDetached,
   isError,
   isInsideNodeModules,
   join,

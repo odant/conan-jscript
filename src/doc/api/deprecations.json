@@ -2704,6 +2704,11 @@
               "meta": {
                 "changes": [
                   {
+                    "version": "v18.13.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/44919",
+                    "description": "\\`url.parse()` is deprecated again in DEP0169."
+                  },
+                  {
                     "version": [
                       "v15.13.0",
                       "v14.17.0"
@@ -2718,7 +2723,7 @@
                   }
                 ]
               },
-              "desc": "<p>Type: Deprecation revoked</p>\n<p>The <a href=\"url.html#legacy-url-api\">Legacy URL API</a> is deprecated. This includes <a href=\"url.html#urlformaturlobject\"><code>url.format()</code></a>,\n<a href=\"url.html#urlparseurlstring-parsequerystring-slashesdenotehost\"><code>url.parse()</code></a>, <a href=\"url.html#urlresolvefrom-to\"><code>url.resolve()</code></a>, and the <a href=\"url.html#legacy-urlobject\">legacy <code>urlObject</code></a>. Please\nuse the <a href=\"url.html#the-whatwg-url-api\">WHATWG URL API</a> instead.</p>",
+              "desc": "<p>Type: Deprecation revoked</p>\n<p>The <a href=\"url.html#legacy-url-api\">legacy URL API</a> is deprecated. This includes <a href=\"url.html#urlformaturlobject\"><code>url.format()</code></a>,\n<a href=\"url.html#urlparseurlstring-parsequerystring-slashesdenotehost\"><code>url.parse()</code></a>, <a href=\"url.html#urlresolvefrom-to\"><code>url.resolve()</code></a>, and the <a href=\"url.html#legacy-urlobject\">legacy <code>urlObject</code></a>. Please\nuse the <a href=\"url.html#the-whatwg-url-api\">WHATWG URL API</a> instead.</p>",
               "type": "module",
               "displayName": "DEP0116: Legacy URL API"
             },
@@ -3495,7 +3500,7 @@
                   }
                 ]
               },
-              "desc": "<p>Type: End-of-Life</p>\n<p>An undocumented feature of Node.js streams was to support thenables in\nimplementation methods. This is now deprecated, use callbacks instead and avoid\nuse of async function for streams implementation methods.</p>\n<p>This feature caused users to encounter unexpected problems where the user\nimplements the function in callback style but uses e.g. an async method which\nwould cause an error since mixing promise and callback semantics is not valid.</p>\n<pre><code class=\"language-js\">const w = new Writable({\n  async final(callback) {\n    await someOp();\n    callback();\n  }\n});\n</code></pre>",
+              "desc": "<p>Type: End-of-Life</p>\n<p>An undocumented feature of Node.js streams was to support thenables in\nimplementation methods. This is now deprecated, use callbacks instead and avoid\nuse of async function for streams implementation methods.</p>\n<p>This feature caused users to encounter unexpected problems where the user\nimplements the function in callback style but uses e.g. an async method which\nwould cause an error since mixing promise and callback semantics is not valid.</p>\n<pre><code class=\"language-js\">const w = new Writable({\n  async final(callback) {\n    await someOp();\n    callback();\n  },\n});\n</code></pre>",
               "type": "module",
               "displayName": "DEP0157: Thenable support in streams"
             },
@@ -3717,9 +3722,63 @@
                   }
                 ]
               },
-              "desc": "<p>Type: Runtime.</p>\n<p>The implicit suppression of uncaught exceptions in Node-API callbacks is now\ndeprecated.</p>\n<p>Set the flag <a href=\"cli.html#--force-node-api-uncaught-exceptions-policy\"><code>--force-node-api-uncaught-exceptions-policy</code></a> to force Node.js\nto emit an <a href=\"process.html#event-uncaughtexception\"><code>'uncaughtException'</code></a> event if the exception is not handled in\nNode-API callbacks.</p>",
+              "desc": "<p>Type: Runtime</p>\n<p>The implicit suppression of uncaught exceptions in Node-API callbacks is now\ndeprecated.</p>\n<p>Set the flag <a href=\"cli.html#--force-node-api-uncaught-exceptions-policy\"><code>--force-node-api-uncaught-exceptions-policy</code></a> to force Node.js\nto emit an <a href=\"process.html#event-uncaughtexception\"><code>'uncaughtException'</code></a> event if the exception is not handled in\nNode-API callbacks.</p>",
               "type": "module",
               "displayName": "DEP0168: Unhandled exception in Node-API callbacks"
+            },
+            {
+              "textRaw": "DEP0169: Insecure url.parse()",
+              "name": "dep0169:_insecure_url.parse()",
+              "meta": {
+                "changes": [
+                  {
+                    "version": [
+                      "v18.13.0"
+                    ],
+                    "pr-url": "https://github.com/nodejs/node/pull/44919",
+                    "description": "Documentation-only deprecation."
+                  }
+                ]
+              },
+              "desc": "<p>Type: Documentation-only</p>\n<p><a href=\"url.html#urlparseurlstring-parsequerystring-slashesdenotehost\"><code>url.parse()</code></a> behavior is not standardized and prone to errors that\nhave security implications. Use the <a href=\"url.html#the-whatwg-url-api\">WHATWG URL API</a> instead. CVEs are not\nissued for <code>url.parse()</code> vulnerabilities.</p>",
+              "type": "module",
+              "displayName": "DEP0169: Insecure url.parse()"
+            },
+            {
+              "textRaw": "DEP0170: Invalid port when using `url.parse()`",
+              "name": "dep0170:_invalid_port_when_using_`url.parse()`",
+              "meta": {
+                "changes": [
+                  {
+                    "version": [
+                      "v18.13.0"
+                    ],
+                    "pr-url": "https://github.com/nodejs/node/pull/45576",
+                    "description": "Documentation-only deprecation."
+                  }
+                ]
+              },
+              "desc": "<p>Type: Documentation-only</p>\n<p><a href=\"url.html#urlparseurlstring-parsequerystring-slashesdenotehost\"><code>url.parse()</code></a> accepts URLs with ports that are not numbers. This behavior\nmight result in host name spoofing with unexpected input. These URLs will throw\nan error in future versions of Node.js, as the <a href=\"url.html#the-whatwg-url-api\">WHATWG URL API</a> does already.</p>",
+              "type": "module",
+              "displayName": "DEP0170: Invalid port when using `url.parse()`"
+            },
+            {
+              "textRaw": "DEP0171: Setters for `http.IncomingMessage` headers and trailers",
+              "name": "dep0171:_setters_for_`http.incomingmessage`_headers_and_trailers",
+              "meta": {
+                "changes": [
+                  {
+                    "version": [
+                      "v18.13.0"
+                    ],
+                    "pr-url": "https://github.com/nodejs/node/pull/45697",
+                    "description": "Documentation-only deprecation."
+                  }
+                ]
+              },
+              "desc": "<p>Type: Documentation-only</p>\n<p>In a future version of Node.js, <a href=\"http.html#messageheaders\"><code>message.headers</code></a>,\n<a href=\"http.html#messageheadersdistinct\"><code>message.headersDistinct</code></a>, <a href=\"http.html#messagetrailers\"><code>message.trailers</code></a>, and\n<a href=\"http.html#messagetrailersdistinct\"><code>message.trailersDistinct</code></a> will be read-only.</p>",
+              "type": "module",
+              "displayName": "DEP0171: Setters for `http.IncomingMessage` headers and trailers"
             }
           ],
           "type": "misc",

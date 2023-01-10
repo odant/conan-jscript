@@ -14,7 +14,7 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
-  SafePromiseAll,
+  SafePromiseAllReturnArrayLike,
   SafeWeakMap,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
@@ -58,9 +58,9 @@ const { getOptionValue } = require('internal/options');
 
 /**
  * @typedef {object} ExportedHooks
- * @property {Function} globalPreload
- * @property {Function} resolve
- * @property {Function} load
+ * @property {Function} globalPreload Global preload hook.
+ * @property {Function} resolve Resolve hook.
+ * @property {Function} load Load hook.
  */
 
 /**
@@ -69,14 +69,14 @@ const { getOptionValue } = require('internal/options');
 
 /**
  * @typedef {object} KeyedExports
- * @property {ModuleExports} exports
- * @property {URL['href']} url
+ * @property {ModuleExports} exports The contents of the module.
+ * @property {URL['href']} url The URL of the module.
  */
 
 /**
  * @typedef {object} KeyedHook
- * @property {Function} fn
- * @property {URL['href']} url
+ * @property {Function} fn The hook function.
+ * @property {URL['href']} url The URL of the module.
  */
 
 /**
@@ -474,7 +474,7 @@ class ESMLoader {
     );
 
     if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
-      process.send({ 'watch:import': url });
+      process.send({ 'watch:import': [url] });
     }
 
     const job = new ModuleJob(
@@ -527,7 +527,7 @@ class ESMLoader {
         .then(({ module }) => module.getNamespace());
     }
 
-    const namespaces = await SafePromiseAll(jobs);
+    const namespaces = await SafePromiseAllReturnArrayLike(jobs);
 
     if (!wasArr) { return namespaces[0]; } // We can skip the pairing below
 
@@ -676,6 +676,7 @@ class ESMLoader {
     }
 
     return {
+      __proto__: null,
       format,
       responseURL,
       source,
@@ -892,6 +893,7 @@ class ESMLoader {
     }
 
     return {
+      __proto__: null,
       format,
       url,
     };

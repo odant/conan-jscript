@@ -327,7 +327,7 @@
              '<(V8_ROOT)/src/builtins/builtins-intl-gen.cc',
            ],
          }],
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -685,7 +685,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -710,7 +710,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -912,15 +912,13 @@
             '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "\\"v8_base_without_compiler.*?v8_current_cpu == \\"loong64\\".*?sources \\+= ")',
           ],
         }],        
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
             '<(_msvs_precompiled_header)',
             '<(_msvs_precompiled_source)',
-          ]
-        }],
-        ['OS=="win"', {
+          ],
           # This will prevent V8's .cc files conflicting with the inspector's
           # .cpp files in the same shard.
           'msvs_settings': {
@@ -1648,7 +1646,7 @@
               }],
               ['_toolset == "host" and host_arch == "riscv64" or _toolset == "target" and target_arch=="riscv64"', {
                 'sources': [
-                  '<(V8_ROOT)/src/heap/base/asm/riscv64/push_registers_asm.cc',
+                  '<(V8_ROOT)/src/heap/base/asm/riscv/push_registers_asm.cc',
                 ],
               }],
               ['_toolset == "host" and host_arch == "loong64" or _toolset == "target" and target_arch=="loong64"', {
@@ -1782,7 +1780,7 @@
             }],
           ],
           'action': [
-            'python', '<(V8_ROOT)/tools/testrunner/utils/dump_build_config_gyp.py',
+            '<(python)', '<(V8_ROOT)/tools/testrunner/utils/dump_build_config_gyp.py',
             '<@(v8_dump_build_config_args)',
           ],
         },
@@ -1876,7 +1874,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
           ],
           'action': [
-            'python',
+            '<(python)',
             '<(V8_ROOT)/tools/gen-postmortem-metadata.py',
             '<@(_outputs)',
             '<@(heapobject_files)'

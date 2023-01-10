@@ -5,10 +5,14 @@
 #include "node_internals.h"
 #include "node_options-inl.h"
 #include "node_platform.h"
+#include "node_realm-inl.h"
+#include "node_shadow_realm.h"
 #include "node_v8_platform-inl.h"
 #include "node_wasm_web_api.h"
 #include "uv.h"
-
+#ifdef NODE_ENABLE_VTUNE_PROFILING
+#include "../deps/v8/src/third_party/vtune/v8-vtune.h"
+#endif
 #if HAVE_INSPECTOR
 #include "inspector/worker_inspector.h"  // ParentInspectorHandle
 #endif
@@ -222,6 +226,10 @@ void SetIsolateCreateParamsForNode(Isolate::CreateParams* params) {
   }
   params->embedder_wrapper_object_index = BaseObject::InternalFields::kSlot;
   params->embedder_wrapper_type_index = std::numeric_limits<int>::max();
+
+#ifdef NODE_ENABLE_VTUNE_PROFILING
+  params->code_event_handler = vTune::GetVtuneCodeEventHandler();
+#endif
 }
 
 void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
@@ -262,6 +270,12 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
           ->get_per_env_options()
           ->experimental_fetch) {
     isolate->SetWasmStreamingCallback(wasm_web_api::StartStreamingCompilation);
+  }
+
+  if (per_process::cli_options->get_per_isolate_options()
+          ->experimental_shadow_realm) {
+    isolate->SetHostCreateShadowRealmContextCallback(
+        shadow_realm::HostCreateShadowRealmContextCallback);
   }
 
   if ((s.flags & SHOULD_NOT_SET_PROMISE_REJECTION_CALLBACK) == 0) {
@@ -371,7 +385,7 @@ Environment* CreateEnvironment(
   }
 #endif
 
-  if (env->RunBootstrapping().IsEmpty()) {
+  if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
     FreeEnvironment(env);
     return nullptr;
   }
@@ -446,11 +460,13 @@ MaybeLocal<Value> LoadEnvironment(
         builtins::BuiltinLoader::Add(
             name.c_str(), UnionBytes(**main_utf16, main_utf16->length()));
         env->set_main_utf16(std::move(main_utf16));
+        Realm* realm = env->principal_realm();
+
         // Arguments must match the parameters specified in
         // BuiltinLoader::LookupAndCompile().
-        std::vector<Local<Value>> args = {env->process_object(),
-                                          env->builtin_module_require()};
-        return ExecuteBootstrapper(env, name.c_str(), &args);
+        std::vector<Local<Value>> args = {realm->process_object(),
+                                          realm->builtin_module_require()};
+        return realm->ExecuteBootstrapper(name.c_str(), &args);
       });
 }
 
@@ -769,8 +785,13 @@ void DefaultProcessExitHandler(Environment* env, int exit_code) {
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
   env->isolate()->DumpAndResetStats();
-  DisposePlatform();
+  // When the process exits, the tasks in the thread pool may also need to
+  // access the data of V8Platform, such as trace agent, or a field
+  // added in the future. So make sure the thread pool exits first.
+  // And make sure V8Platform don not call into Libuv threadpool, see Dispose
+  // in node_v8_platform-inl.h
   uv_library_shutdown();
+  DisposePlatform();
   exit(exit_code);
 }
 
