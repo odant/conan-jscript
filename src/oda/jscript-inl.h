@@ -384,7 +384,6 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
 #if HAVE_INSPECTOR
       //env->InitializeInspector({});
 #endif
-      env->DoneBootstrapping();
     }
     else {
       context = NewContext(_isolate);
@@ -420,7 +419,7 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
 #if HAVE_INSPECTOR
       //env->InitializeInspector({});
 #endif
-      if (env->RunBootstrapping().IsEmpty()) {
+      if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
         return nullptr;
       }
     }
