@@ -785,7 +785,8 @@ void setStopScript(std::string stopScript) {
 std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder) {
     std::vector<std::string> argv{
         std::move(executeFile),
-        "--experimental-vm-modules"
+        "--experimental-vm-modules",
+        "--no-addons"
     };
 
     std::string modulesLoader = findModule(coreFolder + "/web/core", "modules-loader");
