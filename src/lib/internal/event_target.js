@@ -56,7 +56,7 @@ const kEvents = Symbol('kEvents');
 const kIsBeingDispatched = Symbol('kIsBeingDispatched');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
-const kHandlers = Symbol('khandlers');
+const kHandlers = Symbol('kHandlers');
 const kWeakHandler = Symbol('kWeak');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
@@ -236,7 +236,7 @@ class Event {
   get returnValue() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return !this.defaultPrevented;
+    return !this.#cancelable || !this.#defaultPrevented;
   }
 
   /**
@@ -822,7 +822,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} [type]
+   * @param {string} type
    * @returns {number}
    */
   listenerCount(type) {

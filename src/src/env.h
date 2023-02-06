@@ -460,6 +460,7 @@ struct EnvSerializeInfo {
   AsyncHooks::SerializeInfo async_hooks;
   TickInfo::SerializeInfo tick_info;
   ImmediateInfo::SerializeInfo immediate_info;
+  AliasedBufferIndex timeout_info;
   performance::PerformanceState::SerializeInfo performance_state;
   AliasedBufferIndex exiting;
   AliasedBufferIndex stream_base_state;
@@ -667,6 +668,7 @@ class Environment : public MemoryRetainer {
 
   inline AsyncHooks* async_hooks();
   inline ImmediateInfo* immediate_info();
+  inline AliasedInt32Array& timeout_info();
   inline TickInfo* tick_info();
   inline uint64_t timer_base() const;
   inline std::shared_ptr<KVStore> env_vars();
@@ -774,6 +776,7 @@ class Environment : public MemoryRetainer {
   void stop_sub_worker_contexts();
   template <typename Fn>
   inline void ForEachWorker(Fn&& iterator);
+  // Determine if the environment is stopping. This getter is thread-safe.
   inline bool is_stopping() const;
   inline void set_stopping(bool value);
   inline std::list<node_module>* extra_linked_bindings();
@@ -948,7 +951,6 @@ class Environment : public MemoryRetainer {
 
 #endif  // HAVE_INSPECTOR
 
-  inline void set_main_utf16(std::unique_ptr<v8::String::Value>);
   inline void set_process_exit_handler(
       std::function<void(Environment*, int)>&& handler);
 
@@ -988,6 +990,7 @@ class Environment : public MemoryRetainer {
 
   AsyncHooks async_hooks_;
   ImmediateInfo immediate_info_;
+  AliasedInt32Array timeout_info_;
   TickInfo tick_info_;
   const uint64_t timer_base_;
   std::shared_ptr<KVStore> env_vars_;
@@ -1118,11 +1121,6 @@ class Environment : public MemoryRetainer {
       DefaultProcessExitHandler };
 
   std::unique_ptr<Realm> principal_realm_ = nullptr;
-
-  // Keeps the main script source alive is one was passed to LoadEnvironment().
-  // We should probably find a way to just use plain `v8::String`s created from
-  // the source passed to LoadEnvironment() directly instead.
-  std::unique_ptr<v8::String::Value> main_utf16_;
 
   // Used by allocate_managed_buffer() and release_managed_buffer() to keep
   // track of the BackingStore for a given pointer.

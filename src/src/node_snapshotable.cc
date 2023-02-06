@@ -120,6 +120,7 @@ std::ostream& operator<<(std::ostream& output, const EnvSerializeInfo& i) {
          << "// -- async_hooks ends --\n"
          << i.tick_info << ",  // tick_info\n"
          << i.immediate_info << ",  // immediate_info\n"
+         << i.timeout_info << ",  // timeout_info\n"
          << "// -- performance_state begins --\n"
          << i.performance_state << ",\n"
          << "// -- performance_state ends --\n"
@@ -619,12 +620,12 @@ template <>
 size_t FileWriter::Write(const ImmediateInfo::SerializeInfo& data) {
   if (is_debug) {
     std::string str = ToStr(data);
-    Debug("Write<ImmeidateInfo::SerializeInfo>() %s\n", str.c_str());
+    Debug("Write<ImmediateInfo::SerializeInfo>() %s\n", str.c_str());
   }
 
   size_t written_total = Write<AliasedBufferIndex>(data.fields);
 
-  Debug("Write<ImmeidateInfo::SerializeInfo>() wrote %d bytes\n",
+  Debug("Write<ImmediateInfo::SerializeInfo>() wrote %d bytes\n",
         written_total);
   return written_total;
 }
@@ -734,6 +735,7 @@ EnvSerializeInfo FileReader::Read() {
   result.async_hooks = Read<AsyncHooks::SerializeInfo>();
   result.tick_info = Read<TickInfo::SerializeInfo>();
   result.immediate_info = Read<ImmediateInfo::SerializeInfo>();
+  result.timeout_info = Read<AliasedBufferIndex>();
   result.performance_state =
       Read<performance::PerformanceState::SerializeInfo>();
   result.exiting = Read<AliasedBufferIndex>();
@@ -755,6 +757,7 @@ size_t FileWriter::Write(const EnvSerializeInfo& data) {
   written_total += Write<AsyncHooks::SerializeInfo>(data.async_hooks);
   written_total += Write<TickInfo::SerializeInfo>(data.tick_info);
   written_total += Write<ImmediateInfo::SerializeInfo>(data.immediate_info);
+  written_total += Write<AliasedBufferIndex>(data.timeout_info);
   written_total += Write<performance::PerformanceState::SerializeInfo>(
       data.performance_state);
   written_total += Write<AliasedBufferIndex>(data.exiting);
@@ -1280,11 +1283,11 @@ SnapshotableObject::SnapshotableObject(Environment* env,
     : BaseObject(env, wrap), type_(type) {
 }
 
-const char* SnapshotableObject::GetTypeNameChars() const {
+std::string_view SnapshotableObject::GetTypeName() const {
   switch (type_) {
 #define V(PropertyName, NativeTypeName)                                        \
   case EmbedderObjectType::k_##PropertyName: {                                 \
-    return NativeTypeName::type_name.c_str();                                  \
+    return NativeTypeName::type_name.as_string_view();                         \
   }
     SERIALIZABLE_OBJECT_TYPES(V)
 #undef V
@@ -1325,7 +1328,7 @@ void DeserializeNodeInternalFields(Local<Object> holder,
     per_process::Debug(DebugCategory::MKSNAPSHOT,                              \
                        "Object %p is %s\n",                                    \
                        (*holder),                                              \
-                       NativeTypeName::type_name.c_str());                     \
+                       NativeTypeName::type_name.as_string_view());            \
     env_ptr->EnqueueDeserializeRequest(                                        \
         NativeTypeName::Deserialize,                                           \
         holder,                                                                \
@@ -1387,7 +1390,7 @@ StartupData SerializeNodeContextInternalFields(Local<Object> holder,
   per_process::Debug(DebugCategory::MKSNAPSHOT,
                      "Object %p is %s, ",
                      *holder,
-                     obj->GetTypeNameChars());
+                     obj->GetTypeName());
   InternalFieldInfoBase* info = obj->Serialize(index);
 
   per_process::Debug(DebugCategory::MKSNAPSHOT,
@@ -1412,7 +1415,7 @@ void SerializeSnapshotableObjects(Realm* realm,
     }
     SnapshotableObject* ptr = static_cast<SnapshotableObject*>(obj);
 
-    const char* type_name = ptr->GetTypeNameChars();
+    std::string type_name{ptr->GetTypeName()};
     per_process::Debug(DebugCategory::MKSNAPSHOT,
                        "Serialize snapshotable object %i (%p), "
                        "object=%p, type=%s\n",
@@ -1505,6 +1508,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace mksnapshot
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(mksnapshot, node::mksnapshot::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(mksnapshot,
-                               node::mksnapshot::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(mksnapshot, node::mksnapshot::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(mksnapshot,
+                                node::mksnapshot::RegisterExternalReferences)

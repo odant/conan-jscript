@@ -659,11 +659,6 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::force_repl);
   AddAlias("-i", "--interactive");
 
-  AddOption("--update-assert-snapshot",
-            "update assert snapshot files",
-            &EnvironmentOptions::update_assert_snapshot,
-            kAllowedInEnvironment);
-
   AddOption("--napi-modules", "", NoOp{}, kAllowedInEnvironment);
 
   AddOption("--tls-keylog",
@@ -1304,6 +1299,6 @@ std::vector<std::string> ParseNodeOptionsEnvVar(
 }
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(options, node::options_parser::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(options,
-                               node::options_parser::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(options, node::options_parser::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(
+    options, node::options_parser::RegisterExternalReferences)

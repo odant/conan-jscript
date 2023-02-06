@@ -1127,7 +1127,7 @@ int Http2Session::OnStreamClose(nghttp2_session* handle,
   // Don't close synchronously in case there's pending data to be written. This
   // may happen when writing trailing headers.
   if (code == NGHTTP2_NO_ERROR && nghttp2_session_want_write(handle) &&
-      !env->is_stopping()) {
+      env->can_call_into_js()) {
     env->SetImmediate([handle, id, code, user_data](Environment* env) {
       OnStreamClose(handle, id, code, user_data);
     });
@@ -3362,4 +3362,4 @@ void Initialize(Local<Object> target,
 }  // namespace http2
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(http2, node::http2::Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(http2, node::http2::Initialize)

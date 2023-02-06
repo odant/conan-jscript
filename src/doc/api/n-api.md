@@ -80,7 +80,8 @@ for `node-addon-api`.
 
 The [Node-API Resource](https://nodejs.github.io/node-addon-examples/) offers
 an excellent orientation and tips for developers just getting started with
-Node-API and `node-addon-api`.
+Node-API and `node-addon-api`. Additional media resources can be found on the
+[Node-API Media][] page.
 
 ## Implications of ABI stability
 
@@ -2382,12 +2383,7 @@ is used to pass external data through JavaScript code, so it can be retrieved
 later by native code using [`napi_get_value_external`][].
 
 The API adds a `napi_finalize` callback which will be called when the JavaScript
-object just created is ready for garbage collection. It is similar to
-`napi_wrap()` except that:
-
-* the native data cannot be retrieved later using `napi_unwrap()`,
-* nor can it be removed later using `napi_remove_wrap()`, and
-* the object created by the API can be used with `napi_wrap()`.
+object just created has been garbage collected.
 
 The created value is not an object, and therefore does not support additional
 properties. It is considered a distinct value type: calling `napi_typeof()` with
@@ -2441,12 +2437,7 @@ managed. The caller must ensure that the byte buffer remains valid until the
 finalize callback is called.
 
 The API adds a `napi_finalize` callback which will be called when the JavaScript
-object just created is ready for garbage collection. It is similar to
-`napi_wrap()` except that:
-
-* the native data cannot be retrieved later using `napi_unwrap()`,
-* nor can it be removed later using `napi_remove_wrap()`, and
-* the object created by the API can be used with `napi_wrap()`.
+object just created has been garbage collected.
 
 JavaScript `ArrayBuffer`s are described in
 [Section 24.1][] of the ECMAScript Language Specification.
@@ -2497,12 +2488,7 @@ backed by the passed in buffer. While this is still a fully-supported data
 structure, in most cases using a `TypedArray` will suffice.
 
 The API adds a `napi_finalize` callback which will be called when the JavaScript
-object just created is ready for garbage collection. It is similar to
-`napi_wrap()` except that:
-
-* the native data cannot be retrieved later using `napi_unwrap()`,
-* nor can it be removed later using `napi_remove_wrap()`, and
-* the object created by the API can be used with `napi_wrap()`.
+object just created has been garbage collected.
 
 For Node.js >=4 `Buffers` are `Uint8Array`s.
 
@@ -5139,7 +5125,7 @@ napi_status napi_wrap(napi_env env,
 * `[in] native_object`: The native instance that will be wrapped in the
   JavaScript object.
 * `[in] finalize_cb`: Optional native callback that can be used to free the
-  native instance when the JavaScript object is ready for garbage-collection.
+  native instance when the JavaScript object has been garbage-collected.
   [`napi_finalize`][] provides more details.
 * `[in] finalize_hint`: Optional contextual hint that is passed to the
   finalize callback.
@@ -5301,7 +5287,7 @@ napiVersion: 5
 ```c
 napi_status napi_add_finalizer(napi_env env,
                                napi_value js_object,
-                               void* native_object,
+                               void* finalize_data,
                                napi_finalize finalize_cb,
                                void* finalize_hint,
                                napi_ref* result);
@@ -5310,10 +5296,9 @@ napi_status napi_add_finalizer(napi_env env,
 * `[in] env`: The environment that the API is invoked under.
 * `[in] js_object`: The JavaScript object to which the native data will be
   attached.
-* `[in] native_object`: The native data that will be attached to the JavaScript
-  object.
+* `[in] finalize_data`: Optional data to be passed to `finalize_cb`.
 * `[in] finalize_cb`: Native callback that will be used to free the
-  native data when the JavaScript object is ready for garbage-collection.
+  native data when the JavaScript object has been garbage-collected.
   [`napi_finalize`][] provides more details.
 * `[in] finalize_hint`: Optional contextual hint that is passed to the
   finalize callback.
@@ -5322,14 +5307,9 @@ napi_status napi_add_finalizer(napi_env env,
 Returns `napi_ok` if the API succeeded.
 
 Adds a `napi_finalize` callback which will be called when the JavaScript object
-in `js_object` is ready for garbage collection. This API is similar to
-`napi_wrap()` except that:
+in `js_object` has been garbage-collected.
 
-* the native data cannot be retrieved later using `napi_unwrap()`,
-* nor can it be removed later using `napi_remove_wrap()`, and
-* the API can be called multiple times with different data items in order to
-  attach each of them to the JavaScript object, and
-* the object manipulated by the API can be used with `napi_wrap()`.
+This API can be called multiple times on a single JavaScript object.
 
 _Caution_: The optional returned reference (if obtained) should be deleted via
 [`napi_delete_reference`][] ONLY in response to the finalize callback
@@ -6350,6 +6330,7 @@ the add-on's file name during loading.
 [GitHub releases]: https://help.github.com/en/github/administering-a-repository/about-releases
 [LLVM]: https://llvm.org
 [Native Abstractions for Node.js]: https://github.com/nodejs/nan
+[Node-API Media]: https://github.com/nodejs/abi-stable-node/blob/HEAD/node-api-media.md
 [Object lifetime management]: #object-lifetime-management
 [Object wrap]: #object-wrap
 [Section 12.10.4]: https://tc39.github.io/ecma262/#sec-instanceofoperator

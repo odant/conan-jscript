@@ -508,6 +508,11 @@ class Test extends AsyncResource {
     }
 
     const { args, ctx } = this.getRunArgs();
+    const after = runOnce(async () => {
+      if (this.hooks.after.length > 0) {
+        await this.runHook('after', { args, ctx });
+      }
+    });
     const afterEach = runOnce(async () => {
       if (this.parent?.hooks.afterEach.length > 0) {
         await this.parent.runHook('afterEach', { args, ctx });
@@ -549,10 +554,11 @@ class Test extends AsyncResource {
         return;
       }
 
-      await this.runHook('after', { args, ctx });
+      await after();
       await afterEach();
       this.pass();
     } catch (err) {
+      try { await after(); } catch { /* Ignore error. */ }
       try { await afterEach(); } catch { /* test is already failing, let's the error */ }
       if (isTestFailureError(err)) {
         if (err.failureType === kTestTimeoutFailure) {
@@ -680,7 +686,7 @@ class Test extends AsyncResource {
       this.reportSubtest();
     }
     let directive;
-    const details = { __proto__: null, duration: this.#duration() };
+    const details = { __proto__: null, duration_ms: this.#duration() };
 
     if (this.skipped) {
       directive = this.reporter.getSkip(this.message);

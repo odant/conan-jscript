@@ -23,13 +23,13 @@
 
 const {
   ArrayIsArray,
-  ArrayPrototypeConcat,
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
@@ -655,7 +655,12 @@ Module._findPath = function(request, paths, isMain) {
       Module._pathCache[cacheKey] = filename;
       return filename;
     }
-    reportModuleNotFoundToWatchMode(basePath, ArrayPrototypeConcat([''], exts));
+
+    const extensions = [''];
+    if (exts !== undefined) {
+      ArrayPrototypePushApply(extensions, exts);
+    }
+    reportModuleNotFoundToWatchMode(basePath, extensions);
   }
 
   return false;
@@ -769,9 +774,12 @@ Module._resolveLookupPaths = function(request, parent) {
       StringPrototypeCharAt(request, 1) !== '/' &&
       (!isWindows || StringPrototypeCharAt(request, 1) !== '\\'))) {
 
-    let paths = modulePaths;
+    let paths;
     if (parent?.paths?.length) {
-      paths = ArrayPrototypeConcat(parent.paths, paths);
+      paths = ArrayPrototypeSlice(modulePaths);
+      ArrayPrototypeUnshiftApply(paths, parent.paths);
+    } else {
+      paths = modulePaths;
     }
 
     debug('looking for %j in %j', request, paths);
