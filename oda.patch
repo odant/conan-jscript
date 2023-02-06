@@ -2,7 +2,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -727,6 +727,12 @@ parser.add_argument('--ninja',
+@@ -733,6 +733,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -15,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -860,6 +866,13 @@ parser.add_option('-C',
+@@ -866,6 +872,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -29,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1470,6 +1483,8 @@ def configure_node(o):
+@@ -1476,6 +1489,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2127,6 +2142,9 @@ if options.prefix:
+@@ -2129,6 +2144,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2150,6 +2168,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2152,6 +2170,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -79,7 +79,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -146,13 +146,10 @@
+@@ -147,13 +147,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -95,7 +95,7 @@ index f18a0d58a..c187559b1 100644
        ],
  
        'sources': [
-@@ -364,6 +361,36 @@
+@@ -365,6 +362,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -132,8 +132,8 @@ index f18a0d58a..c187559b1 100644
 
          ['node_fipsinstall=="true"', {
            'variables': {
-@@ -466,6 +493,12 @@
-         'deps/uvwasi/uvwasi.gyp:uvwasi',
+@@ -468,6 +495,12 @@
+         'deps/simdutf/simdutf.gyp:simdutf',
        ],
  
 +      'msvs_settings': {
@@ -145,7 +145,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -743,6 +776,13 @@
+@@ -745,6 +778,13 @@
          ['node_shared=="true" and OS=="aix"', {
            'product_name': 'node_base',
          }],
@@ -159,7 +159,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -1371,61 +1411,6 @@
+@@ -1373,61 +1413,6 @@
          }],
        ]
      }, # overlapped-checker
@@ -225,7 +225,7 @@ diff --git a/src/node.gypi b/src/node.gypi
 index 43dbda7bb..23d1612cc 100644
 --- a/src/node.gypi
 +++ b/src/node.gypi
-@@ -335,7 +335,7 @@
+@@ -338,7 +338,7 @@
        'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
      }],
      [ 'OS=="linux"', {
@@ -238,7 +238,7 @@ diff --git a/src/src/debug_utils-inl.h b/src/src/debug_utils-inl.h
 index d87dd62c8..1b48b6b46 100644
 --- a/src/src/debug_utils-inl.h
 +++ b/src/src/debug_utils-inl.h
-@@ -124,9 +124,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
+@@ -127,9 +127,15 @@ std::string COLD_NOINLINE SPrintF(  // NOLINT(runtime/string)
    return SPrintFImpl(format, std::forward<Args>(args)...);
  }
  
@@ -298,7 +298,7 @@ index 905afd8c2..7784b41ba 100644
 +++ b/src/src/node.cc
 @@ -1241,3 +1241,5 @@ void Initialize() {}
  
- NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
+ NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
 +
 +#include <../oda/jscript-inl.h>
@@ -308,7 +308,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 18
- #define NODE_MINOR_VERSION 13
+ #define NODE_MINOR_VERSION 14
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
