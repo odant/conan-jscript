@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2129,6 +2144,9 @@ if options.prefix:
+@@ -2132,6 +2147,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2152,6 +2170,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2155,6 +2173,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -309,7 +309,7 @@ index 0f72abc0b..4375a1415 100644
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 18
  #define NODE_MINOR_VERSION 14
- #define NODE_PATCH_VERSION 0
+ #define NODE_PATCH_VERSION 1
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
