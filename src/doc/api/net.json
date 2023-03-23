@@ -6,7 +6,7 @@
       "textRaw": "Net",
       "name": "net",
       "introduced_in": "v0.10.0",
-      "desc": "<!--lint disable maximum-line-length-->\n<blockquote>\n<p>Stability: 2 - Stable</p>\n</blockquote>\n<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v18.14.2/lib/net.js\">lib/net.js</a></p>\n<p>The <code>node:net</code> module provides an asynchronous network API for creating stream-based\nTCP or <a href=\"#ipc-support\">IPC</a> servers (<a href=\"#netcreateserveroptions-connectionlistener\"><code>net.createServer()</code></a>) and clients\n(<a href=\"#netcreateconnection\"><code>net.createConnection()</code></a>).</p>\n<p>It can be accessed using:</p>\n<pre><code class=\"language-js\">const net = require('node:net');\n</code></pre>",
+      "desc": "<!--lint disable maximum-line-length-->\n<blockquote>\n<p>Stability: 2 - Stable</p>\n</blockquote>\n<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v18.15.0/lib/net.js\">lib/net.js</a></p>\n<p>The <code>node:net</code> module provides an asynchronous network API for creating stream-based\nTCP or <a href=\"#ipc-support\">IPC</a> servers (<a href=\"#netcreateserveroptions-connectionlistener\"><code>net.createServer()</code></a>) and clients\n(<a href=\"#netcreateconnection\"><code>net.createConnection()</code></a>).</p>\n<p>It can be accessed using:</p>\n<pre><code class=\"language-js\">const net = require('node:net');\n</code></pre>",
       "modules": [
         {
           "textRaw": "IPC support",
@@ -1179,6 +1179,23 @@
                 }
               ],
               "desc": "<p>Ensures that no more I/O activity happens on this socket.\nDestroys the stream and closes the connection.</p>\n<p>See <a href=\"stream.html#writabledestroyerror\"><code>writable.destroy()</code></a> for further details.</p>"
+            },
+            {
+              "textRaw": "`socket.destroySoon()`",
+              "type": "method",
+              "name": "destroySoon",
+              "meta": {
+                "added": [
+                  "v0.3.4"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "params": []
+                }
+              ],
+              "desc": "<p>Destroys the socket after all data is written. If the <code>'finish'</code> event was\nalready emitted the socket is destroyed immediately. If the socket is still\nwritable it implicitly calls <code>socket.end()</code>.</p>"
             },
             {
               "textRaw": "`socket.end([data[, encoding]][, callback])`",

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.14.2">
-  <title>Command-line API | Node.js v18.14.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.15.0">
+  <title>Command-line API | Node.js v18.15.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="cli" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.14.2 documentation</h1>
+          <h1>Node.js v18.15.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.14.2</li>
+            <li class="pinned-header">Node.js v18.15.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -155,6 +155,7 @@
 <li><a href="#--no-experimental-repl-await"><code>--no-experimental-repl-await</code></a></li>
 <li><a href="#--experimental-shadow-realm"><code>--experimental-shadow-realm</code></a></li>
 <li><a href="#--experimental-specifier-resolutionmode"><code>--experimental-specifier-resolution=mode</code></a></li>
+<li><a href="#--experimental-test-coverage"><code>--experimental-test-coverage</code></a></li>
 <li><a href="#--experimental-vm-modules"><code>--experimental-vm-modules</code></a></li>
 <li><a href="#--experimental-wasi-unstable-preview1"><code>--experimental-wasi-unstable-preview1</code></a></li>
 <li><a href="#--experimental-wasm-modules"><code>--experimental-wasm-modules</code></a></li>
@@ -211,6 +212,8 @@
 <li><span class="stability_1"><a href="#--snapshot-blobpath"><code>--snapshot-blob=path</code></a></span></li>
 <li><a href="#--test"><code>--test</code></a></li>
 <li><a href="#--test-name-pattern"><code>--test-name-pattern</code></a></li>
+<li><a href="#--test-reporter"><code>--test-reporter</code></a></li>
+<li><a href="#--test-reporter-destination"><code>--test-reporter-destination</code></a></li>
 <li><a href="#--test-only"><code>--test-only</code></a></li>
 <li><a href="#--throw-deprecation"><code>--throw-deprecation</code></a></li>
 <li><a href="#--titletitle"><code>--title=title</code></a></li>
@@ -463,6 +466,7 @@
 <li><a href="#--no-experimental-repl-await"><code>--no-experimental-repl-await</code></a></li>
 <li><a href="#--experimental-shadow-realm"><code>--experimental-shadow-realm</code></a></li>
 <li><a href="#--experimental-specifier-resolutionmode"><code>--experimental-specifier-resolution=mode</code></a></li>
+<li><a href="#--experimental-test-coverage"><code>--experimental-test-coverage</code></a></li>
 <li><a href="#--experimental-vm-modules"><code>--experimental-vm-modules</code></a></li>
 <li><a href="#--experimental-wasi-unstable-preview1"><code>--experimental-wasi-unstable-preview1</code></a></li>
 <li><a href="#--experimental-wasm-modules"><code>--experimental-wasm-modules</code></a></li>
@@ -519,6 +523,8 @@
 <li><span class="stability_1"><a href="#--snapshot-blobpath"><code>--snapshot-blob=path</code></a></span></li>
 <li><a href="#--test"><code>--test</code></a></li>
 <li><a href="#--test-name-pattern"><code>--test-name-pattern</code></a></li>
+<li><a href="#--test-reporter"><code>--test-reporter</code></a></li>
+<li><a href="#--test-reporter-destination"><code>--test-reporter-destination</code></a></li>
 <li><a href="#--test-only"><code>--test-only</code></a></li>
 <li><a href="#--throw-deprecation"><code>--throw-deprecation</code></a></li>
 <li><a href="#--titletitle"><code>--title=title</code></a></li>
@@ -913,6 +919,14 @@ are <code>explicit</code> and <code>node</code>.</p>
 module. The <code>node</code> mode enables support for optional file extensions and
 the ability to import a directory that has an index file.</p>
 <p>See <a href="esm.html#customizing-esm-specifier-resolution-algorithm">customizing ESM specifier resolution</a> for example usage.</p>
+<h4><code>--experimental-test-coverage</code><span><a class="mark" href="#--experimental-test-coverage" id="--experimental-test-coverage">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_test_coverage"></a></h4>
+<div class="api_metadata">
+<span>Added in: v18.15.0</span>
+</div>
+<p>When used in conjunction with the <code>node:test</code> module, a code coverage report is
+generated as part of the test runner output. If no tests are run, a coverage
+report is not generated. See the documentation on
+<a href="test.html#collecting-code-coverage">collecting code coverage from tests</a> for more details.</p>
 <h4><code>--experimental-vm-modules</code><span><a class="mark" href="#--experimental-vm-modules" id="--experimental-vm-modules">#</a></span><a aria-hidden="true" class="legacy" id="cli_experimental_vm_modules"></a></h4>
 <div class="api_metadata">
 <span>Added in: v9.6.0</span>
@@ -1473,6 +1487,18 @@ for more details.</p>
 <p>A regular expression that configures the test runner to only execute tests
 whose name matches the provided pattern. See the documentation on
 <a href="test.html#filtering-tests-by-name">filtering tests by name</a> for more details.</p>
+<h4><code>--test-reporter</code><span><a class="mark" href="#--test-reporter" id="--test-reporter">#</a></span><a aria-hidden="true" class="legacy" id="cli_test_reporter"></a></h4>
+<div class="api_metadata">
+<span>Added in: v18.15.0</span>
+</div>
+<p>A test reporter to use when running tests. See the documentation on
+<a href="test.html#test-reporters">test reporters</a> for more details.</p>
+<h4><code>--test-reporter-destination</code><span><a class="mark" href="#--test-reporter-destination" id="--test-reporter-destination">#</a></span><a aria-hidden="true" class="legacy" id="cli_test_reporter_destination"></a></h4>
+<div class="api_metadata">
+<span>Added in: v18.15.0</span>
+</div>
+<p>The destination for the corresponding test reporter. See the documentation on
+<a href="test.html#test-reporters">test reporters</a> for more details.</p>
 <h4><code>--test-only</code><span><a class="mark" href="#--test-only" id="--test-only">#</a></span><a aria-hidden="true" class="legacy" id="cli_test_only"></a></h4>
 <div class="api_metadata">
 <span>Added in: v18.0.0</span>
@@ -1993,6 +2019,7 @@ node --require <span class="hljs-string">"./a.js"</span> --require <span class="
 <ul>
 <li><code>--abort-on-uncaught-exception</code></li>
 <li><code>--disallow-code-generation-from-strings</code></li>
+<li><code>--enable-etw-stack-walking</code></li>
 <li><code>--huge-max-old-generation-size</code></li>
 <li><code>--interpreted-frames-native-stack</code></li>
 <li><code>--jitless</code></li>
@@ -2007,6 +2034,7 @@ node --require <span class="hljs-string">"./a.js"</span> --require <span class="
 <!-- node-options-v8 end -->
 <p><code>--perf-basic-prof-only-functions</code>, <code>--perf-basic-prof</code>,
 <code>--perf-prof-unwinding-info</code>, and <code>--perf-prof</code> are only available on Linux.</p>
+<p><code>--enable-etw-stack-walking</code> is only available on Windows.</p>
 <h4><code>NODE_PATH=path[:…]</code><span><a class="mark" href="#node_pathpath" id="node_pathpath">#</a></span><a aria-hidden="true" class="legacy" id="cli_node_path_path"></a></h4>
 <div class="api_metadata">
 <span>Added in: v0.1.32</span>

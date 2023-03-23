@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.14.2">
-  <title>Net | Node.js v18.14.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.15.0">
+  <title>Net | Node.js v18.15.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="net" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.14.2 documentation</h1>
+          <h1>Node.js v18.15.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.14.2</li>
+            <li class="pinned-header">Node.js v18.15.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -195,6 +195,7 @@
 <li><a href="#socketconnecting"><code>socket.connecting</code></a></li>
 <li><a href="#socketdestroyerror"><code>socket.destroy([error])</code></a></li>
 <li><a href="#socketdestroyed"><code>socket.destroyed</code></a></li>
+<li><a href="#socketdestroysoon"><code>socket.destroySoon()</code></a></li>
 <li><a href="#socketenddata-encoding-callback"><code>socket.end([data[, encoding]][, callback])</code></a></li>
 <li><a href="#socketlocaladdress"><code>socket.localAddress</code></a></li>
 <li><a href="#socketlocalport"><code>socket.localPort</code></a></li>
@@ -450,6 +451,7 @@
 <li><a href="#socketconnecting"><code>socket.connecting</code></a></li>
 <li><a href="#socketdestroyerror"><code>socket.destroy([error])</code></a></li>
 <li><a href="#socketdestroyed"><code>socket.destroyed</code></a></li>
+<li><a href="#socketdestroysoon"><code>socket.destroySoon()</code></a></li>
 <li><a href="#socketenddata-encoding-callback"><code>socket.end([data[, encoding]][, callback])</code></a></li>
 <li><a href="#socketlocaladdress"><code>socket.localAddress</code></a></li>
 <li><a href="#socketlocalport"><code>socket.localPort</code></a></li>
@@ -499,7 +501,7 @@
 
 <!--lint disable maximum-line-length-->
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.14.2/lib/net.js">lib/net.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.15.0/lib/net.js">lib/net.js</a></p>
 <p>The <code>node:net</code> module provides an asynchronous network API for creating stream-based
 TCP or <a href="#ipc-support">IPC</a> servers (<a href="#netcreateserveroptions-connectionlistener"><code>net.createServer()</code></a>) and clients
 (<a href="#netcreateconnection"><code>net.createConnection()</code></a>).</p>
@@ -1346,6 +1348,13 @@ Destroys the stream and closes the connection.</p>
 connection is destroyed no further data can be transferred using it.</li>
 </ul>
 <p>See <a href="stream.html#writabledestroyed"><code>writable.destroyed</code></a> for further details.</p>
+<h4><code>socket.destroySoon()</code><span><a class="mark" href="#socketdestroysoon" id="socketdestroysoon">#</a></span><a aria-hidden="true" class="legacy" id="net_socket_destroysoon"></a></h4>
+<div class="api_metadata">
+<span>Added in: v0.3.4</span>
+</div>
+<p>Destroys the socket after all data is written. If the <code>'finish'</code> event was
+already emitted the socket is destroyed immediately. If the socket is still
+writable it implicitly calls <code>socket.end()</code>.</p>
 <h4><code>socket.end([data[, encoding]][, callback])</code><span><a class="mark" href="#socketenddata-encoding-callback" id="socketenddata-encoding-callback">#</a></span><a aria-hidden="true" class="legacy" id="net_socket_end_data_encoding_callback"></a></h4>
 <div class="api_metadata">
 <span>Added in: v0.1.90</span>

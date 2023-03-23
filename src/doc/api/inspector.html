@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.14.2">
-  <title>Inspector | Node.js v18.14.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.15.0">
+  <title>Inspector | Node.js v18.15.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="inspector" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.14.2 documentation</h1>
+          <h1>Node.js v18.15.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.14.2</li>
+            <li class="pinned-header">Node.js v18.15.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -134,11 +134,11 @@
 <li><a href="#sessionconnect"><code>session.connect()</code></a></li>
 <li><a href="#sessionconnecttomainthread"><code>session.connectToMainThread()</code></a></li>
 <li><a href="#sessiondisconnect"><code>session.disconnect()</code></a></li>
-<li><a href="#sessionpostmethod-params-callback"><code>session.post(method[, params][, callback])</code></a></li>
+<li><a href="#sessionpostmethod-params-callback"><code>session.post(method[, params][, callback])</code></a>
+<ul>
+<li><a href="#example-usage">Example usage</a></li>
 </ul>
 </li>
-<li><a href="#example-usage">Example usage</a>
-<ul>
 <li><a href="#cpu-profiler">CPU profiler</a></li>
 <li><a href="#heap-profiler">Heap profiler</a></li>
 </ul>
@@ -291,11 +291,11 @@
 <li><a href="#sessionconnect"><code>session.connect()</code></a></li>
 <li><a href="#sessionconnecttomainthread"><code>session.connectToMainThread()</code></a></li>
 <li><a href="#sessiondisconnect"><code>session.disconnect()</code></a></li>
-<li><a href="#sessionpostmethod-params-callback"><code>session.post(method[, params][, callback])</code></a></li>
+<li><a href="#sessionpostmethod-params-callback"><code>session.post(method[, params][, callback])</code></a>
+<ul>
+<li><a href="#example-usage">Example usage</a></li>
 </ul>
 </li>
-<li><a href="#example-usage">Example usage</a>
-<ul>
 <li><a href="#cpu-profiler">CPU profiler</a></li>
 <li><a href="#heap-profiler">Heap profiler</a></li>
 </ul>
@@ -308,7 +308,7 @@
         <h2>Inspector<span><a class="mark" href="#inspector" id="inspector">#</a></span><a aria-hidden="true" class="legacy" id="inspector_inspector"></a></h2>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.14.2/lib/inspector.js">lib/inspector.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.15.0/lib/inspector.js">lib/inspector.js</a></p>
 <p>The <code>node:inspector</code> module provides an API for interacting with the V8
 inspector.</p>
 <p>It can be accessed using:</p>
@@ -462,7 +462,10 @@ arguments: error and message-specific result.</p>
 by V8. Chrome DevTools Protocol domain provides an interface for interacting
 with one of the runtime agents used to inspect the application state and listen
 to the run-time events.</p>
-</section><section><h3>Example usage<span><a class="mark" href="#example-usage" id="example-usage">#</a></span><a aria-hidden="true" class="legacy" id="inspector_example_usage"></a></h3>
+<p>You can not set <code>reportProgress</code> to <code>true</code> when sending a
+<code>HeapProfiler.takeHeapSnapshot</code> or <code>HeapProfiler.stopTrackingHeapObjects</code>
+command to V8.</p>
+<h5>Example usage<span><a class="mark" href="#example-usage" id="example-usage">#</a></span><a aria-hidden="true" class="legacy" id="inspector_example_usage"></a></h5>
 <p>Apart from the debugger, various V8 Profilers are available through the DevTools
 protocol.</p>
 <h4>CPU profiler<span><a class="mark" href="#cpu-profiler" id="cpu-profiler">#</a></span><a aria-hidden="true" class="legacy" id="inspector_cpu_profiler"></a></h4>

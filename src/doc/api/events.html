@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.14.2">
-  <title>Events | Node.js v18.14.2 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.15.0">
+  <title>Events | Node.js v18.15.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -95,7 +95,7 @@
     <div id="column1" data-id="events" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.14.2 documentation</h1>
+          <h1>Node.js v18.15.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -110,7 +110,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.14.2</li>
+            <li class="pinned-header">Node.js v18.15.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -479,7 +479,7 @@
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
 
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.14.2/lib/events.js">lib/events.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.15.0/lib/events.js">lib/events.js</a></p>
 <p>Much of the Node.js core API is built around an idiomatic asynchronous
 event-driven architecture in which certain kinds of objects (called "emitters")
 emit named events that cause <code>Function</code> objects ("listeners") to be called.</p>
@@ -1454,26 +1454,26 @@ event target. This is useful for debugging and diagnostic purposes.</p>
   <span class="hljs-keyword">const</span> ee = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitter</span>();
   <span class="hljs-keyword">const</span> <span class="hljs-title function_">listener</span> = (<span class="hljs-params"></span>) => <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Events are fun'</span>);
   ee.<span class="hljs-title function_">on</span>(<span class="hljs-string">'foo'</span>, listener);
-  <span class="hljs-title function_">getEventListeners</span>(ee, <span class="hljs-string">'foo'</span>); <span class="hljs-comment">// [listener]</span>
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">getEventListeners</span>(ee, <span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// [ [Function: listener] ]</span>
 }
 {
   <span class="hljs-keyword">const</span> et = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventTarget</span>();
   <span class="hljs-keyword">const</span> <span class="hljs-title function_">listener</span> = (<span class="hljs-params"></span>) => <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Events are fun'</span>);
   et.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">'foo'</span>, listener);
-  <span class="hljs-title function_">getEventListeners</span>(et, <span class="hljs-string">'foo'</span>); <span class="hljs-comment">// [listener]</span>
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">getEventListeners</span>(et, <span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// [ [Function: listener] ]</span>
 }</code><code class="language-js cjs"><span class="hljs-keyword">const</span> { getEventListeners, <span class="hljs-title class_">EventEmitter</span> } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:events'</span>);
 
 {
   <span class="hljs-keyword">const</span> ee = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventEmitter</span>();
   <span class="hljs-keyword">const</span> <span class="hljs-title function_">listener</span> = (<span class="hljs-params"></span>) => <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Events are fun'</span>);
   ee.<span class="hljs-title function_">on</span>(<span class="hljs-string">'foo'</span>, listener);
-  <span class="hljs-title function_">getEventListeners</span>(ee, <span class="hljs-string">'foo'</span>); <span class="hljs-comment">// [listener]</span>
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">getEventListeners</span>(ee, <span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// [ [Function: listener] ]</span>
 }
 {
   <span class="hljs-keyword">const</span> et = <span class="hljs-keyword">new</span> <span class="hljs-title class_">EventTarget</span>();
   <span class="hljs-keyword">const</span> <span class="hljs-title function_">listener</span> = (<span class="hljs-params"></span>) => <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Events are fun'</span>);
   et.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">'foo'</span>, listener);
-  <span class="hljs-title function_">getEventListeners</span>(et, <span class="hljs-string">'foo'</span>); <span class="hljs-comment">// [listener]</span>
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-title function_">getEventListeners</span>(et, <span class="hljs-string">'foo'</span>)); <span class="hljs-comment">// [ [Function: listener] ]</span>
 }</code></pre>
 </section><section><h3><code>events.once(emitter, name[, options])</code><span><a class="mark" href="#eventsonceemitter-name-options" id="eventsonceemitter-name-options">#</a></span><a aria-hidden="true" class="legacy" id="events_events_once_emitter_name_options"></a></h3>
 <div class="api_metadata">
