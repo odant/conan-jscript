@@ -2,7 +2,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -733,6 +733,12 @@ parser.add_argument('--ninja',
+@@ -739,6 +739,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -15,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -866,6 +872,13 @@ parser.add_option('-C',
+@@ -872,6 +878,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -29,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1476,6 +1489,8 @@ def configure_node(o):
+@@ -1488,6 +1501,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2132,6 +2147,9 @@ if options.prefix:
+@@ -2146,6 +2161,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2155,6 +2173,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2169,6 +2187,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -74,7 +74,7 @@ index 7fc7e0601..7fd5e575a 100644
 +          ],
          }],
          [ 'OS=="android"', {
-           'sources': [
+           'defines': [
 diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
@@ -89,13 +89,12 @@ index f18a0d58a..c187559b1 100644
 -
        'include_dirs': [
          'src',
--        'deps/v8/include'
-+        'deps/v8/include',
-+        'deps/uv/include'
+         'deps/v8/include',
++        'deps/uv/include',
+         'deps/postject'
        ],
  
-       'sources': [
-@@ -365,6 +362,36 @@
+@@ -366,6 +363,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -132,8 +131,8 @@ index f18a0d58a..c187559b1 100644
 
          ['node_fipsinstall=="true"', {
            'variables': {
-@@ -468,6 +495,12 @@
-         'deps/simdutf/simdutf.gyp:simdutf',
+@@ -471,6 +498,12 @@
+         'deps/ada/ada.gyp:ada',
        ],
  
 +      'msvs_settings': {
@@ -145,8 +144,8 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -745,6 +778,13 @@
-         ['node_shared=="true" and OS=="aix"', {
+@@ -750,6 +783,13 @@
+         ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],
 +        [ 'node_shared=="true" and OS=="win"', {
@@ -159,7 +158,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -1374,61 +1414,6 @@
+@@ -1380,62 +1420,6 @@
          }],
        ]
      }, # overlapped-checker
@@ -171,6 +170,7 @@ index f18a0d58a..c187559b1 100644
 -        '<(node_lib_target_name)',
 -        'deps/histogram/histogram.gyp:histogram',
 -        'deps/uvwasi/uvwasi.gyp:uvwasi',
+-        'deps/ada/ada.gyp:ada',
 -      ],
 -
 -      'includes': [
@@ -296,7 +296,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1241,3 +1241,5 @@ void Initialize() {}
+@@ -1264,3 +1264,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -308,7 +308,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 18
- #define NODE_MINOR_VERSION 15
+ #define NODE_MINOR_VERSION 16
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
@@ -422,5 +422,5 @@ index 48ec392b6..73c3f072f 100644
 +            }],
 +          ],
          }],
-         ['OS=="aix"', {
+         ['OS in "aix os400"', {
            'variables': {
