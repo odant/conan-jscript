@@ -63,7 +63,7 @@
       [ 'node_shared=="true"', {
         'node_target_type%': 'shared_library',
         'conditions': [
-          ['OS=="aix"', {
+          ['OS in "aix os400"', {
             # For AIX, always generate static library first,
             # It needs an extra step to generate exp and
             # then use both static lib and exp to create
@@ -112,7 +112,7 @@
     },
 
     'conditions': [
-      ['OS=="aix"', {
+      ['OS in "aix os400"', {
         'ldflags': [
           '-Wl,-bnoerrmsg',
         ],
@@ -153,7 +153,8 @@
 
       'include_dirs': [
         'src',
-        'deps/v8/include'
+        'deps/v8/include',
+        'deps/postject'
       ],
 
       'sources': [
@@ -193,7 +194,7 @@
           },
         }],
         [ 'node_intermediate_lib_type=="static_library" and '
-            'node_shared=="true" and OS=="aix"', {
+            'node_shared=="true" and OS in "aix os400"', {
           # For AIX, shared lib is linked by static lib and .exp. In the
           # case here, the executable needs to link to shared lib.
           # Therefore, use 'node_aix_shared' target to generate the
@@ -228,7 +229,7 @@
             },
           },
           'conditions': [
-            ['OS != "aix" and OS != "mac" and OS != "ios"', {
+            ['OS != "aix" and OS != "os400" and OS != "mac" and OS != "ios"', {
               'ldflags': [
                 '-Wl,--whole-archive',
                 '<(obj_dir)/<(STATIC_LIB_PREFIX)<(node_core_target_name)<(STATIC_LIB_SUFFIX)',
@@ -458,6 +459,7 @@
 
       'include_dirs': [
         'src',
+        'deps/postject',
         '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
       ],
       'dependencies': [
@@ -466,6 +468,7 @@
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
         'deps/simdutf/simdutf.gyp:simdutf',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'sources': [
@@ -531,6 +534,7 @@
         'src/node_report.cc',
         'src/node_report_module.cc',
         'src/node_report_utils.cc',
+        'src/node_sea.cc',
         'src/node_serdes.cc',
         'src/node_shadow_realm.cc',
         'src/node_snapshotable.cc',
@@ -541,7 +545,6 @@
         'src/node_trace_events.cc',
         'src/node_types.cc',
         'src/node_url.cc',
-        'src/node_url_tables.cc',
         'src/node_util.cc',
         'src/node_v8.cc',
         'src/node_wasi.cc',
@@ -641,6 +644,7 @@
         'src/node_report.h',
         'src/node_revert.h',
         'src/node_root_certs.h',
+        'src/node_sea.h',
         'src/node_shadow_realm.h',
         'src/node_snapshotable.h',
         'src/node_snapshot_builder.h',
@@ -683,6 +687,7 @@
         'src/util-inl.h',
         # Dependency headers
         'deps/v8/include/v8.h',
+        'deps/postject/postject-api.h'
         # javascript files to make for an even more pleasant IDE experience
         '<@(library_files)',
         '<@(deps_files)',
@@ -742,7 +747,7 @@
             'NODE_USE_NODE_CODE_CACHE=1',
           ],
         }],
-        ['node_shared=="true" and OS=="aix"', {
+        ['node_shared=="true" and OS in "aix os400"', {
           'product_name': 'node_base',
         }],
         [ 'v8_enable_inspector==1', {
@@ -1214,6 +1219,7 @@
         'node_dtrace_ustack',
         'node_dtrace_provider',
         'deps/simdutf/simdutf.gyp:simdutf',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1254,7 +1260,6 @@
         'test/cctest/test_sockaddr.cc',
         'test/cctest/test_traced_value.cc',
         'test/cctest/test_util.cc',
-        'test/cctest/test_url.cc',
       ],
 
       'conditions': [
@@ -1313,6 +1318,7 @@
         'node_dtrace_header',
         'node_dtrace_ustack',
         'node_dtrace_provider',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1382,6 +1388,7 @@
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1432,7 +1439,7 @@
   ], # end targets
 
   'conditions': [
-    ['OS=="aix" and node_shared=="true"', {
+    ['OS in "aix os400" and node_shared=="true"', {
       'targets': [
         {
           'target_name': 'node_aix_shared',
