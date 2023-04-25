@@ -1000,13 +1000,13 @@ NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
             if (instance->isError()) {
                 auto env = instance->_env;
                 if (env != nullptr && !env->is_stopping())
-                    env->ExitEnv();
+                    env->ExitEnv(StopFlags::kNoFlags);
             }
             const auto waitStatus = instance->_state_cv.wait_for(lock, timeout);
             if (waitStatus == std::cv_status::timeout) {
                 auto env = instance->_env;
                 if (env != nullptr && !env->is_stopping())
-                    env->ExitEnv();
+                    env->ExitEnv(StopFlags::kNoFlags);
             }
         }
     }
