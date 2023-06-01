@@ -46,7 +46,8 @@ class JScriptConan(ConanFile):
         "fix_vs2022_build.patch",
         "fix_no_optimization_build.patch",
         "disable_v8_slow_dcheck.patch",
-        "disable_gen_node_def.patch"
+        "disable_gen_node_def.patch",
+        "fix_deps_undici.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -86,6 +87,7 @@ class JScriptConan(ConanFile):
 #                tools.patch(patch_file="fix_no_optimization_build.patch")
             if self.options.disable_v8_slow_dcheck:    
                 tools.patch(patch_file="disable_v8_slow_dcheck.patch")
+        tools.patch(patch_file="fix_deps_undici.patch")
             
     def patch_version(self):
         build_version = self.version.split(".")[3]

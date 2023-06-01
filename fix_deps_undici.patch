@@ -1,0 +1,13 @@
+diff --git a/src/deps/undici/undici.js b/src/deps/undici/undici.js
+index cccf3f104..60cbeb0bc 100644
+--- a/src/deps/undici/undici.js
++++ b/src/deps/undici/undici.js
+@@ -7969,7 +7969,7 @@ var require_timers = __commonJS({
+       } else {
+         clearTimeout(fastNowTimeout);
+         fastNowTimeout = setTimeout(onTimeout, 1e3);
+-        if (fastNowTimeout.unref) {
++        if (fastNowTimeout && fastNowTimeout.unref) {
+           fastNowTimeout.unref();
+         }
+       }
