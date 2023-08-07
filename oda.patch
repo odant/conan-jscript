@@ -2,7 +2,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -739,6 +739,12 @@ parser.add_argument('--ninja',
+@@ -734,6 +734,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -15,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -872,6 +878,13 @@ parser.add_option('-C',
+@@ -867,6 +873,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -29,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1488,6 +1501,8 @@ def configure_node(o):
+@@ -1483,6 +1496,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2146,6 +2161,9 @@ if options.prefix:
+@@ -2139,6 +2154,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2169,6 +2187,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2162,6 +2180,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -79,7 +79,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index f18a0d58a..c187559b1 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -147,13 +147,10 @@
+@@ -148,13 +148,10 @@
          'NODE_WANT_INTERNALS=1',
        ],
  
@@ -94,7 +94,7 @@ index f18a0d58a..c187559b1 100644
          'deps/postject'
        ],
  
-@@ -366,6 +363,36 @@
+@@ -367,6 +364,36 @@
              '<(obj_dir)/<(node_text_start_object_path)'
            ]
          }],
@@ -131,7 +131,7 @@ index f18a0d58a..c187559b1 100644
 
          ['node_fipsinstall=="true"', {
            'variables': {
-@@ -471,6 +498,12 @@
+@@ -472,6 +499,12 @@
          'deps/ada/ada.gyp:ada',
        ],
  
@@ -144,7 +144,7 @@ index f18a0d58a..c187559b1 100644
        'sources': [
          'src/api/async_resource.cc',
          'src/api/callback.cc',
-@@ -750,6 +783,13 @@
+@@ -751,6 +784,13 @@
          ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],
@@ -158,7 +158,7 @@ index f18a0d58a..c187559b1 100644
          [ 'v8_enable_inspector==1', {
            'includes' : [ 'src/inspector/node_inspector.gypi' ],
          }, {
-@@ -1380,62 +1420,6 @@
+@@ -1398,66 +1438,6 @@
          }],
        ]
      }, # overlapped-checker
@@ -215,6 +215,10 @@ index f18a0d58a..c187559b1 100644
 -            'winmm.lib',
 -            'Ws2_32.lib',
 -          ],
+-        }],
+-        # Avoid excessive LTO
+-        ['enable_lto=="true"', {
+-          'ldflags': [ '-fno-lto' ],
 -        }],
 -      ],
 -    }, # node_mksnapshot
@@ -296,7 +300,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1264,3 +1264,5 @@ void Initialize() {}
+@@ -1276,3 +1276,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -308,8 +312,8 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 18
- #define NODE_MINOR_VERSION 16
- #define NODE_PATCH_VERSION 1
+ #define NODE_MINOR_VERSION 17
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
