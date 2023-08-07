@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.16.1">
-  <title>Diagnostics Channel | Node.js v18.16.1 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.17.0">
+  <title>Diagnostics Channel | Node.js v18.17.0 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -96,7 +96,7 @@
     <div id="column1" data-id="diagnostics_channel" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.16.1 documentation</h1>
+          <h1>Node.js v18.17.0 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -111,7 +111,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.16.1</li>
+            <li class="pinned-header">Node.js v18.17.0</li>
             
     <li class="picker-header">
       <a href="#">
@@ -321,12 +321,12 @@
 </div>
 
 <p></p><div class="api_stability api_stability_2"><a href="documentation.html#stability-index">Stability: 2</a> - Stable</div><p></p>
-<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.16.1/lib/diagnostics_channel.js">lib/diagnostics_channel.js</a></p>
+<p><strong>Source Code:</strong> <a href="https://github.com/nodejs/node/blob/v18.17.0/lib/diagnostics_channel.js">lib/diagnostics_channel.js</a></p>
 <p>The <code>node:diagnostics_channel</code> module provides an API to create named channels
 to report arbitrary message data for diagnostics purposes.</p>
 <p>It can be accessed using:</p>
 
-<pre class="with-64-chars"><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> diagnostics_channel <span class="hljs-keyword">from</span> <span class="hljs-string">'node:diagnostics_channel'</span>;</code><code class="language-js cjs"><span class="hljs-keyword">const</span> diagnostics_channel = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:diagnostics_channel'</span>);</code></pre>
+<pre class="with-64-chars"><input class="js-flavor-selector" type="checkbox" checked aria-label="Show modern ES modules syntax"><code class="language-js mjs"><span class="hljs-keyword">import</span> diagnostics_channel <span class="hljs-keyword">from</span> <span class="hljs-string">'node:diagnostics_channel'</span>;</code><code class="language-js cjs"><span class="hljs-keyword">const</span> diagnostics_channel = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:diagnostics_channel'</span>);</code><button class="copy-button">copy</button></pre>
 <p>It is intended that a module writer wanting to report diagnostics messages
 will create one or many top-level channels to report messages through.
 Channels may also be acquired at runtime but it is not encouraged
@@ -383,7 +383,7 @@ diagnostics_channel.<span class="hljs-title function_">subscribe</span>(<span cl
 }
 
 <span class="hljs-comment">// Unsubscribe from the channel</span>
-diagnostics_channel.<span class="hljs-title function_">unsubscribe</span>(<span class="hljs-string">'my-channel'</span>, onMessage);</code></pre>
+diagnostics_channel.<span class="hljs-title function_">unsubscribe</span>(<span class="hljs-string">'my-channel'</span>, onMessage);</code><button class="copy-button">copy</button></pre>
 <h5><code>diagnostics_channel.hasSubscribers(name)</code><span><a class="mark" href="#diagnostics_channelhassubscribersname" id="diagnostics_channelhassubscribersname">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_diagnostics_channel_hassubscribers_name"></a></h5>
 <div class="api_metadata">
 <span>Added in: v15.1.0, v14.17.0</span>
@@ -405,7 +405,7 @@ performance-sensitive code.</p>
 
 <span class="hljs-keyword">if</span> (diagnostics_channel.<span class="hljs-title function_">hasSubscribers</span>(<span class="hljs-string">'my-channel'</span>)) {
   <span class="hljs-comment">// There are subscribers, prepare and publish message</span>
-}</code></pre>
+}</code><button class="copy-button">copy</button></pre>
 <h5><code>diagnostics_channel.channel(name)</code><span><a class="mark" href="#diagnostics_channelchannelname" id="diagnostics_channelchannelname">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_diagnostics_channel_channel_name"></a></h5>
 <div class="api_metadata">
 <span>Added in: v15.1.0, v14.17.0</span>
@@ -422,7 +422,7 @@ publish time as much as possible.</p>
 
 <span class="hljs-keyword">const</span> channel = diagnostics_channel.<span class="hljs-title function_">channel</span>(<span class="hljs-string">'my-channel'</span>);</code><code class="language-js cjs"><span class="hljs-keyword">const</span> diagnostics_channel = <span class="hljs-built_in">require</span>(<span class="hljs-string">'node:diagnostics_channel'</span>);
 
-<span class="hljs-keyword">const</span> channel = diagnostics_channel.<span class="hljs-title function_">channel</span>(<span class="hljs-string">'my-channel'</span>);</code></pre>
+<span class="hljs-keyword">const</span> channel = diagnostics_channel.<span class="hljs-title function_">channel</span>(<span class="hljs-string">'my-channel'</span>);</code><button class="copy-button">copy</button></pre>
 <h5><code>diagnostics_channel.subscribe(name, onMessage)</code><span><a class="mark" href="#diagnostics_channelsubscribename-onmessage" id="diagnostics_channelsubscribename-onmessage">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_diagnostics_channel_subscribe_name_onmessage"></a></h5>
 <div class="api_metadata">
 <span>Added in: v18.7.0</span>
@@ -448,7 +448,7 @@ diagnostics_channel.<span class="hljs-title function_">subscribe</span>(<span cl
 
 diagnostics_channel.<span class="hljs-title function_">subscribe</span>(<span class="hljs-string">'my-channel'</span>, <span class="hljs-function">(<span class="hljs-params">message, name</span>) =></span> {
   <span class="hljs-comment">// Received data</span>
-});</code></pre>
+});</code><button class="copy-button">copy</button></pre>
 <h5><code>diagnostics_channel.unsubscribe(name, onMessage)</code><span><a class="mark" href="#diagnostics_channelunsubscribename-onmessage" id="diagnostics_channelunsubscribename-onmessage">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_diagnostics_channel_unsubscribe_name_onmessage"></a></h5>
 <div class="api_metadata">
 <span>Added in: v18.7.0</span>
@@ -477,7 +477,7 @@ diagnostics_channel.<span class="hljs-title function_">unsubscribe</span>(<span 
 
 diagnostics_channel.<span class="hljs-title function_">subscribe</span>(<span class="hljs-string">'my-channel'</span>, onMessage);
 
-diagnostics_channel.<span class="hljs-title function_">unsubscribe</span>(<span class="hljs-string">'my-channel'</span>, onMessage);</code></pre>
+diagnostics_channel.<span class="hljs-title function_">unsubscribe</span>(<span class="hljs-string">'my-channel'</span>, onMessage);</code><button class="copy-button">copy</button></pre>
 <h4>Class: <code>Channel</code><span><a class="mark" href="#class-channel" id="class-channel">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_class_channel"></a></h4>
 <div class="api_metadata">
 <span>Added in: v15.1.0, v14.17.0</span>
@@ -513,7 +513,7 @@ performance-sensitive code.</p>
 
 <span class="hljs-keyword">if</span> (channel.<span class="hljs-property">hasSubscribers</span>) {
   <span class="hljs-comment">// There are subscribers, prepare and publish message</span>
-}</code></pre>
+}</code><button class="copy-button">copy</button></pre>
 <h5><code>channel.publish(message)</code><span><a class="mark" href="#channelpublishmessage" id="channelpublishmessage">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_channel_publish_message"></a></h5>
 <div class="api_metadata">
 <span>Added in: v15.1.0, v14.17.0</span>
@@ -536,7 +536,7 @@ channel.<span class="hljs-title function_">publish</span>({
 
 channel.<span class="hljs-title function_">publish</span>({
   <span class="hljs-attr">some</span>: <span class="hljs-string">'message'</span>,
-});</code></pre>
+});</code><button class="copy-button">copy</button></pre>
 <h5><code>channel.subscribe(onMessage)</code><span><a class="mark" href="#channelsubscribeonmessage" id="channelsubscribeonmessage">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_channel_subscribe_onmessage"></a></h5>
 <div class="api_metadata">
 <span>Added in: v15.1.0, v14.17.0</span><span>Deprecated since: v18.7.0</span>
@@ -566,7 +566,7 @@ channel.<span class="hljs-title function_">subscribe</span>(<span class="hljs-fu
 
 channel.<span class="hljs-title function_">subscribe</span>(<span class="hljs-function">(<span class="hljs-params">message, name</span>) =></span> {
   <span class="hljs-comment">// Received data</span>
-});</code></pre>
+});</code><button class="copy-button">copy</button></pre>
 <h5><code>channel.unsubscribe(onMessage)</code><span><a class="mark" href="#channelunsubscribeonmessage" id="channelunsubscribeonmessage">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_channel_unsubscribe_onmessage"></a></h5>
 <div class="api_metadata">
 <details class="changelog"><summary>History</summary>
@@ -609,7 +609,7 @@ channel.<span class="hljs-title function_">unsubscribe</span>(onMessage);</code>
 
 channel.<span class="hljs-title function_">subscribe</span>(onMessage);
 
-channel.<span class="hljs-title function_">unsubscribe</span>(onMessage);</code></pre>
+channel.<span class="hljs-title function_">unsubscribe</span>(onMessage);</code><button class="copy-button">copy</button></pre>
 <h4>Built-in Channels<span><a class="mark" href="#built-in-channels" id="built-in-channels">#</a></span><a aria-hidden="true" class="legacy" id="diagnostics_channel_built_in_channels"></a></h4>
 <p></p><div class="api_stability api_stability_1"><a href="documentation.html#stability-index">Stability: 1</a> - Experimental</div><p></p>
 <p>While the diagnostics_channel API is now considered stable, the built-in

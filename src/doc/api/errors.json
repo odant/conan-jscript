@@ -29,7 +29,7 @@
               ]
             }
           ],
-          "desc": "<p>Creates a <code>.stack</code> property on <code>targetObject</code>, which when accessed returns\na string representing the location in the code at which\n<code>Error.captureStackTrace()</code> was called.</p>\n<pre><code class=\"language-js\">const myObject = {};\nError.captureStackTrace(myObject);\nmyObject.stack;  // Similar to `new Error().stack`\n</code></pre>\n<p>The first line of the trace will be prefixed with\n<code>${myObject.name}: ${myObject.message}</code>.</p>\n<p>The optional <code>constructorOpt</code> argument accepts a function. If given, all frames\nabove <code>constructorOpt</code>, including <code>constructorOpt</code>, will be omitted from the\ngenerated stack trace.</p>\n<p>The <code>constructorOpt</code> argument is useful for hiding implementation\ndetails of error generation from the user. For instance:</p>\n<pre><code class=\"language-js\">function MyError() {\n  Error.captureStackTrace(this, MyError);\n}\n\n// Without passing MyError to captureStackTrace, the MyError\n// frame would show up in the .stack property. By passing\n// the constructor, we omit that frame, and retain all frames below it.\nnew MyError().stack;\n</code></pre>"
+          "desc": "<p>Creates a <code>.stack</code> property on <code>targetObject</code>, which when accessed returns\na string representing the location in the code at which\n<code>Error.captureStackTrace()</code> was called.</p>\n<pre><code class=\"language-js\">const myObject = {};\nError.captureStackTrace(myObject);\nmyObject.stack;  // Similar to `new Error().stack`\n</code></pre>\n<p>The first line of the trace will be prefixed with\n<code>${myObject.name}: ${myObject.message}</code>.</p>\n<p>The optional <code>constructorOpt</code> argument accepts a function. If given, all frames\nabove <code>constructorOpt</code>, including <code>constructorOpt</code>, will be omitted from the\ngenerated stack trace.</p>\n<p>The <code>constructorOpt</code> argument is useful for hiding implementation\ndetails of error generation from the user. For instance:</p>\n<pre><code class=\"language-js\">function a() {\n  b();\n}\n\nfunction b() {\n  c();\n}\n\nfunction c() {\n  // Create an error without stack trace to avoid calculating the stack trace twice.\n  const { stackTraceLimit } = Error;\n  Error.stackTraceLimit = 0;\n  const error = new Error();\n  Error.stackTraceLimit = stackTraceLimit;\n\n  // Capture the stack trace above function b\n  Error.captureStackTrace(error, b); // Neither function c, nor b is included in the stack trace\n  throw error;\n}\n\na();\n</code></pre>"
         }
       ],
       "properties": [
@@ -409,7 +409,7 @@
             {
               "textRaw": "`ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED`",
               "name": "`err_crypto_custom_engine_not_supported`",
-              "desc": "<p>A client certificate engine was requested that is not supported by the version\nof OpenSSL being used.</p>\n<p><a id=\"ERR_CRYPTO_ECDH_INVALID_FORMAT\"></a></p>",
+              "desc": "<p>An OpenSSL engine was requested (for example, through the <code>clientCertEngine</code> or\n<code>privateKeyEngine</code> TLS options) that is not supported by the version of OpenSSL\nbeing used, likely due to the compile-time flag <code>OPENSSL_NO_ENGINE</code>.</p>\n<p><a id=\"ERR_CRYPTO_ECDH_INVALID_FORMAT\"></a></p>",
               "type": "module",
               "displayName": "`ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED`"
             },
@@ -936,6 +936,13 @@
               "displayName": "`ERR_FS_CP_EINVAL`"
             },
             {
+              "textRaw": "`ERR_HTTP_BODY_NOT_ALLOWED`",
+              "name": "`err_http_body_not_allowed`",
+              "desc": "<p>An error is thrown when writing to an HTTP response which does not allow\ncontents. <a id=\"ERR_HTTP_BODY_NOT_ALLOWED\"></a></p>",
+              "type": "module",
+              "displayName": "`ERR_HTTP_BODY_NOT_ALLOWED`"
+            },
+            {
               "textRaw": "`ERR_HTTP_CONTENT_LENGTH_MISMATCH`",
               "name": "`err_http_content_length_mismatch`",
               "desc": "<p>Response body size doesn't match with the specified content-length header value.</p>\n<p><a id=\"ERR_HTTP_CONTENT_LENGTH_MISMATCH\"></a></p>",
@@ -1022,9 +1029,16 @@
             {
               "textRaw": "`ERR_HTTP_REQUEST_TIMEOUT`",
               "name": "`err_http_request_timeout`",
-              "desc": "<p>The client has not sent the entire request within the allowed time.</p>\n<p><a id=\"ERR_HTTP_SOCKET_ENCODING\"></a></p>",
+              "desc": "<p>The client has not sent the entire request within the allowed time.</p>\n<p><a id=\"ERR_HTTP_SOCKET_ASSIGNED\"></a></p>",
               "type": "module",
               "displayName": "`ERR_HTTP_REQUEST_TIMEOUT`"
+            },
+            {
+              "textRaw": "`ERR_HTTP_SOCKET_ASSIGNED`",
+              "name": "`err_http_socket_assigned`",
+              "desc": "<p>The given <a href=\"http.html#class-httpserverresponse\"><code>ServerResponse</code></a> was already assigned a socket.</p>\n<p><a id=\"ERR_HTTP_SOCKET_ENCODING\"></a></p>",
+              "type": "module",
+              "displayName": "`ERR_HTTP_SOCKET_ASSIGNED`"
             },
             {
               "textRaw": "`ERR_HTTP_SOCKET_ENCODING`",
@@ -3285,7 +3299,7 @@
                   ]
                 }
               ],
-              "desc": "<p>Creates a <code>.stack</code> property on <code>targetObject</code>, which when accessed returns\na string representing the location in the code at which\n<code>Error.captureStackTrace()</code> was called.</p>\n<pre><code class=\"language-js\">const myObject = {};\nError.captureStackTrace(myObject);\nmyObject.stack;  // Similar to `new Error().stack`\n</code></pre>\n<p>The first line of the trace will be prefixed with\n<code>${myObject.name}: ${myObject.message}</code>.</p>\n<p>The optional <code>constructorOpt</code> argument accepts a function. If given, all frames\nabove <code>constructorOpt</code>, including <code>constructorOpt</code>, will be omitted from the\ngenerated stack trace.</p>\n<p>The <code>constructorOpt</code> argument is useful for hiding implementation\ndetails of error generation from the user. For instance:</p>\n<pre><code class=\"language-js\">function MyError() {\n  Error.captureStackTrace(this, MyError);\n}\n\n// Without passing MyError to captureStackTrace, the MyError\n// frame would show up in the .stack property. By passing\n// the constructor, we omit that frame, and retain all frames below it.\nnew MyError().stack;\n</code></pre>"
+              "desc": "<p>Creates a <code>.stack</code> property on <code>targetObject</code>, which when accessed returns\na string representing the location in the code at which\n<code>Error.captureStackTrace()</code> was called.</p>\n<pre><code class=\"language-js\">const myObject = {};\nError.captureStackTrace(myObject);\nmyObject.stack;  // Similar to `new Error().stack`\n</code></pre>\n<p>The first line of the trace will be prefixed with\n<code>${myObject.name}: ${myObject.message}</code>.</p>\n<p>The optional <code>constructorOpt</code> argument accepts a function. If given, all frames\nabove <code>constructorOpt</code>, including <code>constructorOpt</code>, will be omitted from the\ngenerated stack trace.</p>\n<p>The <code>constructorOpt</code> argument is useful for hiding implementation\ndetails of error generation from the user. For instance:</p>\n<pre><code class=\"language-js\">function a() {\n  b();\n}\n\nfunction b() {\n  c();\n}\n\nfunction c() {\n  // Create an error without stack trace to avoid calculating the stack trace twice.\n  const { stackTraceLimit } = Error;\n  Error.stackTraceLimit = 0;\n  const error = new Error();\n  Error.stackTraceLimit = stackTraceLimit;\n\n  // Capture the stack trace above function b\n  Error.captureStackTrace(error, b); // Neither function c, nor b is included in the stack trace\n  throw error;\n}\n\na();\n</code></pre>"
             }
           ],
           "properties": [

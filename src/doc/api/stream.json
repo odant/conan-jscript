@@ -8,7 +8,7 @@
       "introduced_in": "v0.10.0",
       "stability": 2,
       "stabilityText": "Stable",
-      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v18.16.1/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>node:stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>node:stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('node:stream');\n</code></pre>\n<p>The <code>node:stream</code> module is useful for creating new types of stream instances.\nIt is usually not necessary to use the <code>node:stream</code> module to consume streams.</p>",
+      "desc": "<p><strong>Source Code:</strong> <a href=\"https://github.com/nodejs/node/blob/v18.17.0/lib/stream.js\">lib/stream.js</a></p>\n<p>A stream is an abstract interface for working with streaming data in Node.js.\nThe <code>node:stream</code> module provides an API for implementing the stream interface.</p>\n<p>There are many stream objects provided by Node.js. For instance, a\n<a href=\"http.html#class-httpincomingmessage\">request to an HTTP server</a> and <a href=\"process.html#processstdout\"><code>process.stdout</code></a>\nare both stream instances.</p>\n<p>Streams can be readable, writable, or both. All streams are instances of\n<a href=\"events.html#class-eventemitter\"><code>EventEmitter</code></a>.</p>\n<p>To access the <code>node:stream</code> module:</p>\n<pre><code class=\"language-js\">const stream = require('node:stream');\n</code></pre>\n<p>The <code>node:stream</code> module is useful for creating new types of stream instances.\nIt is usually not necessary to use the <code>node:stream</code> module to consume streams.</p>",
       "modules": [
         {
           "textRaw": "Organization of this document",
@@ -308,6 +308,11 @@
             ],
             "changes": [
               {
+                "version": "v18.14.0",
+                "pr-url": "https://github.com/nodejs/node/pull/46205",
+                "description": "Added support for `ReadableStream` and `WritableStream`."
+              },
+              {
                 "version": "v15.11.0",
                 "pr-url": "https://github.com/nodejs/node/pull/37354",
                 "description": "The `signal` option was added."
@@ -331,70 +336,16 @@
           },
           "signatures": [
             {
-              "return": {
-                "textRaw": "Returns: {Function} A cleanup function which removes all registered listeners.",
-                "name": "return",
-                "type": "Function",
-                "desc": "A cleanup function which removes all registered listeners."
-              },
               "params": [
                 {
-                  "textRaw": "`stream` {Stream} A readable and/or writable stream.",
+                  "textRaw": "`stream` {Stream|ReadableStream|WritableStream}",
                   "name": "stream",
-                  "type": "Stream",
-                  "desc": "A readable and/or writable stream."
-                },
-                {
-                  "textRaw": "`options` {Object}",
-                  "name": "options",
-                  "type": "Object",
-                  "options": [
-                    {
-                      "textRaw": "`error` {boolean} If set to `false`, then a call to `emit('error', err)` is not treated as finished. **Default:** `true`.",
-                      "name": "error",
-                      "type": "boolean",
-                      "default": "`true`",
-                      "desc": "If set to `false`, then a call to `emit('error', err)` is not treated as finished."
-                    },
-                    {
-                      "textRaw": "`readable` {boolean} When set to `false`, the callback will be called when the stream ends even though the stream might still be readable. **Default:** `true`.",
-                      "name": "readable",
-                      "type": "boolean",
-                      "default": "`true`",
-                      "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be readable."
-                    },
-                    {
-                      "textRaw": "`writable` {boolean} When set to `false`, the callback will be called when the stream ends even though the stream might still be writable. **Default:** `true`.",
-                      "name": "writable",
-                      "type": "boolean",
-                      "default": "`true`",
-                      "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be writable."
-                    },
-                    {
-                      "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
-                      "name": "signal",
-                      "type": "AbortSignal",
-                      "desc": "allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
-                    },
-                    {
-                      "textRaw": "`cleanup` {boolean} remove all registered stream listeners. **Default:** `false`.",
-                      "name": "cleanup",
-                      "type": "boolean",
-                      "default": "`false`",
-                      "desc": "remove all registered stream listeners."
-                    }
-                  ]
-                },
-                {
-                  "textRaw": "`callback` {Function} A callback function that takes an optional error argument.",
-                  "name": "callback",
-                  "type": "Function",
-                  "desc": "A callback function that takes an optional error argument."
+                  "type": "Stream|ReadableStream|WritableStream"
                 }
               ]
             }
           ],
-          "desc": "<p>A function to get notified when a stream is no longer readable, writable\nor has experienced an error or a premature close event.</p>\n<pre><code class=\"language-js\">const { finished } = require('node:stream');\nconst fs = require('node:fs');\n\nconst rs = fs.createReadStream('archive.tar');\n\nfinished(rs, (err) => {\n  if (err) {\n    console.error('Stream failed.', err);\n  } else {\n    console.log('Stream is done reading.');\n  }\n});\n\nrs.resume(); // Drain the stream.\n</code></pre>\n<p>Especially useful in error handling scenarios where a stream is destroyed\nprematurely (like an aborted HTTP request), and will not emit <code>'end'</code>\nor <code>'finish'</code>.</p>\n<p>The <code>finished</code> API provides <a href=\"#streamfinishedstream-options\">promise version</a>.</p>\n<p><code>stream.finished()</code> leaves dangling event listeners (in particular\n<code>'error'</code>, <code>'end'</code>, <code>'finish'</code> and <code>'close'</code>) after <code>callback</code> has been\ninvoked. The reason for this is so that unexpected <code>'error'</code> events (due to\nincorrect stream implementations) do not cause unexpected crashes.\nIf this is unwanted behavior then the returned cleanup function needs to be\ninvoked in the callback:</p>\n<pre><code class=\"language-js\">const cleanup = finished(rs, (err) => {\n  cleanup();\n  // ...\n});\n</code></pre>"
+          "desc": "<p>A readable and/or writable stream/webstream.</p>\n<ul>\n<li>\n<p><code>options</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></p>\n<ul>\n<li><code>error</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> If set to <code>false</code>, then a call to <code>emit('error', err)</code> is\nnot treated as finished. <strong>Default:</strong> <code>true</code>.</li>\n<li><code>readable</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> When set to <code>false</code>, the callback will be called when\nthe stream ends even though the stream might still be readable.\n<strong>Default:</strong> <code>true</code>.</li>\n<li><code>writable</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> When set to <code>false</code>, the callback will be called when\nthe stream ends even though the stream might still be writable.\n<strong>Default:</strong> <code>true</code>.</li>\n<li><code>signal</code> <a href=\"globals.html#class-abortsignal\" class=\"type\">&lt;AbortSignal&gt;</a> allows aborting the wait for the stream finish. The\nunderlying stream will <em>not</em> be aborted if the signal is aborted. The\ncallback will get called with an <code>AbortError</code>. All registered\nlisteners added by this function will also be removed.</li>\n<li><code>cleanup</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> remove all registered stream listeners.\n<strong>Default:</strong> <code>false</code>.</li>\n</ul>\n</li>\n<li>\n<p><code>callback</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function\" class=\"type\">&lt;Function&gt;</a> A callback function that takes an optional error\nargument.</p>\n</li>\n<li>\n<p>Returns: <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function\" class=\"type\">&lt;Function&gt;</a> A cleanup function which removes all registered\nlisteners.</p>\n</li>\n</ul>\n<p>A function to get notified when a stream is no longer readable, writable\nor has experienced an error or a premature close event.</p>\n<pre><code class=\"language-js\">const { finished } = require('node:stream');\nconst fs = require('node:fs');\n\nconst rs = fs.createReadStream('archive.tar');\n\nfinished(rs, (err) => {\n  if (err) {\n    console.error('Stream failed.', err);\n  } else {\n    console.log('Stream is done reading.');\n  }\n});\n\nrs.resume(); // Drain the stream.\n</code></pre>\n<p>Especially useful in error handling scenarios where a stream is destroyed\nprematurely (like an aborted HTTP request), and will not emit <code>'end'</code>\nor <code>'finish'</code>.</p>\n<p>The <code>finished</code> API provides <a href=\"#streamfinishedstream-options\">promise version</a>.</p>\n<p><code>stream.finished()</code> leaves dangling event listeners (in particular\n<code>'error'</code>, <code>'end'</code>, <code>'finish'</code> and <code>'close'</code>) after <code>callback</code> has been\ninvoked. The reason for this is so that unexpected <code>'error'</code> events (due to\nincorrect stream implementations) do not cause unexpected crashes.\nIf this is unwanted behavior then the returned cleanup function needs to be\ninvoked in the callback:</p>\n<pre><code class=\"language-js\">const cleanup = finished(rs, (err) => {\n  cleanup();\n  // ...\n});\n</code></pre>"
         },
         {
           "textRaw": "`stream.pipeline(source[, ...transforms], destination, callback)`",
@@ -1002,20 +953,26 @@
             "added": [
               "v16.8.0"
             ],
-            "changes": []
+            "changes": [
+              {
+                "version": "v18.17.0",
+                "pr-url": "https://github.com/nodejs/node/pull/46190",
+                "description": "The `src` argument can now be a `ReadableStream` or `WritableStream`."
+              }
+            ]
           },
           "signatures": [
             {
               "params": [
                 {
-                  "textRaw": "`src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object}",
+                  "textRaw": "`src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object| ReadableStream|WritableStream}",
                   "name": "src",
-                  "type": "Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object"
+                  "type": "Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object| ReadableStream|WritableStream"
                 }
               ]
             }
           ],
-          "desc": "<p>A utility method for creating duplex streams.</p>\n<ul>\n<li><code>Stream</code> converts writable stream into writable <code>Duplex</code> and readable stream\nto <code>Duplex</code>.</li>\n<li><code>Blob</code> converts into readable <code>Duplex</code>.</li>\n<li><code>string</code> converts into readable <code>Duplex</code>.</li>\n<li><code>ArrayBuffer</code> converts into readable <code>Duplex</code>.</li>\n<li><code>AsyncIterable</code> converts into a readable <code>Duplex</code>. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncGeneratorFunction</code> converts into a readable/writable transform\n<code>Duplex</code>. Must take a source <code>AsyncIterable</code> as first parameter. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncFunction</code> converts into a writable <code>Duplex</code>. Must return\neither <code>null</code> or <code>undefined</code></li>\n<li><code>Object ({ writable, readable })</code> converts <code>readable</code> and\n<code>writable</code> into <code>Stream</code> and then combines them into <code>Duplex</code> where the\n<code>Duplex</code> will write to the <code>writable</code> and read from the <code>readable</code>.</li>\n<li><code>Promise</code> converts into readable <code>Duplex</code>. Value <code>null</code> is ignored.</li>\n<li>Returns: <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a></li>\n</ul>\n<p>If an <code>Iterable</code> object containing promises is passed as an argument,\nit might result in unhandled rejection.</p>\n<pre><code class=\"language-js\">const { Duplex } = require('node:stream');\n\nDuplex.from([\n  new Promise((resolve) => setTimeout(resolve('1'), 1500)),\n  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection\n]);\n</code></pre>"
+          "desc": "<p>A utility method for creating duplex streams.</p>\n<ul>\n<li><code>Stream</code> converts writable stream into writable <code>Duplex</code> and readable stream\nto <code>Duplex</code>.</li>\n<li><code>Blob</code> converts into readable <code>Duplex</code>.</li>\n<li><code>string</code> converts into readable <code>Duplex</code>.</li>\n<li><code>ArrayBuffer</code> converts into readable <code>Duplex</code>.</li>\n<li><code>AsyncIterable</code> converts into a readable <code>Duplex</code>. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncGeneratorFunction</code> converts into a readable/writable transform\n<code>Duplex</code>. Must take a source <code>AsyncIterable</code> as first parameter. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncFunction</code> converts into a writable <code>Duplex</code>. Must return\neither <code>null</code> or <code>undefined</code></li>\n<li><code>Object ({ writable, readable })</code> converts <code>readable</code> and\n<code>writable</code> into <code>Stream</code> and then combines them into <code>Duplex</code> where the\n<code>Duplex</code> will write to the <code>writable</code> and read from the <code>readable</code>.</li>\n<li><code>Promise</code> converts into readable <code>Duplex</code>. Value <code>null</code> is ignored.</li>\n<li><code>ReadableStream</code> converts into readable <code>Duplex</code>.</li>\n<li><code>WritableStream</code> converts into writable <code>Duplex</code>.</li>\n<li>Returns: <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a></li>\n</ul>\n<p>If an <code>Iterable</code> object containing promises is passed as an argument,\nit might result in unhandled rejection.</p>\n<pre><code class=\"language-js\">const { Duplex } = require('node:stream');\n\nDuplex.from([\n  new Promise((resolve) => setTimeout(resolve('1'), 1500)),\n  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection\n]);\n</code></pre>"
         },
         {
           "textRaw": "`stream.Duplex.fromWeb(pair[, options])`",
@@ -1172,6 +1129,63 @@
             }
           ],
           "desc": "<p>A stream to attach a signal to.</p>\n<p>Attaches an AbortSignal to a readable or writeable stream. This lets code\ncontrol stream destruction using an <code>AbortController</code>.</p>\n<p>Calling <code>abort</code> on the <code>AbortController</code> corresponding to the passed\n<code>AbortSignal</code> will behave the same way as calling <code>.destroy(new AbortError())</code>\non the stream, and <code>controller.error(new AbortError())</code> for webstreams.</p>\n<pre><code class=\"language-js\">const fs = require('node:fs');\n\nconst controller = new AbortController();\nconst read = addAbortSignal(\n  controller.signal,\n  fs.createReadStream(('object.json')),\n);\n// Later, abort the operation closing the stream\ncontroller.abort();\n</code></pre>\n<p>Or using an <code>AbortSignal</code> with a readable stream as an async iterable:</p>\n<pre><code class=\"language-js\">const controller = new AbortController();\nsetTimeout(() => controller.abort(), 10_000); // set a timeout\nconst stream = addAbortSignal(\n  controller.signal,\n  fs.createReadStream(('object.json')),\n);\n(async () => {\n  try {\n    for await (const chunk of stream) {\n      await process(chunk);\n    }\n  } catch (e) {\n    if (e.name === 'AbortError') {\n      // The operation was cancelled\n    } else {\n      throw e;\n    }\n  }\n})();\n</code></pre>\n<p>Or using an <code>AbortSignal</code> with a ReadableStream:</p>\n<pre><code class=\"language-js\">const controller = new AbortController();\nconst rs = new ReadableStream({\n  start(controller) {\n    controller.enqueue('hello');\n    controller.enqueue('world');\n    controller.close();\n  },\n});\n\naddAbortSignal(controller.signal, rs);\n\nfinished(rs, (err) => {\n  if (err) {\n    if (err.name === 'AbortError') {\n      // The operation was cancelled\n    }\n  }\n});\n\nconst reader = rs.getReader();\n\nreader.read().then(({ value, done }) => {\n  console.log(value); // hello\n  console.log(done); // false\n  controller.abort();\n});\n</code></pre>"
+        },
+        {
+          "textRaw": "`stream.getDefaultHighWaterMark(objectMode)`",
+          "type": "method",
+          "name": "getDefaultHighWaterMark",
+          "meta": {
+            "added": [
+              "v18.17.0"
+            ],
+            "changes": []
+          },
+          "signatures": [
+            {
+              "return": {
+                "textRaw": "Returns: {integer}",
+                "name": "return",
+                "type": "integer"
+              },
+              "params": [
+                {
+                  "textRaw": "`objectMode` {boolean}",
+                  "name": "objectMode",
+                  "type": "boolean"
+                }
+              ]
+            }
+          ],
+          "desc": "<p>Returns the default highWaterMark used by streams.\nDefaults to <code>16384</code> (16 KiB), or <code>16</code> for <code>objectMode</code>.</p>"
+        },
+        {
+          "textRaw": "`stream.setDefaultHighWaterMark(objectMode, value)`",
+          "type": "method",
+          "name": "setDefaultHighWaterMark",
+          "meta": {
+            "added": [
+              "v18.17.0"
+            ],
+            "changes": []
+          },
+          "signatures": [
+            {
+              "params": [
+                {
+                  "textRaw": "`objectMode` {boolean}",
+                  "name": "objectMode",
+                  "type": "boolean"
+                },
+                {
+                  "textRaw": "`value` {integer} highWaterMark value",
+                  "name": "value",
+                  "type": "integer",
+                  "desc": "highWaterMark value"
+                }
+              ]
+            }
+          ],
+          "desc": "<p>Sets the default highWaterMark used by streams.</p>"
         },
         {
           "textRaw": "`readable.read(0)`",
@@ -2928,7 +2942,13 @@
                         "added": [
                           "v17.5.0"
                         ],
-                        "changes": []
+                        "changes": [
+                          {
+                            "version": "v18.17.0",
+                            "pr-url": "https://github.com/nodejs/node/pull/48102",
+                            "description": "Using the `asIndexedPairs` method emits a runtime warning that it will be removed in a future version."
+                          }
+                        ]
                       },
                       "stability": 1,
                       "stabilityText": "Experimental",
@@ -3035,7 +3055,7 @@
                           ]
                         }
                       ],
-                      "desc": "<p>This method calls <code>fn</code> on each chunk of the stream in order, passing it the\nresult from the calculation on the previous element. It returns a promise for\nthe final value of the reduction.</p>\n<p>The reducer function iterates the stream element-by-element which means that\nthere is no <code>concurrency</code> parameter or parallelism. To perform a <code>reduce</code>\nconcurrently, it can be chained to the <a href=\"#readablemapfn-options\"><code>readable.map</code></a> method.</p>\n<p>If no <code>initial</code> value is supplied the first chunk of the stream is used as the\ninitial value. If the stream is empty, the promise is rejected with a\n<code>TypeError</code> with the <code>ERR_INVALID_ARGS</code> code property.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'node:stream';\n\nconst ten = await Readable.from([1, 2, 3, 4]).reduce((previous, data) => {\n  return previous + data;\n});\nconsole.log(ten); // 10\n</code></pre>"
+                      "desc": "<p>This method calls <code>fn</code> on each chunk of the stream in order, passing it the\nresult from the calculation on the previous element. It returns a promise for\nthe final value of the reduction.</p>\n<p>If no <code>initial</code> value is supplied the first chunk of the stream is used as the\ninitial value. If the stream is empty, the promise is rejected with a\n<code>TypeError</code> with the <code>ERR_INVALID_ARGS</code> code property.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'node:stream';\nimport { readdir, stat } from 'node:fs/promises';\nimport { join } from 'node:path';\n\nconst directoryPath = './src';\nconst filesInDir = await readdir(directoryPath);\n\nconst folderSize = await Readable.from(filesInDir)\n  .reduce(async (totalSize, file) => {\n    const { size } = await stat(join(directoryPath, file));\n    return totalSize + size;\n  }, 0);\n\nconsole.log(folderSize);\n</code></pre>\n<p>The reducer function iterates the stream element-by-element which means that\nthere is no <code>concurrency</code> parameter or parallelism. To perform a <code>reduce</code>\nconcurrently, you can extract the async function to <a href=\"#readablemapfn-options\"><code>readable.map</code></a> method.</p>\n<pre><code class=\"language-mjs\">import { Readable } from 'node:stream';\nimport { readdir, stat } from 'node:fs/promises';\nimport { join } from 'node:path';\n\nconst directoryPath = './src';\nconst filesInDir = await readdir(directoryPath);\n\nconst folderSize = await Readable.from(filesInDir)\n  .map((file) => stat(join(directoryPath, file)), { concurrency: 2 })\n  .reduce((totalSize, { size }) => totalSize + size, 0);\n\nconsole.log(folderSize);\n</code></pre>"
                     }
                   ],
                   "properties": [
@@ -3294,6 +3314,11 @@
                 ],
                 "changes": [
                   {
+                    "version": "v18.14.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/46205",
+                    "description": "Added support for `ReadableStream` and `WritableStream`."
+                  },
+                  {
                     "version": "v15.11.0",
                     "pr-url": "https://github.com/nodejs/node/pull/37354",
                     "description": "The `signal` option was added."
@@ -3317,70 +3342,16 @@
               },
               "signatures": [
                 {
-                  "return": {
-                    "textRaw": "Returns: {Function} A cleanup function which removes all registered listeners.",
-                    "name": "return",
-                    "type": "Function",
-                    "desc": "A cleanup function which removes all registered listeners."
-                  },
                   "params": [
                     {
-                      "textRaw": "`stream` {Stream} A readable and/or writable stream.",
+                      "textRaw": "`stream` {Stream|ReadableStream|WritableStream}",
                       "name": "stream",
-                      "type": "Stream",
-                      "desc": "A readable and/or writable stream."
-                    },
-                    {
-                      "textRaw": "`options` {Object}",
-                      "name": "options",
-                      "type": "Object",
-                      "options": [
-                        {
-                          "textRaw": "`error` {boolean} If set to `false`, then a call to `emit('error', err)` is not treated as finished. **Default:** `true`.",
-                          "name": "error",
-                          "type": "boolean",
-                          "default": "`true`",
-                          "desc": "If set to `false`, then a call to `emit('error', err)` is not treated as finished."
-                        },
-                        {
-                          "textRaw": "`readable` {boolean} When set to `false`, the callback will be called when the stream ends even though the stream might still be readable. **Default:** `true`.",
-                          "name": "readable",
-                          "type": "boolean",
-                          "default": "`true`",
-                          "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be readable."
-                        },
-                        {
-                          "textRaw": "`writable` {boolean} When set to `false`, the callback will be called when the stream ends even though the stream might still be writable. **Default:** `true`.",
-                          "name": "writable",
-                          "type": "boolean",
-                          "default": "`true`",
-                          "desc": "When set to `false`, the callback will be called when the stream ends even though the stream might still be writable."
-                        },
-                        {
-                          "textRaw": "`signal` {AbortSignal} allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed.",
-                          "name": "signal",
-                          "type": "AbortSignal",
-                          "desc": "allows aborting the wait for the stream finish. The underlying stream will _not_ be aborted if the signal is aborted. The callback will get called with an `AbortError`. All registered listeners added by this function will also be removed."
-                        },
-                        {
-                          "textRaw": "`cleanup` {boolean} remove all registered stream listeners. **Default:** `false`.",
-                          "name": "cleanup",
-                          "type": "boolean",
-                          "default": "`false`",
-                          "desc": "remove all registered stream listeners."
-                        }
-                      ]
-                    },
-                    {
-                      "textRaw": "`callback` {Function} A callback function that takes an optional error argument.",
-                      "name": "callback",
-                      "type": "Function",
-                      "desc": "A callback function that takes an optional error argument."
+                      "type": "Stream|ReadableStream|WritableStream"
                     }
                   ]
                 }
               ],
-              "desc": "<p>A function to get notified when a stream is no longer readable, writable\nor has experienced an error or a premature close event.</p>\n<pre><code class=\"language-js\">const { finished } = require('node:stream');\nconst fs = require('node:fs');\n\nconst rs = fs.createReadStream('archive.tar');\n\nfinished(rs, (err) => {\n  if (err) {\n    console.error('Stream failed.', err);\n  } else {\n    console.log('Stream is done reading.');\n  }\n});\n\nrs.resume(); // Drain the stream.\n</code></pre>\n<p>Especially useful in error handling scenarios where a stream is destroyed\nprematurely (like an aborted HTTP request), and will not emit <code>'end'</code>\nor <code>'finish'</code>.</p>\n<p>The <code>finished</code> API provides <a href=\"#streamfinishedstream-options\">promise version</a>.</p>\n<p><code>stream.finished()</code> leaves dangling event listeners (in particular\n<code>'error'</code>, <code>'end'</code>, <code>'finish'</code> and <code>'close'</code>) after <code>callback</code> has been\ninvoked. The reason for this is so that unexpected <code>'error'</code> events (due to\nincorrect stream implementations) do not cause unexpected crashes.\nIf this is unwanted behavior then the returned cleanup function needs to be\ninvoked in the callback:</p>\n<pre><code class=\"language-js\">const cleanup = finished(rs, (err) => {\n  cleanup();\n  // ...\n});\n</code></pre>"
+              "desc": "<p>A readable and/or writable stream/webstream.</p>\n<ul>\n<li>\n<p><code>options</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object\" class=\"type\">&lt;Object&gt;</a></p>\n<ul>\n<li><code>error</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> If set to <code>false</code>, then a call to <code>emit('error', err)</code> is\nnot treated as finished. <strong>Default:</strong> <code>true</code>.</li>\n<li><code>readable</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> When set to <code>false</code>, the callback will be called when\nthe stream ends even though the stream might still be readable.\n<strong>Default:</strong> <code>true</code>.</li>\n<li><code>writable</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> When set to <code>false</code>, the callback will be called when\nthe stream ends even though the stream might still be writable.\n<strong>Default:</strong> <code>true</code>.</li>\n<li><code>signal</code> <a href=\"globals.html#class-abortsignal\" class=\"type\">&lt;AbortSignal&gt;</a> allows aborting the wait for the stream finish. The\nunderlying stream will <em>not</em> be aborted if the signal is aborted. The\ncallback will get called with an <code>AbortError</code>. All registered\nlisteners added by this function will also be removed.</li>\n<li><code>cleanup</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type\" class=\"type\">&lt;boolean&gt;</a> remove all registered stream listeners.\n<strong>Default:</strong> <code>false</code>.</li>\n</ul>\n</li>\n<li>\n<p><code>callback</code> <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function\" class=\"type\">&lt;Function&gt;</a> A callback function that takes an optional error\nargument.</p>\n</li>\n<li>\n<p>Returns: <a href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function\" class=\"type\">&lt;Function&gt;</a> A cleanup function which removes all registered\nlisteners.</p>\n</li>\n</ul>\n<p>A function to get notified when a stream is no longer readable, writable\nor has experienced an error or a premature close event.</p>\n<pre><code class=\"language-js\">const { finished } = require('node:stream');\nconst fs = require('node:fs');\n\nconst rs = fs.createReadStream('archive.tar');\n\nfinished(rs, (err) => {\n  if (err) {\n    console.error('Stream failed.', err);\n  } else {\n    console.log('Stream is done reading.');\n  }\n});\n\nrs.resume(); // Drain the stream.\n</code></pre>\n<p>Especially useful in error handling scenarios where a stream is destroyed\nprematurely (like an aborted HTTP request), and will not emit <code>'end'</code>\nor <code>'finish'</code>.</p>\n<p>The <code>finished</code> API provides <a href=\"#streamfinishedstream-options\">promise version</a>.</p>\n<p><code>stream.finished()</code> leaves dangling event listeners (in particular\n<code>'error'</code>, <code>'end'</code>, <code>'finish'</code> and <code>'close'</code>) after <code>callback</code> has been\ninvoked. The reason for this is so that unexpected <code>'error'</code> events (due to\nincorrect stream implementations) do not cause unexpected crashes.\nIf this is unwanted behavior then the returned cleanup function needs to be\ninvoked in the callback:</p>\n<pre><code class=\"language-js\">const cleanup = finished(rs, (err) => {\n  cleanup();\n  // ...\n});\n</code></pre>"
             },
             {
               "textRaw": "`stream.pipeline(source[, ...transforms], destination, callback)`",
@@ -3988,20 +3959,26 @@
                 "added": [
                   "v16.8.0"
                 ],
-                "changes": []
+                "changes": [
+                  {
+                    "version": "v18.17.0",
+                    "pr-url": "https://github.com/nodejs/node/pull/46190",
+                    "description": "The `src` argument can now be a `ReadableStream` or `WritableStream`."
+                  }
+                ]
               },
               "signatures": [
                 {
                   "params": [
                     {
-                      "textRaw": "`src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object}",
+                      "textRaw": "`src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object| ReadableStream|WritableStream}",
                       "name": "src",
-                      "type": "Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object"
+                      "type": "Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable| AsyncGeneratorFunction|AsyncFunction|Promise|Object| ReadableStream|WritableStream"
                     }
                   ]
                 }
               ],
-              "desc": "<p>A utility method for creating duplex streams.</p>\n<ul>\n<li><code>Stream</code> converts writable stream into writable <code>Duplex</code> and readable stream\nto <code>Duplex</code>.</li>\n<li><code>Blob</code> converts into readable <code>Duplex</code>.</li>\n<li><code>string</code> converts into readable <code>Duplex</code>.</li>\n<li><code>ArrayBuffer</code> converts into readable <code>Duplex</code>.</li>\n<li><code>AsyncIterable</code> converts into a readable <code>Duplex</code>. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncGeneratorFunction</code> converts into a readable/writable transform\n<code>Duplex</code>. Must take a source <code>AsyncIterable</code> as first parameter. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncFunction</code> converts into a writable <code>Duplex</code>. Must return\neither <code>null</code> or <code>undefined</code></li>\n<li><code>Object ({ writable, readable })</code> converts <code>readable</code> and\n<code>writable</code> into <code>Stream</code> and then combines them into <code>Duplex</code> where the\n<code>Duplex</code> will write to the <code>writable</code> and read from the <code>readable</code>.</li>\n<li><code>Promise</code> converts into readable <code>Duplex</code>. Value <code>null</code> is ignored.</li>\n<li>Returns: <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a></li>\n</ul>\n<p>If an <code>Iterable</code> object containing promises is passed as an argument,\nit might result in unhandled rejection.</p>\n<pre><code class=\"language-js\">const { Duplex } = require('node:stream');\n\nDuplex.from([\n  new Promise((resolve) => setTimeout(resolve('1'), 1500)),\n  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection\n]);\n</code></pre>"
+              "desc": "<p>A utility method for creating duplex streams.</p>\n<ul>\n<li><code>Stream</code> converts writable stream into writable <code>Duplex</code> and readable stream\nto <code>Duplex</code>.</li>\n<li><code>Blob</code> converts into readable <code>Duplex</code>.</li>\n<li><code>string</code> converts into readable <code>Duplex</code>.</li>\n<li><code>ArrayBuffer</code> converts into readable <code>Duplex</code>.</li>\n<li><code>AsyncIterable</code> converts into a readable <code>Duplex</code>. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncGeneratorFunction</code> converts into a readable/writable transform\n<code>Duplex</code>. Must take a source <code>AsyncIterable</code> as first parameter. Cannot yield\n<code>null</code>.</li>\n<li><code>AsyncFunction</code> converts into a writable <code>Duplex</code>. Must return\neither <code>null</code> or <code>undefined</code></li>\n<li><code>Object ({ writable, readable })</code> converts <code>readable</code> and\n<code>writable</code> into <code>Stream</code> and then combines them into <code>Duplex</code> where the\n<code>Duplex</code> will write to the <code>writable</code> and read from the <code>readable</code>.</li>\n<li><code>Promise</code> converts into readable <code>Duplex</code>. Value <code>null</code> is ignored.</li>\n<li><code>ReadableStream</code> converts into readable <code>Duplex</code>.</li>\n<li><code>WritableStream</code> converts into writable <code>Duplex</code>.</li>\n<li>Returns: <a href=\"stream.html#class-streamduplex\" class=\"type\">&lt;stream.Duplex&gt;</a></li>\n</ul>\n<p>If an <code>Iterable</code> object containing promises is passed as an argument,\nit might result in unhandled rejection.</p>\n<pre><code class=\"language-js\">const { Duplex } = require('node:stream');\n\nDuplex.from([\n  new Promise((resolve) => setTimeout(resolve('1'), 1500)),\n  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection\n]);\n</code></pre>"
             },
             {
               "textRaw": "`stream.Duplex.fromWeb(pair[, options])`",
@@ -4158,6 +4135,63 @@
                 }
               ],
               "desc": "<p>A stream to attach a signal to.</p>\n<p>Attaches an AbortSignal to a readable or writeable stream. This lets code\ncontrol stream destruction using an <code>AbortController</code>.</p>\n<p>Calling <code>abort</code> on the <code>AbortController</code> corresponding to the passed\n<code>AbortSignal</code> will behave the same way as calling <code>.destroy(new AbortError())</code>\non the stream, and <code>controller.error(new AbortError())</code> for webstreams.</p>\n<pre><code class=\"language-js\">const fs = require('node:fs');\n\nconst controller = new AbortController();\nconst read = addAbortSignal(\n  controller.signal,\n  fs.createReadStream(('object.json')),\n);\n// Later, abort the operation closing the stream\ncontroller.abort();\n</code></pre>\n<p>Or using an <code>AbortSignal</code> with a readable stream as an async iterable:</p>\n<pre><code class=\"language-js\">const controller = new AbortController();\nsetTimeout(() => controller.abort(), 10_000); // set a timeout\nconst stream = addAbortSignal(\n  controller.signal,\n  fs.createReadStream(('object.json')),\n);\n(async () => {\n  try {\n    for await (const chunk of stream) {\n      await process(chunk);\n    }\n  } catch (e) {\n    if (e.name === 'AbortError') {\n      // The operation was cancelled\n    } else {\n      throw e;\n    }\n  }\n})();\n</code></pre>\n<p>Or using an <code>AbortSignal</code> with a ReadableStream:</p>\n<pre><code class=\"language-js\">const controller = new AbortController();\nconst rs = new ReadableStream({\n  start(controller) {\n    controller.enqueue('hello');\n    controller.enqueue('world');\n    controller.close();\n  },\n});\n\naddAbortSignal(controller.signal, rs);\n\nfinished(rs, (err) => {\n  if (err) {\n    if (err.name === 'AbortError') {\n      // The operation was cancelled\n    }\n  }\n});\n\nconst reader = rs.getReader();\n\nreader.read().then(({ value, done }) => {\n  console.log(value); // hello\n  console.log(done); // false\n  controller.abort();\n});\n</code></pre>"
+            },
+            {
+              "textRaw": "`stream.getDefaultHighWaterMark(objectMode)`",
+              "type": "method",
+              "name": "getDefaultHighWaterMark",
+              "meta": {
+                "added": [
+                  "v18.17.0"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "return": {
+                    "textRaw": "Returns: {integer}",
+                    "name": "return",
+                    "type": "integer"
+                  },
+                  "params": [
+                    {
+                      "textRaw": "`objectMode` {boolean}",
+                      "name": "objectMode",
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Returns the default highWaterMark used by streams.\nDefaults to <code>16384</code> (16 KiB), or <code>16</code> for <code>objectMode</code>.</p>"
+            },
+            {
+              "textRaw": "`stream.setDefaultHighWaterMark(objectMode, value)`",
+              "type": "method",
+              "name": "setDefaultHighWaterMark",
+              "meta": {
+                "added": [
+                  "v18.17.0"
+                ],
+                "changes": []
+              },
+              "signatures": [
+                {
+                  "params": [
+                    {
+                      "textRaw": "`objectMode` {boolean}",
+                      "name": "objectMode",
+                      "type": "boolean"
+                    },
+                    {
+                      "textRaw": "`value` {integer} highWaterMark value",
+                      "name": "value",
+                      "type": "integer",
+                      "desc": "highWaterMark value"
+                    }
+                  ]
+                }
+              ],
+              "desc": "<p>Sets the default highWaterMark used by streams.</p>"
             }
           ]
         },
