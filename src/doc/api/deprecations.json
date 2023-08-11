@@ -2617,7 +2617,7 @@
                   }
                 ]
               },
-              "desc": "<p>Type: Documentation-only (supports <a href=\"cli.html#--pending-deprecation\"><code>--pending-deprecation</code></a>)</p>\n<p><code>process.binding()</code> is for use by Node.js internal code only.</p>",
+              "desc": "<p>Type: Documentation-only (supports <a href=\"cli.html#--pending-deprecation\"><code>--pending-deprecation</code></a>)</p>\n<p><code>process.binding()</code> is for use by Node.js internal code only.</p>\n<p>While <code>process.binding()</code> has not reached End-of-Life status in general, it is\nunavailable when <a href=\"permissions.html#policies\">policies</a> are enabled.</p>",
               "type": "module",
               "displayName": "DEP0111: `process.binding()`"
             },

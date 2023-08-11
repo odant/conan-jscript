@@ -269,9 +269,16 @@
                 ],
                 "changes": []
               },
-              "desc": "<p>Used when an operation has been aborted (typically using an <code>AbortController</code>).</p>\n<p>APIs <em>not</em> using <code>AbortSignal</code>s typically do not raise an error with this code.</p>\n<p>This code does not use the regular <code>ERR_*</code> convention Node.js errors use in\norder to be compatible with the web platform's <code>AbortError</code>.</p>\n<p><a id=\"ERR_AMBIGUOUS_ARGUMENT\"></a></p>",
+              "desc": "<p>Used when an operation has been aborted (typically using an <code>AbortController</code>).</p>\n<p>APIs <em>not</em> using <code>AbortSignal</code>s typically do not raise an error with this code.</p>\n<p>This code does not use the regular <code>ERR_*</code> convention Node.js errors use in\norder to be compatible with the web platform's <code>AbortError</code>.</p>\n<p><a id=\"ERR_ACCESS_DENIED\"></a></p>",
               "type": "module",
               "displayName": "`ABORT_ERR`"
+            },
+            {
+              "textRaw": "`ERR_ACCESS_DENIED`",
+              "name": "`err_access_denied`",
+              "desc": "<p>A special type of error that is triggered whenever Node.js tries to get access\nto a resource restricted by the <a href=\"permissions.html#policies\">policy</a> manifest.\nFor example, <code>process.binding</code>.</p>\n<p><a id=\"ERR_AMBIGUOUS_ARGUMENT\"></a></p>",
+              "type": "module",
+              "displayName": "`ERR_ACCESS_DENIED`"
             },
             {
               "textRaw": "`ERR_AMBIGUOUS_ARGUMENT`",

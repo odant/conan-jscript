@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
-  <meta name="nodejs.org:node-version" content="v18.17.0">
-  <title>Errors | Node.js v18.17.0 Documentation</title>
+  <meta name="nodejs.org:node-version" content="v18.17.1">
+  <title>Errors | Node.js v18.17.1 Documentation</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic&display=fallback">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/hljs.css">
@@ -96,7 +96,7 @@
     <div id="column1" data-id="errors" class="interior">
       <header class="header">
         <div class="header-container">
-          <h1>Node.js v18.17.0 documentation</h1>
+          <h1>Node.js v18.17.1 documentation</h1>
           <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode/light mode" aria-label="Toggle dark mode/light mode" hidden>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon dark-icon" height="24" width="24">
               <path fill="none" d="M0 0h24v24H0z" />
@@ -111,7 +111,7 @@
         </div>
         <div id="gtoc">
           <ul>
-            <li class="pinned-header">Node.js v18.17.0</li>
+            <li class="pinned-header">Node.js v18.17.1</li>
             
     <li class="picker-header">
       <a href="#">
@@ -169,6 +169,7 @@
 <li><a href="#nodejs-error-codes">Node.js error codes</a>
 <ul>
 <li><a href="#abort_err"><code>ABORT_ERR</code></a></li>
+<li><a href="#err_access_denied"><code>ERR_ACCESS_DENIED</code></a></li>
 <li><a href="#err_ambiguous_argument"><code>ERR_AMBIGUOUS_ARGUMENT</code></a></li>
 <li><a href="#err_arg_not_iterable"><code>ERR_ARG_NOT_ITERABLE</code></a></li>
 <li><a href="#err_assertion"><code>ERR_ASSERTION</code></a></li>
@@ -717,6 +718,7 @@
 <li><a href="#nodejs-error-codes">Node.js error codes</a>
 <ul>
 <li><a href="#abort_err"><code>ABORT_ERR</code></a></li>
+<li><a href="#err_access_denied"><code>ERR_ACCESS_DENIED</code></a></li>
 <li><a href="#err_ambiguous_argument"><code>ERR_AMBIGUOUS_ARGUMENT</code></a></li>
 <li><a href="#err_arg_not_iterable"><code>ERR_ARG_NOT_ITERABLE</code></a></li>
 <li><a href="#err_assertion"><code>ERR_ASSERTION</code></a></li>
@@ -1663,6 +1665,11 @@ error originates from.</p>
 <p>APIs <em>not</em> using <code>AbortSignal</code>s typically do not raise an error with this code.</p>
 <p>This code does not use the regular <code>ERR_*</code> convention Node.js errors use in
 order to be compatible with the web platform's <code>AbortError</code>.</p>
+<p><a id="ERR_ACCESS_DENIED"></a></p>
+<h4><code>ERR_ACCESS_DENIED</code><span><a class="mark" href="#err_access_denied" id="err_access_denied">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_access_denied"></a></h4>
+<p>A special type of error that is triggered whenever Node.js tries to get access
+to a resource restricted by the <a href="permissions.html#policies">policy</a> manifest.
+For example, <code>process.binding</code>.</p>
 <p><a id="ERR_AMBIGUOUS_ARGUMENT"></a></p>
 <h4><code>ERR_AMBIGUOUS_ARGUMENT</code><span><a class="mark" href="#err_ambiguous_argument" id="err_ambiguous_argument">#</a></span><a aria-hidden="true" class="legacy" id="errors_err_ambiguous_argument"></a></h4>
 <p>A function argument is being used in a way that suggests that the function
