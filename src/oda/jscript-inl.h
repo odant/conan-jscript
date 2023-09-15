@@ -527,22 +527,6 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
 
   v8::Local<v8::Function> overrideFunction = v8::Function::New(context, consoleCallback, array).ToLocalChecked();
   globalConsoleObj->Set(context, methodName, overrideFunction).Check();
-
-  v8::Local<v8::String> odantFrameworkName = v8::String::NewFromUtf8(_isolate, "odantFramework").ToLocalChecked();
-  v8::Local<v8::Value> odantFramework = globalObj->Get(context, odantFrameworkName).ToLocalChecked();
-  if (!odantFramework->IsObject()) {
-    return;
-  }
-  v8::Local<v8::Object> odantFrameworkObj = odantFramework.As<v8::Object>();
-
-  v8::Local<v8::Value> odantFrameworkConsole = odantFrameworkObj->Get(context, consoleName).ToLocalChecked();
-  if (!odantFrameworkConsole->IsObject()) {
-    odantFrameworkConsole = v8::Object::New(_isolate);
-    odantFrameworkObj->Set(context, consoleName, odantFrameworkConsole).Check();
-  }
-
-  v8::Local<v8::Object> odantFrameworkConsoleObj = odantFrameworkConsole.As<v8::Object>();
-  odantFrameworkConsoleObj->Set(context, methodName, overrideFunction).Check();
 }
 
 
