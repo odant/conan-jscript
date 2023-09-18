@@ -567,33 +567,41 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     trycatch.SetVerbose(true);
 
     std::vector<v8::Local<v8::Value>> info;
-    for (int i = 0; i < args.Length(); ++i) {
-        info.push_back(args[i]);
-    }
-
-    globalLogFunc->Call(context, v8::Null(isolate), info.size(), info.data()).ToLocalChecked();
-
     v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
     JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
     DCHECK_NOT_NULL(instance);
+    if (instance) {
+        const std::uintptr_t value = reinterpret_cast<const std::uintptr_t>(instance);
+        const std::string id = std::to_string(value);
+        v8::Local<v8::String> idV8 = v8::String::NewFromUtf8(isolate, id.c_str()).ToLocalChecked();
+        info.emplace_back(idV8);
+    }
 
-    const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
-    if (consoleCallback) {
-        ConsoleType type{ ConsoleType::Default };
-        if (arraySize >= 3) {
-            auto maybeValue = array->Get(context, 2);
-            if (!maybeValue.IsEmpty()) {
-                auto localValue = maybeValue.ToLocalChecked();
+    for (int i = 0; i < args.Length(); ++i) {
+        info.emplace_back(args[i]);
+    }
+
+    globalLogFunc->Call(context, v8::Null(isolate), info.size(), info.data());
+
+    if (instance) {
+        const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
+        if (consoleCallback) {
+            ConsoleType type{ ConsoleType::Default };
+            if (arraySize >= 3) {
+                auto maybeValue = array->Get(context, 2);
+                if (!maybeValue.IsEmpty()) {
+                    auto localValue = maybeValue.ToLocalChecked();
                     if (!localValue.IsEmpty() && localValue->IsExternal()) {
-                    v8::Local<v8::External> externalValue = localValue.As<v8::External>();
-                    if (!externalValue.IsEmpty()) {
-                        type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
+                        v8::Local<v8::External> externalValue = localValue.As<v8::External>();
+                        if (!externalValue.IsEmpty()) {
+                            type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
+                        }
                     }
                 }
             }
-        }
 
-        consoleCallback->operator()(args, type);
+            consoleCallback->operator()(args, type);
+        }
     }
 }
 
