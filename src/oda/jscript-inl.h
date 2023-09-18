@@ -458,7 +458,11 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
               return;
           }
 
-          v8::Local<v8::Context> context = array->CreationContext();
+          v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
+          v8::Local<v8::Context> context;
+          if (!contextMaybe.ToLocal(&context)) {
+              return;
+          }
 
           v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
 
@@ -551,7 +555,11 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
         return;
     }
 
-    v8::Local<v8::Context> context = array->CreationContext();
+    v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
+    v8::Local<v8::Context> context;
+    if (!contextMaybe.ToLocal(&context)) {
+        return;
+    }
 
     v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
 
