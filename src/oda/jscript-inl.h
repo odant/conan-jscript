@@ -584,7 +584,7 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
             auto maybeValue = array->Get(context, 2);
             if (!maybeValue.IsEmpty()) {
                 auto localValue = maybeValue.ToLocalChecked();
-                if (!localValue.IsEmpty()) {
+                    if (!localValue.IsEmpty() && localValue->IsExternal()) {
                     v8::Local<v8::External> externalValue = localValue.As<v8::External>();
                     if (!externalValue.IsEmpty()) {
                         type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
