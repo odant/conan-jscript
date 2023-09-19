@@ -61,7 +61,7 @@ diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
 index 7fc7e0601..7fd5e575a 100644
 --- a/src/deps/uv/uv.gyp
 +++ b/src/deps/uv/uv.gyp
-@@ -253,6 +253,13 @@
+@@ -251,6 +251,13 @@
            'link_settings': {
              'libraries': [ '-ldl', '-lrt' ],
            },
@@ -300,7 +300,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1276,3 +1276,5 @@ void Initialize() {}
+@@ -1298,3 +1298,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -312,8 +312,8 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 18
- #define NODE_MINOR_VERSION 17
- #define NODE_PATCH_VERSION 1
+ #define NODE_MINOR_VERSION 18
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
