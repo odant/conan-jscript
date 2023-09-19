@@ -586,7 +586,9 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
         info.emplace_back(args[i]);
     }
 
-    globalLogFunc->Call(context, v8::Null(isolate), info.size(), info.data());
+    v8::MaybeLocal<v8::Value> globalLogFuncResult = globalLogFunc->Call(
+        context, v8::Null(isolate), info.size(), info.data());
+    (void)(globalLogFuncResult);
 
     if (instance) {
         const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
