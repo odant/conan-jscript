@@ -156,7 +156,11 @@ public:
   std::mutex _state_mutex;
   std::condition_variable _state_cv;
 
+  const std::atomic<std::uintmax_t> id = ATOMIC_VAR_INIT(idCounter++);
+
 private:
+  static std::atomic<std::uintmax_t> idCounter;
+
   DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(int*, const EnvSerializeInfo* env_info);
 
   void addSetStates(v8::Local<v8::Context>);
@@ -176,6 +180,8 @@ private:
 const std::string JSInstanceImpl::defaultOrigin;
 const std::string JSInstanceImpl::externalOrigin;
 const std::string JSInstanceImpl::stopScript;
+
+std::atomic<std::uintmax_t> JSInstanceImpl::idCounter = ATOMIC_VAR_INIT(0);
 
 
 inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag)
@@ -571,8 +577,7 @@ void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
     DCHECK_NOT_NULL(instance);
     if (instance) {
-        const std::uintptr_t value = reinterpret_cast<const std::uintptr_t>(instance);
-        const std::string id = std::to_string(value);
+        const std::string id = std::to_string(instance->id);
         v8::Local<v8::String> idV8 = v8::String::NewFromUtf8(isolate, id.c_str()).ToLocalChecked();
         info.emplace_back(idV8);
     }
