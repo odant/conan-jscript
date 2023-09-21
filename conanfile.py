@@ -47,7 +47,8 @@ class JScriptConan(ConanFile):
         "fix_no_optimization_build.patch",
         "disable_v8_slow_dcheck.patch",
         "disable_gen_node_def.patch",
-        "fix_deps_undici.patch"
+        "fix_deps_undici.patch",
+        "libuv_win7support.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -82,6 +83,7 @@ class JScriptConan(ConanFile):
         if self.settings.os == "Windows":
             tools.patch(patch_file="fix_vs2022_build.patch")
             tools.patch(patch_file="disable_gen_node_def.patch")
+            tools.patch(patch_file="libuv_win7support.patch")
         if self.settings.build_type == "Debug":
 #            if self.settings.os == "Windows":
 #                tools.patch(patch_file="fix_no_optimization_build.patch")
