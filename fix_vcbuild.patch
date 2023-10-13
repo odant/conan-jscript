@@ -1,6 +1,8 @@
+diff --git a/src/vcbuild.bat b/src/vcbuild.bat
+index 2fe451232..16df39c0b 100644
 --- a/src/vcbuild.bat
 +++ b/src/vcbuild.bat
-@@ -25,14 +25,14 @@
+@@ -25,14 +25,14 @@ set CI_DOC=doctool
  set "common_test_suites=%JS_SUITES% %NATIVE_SUITES%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
  
  @rem Process arguments.
@@ -17,13 +19,13 @@
 +set nobuild=1
  set sign=
  set nosnapshot=
- set cctest_args=
-@@ -51,7 +51,7 @@
+ set nonpm=
+@@ -53,7 +53,7 @@ set noetw_msi_arg=
  set i18n_arg=
  set download_arg=
  set build_release=
 -set configure_flags=
 +set configure_flags=--shared --v8-non-optimized-debug --node_core_target_name=jscript
+ set enable_vtune_arg=
  set build_addons=
  set dll=
- set enable_static=
