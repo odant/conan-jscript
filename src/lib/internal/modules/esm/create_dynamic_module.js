@@ -4,7 +4,6 @@ const {
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   JSONStringify,
-  ObjectCreate,
   SafeSet,
 } = primordials;
 
@@ -35,19 +34,20 @@ ${ArrayPrototypeJoin(ArrayPrototypeMap(imports, createImport), '\n')}
 ${ArrayPrototypeJoin(ArrayPrototypeMap(exports, createExport), '\n')}
 import.meta.done();
 `;
-  const { ModuleWrap, callbackMap } = internalBinding('module_wrap');
+  const { ModuleWrap } = internalBinding('module_wrap');
   const m = new ModuleWrap(`${url}`, undefined, source, 0, 0);
 
   const readyfns = new SafeSet();
   const reflect = {
-    exports: ObjectCreate(null),
+    exports: { __proto__: null },
     onReady: (cb) => { readyfns.add(cb); },
   };
 
   if (imports.length)
-    reflect.imports = ObjectCreate(null);
-
-  callbackMap.set(m, {
+    reflect.imports = { __proto__: null };
+  const { registerModule } = require('internal/modules/esm/utils');
+  registerModule(m, {
+    __proto__: null,
     initializeImportMeta: (meta, wrap) => {
       meta.exports = reflect.exports;
       if (reflect.imports)

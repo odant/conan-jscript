@@ -29,7 +29,9 @@ The operating system-specific end-of-line marker.
 ## `os.availableParallelism()`
 
 <!-- YAML
-added: v18.14.0
+added:
+  - v19.4.0
+  - v18.14.0
 -->
 
 * Returns: {integer}
@@ -49,7 +51,7 @@ added: v0.5.0
 
 Returns the operating system CPU architecture for which the Node.js binary was
 compiled. Possible values are `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,
-`'mipsel'`, `'ppc'`, `'ppc64'`, `'s390'`, `'s390x'`, and `'x64'`.
+`'mipsel'`, `'ppc'`, `'ppc64'`, `'riscv64'`, `'s390'`, `'s390x'`, and `'x64'`.
 
 The return value is equivalent to [`process.arch`][].
 
@@ -242,7 +244,9 @@ always `[0, 0, 0]`.
 ## `os.machine()`
 
 <!-- YAML
-added: v18.9.0
+added:
+  - v18.9.0
+  - v16.18.0
 -->
 
 * Returns {string}

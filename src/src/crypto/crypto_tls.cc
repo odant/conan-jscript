@@ -224,6 +224,44 @@ int SelectALPNCallback(
     unsigned int inlen,
     void* arg) {
   TLSWrap* w = static_cast<TLSWrap*>(arg);
+  if (w->alpn_callback_enabled_) {
+    Environment* env = w->env();
+    HandleScope handle_scope(env->isolate());
+
+    Local<Value> callback_arg =
+        Buffer::Copy(env, reinterpret_cast<const char*>(in), inlen)
+            .ToLocalChecked();
+
+    MaybeLocal<Value> maybe_callback_result =
+        w->MakeCallback(env->alpn_callback_string(), 1, &callback_arg);
+
+    if (UNLIKELY(maybe_callback_result.IsEmpty())) {
+      // Implies the callback didn't return, because some exception was thrown
+      // during processing, e.g. if callback returned an invalid ALPN value.
+      return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    Local<Value> callback_result = maybe_callback_result.ToLocalChecked();
+
+    if (callback_result->IsUndefined()) {
+      // If you set an ALPN callback, but you return undefined for an ALPN
+      // request, you're rejecting all proposed ALPN protocols, and so we send
+      // a fatal alert:
+      return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    CHECK(callback_result->IsNumber());
+    unsigned int result_int = callback_result.As<v8::Number>()->Value();
+
+    // The callback returns an offset into the given buffer, for the selected
+    // protocol that should be returned. We then set outlen & out to point
+    // to the selected input length & value directly:
+    *outlen = *(in + result_int);
+    *out = (in + result_int + 1);
+
+    return SSL_TLSEXT_ERR_OK;
+  }
+
   const std::vector<unsigned char>& alpn_protos = w->alpn_protos_;
 
   if (alpn_protos.empty()) return SSL_TLSEXT_ERR_NOACK;
@@ -235,13 +273,13 @@ int SelectALPNCallback(
                                      in,
                                      inlen);
 
-  // According to 3.2. Protocol Selection of RFC7301, fatal
-  // no_application_protocol alert shall be sent but OpenSSL 1.0.2 does not
-  // support it yet. See
-  // https://rt.openssl.org/Ticket/Display.html?id=3463&user=guest&pass=guest
-  return status == OPENSSL_NPN_NEGOTIATED
-      ? SSL_TLSEXT_ERR_OK
-      : SSL_TLSEXT_ERR_NOACK;
+  // Previous versions of Node.js returned SSL_TLSEXT_ERR_NOACK if no protocol
+  // match was found. This would neither cause a fatal alert nor would it result
+  // in a useful ALPN response as part of the Server Hello message.
+  // We now return SSL_TLSEXT_ERR_ALERT_FATAL in that case as per Section 3.2
+  // of RFC 7301, which causes a fatal no_application_protocol alert.
+  return status == OPENSSL_NPN_NEGOTIATED ? SSL_TLSEXT_ERR_OK
+                                          : SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
 int TLSExtStatusCallback(SSL* s, void* arg) {
@@ -1249,6 +1287,15 @@ void TLSWrap::OnClientHelloParseEnd(void* arg) {
   c->Cycle();
 }
 
+void TLSWrap::EnableALPNCb(const FunctionCallbackInfo<Value>& args) {
+  TLSWrap* wrap;
+  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
+  wrap->alpn_callback_enabled_ = true;
+
+  SSL* ssl = wrap->ssl_.get();
+  SSL_CTX_set_alpn_select_cb(SSL_get_SSL_CTX(ssl), SelectALPNCallback, wrap);
+}
+
 void TLSWrap::GetServername(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
@@ -2069,6 +2116,7 @@ void TLSWrap::Initialize(
   SetProtoMethod(isolate, t, "certCbDone", CertCbDone);
   SetProtoMethod(isolate, t, "destroySSL", DestroySSL);
   SetProtoMethod(isolate, t, "enableCertCb", EnableCertCb);
+  SetProtoMethod(isolate, t, "enableALPNCb", EnableALPNCb);
   SetProtoMethod(isolate, t, "endParser", EndParser);
   SetProtoMethod(isolate, t, "enableKeylogCallback", EnableKeylogCallback);
   SetProtoMethod(isolate, t, "enableSessionCallbacks", EnableSessionCallbacks);
@@ -2138,6 +2186,7 @@ void TLSWrap::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(CertCbDone);
   registry->Register(DestroySSL);
   registry->Register(EnableCertCb);
+  registry->Register(EnableALPNCb);
   registry->Register(EndParser);
   registry->Register(EnableKeylogCallback);
   registry->Register(EnableSessionCallbacks);

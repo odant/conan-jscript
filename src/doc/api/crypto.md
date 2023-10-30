@@ -1939,8 +1939,8 @@ added: v15.0.0
 Example: Converting a `CryptoKey` instance to a `KeyObject`:
 
 ```mjs
-const { webcrypto, KeyObject } = await import('node:crypto');
-const { subtle } = webcrypto;
+const { KeyObject } = await import('node:crypto');
+const { subtle } = globalThis.crypto;
 
 const key = await subtle.generateKey({
   name: 'HMAC',
@@ -1954,12 +1954,8 @@ console.log(keyObject.symmetricKeySize);
 ```
 
 ```cjs
-const {
-  webcrypto: {
-    subtle,
-  },
-  KeyObject,
-} = require('node:crypto');
+const { KeyObject } = require('node:crypto');
+const { subtle } = globalThis.crypto;
 
 (async function() {
   const key = await subtle.generateKey({
@@ -2102,7 +2098,9 @@ PKCS#1 and SEC1 encryption.
 ### `keyObject.equals(otherKeyObject)`
 
 <!-- YAML
-added: v17.7.0
+added:
+  - v17.7.0
+  - v16.15.0
 -->
 
 * `otherKeyObject`: {KeyObject} A `KeyObject` with which to
@@ -2515,7 +2513,9 @@ changes:
     description: The `wildcards`, `partialWildcards`, `multiLabelWildcards`, and
                  `singleLabelSubdomains` options have been removed since they
                  had no effect.
-  - version: v17.5.0
+  - version:
+    - v17.5.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41569
     description: The subject option can now be set to `'default'`.
 -->
@@ -2548,7 +2548,9 @@ changes:
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41600
     description: The subject option now defaults to `'default'`.
-  - version: v17.5.0
+  - version:
+    - v17.5.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41569
     description: The subject option can now be set to `'default'`.
 -->
@@ -2885,26 +2887,6 @@ An object containing commonly used constants for crypto and security related
 operations. The specific constants currently defined are described in
 [Crypto constants][].
 
-### `crypto.DEFAULT_ENCODING`
-
-<!-- YAML
-added: v0.9.3
-deprecated: v10.0.0
--->
-
-> Stability: 0 - Deprecated
-
-The default encoding to use for functions that can take either strings
-or [buffers][`Buffer`]. The default value is `'buffer'`, which makes methods
-default to [`Buffer`][] objects.
-
-The `crypto.DEFAULT_ENCODING` mechanism is provided for backward compatibility
-with legacy programs that expect `'latin1'` to be the default encoding.
-
-New applications should expect the default to be `'buffer'`.
-
-This property is deprecated.
-
 ### `crypto.fips`
 
 <!-- YAML
@@ -2976,7 +2958,9 @@ Checks the primality of the `candidate`.
 added: v0.1.94
 deprecated: v10.0.0
 changes:
-  - version: v17.9.0
+  - version:
+    - v17.9.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3044,7 +3028,9 @@ Adversaries][] for details.
 <!-- YAML
 added: v0.1.94
 changes:
-  - version: v17.9.0
+  - version:
+    - v17.9.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3117,7 +3103,9 @@ given IV will be.
 added: v0.1.94
 deprecated: v10.0.0
 changes:
-  - version: v17.9.0
+  - version:
+    - v17.9.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3163,7 +3151,9 @@ to create the `Decipher` object.
 <!-- YAML
 added: v0.1.94
 changes:
-  - version: v17.9.0
+  - version:
+    - v17.9.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3561,7 +3551,9 @@ and it will be impossible to extract the private key from the returned object.
 <!-- YAML
 added: v11.6.0
 changes:
-  - version: v18.8.0
+  - version:
+    - v18.8.0
+    - v16.18.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The key can now be zero-length.
   - version: v15.0.0
@@ -4240,7 +4232,9 @@ web-compatible code use [`crypto.webcrypto.getRandomValues()`][] instead.
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v18.8.0
+  - version:
+    - v18.8.0
+    - v16.18.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The input keying material can now be zero-length.
   - version: v18.0.0
@@ -4303,7 +4297,9 @@ hkdf('sha512', 'key', 'salt', 'info', 64, (err, derivedKey) => {
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v18.8.0
+  - version:
+    - v18.8.0
+    - v16.18.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The input keying material can now be zero-length.
 -->
@@ -5594,7 +5590,7 @@ instead.
 ### Support for weak or compromised algorithms
 
 The `node:crypto` module still supports some algorithms which are already
-compromised and are not currently recommended for use. The API also allows
+compromised and are not recommended for use. The API also allows
 the use of ciphers and hashes with a small key size that are too weak for safe
 use.
 
@@ -6016,10 +6012,6 @@ See the [list of SSL OP Flags][] for details.
     <td></td>
   </tr>
   <tr>
-    <td><code>ALPN_ENABLED</code></td>
-    <td></td>
-  </tr>
-  <tr>
     <td><code>RSA_PKCS1_PADDING</code></td>
     <td></td>
   </tr>
@@ -6099,7 +6091,7 @@ See the [list of SSL OP Flags][] for details.
 [FIPS provider from OpenSSL 3]: https://www.openssl.org/docs/man3.0/man7/crypto.html#FIPS-provider
 [HTML 5.2]: https://www.w3.org/TR/html52/changes.html#features-removed
 [JWK]: https://tools.ietf.org/html/rfc7517
-[NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf
+[NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar2.pdf
 [NIST SP 800-132]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [Nonce-Disrespecting Adversaries]: https://github.com/nonce-disrespect/nonce-disrespect

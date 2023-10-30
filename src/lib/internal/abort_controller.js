@@ -319,7 +319,7 @@ class AbortSignal extends EventTarget {
 function ClonedAbortSignal() {
   return createAbortSignal({ transferable: true });
 }
-ClonedAbortSignal.prototype[kDeserialize] = () => { };
+ClonedAbortSignal.prototype[kDeserialize] = () => {};
 
 ObjectDefineProperties(AbortSignal.prototype, {
   aborted: kEnumerableProperty,
@@ -373,34 +373,22 @@ function abortSignal(signal, reason) {
   });
 }
 
-// TODO(joyeecheung): use private fields and we'll get invalid access
-// validation from V8 instead of throwing ERR_INVALID_THIS ourselves.
-const kSignal = Symbol('signal');
-
-function validateAbortController(obj) {
-  if (obj?.[kSignal] === undefined)
-    throw new ERR_INVALID_THIS('AbortController');
-}
-
 class AbortController {
-  constructor() {
-    this[kSignal] = createAbortSignal();
-  }
+  #signal;
 
   /**
    * @type {AbortSignal}
    */
   get signal() {
-    validateAbortController(this);
-    return this[kSignal];
+    this.#signal ??= createAbortSignal();
+    return this.#signal;
   }
 
   /**
    * @param {any} [reason]
    */
   abort(reason = new DOMException('This operation was aborted', 'AbortError')) {
-    validateAbortController(this);
-    abortSignal(this[kSignal], reason);
+    abortSignal(this.#signal ??= createAbortSignal(), reason);
   }
 
   [customInspectSymbol](depth, options) {
@@ -411,7 +399,7 @@ class AbortController {
 
   static [kMakeTransferable]() {
     const controller = new AbortController();
-    controller[kSignal] = transferableAbortSignal(controller[kSignal]);
+    controller.#signal = createAbortSignal({ transferable: true });
     return controller;
   }
 }

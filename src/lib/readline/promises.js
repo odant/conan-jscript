@@ -11,6 +11,7 @@ const {
 
 const {
   Interface: _Interface,
+  kQuestion,
   kQuestionCancel,
 } = require('internal/readline/interface');
 
@@ -53,7 +54,7 @@ class Interface extends _Interface {
         };
       }
 
-      super.question(query, cb);
+      this[kQuestion](query, cb);
     });
   }
 }

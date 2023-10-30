@@ -30,10 +30,11 @@ const {
   ArrayPrototypeSome,
   ArrayPrototypeSplice,
   FunctionPrototypeCall,
-  ObjectCreate,
+  NumberParseInt,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ObjectValues,
+  RegExpPrototypeExec,
   StringPrototypeIndexOf,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -103,9 +104,9 @@ function Agent(options) {
 
   // Don't confuse net and make it think that we're connecting to a pipe
   this.options.path = null;
-  this.requests = ObjectCreate(null);
-  this.sockets = ObjectCreate(null);
-  this.freeSockets = ObjectCreate(null);
+  this.requests = { __proto__: null };
+  this.sockets = { __proto__: null };
+  this.freeSockets = { __proto__: null };
   this.keepAliveMsecs = this.options.keepAliveMsecs || 1000;
   this.keepAlive = this.options.keepAlive || false;
   this.maxSockets = this.options.maxSockets || Agent.defaultMaxSockets;
@@ -483,7 +484,24 @@ Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {
   socket.setKeepAlive(true, this.keepAliveMsecs);
   socket.unref();
 
-  const agentTimeout = this.options.timeout || 0;
+  let agentTimeout = this.options.timeout || 0;
+
+  if (socket._httpMessage?.res) {
+    const keepAliveHint = socket._httpMessage.res.headers['keep-alive'];
+
+    if (keepAliveHint) {
+      const hint = RegExpPrototypeExec(/^timeout=(\d+)/, keepAliveHint)?.[1];
+
+      if (hint) {
+        const serverHintTimeout = NumberParseInt(hint) * 1000;
+
+        if (serverHintTimeout < agentTimeout) {
+          agentTimeout = serverHintTimeout;
+        }
+      }
+    }
+  }
+
   if (socket.timeout !== agentTimeout) {
     socket.setTimeout(agentTimeout);
   }
@@ -533,5 +551,5 @@ function asyncResetHandle(socket) {
 
 module.exports = {
   Agent,
-  globalAgent: new Agent(),
+  globalAgent: new Agent({ keepAlive: true, scheduling: 'lifo', timeout: 5000 }),
 };

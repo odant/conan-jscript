@@ -505,6 +505,12 @@ function validateLinkHeaderFormat(value, name) {
   }
 }
 
+const validateInternalField = hideStackFrames((object, fieldKey, className) => {
+  if (typeof object !== 'object' || object === null || !ObjectPrototypeHasOwnProperty(object, fieldKey)) {
+    throw new ERR_INVALID_ARG_TYPE('this', className, object);
+  }
+});
+
 /**
  * @param {any} hints
  * @return {string}
@@ -568,4 +574,5 @@ module.exports = {
   validateUnion,
   validateAbortSignal,
   validateLinkHeaderValue,
+  validateInternalField,
 };

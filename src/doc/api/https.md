@@ -135,6 +135,17 @@ added: v0.1.90
 
 See [`server.close()`][] in the `node:http` module.
 
+### `server[Symbol.asyncDispose]()`
+
+<!-- YAML
+added: v20.4.0
+-->
+
+> Stability: 1 - Experimental
+
+Calls [`server.close()`][httpsServerClose] and returns a promise that
+fulfills when the server has closed.
+
 ### `server.closeAllConnections()`
 
 <!-- YAML
@@ -314,6 +325,11 @@ https.get('https://encrypted.google.com/', (res) => {
 
 <!-- YAML
 added: v0.5.9
+changes:
+  - version:
+      - v19.0.0
+    pr-url: https://github.com/nodejs/node/pull/43522
+    description: The agent now uses HTTP Keep-Alive by default.
 -->
 
 Global instance of [`https.Agent`][] for all HTTPS client requests.
@@ -566,4 +582,5 @@ headers: max-age=0; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; p
 [`tls.connect()`]: tls.md#tlsconnectoptions-callback
 [`tls.createSecureContext()`]: tls.md#tlscreatesecurecontextoptions
 [`tls.createServer()`]: tls.md#tlscreateserveroptions-secureconnectionlistener
+[httpsServerClose]: #serverclosecallback
 [sni wiki]: https://en.wikipedia.org/wiki/Server_Name_Indication

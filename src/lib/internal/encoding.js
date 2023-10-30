@@ -5,7 +5,6 @@
 
 const {
   Boolean,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectGetOwnPropertyDescriptors,
   ObjectSetPrototypeOf,
@@ -14,7 +13,6 @@ const {
   StringPrototypeSlice,
   Symbol,
   SymbolToStringTag,
-  Uint32Array,
   Uint8Array,
 } = primordials;
 
@@ -50,19 +48,15 @@ const {
   validateString,
   validateObject,
 } = require('internal/validators');
-
+const binding = internalBinding('encoding_binding');
 const {
   encodeInto,
+  encodeIntoResults,
   encodeUtf8String,
   decodeUTF8,
-} = internalBinding('buffer');
+} = binding;
 
-let Buffer;
-function lazyBuffer() {
-  if (Buffer === undefined)
-    Buffer = require('buffer').Buffer;
-  return Buffer;
-}
+const { Buffer } = require('buffer');
 
 function validateEncoder(obj) {
   if (obj == null || obj[kEncoder] !== true)
@@ -82,8 +76,11 @@ const empty = new Uint8Array(0);
 
 const encodings = new SafeMap([
   ['unicode-1-1-utf-8', 'utf-8'],
+  ['unicode11utf8', 'utf-8'],
+  ['unicode20utf8', 'utf-8'],
   ['utf8', 'utf-8'],
   ['utf-8', 'utf-8'],
+  ['x-unicode20utf8', 'utf-8'],
   ['866', 'ibm866'],
   ['cp866', 'ibm866'],
   ['csibm866', 'ibm866'],
@@ -182,6 +179,7 @@ const encodings = new SafeMap([
   ['iso885915', 'iso-8859-15'],
   ['iso_8859-15', 'iso-8859-15'],
   ['l9', 'iso-8859-15'],
+  ['iso-8859-16', 'iso-8859-16'],
   ['cskoi8r', 'koi8-r'],
   ['koi', 'koi8-r'],
   ['koi8', 'koi8-r'],
@@ -289,9 +287,22 @@ const encodings = new SafeMap([
   ['ksc5601', 'euc-kr'],
   ['ksc_5601', 'euc-kr'],
   ['windows-949', 'euc-kr'],
+  ['csiso2022kr', 'replacement'],
+  ['hz-gb-2312', 'replacement'],
+  ['iso-2022-cn', 'replacement'],
+  ['iso-2022-cn-ext', 'replacement'],
+  ['iso-2022-kr', 'replacement'],
+  ['replacement', 'replacement'],
+  ['unicodefffe', 'utf-16be'],
   ['utf-16be', 'utf-16be'],
+  ['csunicode', 'utf-16le'],
+  ['iso-10646-ucs-2', 'utf-16le'],
+  ['ucs-2', 'utf-16le'],
+  ['unicode', 'utf-16le'],
+  ['unicodefeff', 'utf-16le'],
   ['utf-16le', 'utf-16le'],
   ['utf-16', 'utf-16le'],
+  ['x-user-defined', 'x-user-defined'],
 ]);
 
 // Unfortunately, String.prototype.trim also removes non-ascii whitespace,
@@ -324,8 +335,6 @@ function getEncodingFromLabel(label) {
   return encodings.get(trimAsciiWhitespace(label.toLowerCase()));
 }
 
-const encodeIntoResults = new Uint32Array(2);
-
 class TextEncoder {
   constructor() {
     this[kEncoder] = true;
@@ -346,8 +355,12 @@ class TextEncoder {
     validateString(src, 'src');
     if (!dest || !isUint8Array(dest))
       throw new ERR_INVALID_ARG_TYPE('dest', 'Uint8Array', dest);
-    encodeInto(src, dest, encodeIntoResults);
-    return { read: encodeIntoResults[0], written: encodeIntoResults[1] };
+
+    encodeInto(src, dest);
+    // We need to read from the binding here since the buffer gets refreshed
+    // from the snapshot.
+    const { 0: read, 1: written } = encodeIntoResults;
+    return { read, written };
   }
 
   [inspect](depth, opts) {
@@ -355,9 +368,9 @@ class TextEncoder {
     if (typeof depth === 'number' && depth < 0)
       return this;
     const ctor = getConstructorOf(this);
-    const obj = ObjectCreate({
+    const obj = { __proto__: {
       constructor: ctor === null ? TextEncoder : ctor,
-    });
+    } };
     obj.encoding = this.encoding;
     // Lazy to avoid circular dependency
     return require('internal/util/inspect').inspect(obj, opts);
@@ -499,14 +512,14 @@ function makeTextDecoderJS() {
       validateDecoder(this);
       if (isAnyArrayBuffer(input)) {
         try {
-          input = lazyBuffer().from(input);
+          input = Buffer.from(input);
         } catch {
           input = empty;
         }
       } else if (isArrayBufferView(input)) {
         try {
-          input = lazyBuffer().from(input.buffer, input.byteOffset,
-                                    input.byteLength);
+          input = Buffer.from(input.buffer, input.byteOffset,
+                              input.byteLength);
         } catch {
           input = empty;
         }
@@ -576,7 +589,7 @@ const sharedProperties = ObjectGetOwnPropertyDescriptors({
     if (typeof depth === 'number' && depth < 0)
       return this;
     const constructor = getConstructorOf(this) || TextDecoder;
-    const obj = ObjectCreate({ constructor });
+    const obj = { __proto__: { constructor } };
     obj.encoding = this.encoding;
     obj.fatal = this.fatal;
     obj.ignoreBOM = this.ignoreBOM;

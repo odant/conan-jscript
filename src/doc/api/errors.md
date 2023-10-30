@@ -663,8 +663,7 @@ order to be compatible with the web platform's `AbortError`.
 ### `ERR_ACCESS_DENIED`
 
 A special type of error that is triggered whenever Node.js tries to get access
-to a resource restricted by the [policy][] manifest.
-For example, `process.binding`.
+to a resource restricted by the [Permission Model][].
 
 <a id="ERR_AMBIGUOUS_ARGUMENT"></a>
 
@@ -774,19 +773,17 @@ STDERR/STDOUT, and the data's length is longer than the `maxBuffer` option.
 
 ### `ERR_CLOSED_MESSAGE_PORT`
 
-<!--
-added:
-  - v16.2.0
-  - v14.17.1
+<!-- YAML
+added: v10.5.0
 changes:
-  - version: 11.12.0
-    pr-url: https://github.com/nodejs/node/pull/26487
-    description: The error message was removed.
   - version:
       - v16.2.0
       - v14.17.1
     pr-url: https://github.com/nodejs/node/pull/38510
     description: The error message was reintroduced.
+  - version: v11.12.0
+    pr-url: https://github.com/nodejs/node/pull/26487
+    description: The error message was removed.
 -->
 
 There was an attempt to use a `MessagePort` instance in a closed
@@ -803,7 +800,7 @@ non-writable `stdout` or `stderr` stream.
 
 ### `ERR_CONSTRUCT_CALL_INVALID`
 
-<!--
+<!-- YAML
 added: v12.5.0
 -->
 
@@ -1276,7 +1273,7 @@ to the current platform which is running Node.js is used.
 
 ### `ERR_FS_CP_DIR_TO_NON_DIR`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1287,7 +1284,7 @@ etc.) using [`fs.cp()`][].
 
 ### `ERR_FS_CP_EEXIST`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1298,7 +1295,7 @@ An attempt was made to copy over a file that already existed with
 
 ### `ERR_FS_CP_EINVAL`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1319,7 +1316,7 @@ Response body size doesn't match with the specified content-length header value.
 
 ### `ERR_FS_CP_FIFO_PIPE`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1329,7 +1326,7 @@ An attempt was made to copy a named pipe with [`fs.cp()`][].
 
 ### `ERR_FS_CP_NON_DIR_TO_DIR`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1340,7 +1337,7 @@ using [`fs.cp()`][].
 
 ### `ERR_FS_CP_SOCKET`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1350,7 +1347,7 @@ An attempt was made to copy to a socket with [`fs.cp()`][].
 
 ### `ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1361,7 +1358,7 @@ of `src`.
 
 ### `ERR_FS_CP_UNKNOWN`
 
-<!--
+<!-- YAML
 added: v16.7.0
 -->
 
@@ -1717,7 +1714,7 @@ made to mark a stream and dependent of itself.
 
 ### `ERR_HTTP2_TOO_MANY_INVALID_FRAMES`
 
-<!--
+<!-- YAML
 added: v15.14.0
 -->
 
@@ -2161,7 +2158,9 @@ for more information.
 ### `ERR_LOADER_CHAIN_INCOMPLETE`
 
 <!-- YAML
-added: v18.6.0
+added:
+  - v18.6.0
+  - v16.17.0
 -->
 
 An ESM loader hook returned without calling `next()` and without explicitly
@@ -2385,6 +2384,13 @@ error indicates that the idle loop has failed to stop.
 An attempt was made to use operations that can only be used when building
 V8 startup snapshot even though Node.js isn't building one.
 
+<a id="ERR_NOT_SUPPORTED_IN_SNAPSHOT"></a>
+
+### `ERR_NOT_SUPPORTED_IN_SNAPSHOT`
+
+An attempt was made to perform operations that are not supported when
+building a startup snapshot.
+
 <a id="ERR_NO_CRYPTO"></a>
 
 ### `ERR_NO_CRYPTO`
@@ -2431,7 +2437,9 @@ cannot be imported through the package resolution, unless using an absolute URL.
 ### `ERR_PARSE_ARGS_INVALID_OPTION_VALUE`
 
 <!-- YAML
-added: v18.3.0
+added:
+  - v18.3.0
+  - v16.17.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if a {boolean}
@@ -2443,7 +2451,9 @@ value is provided for an option of type {boolean}.
 ### `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL`
 
 <!-- YAML
-added: v18.3.0
+added:
+  - v18.3.0
+  - v16.17.0
 -->
 
 Thrown by [`util.parseArgs()`][], when a positional argument is provided and
@@ -2454,7 +2464,9 @@ Thrown by [`util.parseArgs()`][], when a positional argument is provided and
 ### `ERR_PARSE_ARGS_UNKNOWN_OPTION`
 
 <!-- YAML
-added: v18.3.0
+added:
+  - v18.3.0
+  - v16.17.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if an argument
@@ -2563,6 +2575,13 @@ An attempt was made to operate on an already closed socket.
 
 When calling [`net.Socket.write()`][] on a connecting socket and the socket was
 closed before the connection was established.
+
+<a id="ERR_SOCKET_CONNECTION_TIMEOUT"></a>
+
+### `ERR_SOCKET_CONNECTION_TIMEOUT`
+
+The socket was unable to connect to any address returned by the DNS within the
+allowed timeout when using the family autoselection algorithm.
 
 <a id="ERR_SOCKET_DGRAM_IS_CONNECTED"></a>
 
@@ -2707,6 +2726,20 @@ This error represents a failed TAP validation.
 This error represents a failed test. Additional information about the failure
 is available via the `cause` property. The `failureType` property specifies
 what the test was doing when the failure occurred.
+
+<a id="ERR_TLS_ALPN_CALLBACK_INVALID_RESULT"></a>
+
+### `ERR_TLS_ALPN_CALLBACK_INVALID_RESULT`
+
+This error is thrown when an `ALPNCallback` returns a value that is not in the
+list of ALPN protocols offered by the client.
+
+<a id="ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS"></a>
+
+### `ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS`
+
+This error is thrown when creating a `TLSServer` if the TLS options include
+both `ALPNProtocols` and `ALPNCallback`. These options are mutually exclusive.
 
 <a id="ERR_TLS_CERT_ALTNAME_FORMAT"></a>
 
@@ -3142,7 +3175,7 @@ attempting a [`require()`][] operation or when loading the program entry point.
 
 ### `ERR_CANNOT_TRANSFER_OBJECT`
 
-<!--
+<!-- YAML
 added: v10.5.0
 removed: v12.5.0
 -->
@@ -3487,7 +3520,9 @@ The module must be successfully linked before instantiation.
 
 <!-- YAML
 added: v10.0.0
-removed: v18.1.0
+removed:
+  - v18.1.0
+  - v16.17.0
 -->
 
 The linker function returned a module for which linking has failed.
@@ -3531,6 +3566,7 @@ The native call from `process.cpuUsage` could not be processed.
 [JSON Web Key Elliptic Curve Registry]: https://www.iana.org/assignments/jose/jose.xhtml#web-key-elliptic-curve
 [JSON Web Key Types Registry]: https://www.iana.org/assignments/jose/jose.xhtml#web-key-types
 [Node.js error codes]: #nodejs-error-codes
+[Permission Model]: permissions.md#permission-model
 [RFC 7230 Section 3]: https://tools.ietf.org/html/rfc7230#section-3
 [Subresource Integrity specification]: https://www.w3.org/TR/SRI/#the-integrity-attribute
 [V8's stack trace API]: https://v8.dev/docs/stack-trace-api

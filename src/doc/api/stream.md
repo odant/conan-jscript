@@ -278,7 +278,7 @@ run().catch(console.error);
 rs.resume(); // Drain the stream.
 ```
 
-The `finished` API provides [callback version][stream-finished]:
+The `finished` API also provides a [callback version][stream-finished].
 
 ### Object mode
 
@@ -820,7 +820,9 @@ the stream has not been destroyed, errored, or ended.
 ##### `writable.writableAborted`
 
 <!-- YAML
-added: v18.0.0
+added:
+  - v18.0.0
+  - v16.17.0
 -->
 
 > Stability: 1 - Experimental
@@ -1905,7 +1907,7 @@ has less then 64 KiB of data because no `highWaterMark` option is provided to
 ##### `readable[Symbol.asyncDispose]()`
 
 <!-- YAML
-added: v18.18.0
+added: v20.4.0
 -->
 
 > Stability: 1 - Experimental
@@ -1916,7 +1918,9 @@ a promise that fulfills when the stream is finished.
 ##### `readable.compose(stream[, options])`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.1.0
+  - v18.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -2008,6 +2012,10 @@ showBoth();
 added:
   - v17.4.0
   - v16.14.0
+changes:
+  - version: v20.7.0
+    pr-url: https://github.com/nodejs/node/pull/49249
+    description: added `highWaterMark` in options.
 -->
 
 > Stability: 1 - Experimental
@@ -2021,6 +2029,8 @@ added:
 * `options` {Object}
   * `concurrency` {number} the maximum concurrent invocation of `fn` to call
     on the stream at once. **Default:** `1`.
+  * `highWaterMark` {number} how many items to buffer while waiting for user
+    consumption of the mapped items. **Default:** `concurrency * 2 - 1`.
   * `signal` {AbortSignal} allows destroying the stream if the signal is
     aborted.
 * Returns: {Readable} a stream mapped with the function `fn`.
@@ -2055,6 +2065,10 @@ for await (const result of dnsResults) {
 added:
   - v17.4.0
   - v16.14.0
+changes:
+  - version: v20.7.0
+    pr-url: https://github.com/nodejs/node/pull/49249
+    description: added `highWaterMark` in options.
 -->
 
 > Stability: 1 - Experimental
@@ -2067,6 +2081,8 @@ added:
 * `options` {Object}
   * `concurrency` {number} the maximum concurrent invocation of `fn` to call
     on the stream at once. **Default:** `1`.
+  * `highWaterMark` {number} how many items to buffer while waiting for user
+    consumption of the filtered items. **Default:** `concurrency * 2 - 1`.
   * `signal` {AbortSignal} allows destroying the stream if the signal is
     aborted.
 * Returns: {Readable} a stream filtered with the predicate `fn`.
@@ -2103,7 +2119,9 @@ for await (const result of dnsResults) {
 ##### `readable.forEach(fn[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2162,7 +2180,9 @@ console.log('done'); // Stream has finished
 ##### `readable.toArray([options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2200,7 +2220,9 @@ const dnsResults = await Readable.from([
 ##### `readable.some(fn[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2249,7 +2271,9 @@ console.log('done'); // Stream has finished
 ##### `readable.find(fn[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.17.0
 -->
 
 > Stability: 1 - Experimental
@@ -2299,7 +2323,9 @@ console.log('done'); // Stream has finished
 ##### `readable.every(fn[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2348,7 +2374,9 @@ console.log('done'); // Stream has finished
 ##### `readable.flatMap(fn[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2397,7 +2425,9 @@ for await (const result of concatResult) {
 ##### `readable.drop(limit[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2419,7 +2449,9 @@ await Readable.from([1, 2, 3, 4]).drop(2).toArray(); // [3, 4]
 ##### `readable.take(limit[, options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2441,9 +2473,11 @@ await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
 ##### `readable.asIndexedPairs([options])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 changes:
-  - version: v18.17.0
+  - version: v20.3.0
     pr-url: https://github.com/nodejs/node/pull/48102
     description: Using the `asIndexedPairs` method emits a runtime warning that
                   it will be removed in a future version.
@@ -2470,7 +2504,9 @@ console.log(pairs); // [[0, 'a'], [1, 'b'], [2, 'c']]
 ##### `readable.reduce(fn[, initial[, options]])`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 -->
 
 > Stability: 1 - Experimental
@@ -2618,7 +2654,7 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v18.14.0
+  - version: v19.5.0
     pr-url: https://github.com/nodejs/node/pull/46205
     description: Added support for `ReadableStream` and `WritableStream`.
   - version: v15.11.0
@@ -2713,7 +2749,7 @@ const cleanup = finished(rs, (err) => {
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v18.16.0
+  - version: v19.7.0
     pr-url: https://github.com/nodejs/node/pull/46307
     description: Added support for webstreams.
   - version: v18.0.0
@@ -2814,7 +2850,7 @@ const server = http.createServer((req, res) => {
 <!-- YAML
 added: v16.9.0
 changes:
-  - version: v18.16.0
+  - version: v19.8.0
     pr-url: https://github.com/nodejs/node/pull/46675
     description: Added support for webstreams.
 -->
@@ -3067,7 +3103,7 @@ added: v17.0.0
 <!-- YAML
 added: v16.8.0
 changes:
-  - version: v18.17.0
+  - version: v19.5.0
     pr-url: https://github.com/nodejs/node/pull/46190
     description: The `src` argument can now be a `ReadableStream` or
                  `WritableStream`.
@@ -3255,7 +3291,7 @@ readable.getReader().read().then((result) => {
 <!-- YAML
 added: v15.4.0
 changes:
-  - version: v18.16.0
+  - version: v19.7.0
     pr-url: https://github.com/nodejs/node/pull/46273
     description: Added support for `ReadableStream` and
                  `WritableStream`.
@@ -3343,7 +3379,7 @@ reader.read().then(({ value, done }) => {
 ### `stream.getDefaultHighWaterMark(objectMode)`
 
 <!-- YAML
-added: v18.17.0
+added: v19.9.0
 -->
 
 * `objectMode` {boolean}
@@ -3355,7 +3391,7 @@ Defaults to `16384` (16 KiB), or `16` for `objectMode`.
 ### `stream.setDefaultHighWaterMark(objectMode, value)`
 
 <!-- YAML
-added: v18.17.0
+added: v19.9.0
 -->
 
 * `objectMode` {boolean}

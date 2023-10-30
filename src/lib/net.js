@@ -23,6 +23,7 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeIncludes,
   ArrayPrototypeIndexOf,
   ArrayPrototypePush,
   Boolean,
@@ -35,8 +36,8 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
-  ObjectCreate,
   SymbolAsyncDispose,
+  SymbolDispose,
 } = primordials;
 
 const EventEmitter = require('events');
@@ -58,10 +59,10 @@ const {
   UV_EINVAL,
   UV_ENOTCONN,
   UV_ECANCELED,
+  UV_ETIMEDOUT,
 } = internalBinding('uv');
 
 const { Buffer } = require('buffer');
-const { guessHandleType } = internalBinding('util');
 const { ShutdownWrap } = internalBinding('stream_wrap');
 const {
   TCP,
@@ -100,6 +101,7 @@ const {
     ERR_INVALID_HANDLE_TYPE,
     ERR_SERVER_ALREADY_LISTEN,
     ERR_SERVER_NOT_RUNNING,
+    ERR_SOCKET_CONNECTION_TIMEOUT,
     ERR_SOCKET_CLOSED,
     ERR_SOCKET_CLOSED_BEFORE_CONNECTION,
     ERR_MISSING_ARGS,
@@ -112,7 +114,7 @@ const {
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
 const { queueMicrotask } = require('internal/process/task_queues');
-const { kEmptyObject, promisify } = require('internal/util');
+const { kEmptyObject, guessHandleType, promisify } = require('internal/util');
 const {
   validateAbortSignal,
   validateBoolean,
@@ -123,10 +125,6 @@ const {
   validateString,
 } = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
-const {
-  DTRACE_NET_SERVER_CONNECTION,
-  DTRACE_NET_STREAM_END,
-} = require('internal/dtrace');
 const { getOptionValue } = require('internal/options');
 
 // Lazy loaded to improve startup performance.
@@ -134,7 +132,7 @@ let cluster;
 let dns;
 let BlockList;
 let SocketAddress;
-let autoSelectFamilyDefault = getOptionValue('--enable-network-family-autoselection');
+let autoSelectFamilyDefault = getOptionValue('--network-family-autoselection');
 let autoSelectFamilyAttemptTimeoutDefault = 250;
 
 const { clearTimeout, setTimeout } = require('timers');
@@ -149,20 +147,9 @@ const noop = () => {};
 
 const kPerfHooksNetConnectContext = Symbol('kPerfHooksNetConnectContext');
 
-let netClientSocketChannel;
-let netServerSocketChannel;
-function lazyChannels() {
-  // TODO(joyeecheung): support diagnostics channels in the snapshot.
-  // For now it is fine to create them lazily when there isn't a snapshot to
-  // build. If users need the channels they would have to create them first
-  // before invoking any built-ins that would publish to these channels
-  // anyway.
-  if (netClientSocketChannel === undefined) {
-    const dc = require('diagnostics_channel');
-    netClientSocketChannel = dc.channel('net.client.socket');
-    netServerSocketChannel = dc.channel('net.server.socket');
-  }
-}
+const dc = require('diagnostics_channel');
+const netClientSocketChannel = dc.channel('net.client.socket');
+const netServerSocketChannel = dc.channel('net.server.socket');
 
 const {
   hasObserver,
@@ -236,7 +223,7 @@ function connect(...args) {
   const options = normalized[0];
   debug('createConnection', normalized);
   const socket = new Socket(options);
-  lazyChannels();
+
   if (netClientSocketChannel.hasSubscribers) {
     netClientSocketChannel.publish({
       socket,
@@ -265,7 +252,7 @@ function getDefaultAutoSelectFamilyAttemptTimeout() {
 function setDefaultAutoSelectFamilyAttemptTimeout(value) {
   validateInt32(value, 'value', 1);
 
-  if (value < 1) {
+  if (value < 10) {
     value = 10;
   }
 
@@ -499,6 +486,10 @@ function Socket(options) {
     }
   }
 
+  if (options.signal) {
+    addClientAbortSignalOption(this, options);
+  }
+
   // Reserve properties
   this.server = null;
   this._server = null;
@@ -730,7 +721,6 @@ Socket.prototype._read = function(n) {
 Socket.prototype.end = function(data, encoding, callback) {
   stream.Duplex.prototype.end.call(this,
                                    data, encoding, callback);
-  DTRACE_NET_STREAM_END(this);
   return this;
 };
 
@@ -1109,8 +1099,18 @@ function internalConnectMultiple(context, canceled) {
   clearTimeout(context[kTimeout]);
   const self = context.socket;
 
+  // We were requested to abort. Stop all operations
+  if (self._aborted) {
+    return;
+  }
+
   // All connections have been tried without success, destroy with error
   if (canceled || context.current === context.addresses.length) {
+    if (context.errors.length === 0) {
+      self.destroy(new ERR_SOCKET_CONNECTION_TIMEOUT());
+      return;
+    }
+
     self.destroy(aggregateErrors(context.errors));
     return;
   }
@@ -1118,7 +1118,11 @@ function internalConnectMultiple(context, canceled) {
   assert(self.connecting);
 
   const current = context.current++;
-  const handle = current === 0 ? self._handle : new TCP(TCPConstants.SOCKET);
+
+  if (current > 0) {
+    self[kReinitializeHandle](new TCP(TCPConstants.SOCKET));
+  }
+
   const { localPort, port, flags } = context;
   const { address, family: addressType } = context.addresses[current];
   let localAddress;
@@ -1127,16 +1131,16 @@ function internalConnectMultiple(context, canceled) {
   if (localPort) {
     if (addressType === 4) {
       localAddress = DEFAULT_IPV4_ADDR;
-      err = handle.bind(localAddress, localPort);
+      err = self._handle.bind(localAddress, localPort);
     } else { // addressType === 6
       localAddress = DEFAULT_IPV6_ADDR;
-      err = handle.bind6(localAddress, localPort, flags);
+      err = self._handle.bind6(localAddress, localPort, flags);
     }
 
     debug('connect/multiple: binding to localAddress: %s and localPort: %d (addressType: %d)',
           localAddress, localPort, addressType);
 
-    err = checkBindError(err, localPort, handle);
+    err = checkBindError(err, localPort, self._handle);
     if (err) {
       ArrayPrototypePush(context.errors, exceptionWithHostPort(err, 'bind', localAddress, localPort));
       internalConnectMultiple(context);
@@ -1156,9 +1160,9 @@ function internalConnectMultiple(context, canceled) {
   ArrayPrototypePush(self.autoSelectFamilyAttemptedAddresses, `${address}:${port}`);
 
   if (addressType === 4) {
-    err = handle.connect(req, address, port);
+    err = self._handle.connect(req, address, port);
   } else {
-    err = handle.connect6(req, address, port);
+    err = self._handle.connect6(req, address, port);
   }
 
   if (err) {
@@ -1178,7 +1182,7 @@ function internalConnectMultiple(context, canceled) {
     debug('connect/multiple: setting the attempt timeout to %d ms', context.timeout);
 
     // If the attempt has not returned an error, start the connection timer
-    context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req, handle);
+    context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req, self._handle);
   }
 }
 
@@ -1195,6 +1199,15 @@ Socket.prototype.connect = function(...args) {
   }
   const options = normalized[0];
   const cb = normalized[1];
+
+  if (cb !== null) {
+    this.once('connect', cb);
+  }
+
+  // If the parent is already connecting, do not attempt to connect again
+  if (this._parent && this._parent.connecting) {
+    return this;
+  }
 
   // options.port === null will be checked later.
   if (options.port === undefined && options.path == null)
@@ -1218,10 +1231,6 @@ Socket.prototype.connect = function(...args) {
       new Pipe(PipeConstants.SOCKET) :
       new TCP(TCPConstants.SOCKET);
     initSocketHandle(this);
-  }
-
-  if (cb !== null) {
-    this.once('connect', cb);
   }
 
   this._unrefTimer();
@@ -1346,6 +1355,7 @@ function lookupAndConnect(self, options) {
         options,
         dnsopts,
         port,
+        localAddress,
         localPort,
         autoSelectFamilyAttemptTimeout,
       );
@@ -1388,7 +1398,9 @@ function lookupAndConnect(self, options) {
   });
 }
 
-function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, dnsopts, port, localPort, timeout) {
+function lookupAndConnectMultiple(
+  self, async_id_symbol, lookup, host, options, dnsopts, port, localAddress, localPort, timeout,
+) {
   defaultTriggerAsyncIdScope(self[async_id_symbol], function emitLookup() {
     lookup(host, dnsopts, function emitLookup(err, addresses) {
       // It's possible we were destroyed while looking this up.
@@ -1409,6 +1421,7 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, 
       // Filter addresses by only keeping the one which are either IPv4 or IPV6.
       // The first valid address determines which group has preference on the
       // alternate family sorting which happens later.
+      const validAddresses = [[], []];
       const validIps = [[], []];
       let destinations;
       for (let i = 0, l = addresses.length; i < l; i++) {
@@ -1421,12 +1434,19 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, 
             destinations = addressType === 6 ? { 6: 0, 4: 1 } : { 4: 0, 6: 1 };
           }
 
-          ArrayPrototypePush(validIps[destinations[addressType]], address);
+          const destination = destinations[addressType];
+
+          // Only try an address once
+          if (!ArrayPrototypeIncludes(validIps[destination], ip)) {
+            ArrayPrototypePush(validAddresses[destination], address);
+            ArrayPrototypePush(validIps[destination], ip);
+          }
         }
       }
 
+
       // When no AAAA or A records are available, fail on the first one
-      if (!validIps[0].length && !validIps[1].length) {
+      if (!validAddresses[0].length && !validAddresses[1].length) {
         const { address: firstIp, family: firstAddressType } = addresses[0];
 
         if (!isIP(firstIp)) {
@@ -1444,16 +1464,36 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, 
 
       // Sort addresses alternating families
       const toAttempt = [];
-      for (let i = 0, l = MathMax(validIps[0].length, validIps[1].length); i < l; i++) {
-        if (i in validIps[0]) {
-          ArrayPrototypePush(toAttempt, validIps[0][i]);
+      for (let i = 0, l = MathMax(validAddresses[0].length, validAddresses[1].length); i < l; i++) {
+        if (i in validAddresses[0]) {
+          ArrayPrototypePush(toAttempt, validAddresses[0][i]);
         }
-        if (i in validIps[1]) {
-          ArrayPrototypePush(toAttempt, validIps[1][i]);
+        if (i in validAddresses[1]) {
+          ArrayPrototypePush(toAttempt, validAddresses[1][i]);
         }
       }
 
+      if (toAttempt.length === 1) {
+        debug('connect/multiple: only one address found, switching back to single connection');
+        const { address: ip, family: addressType } = toAttempt[0];
+
+        self._unrefTimer();
+        defaultTriggerAsyncIdScope(
+          self[async_id_symbol],
+          internalConnect,
+          self,
+          ip,
+          port,
+          addressType,
+          localAddress,
+          localPort,
+        );
+
+        return;
+      }
+
       self.autoSelectFamilyAttemptedAddresses = [];
+      debug('connect/multiple: will try the following addresses', toAttempt);
 
       const context = {
         socket: self,
@@ -1565,7 +1605,48 @@ function afterConnect(status, handle, req, readable, writable) {
   }
 }
 
+function addClientAbortSignalOption(self, options) {
+  validateAbortSignal(options.signal, 'options.signal');
+  const { signal } = options;
+  let disposable;
+
+  function onAbort() {
+    disposable?.[SymbolDispose]();
+    self._aborted = true;
+  }
+
+  if (signal.aborted) {
+    process.nextTick(onAbort);
+  } else {
+    process.nextTick(() => {
+      disposable = EventEmitter.addAbortListener(signal, onAbort);
+    });
+  }
+}
+
+function createConnectionError(req, status) {
+  let details;
+
+  if (req.localAddress && req.localPort) {
+    details = req.localAddress + ':' + req.localPort;
+  }
+
+  const ex = exceptionWithHostPort(status,
+                                   'connect',
+                                   req.address,
+                                   req.port,
+                                   details);
+  if (details) {
+    ex.localAddress = req.localAddress;
+    ex.localPort = req.localPort;
+  }
+
+  return ex;
+}
+
 function afterConnectMultiple(context, current, status, handle, req, readable, writable) {
+  debug('connect/multiple: connection attempt to %s:%s completed with status %s', req.address, req.port, status);
+
   // Make sure another connection is not spawned
   clearTimeout(context[kTimeout]);
 
@@ -1578,40 +1659,13 @@ function afterConnectMultiple(context, current, status, handle, req, readable, w
 
   const self = context.socket;
 
-
   // Some error occurred, add to the list of exceptions
   if (status !== 0) {
-    let details;
-    if (req.localAddress && req.localPort) {
-      details = req.localAddress + ':' + req.localPort;
-    }
-    const ex = exceptionWithHostPort(status,
-                                     'connect',
-                                     req.address,
-                                     req.port,
-                                     details);
-    if (details) {
-      ex.localAddress = req.localAddress;
-      ex.localPort = req.localPort;
-    }
-
-    ArrayPrototypePush(context.errors, ex);
+    ArrayPrototypePush(context.errors, createConnectionError(req, status));
 
     // Try the next address
     internalConnectMultiple(context, status === UV_ECANCELED);
     return;
-  }
-
-  // One of the connection has completed and correctly dispatched but after timeout, ignore this one
-  if (status === 0 && current !== context.current - 1) {
-    debug('connect/multiple: ignoring successful but timedout connection to %s:%s', req.address, req.port);
-    handle.close();
-    return;
-  }
-
-  if (context.current > 1 && self[kReinitializeHandle]) {
-    self[kReinitializeHandle](handle);
-    handle = self._handle;
   }
 
   if (hasObserver('net')) {
@@ -1622,17 +1676,18 @@ function afterConnectMultiple(context, current, status, handle, req, readable, w
     );
   }
 
-  afterConnect(status, handle, req, readable, writable);
+  afterConnect(status, self._handle, req, readable, writable);
 }
 
 function internalConnectMultipleTimeout(context, req, handle) {
   debug('connect/multiple: connection to %s:%s timed out', req.address, req.port);
   req.oncomplete = undefined;
+  ArrayPrototypePush(context.errors, createConnectionError(req, UV_ETIMEDOUT));
   handle.close();
   internalConnectMultiple(context);
 }
 
-function addAbortSignalOption(self, options) {
+function addServerAbortSignalOption(self, options) {
   if (options?.signal === undefined) {
     return;
   }
@@ -1644,8 +1699,8 @@ function addAbortSignalOption(self, options) {
   if (signal.aborted) {
     process.nextTick(onAborted);
   } else {
-    signal.addEventListener('abort', onAborted);
-    self.once('close', () => signal.removeEventListener('abort', onAborted));
+    const disposable = EventEmitter.addAbortListener(signal, onAborted);
+    self.once('close', disposable[SymbolDispose]);
   }
 }
 
@@ -1921,7 +1976,7 @@ Server.prototype.listen = function(...args) {
     listenInCluster(this, null, -1, -1, backlogFromArgs);
     return this;
   }
-  addAbortSignalOption(this, options);
+  addServerAbortSignalOption(this, options);
   // (handle[, backlog][, cb]) where handle is an object with a fd
   if (typeof options.fd === 'number' && options.fd >= 0) {
     listenInCluster(this, null, null, null, backlogFromArgs, options.fd);
@@ -2053,16 +2108,16 @@ function onconnection(err, clientHandle) {
 
   if (self.maxConnections && self._connections >= self.maxConnections) {
     if (clientHandle.getsockname || clientHandle.getpeername) {
-      const data = ObjectCreate(null);
+      const data = { __proto__: null };
       if (clientHandle.getsockname) {
-        const localInfo = ObjectCreate(null);
+        const localInfo = { __proto__: null };
         clientHandle.getsockname(localInfo);
         data.localAddress = localInfo.address;
         data.localPort = localInfo.port;
         data.localFamily = localInfo.family;
       }
       if (clientHandle.getpeername) {
-        const remoteInfo = ObjectCreate(null);
+        const remoteInfo = { __proto__: null };
         clientHandle.getpeername(remoteInfo);
         data.remoteAddress = remoteInfo.address;
         data.remotePort = remoteInfo.port;
@@ -2099,10 +2154,7 @@ function onconnection(err, clientHandle) {
   self._connections++;
   socket.server = self;
   socket._server = self;
-
-  DTRACE_NET_SERVER_CONNECTION(socket);
   self.emit('connection', socket);
-  lazyChannels();
   if (netServerSocketChannel.hasSubscribers) {
     netServerSocketChannel.publish({
       socket,

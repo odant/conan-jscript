@@ -72,6 +72,8 @@ const {
   ERR_INVALID_ARG_VALUE,
   ERR_MULTIPLE_CALLBACK,
   ERR_SOCKET_CLOSED,
+  ERR_TLS_ALPN_CALLBACK_INVALID_RESULT,
+  ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS,
   ERR_TLS_DH_PARAM_SIZE,
   ERR_TLS_HANDSHAKE_TIMEOUT,
   ERR_TLS_INVALID_CONTEXT,
@@ -108,6 +110,7 @@ const kErrorEmitted = Symbol('error-emitted');
 const kHandshakeTimeout = Symbol('handshake-timeout');
 const kRes = Symbol('res');
 const kSNICallback = Symbol('snicallback');
+const kALPNCallback = Symbol('alpncallback');
 const kEnableTrace = Symbol('enableTrace');
 const kPskCallback = Symbol('pskcallback');
 const kPskIdentityHint = Symbol('pskidentityhint');
@@ -233,6 +236,45 @@ function loadSNI(info) {
   });
 }
 
+
+function callALPNCallback(protocolsBuffer) {
+  const handle = this;
+  const socket = handle[owner_symbol];
+
+  const servername = handle.getServername();
+
+  // Collect all the protocols from the given buffer:
+  const protocols = [];
+  let offset = 0;
+  while (offset < protocolsBuffer.length) {
+    const protocolLen = protocolsBuffer[offset];
+    offset += 1;
+
+    const protocol = protocolsBuffer.slice(offset, offset + protocolLen);
+    offset += protocolLen;
+
+    protocols.push(protocol.toString('ascii'));
+  }
+
+  const selectedProtocol = socket[kALPNCallback]({
+    servername,
+    protocols,
+  });
+
+  // Undefined -> all proposed protocols rejected
+  if (selectedProtocol === undefined) return undefined;
+
+  const protocolIndex = protocols.indexOf(selectedProtocol);
+  if (protocolIndex === -1) {
+    throw new ERR_TLS_ALPN_CALLBACK_INVALID_RESULT(selectedProtocol, protocols);
+  }
+  let protocolOffset = 0;
+  for (let i = 0; i < protocolIndex; i++) {
+    protocolOffset += 1 + protocols[i].length;
+  }
+
+  return protocolOffset;
+}
 
 function requestOCSP(socket, info) {
   if (!info.OCSPRequest || !socket.server)
@@ -493,6 +535,7 @@ function TLSSocket(socket, opts) {
   this._controlReleased = false;
   this.secureConnecting = true;
   this._SNICallback = null;
+  this[kALPNCallback] = null;
   this.servername = null;
   this.alpnProtocol = null;
   this.authorized = false;
@@ -661,6 +704,9 @@ TLSSocket.prototype._wrapHandle = function(wrap, handle, wrapHasActiveWriteFromP
   defineHandleReading(this, handle);
 
   this.on('close', onSocketCloseDestroySSL);
+  if (wrap) {
+    wrap.on('close', () => this.destroy());
+  }
 
   return res;
 };
@@ -786,6 +832,13 @@ TLSSocket.prototype._init = function(socket, wrap) {
     ssl.onnewsession = onnewsession;
     ssl.lastHandshakeTime = 0;
     ssl.handshakes = 0;
+
+    if (options.ALPNCallback) {
+      validateFunction(options.ALPNCallback, 'options.ALPNCallback');
+      this[kALPNCallback] = options.ALPNCallback;
+      ssl.ALPNCallback = callALPNCallback;
+      ssl.enableALPNCb();
+    }
 
     if (this.server) {
       if (this.server.listenerCount('resumeSession') > 0 ||
@@ -1165,6 +1218,7 @@ function tlsConnectionListener(rawSocket) {
     rejectUnauthorized: this.rejectUnauthorized,
     handshakeTimeout: this[kHandshakeTimeout],
     ALPNProtocols: this.ALPNProtocols,
+    ALPNCallback: this.ALPNCallback,
     SNICallback: this[kSNICallback] || SNICallback,
     enableTrace: this[kEnableTrace],
     pauseOnConnect: this.pauseOnConnect,
@@ -1263,6 +1317,11 @@ function Server(options, listener) {
   this._contexts = [];
   this.requestCert = options.requestCert === true;
   this.rejectUnauthorized = options.rejectUnauthorized !== false;
+
+  this.ALPNCallback = options.ALPNCallback;
+  if (this.ALPNCallback && options.ALPNProtocols) {
+    throw new ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS();
+  }
 
   if (options.sessionTimeout)
     this.sessionTimeout = options.sessionTimeout;
@@ -1629,14 +1688,12 @@ function onConnectSecure() {
     debug('client emit secureConnect. rejectUnauthorized: %s, ' +
           'authorizationError: %s', options.rejectUnauthorized,
           this.authorizationError);
-    this.secureConnecting = false;
-    this.emit('secureConnect');
   } else {
     this.authorized = true;
     debug('client emit secureConnect. authorized:', this.authorized);
-    this.secureConnecting = false;
-    this.emit('secureConnect');
   }
+  this.secureConnecting = false;
+  this.emit('secureConnect');
 
   this[kIsVerified] = true;
   const session = this[kPendingSession];

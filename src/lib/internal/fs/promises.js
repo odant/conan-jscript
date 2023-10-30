@@ -59,7 +59,6 @@ const {
   getStatsFromBinding,
   getValidatedPath,
   getValidMode,
-  nullCheck,
   preprocessSymlinkDestination,
   stringToFlags,
   stringToSymlinkType,
@@ -70,7 +69,7 @@ const {
   validateOffsetLengthWrite,
   validateRmOptions,
   validateRmdirOptions,
-  validatePrimitiveStringAfterArrayBufferView,
+  validateStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const { opendir } = require('internal/fs/dir');
@@ -81,6 +80,7 @@ const {
   validateBuffer,
   validateEncoding,
   validateInteger,
+  validateObject,
   validateString,
 } = require('internal/validators');
 const pathModule = require('path');
@@ -91,7 +91,8 @@ const {
 } = require('internal/util');
 const { EventEmitterMixin } = require('internal/event_target');
 const { StringDecoder } = require('string_decoder');
-const { watch } = require('internal/fs/watchers');
+const { kFSWatchStart, watch } = require('internal/fs/watchers');
+const nonNativeWatcher = require('internal/fs/recursive_watch');
 const { isIterable } = require('internal/streams/utils');
 const assert = require('internal/assert');
 
@@ -113,6 +114,9 @@ const {
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
+
+const isWindows = process.platform === 'win32';
+const isOSX = process.platform === 'darwin';
 
 let cpPromises;
 function lazyLoadCpPromises() {
@@ -249,6 +253,9 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
   /**
    * @typedef {import('../webstreams/readablestream').ReadableStream
    * } ReadableStream
+   * @param {{
+   *   type?: string;
+   *   }} [options]
    * @returns {ReadableStream}
    */
   readableWebStream(options = kEmptyObject) {
@@ -274,17 +281,8 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
         this[kHandle],
         undefined,
         { ondone: () => this[kUnref]() });
-
-      const {
-        readableStreamCancel,
-      } = require('internal/webstreams/readablestream');
-      this[kRef]();
-      this.once('close', () => {
-        readableStreamCancel(readable);
-      });
     } else {
       const {
-        readableStreamCancel,
         ReadableStream,
       } = require('internal/webstreams/readablestream');
 
@@ -311,13 +309,15 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
           ondone();
         },
       });
-
-      this[kRef]();
-
-      this.once('close', () => {
-        readableStreamCancel(readable);
-      });
     }
+
+    const {
+      readableStreamCancel,
+    } = require('internal/webstreams/readablestream');
+    this[kRef]();
+    this.once('close', () => {
+      readableStreamCancel(readable);
+    });
 
     return readable;
   }
@@ -595,6 +595,9 @@ async function read(handle, bufferOrParams, offset, length, position) {
   let buffer = bufferOrParams;
   if (!isArrayBufferView(buffer)) {
     // This is fh.read(params)
+    if (bufferOrParams !== undefined) {
+      validateObject(bufferOrParams, 'options', { nullable: true });
+    }
     ({
       buffer = Buffer.alloc(16384),
       offset = 0,
@@ -623,7 +626,7 @@ async function read(handle, bufferOrParams, offset, length, position) {
   length |= 0;
 
   if (length === 0)
-    return { bytesRead: length, buffer };
+    return { __proto__: null, bytesRead: length, buffer };
 
   if (buffer.byteLength === 0) {
     throw new ERR_INVALID_ARG_VALUE('buffer', buffer,
@@ -638,7 +641,7 @@ async function read(handle, bufferOrParams, offset, length, position) {
   const bytesRead = (await binding.read(handle.fd, buffer, offset, length,
                                         position, kUsePromises)) || 0;
 
-  return { bytesRead, buffer };
+  return { __proto__: null, bytesRead, buffer };
 }
 
 async function readv(handle, buffers, position) {
@@ -649,12 +652,12 @@ async function readv(handle, buffers, position) {
 
   const bytesRead = (await binding.readBuffers(handle.fd, buffers, position,
                                                kUsePromises)) || 0;
-  return { bytesRead, buffers };
+  return { __proto__: null, bytesRead, buffers };
 }
 
 async function write(handle, buffer, offsetOrOptions, length, position) {
   if (buffer?.byteLength === 0)
-    return { bytesWritten: 0, buffer };
+    return { __proto__: null, bytesWritten: 0, buffer };
 
   let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
@@ -679,14 +682,14 @@ async function write(handle, buffer, offsetOrOptions, length, position) {
     const bytesWritten =
       (await binding.writeBuffer(handle.fd, buffer, offset,
                                  length, position, kUsePromises)) || 0;
-    return { bytesWritten, buffer };
+    return { __proto__: null, bytesWritten, buffer };
   }
 
-  validatePrimitiveStringAfterArrayBufferView(buffer, 'buffer');
+  validateStringAfterArrayBufferView(buffer, 'buffer');
   validateEncoding(buffer, length);
   const bytesWritten = (await binding.writeString(handle.fd, buffer, offset,
                                                   length, kUsePromises)) || 0;
-  return { bytesWritten, buffer };
+  return { __proto__: null, bytesWritten, buffer };
 }
 
 async function writev(handle, buffers, position) {
@@ -696,12 +699,12 @@ async function writev(handle, buffers, position) {
     position = null;
 
   if (buffers.length === 0) {
-    return { bytesWritten: 0, buffers };
+    return { __proto__: null, bytesWritten: 0, buffers };
   }
 
   const bytesWritten = (await binding.writeBuffers(handle.fd, buffers, position,
                                                    kUsePromises)) || 0;
-  return { bytesWritten, buffers };
+  return { __proto__: null, bytesWritten, buffers };
 }
 
 async function rename(oldPath, newPath) {
@@ -856,7 +859,16 @@ async function readlink(path, options) {
 }
 
 async function symlink(target, path, type_) {
-  const type = (typeof type_ === 'string' ? type_ : null);
+  let type = (typeof type_ === 'string' ? type_ : null);
+  if (isWindows && type === null) {
+    try {
+      const absoluteTarget = pathModule.resolve(`${path}`, '..', `${target}`);
+      type = (await stat(absoluteTarget)).isDirectory() ? 'dir' : 'file';
+    } catch {
+      // Default to 'file' if path is invalid or file does not exist
+      type = 'file';
+    }
+  }
   target = getValidatedPath(target, 'target');
   path = getValidatedPath(path);
   return binding.symlink(preprocessSymlinkDestination(target, type, path),
@@ -976,10 +988,17 @@ async function realpath(path, options) {
 async function mkdtemp(prefix, options) {
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix);
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
-  return binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, kUsePromises);
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
+  return binding.mkdtemp(path, options.encoding, kUsePromises);
 }
 
 async function writeFile(path, data, options) {
@@ -987,7 +1006,7 @@ async function writeFile(path, data, options) {
   const flag = options.flag || 'w';
 
   if (!isArrayBufferView(data) && !isCustomIterable(data)) {
-    validatePrimitiveStringAfterArrayBufferView(data, 'data');
+    validateStringAfterArrayBufferView(data, 'data');
     data = Buffer.from(data, options.encoding || 'utf8');
   }
 
@@ -1026,6 +1045,26 @@ async function readFile(path, options) {
   return handleFdClose(readFileHandle(fd, options), fd.close);
 }
 
+async function* _watch(filename, options = kEmptyObject) {
+  validateObject(options, 'options');
+
+  if (options.recursive != null) {
+    validateBoolean(options.recursive, 'options.recursive');
+
+    // TODO(anonrig): Remove non-native watcher when/if libuv supports recursive.
+    // As of November 2022, libuv does not support recursive file watch on all platforms,
+    // e.g. Linux due to the limitations of inotify.
+    if (options.recursive && !isOSX && !isWindows) {
+      const watcher = new nonNativeWatcher.FSWatcher(options);
+      await watcher[kFSWatchStart](filename);
+      yield* watcher;
+      return;
+    }
+  }
+
+  yield* watch(filename, options);
+}
+
 module.exports = {
   exports: {
     access,
@@ -1057,7 +1096,7 @@ module.exports = {
     writeFile,
     appendFile,
     readFile,
-    watch,
+    watch: !isOSX && !isWindows ? _watch : watch,
     constants,
   },
 

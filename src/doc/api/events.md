@@ -105,7 +105,7 @@ class MyEmitter extends EventEmitter {}
 const myEmitter = new MyEmitter();
 myEmitter.on('event', (a, b) => {
   console.log(a, b, this);
-  // Prints: a b {}
+  // Prints: a b undefined
 });
 myEmitter.emit('event', 'a', 'b');
 ```
@@ -651,7 +651,7 @@ set by [`emitter.setMaxListeners(n)`][] or defaults to
 <!-- YAML
 added: v3.2.0
 changes:
-  - version: v18.16.0
+  - version: v19.8.0
     pr-url: https://github.com/nodejs/node/pull/46523
     description: Added the `listener` argument.
 -->
@@ -1269,7 +1269,7 @@ const { getEventListeners, EventEmitter } = require('node:events');
 ## `events.getMaxListeners(emitterOrTarget)`
 
 <!-- YAML
-added: v18.17.0
+added: v19.9.0
 -->
 
 * `emitterOrTarget` {EventEmitter|EventTarget}
@@ -1799,10 +1799,10 @@ const emitter = new EventEmitter();
 setMaxListeners(5, target, emitter);
 ```
 
-## `events.addAbortListener(signal, resource)`
+## `events.addAbortListener(signal, listener)`
 
 <!-- YAML
-added: v18.18.0
+added: v20.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2201,6 +2201,22 @@ added: v14.5.0
 
 This is not used in Node.js and is provided purely for completeness.
 
+#### `event.initEvent(type[, bubbles[, cancelable]])`
+
+<!-- YAML
+added: v19.5.0
+-->
+
+> Stability: 3 - Legacy: The WHATWG spec considers it deprecated and users
+> shouldn't use it at all.
+
+* `type` {string}
+* `bubbles` {boolean}
+* `cancelable` {boolean}
+
+Redundant with event constructors and incapable of setting `composed`.
+This is not used in Node.js and is provided purely for completeness.
+
 #### `event.isTrusted`
 
 <!-- YAML
@@ -2380,7 +2396,9 @@ Removes the `listener` from the list of handlers for event `type`.
 ### Class: `CustomEvent`
 
 <!-- YAML
-added: v18.7.0
+added:
+  - v18.7.0
+  - v16.17.0
 -->
 
 > Stability: 1 - Experimental.
@@ -2393,7 +2411,9 @@ Instances are created internally by Node.js.
 #### `event.detail`
 
 <!-- YAML
-added: v18.7.0
+added:
+  - v18.7.0
+  - v16.17.0
 -->
 
 > Stability: 1 - Experimental.

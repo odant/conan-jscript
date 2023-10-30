@@ -95,7 +95,7 @@ class BindingData : public BaseObject {
  public:
   BindingData(Realm* realm, Local<Object> obj) : BaseObject(realm, obj) {}
 
-  static constexpr FastStringKey type_name { "http_parser" };
+  SET_BINDING_ID(http_parser_binding_data)
 
   std::vector<char> parser_buffer;
   bool parser_buffer_in_use = false;
@@ -1151,27 +1151,50 @@ void ConnectionsList::Expired(const FunctionCallbackInfo<Value>& args) {
 }
 
 const llhttp_settings_t Parser::settings = {
-  Proxy<Call, &Parser::on_message_begin>::Raw,
-  Proxy<DataCall, &Parser::on_url>::Raw,
-  Proxy<DataCall, &Parser::on_status>::Raw,
-  Proxy<DataCall, &Parser::on_header_field>::Raw,
-  Proxy<DataCall, &Parser::on_header_value>::Raw,
-  Proxy<Call, &Parser::on_headers_complete>::Raw,
-  Proxy<DataCall, &Parser::on_body>::Raw,
-  Proxy<Call, &Parser::on_message_complete>::Raw,
-  Proxy<Call, &Parser::on_chunk_header>::Raw,
-  Proxy<Call, &Parser::on_chunk_complete>::Raw,
+    Proxy<Call, &Parser::on_message_begin>::Raw,
+    Proxy<DataCall, &Parser::on_url>::Raw,
+    Proxy<DataCall, &Parser::on_status>::Raw,
 
-  // on_url_complete
-  nullptr,
-  // on_status_complete
-  nullptr,
-  // on_header_field_complete
-  nullptr,
-  // on_header_value_complete
-  nullptr,
+    // on_method
+    nullptr,
+    // on_version
+    nullptr,
+
+    Proxy<DataCall, &Parser::on_header_field>::Raw,
+    Proxy<DataCall, &Parser::on_header_value>::Raw,
+
+    // on_chunk_extension_name
+    nullptr,
+    // on_chunk_extension_value
+    nullptr,
+
+    Proxy<Call, &Parser::on_headers_complete>::Raw,
+    Proxy<DataCall, &Parser::on_body>::Raw,
+    Proxy<Call, &Parser::on_message_complete>::Raw,
+
+    // on_url_complete
+    nullptr,
+    // on_status_complete
+    nullptr,
+    // on_method_complete
+    nullptr,
+    // on_version_complete
+    nullptr,
+    // on_header_field_complete
+    nullptr,
+    // on_header_value_complete
+    nullptr,
+    // on_chunk_extension_name_complete
+    nullptr,
+    // on_chunk_extension_value_complete
+    nullptr,
+
+    Proxy<Call, &Parser::on_chunk_header>::Raw,
+    Proxy<Call, &Parser::on_chunk_complete>::Raw,
+
+    // on_reset,
+    nullptr,
 };
-
 
 void InitializeHttpParser(Local<Object> target,
                           Local<Value> unused,
@@ -1180,8 +1203,7 @@ void InitializeHttpParser(Local<Object> target,
   Realm* realm = Realm::GetCurrent(context);
   Environment* env = realm->env();
   Isolate* isolate = env->isolate();
-  BindingData* const binding_data =
-      realm->AddBindingData<BindingData>(context, target);
+  BindingData* const binding_data = realm->AddBindingData<BindingData>(target);
   if (binding_data == nullptr) return;
 
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, Parser::New);

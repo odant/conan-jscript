@@ -246,14 +246,19 @@ void PrintStackTrace(Isolate* isolate, Local<StackTrace> stack) {
 std::string FormatCaughtException(Isolate* isolate,
                                   Local<Context> context,
                                   Local<Value> err,
-                                  Local<Message> message) {
+                                  Local<Message> message,
+                                  bool add_source_line = true) {
+  std::string result;
   node::Utf8Value reason(isolate,
                          err->ToDetailString(context)
                              .FromMaybe(Local<String>()));
-  bool added_exception_line = false;
-  std::string source =
-      GetErrorSource(isolate, context, message, &added_exception_line);
-  std::string result = source + '\n' + reason.ToString() + '\n';
+  if (add_source_line) {
+    bool added_exception_line = false;
+    std::string source =
+        GetErrorSource(isolate, context, message, &added_exception_line);
+    result = source + '\n';
+  }
+  result += reason.ToString() + '\n';
 
   Local<v8::StackTrace> stack = message->GetStackTrace();
   if (!stack.IsEmpty()) result += FormatStackTrace(isolate, stack);
@@ -521,10 +526,11 @@ static void ReportFatalException(Environment* env,
   ABORT();
 }
 
-[[noreturn]] void OOMErrorHandler(const char* location, bool is_heap_oom) {
+[[noreturn]] void OOMErrorHandler(const char* location,
+                                  const v8::OOMDetails& details) {
   const char* message =
-      is_heap_oom ? "Allocation failed - JavaScript heap out of memory"
-                  : "Allocation failed - process out of memory";
+      details.is_heap_oom ? "Allocation failed - JavaScript heap out of memory"
+                          : "Allocation failed - process out of memory";
   if (location) {
     FPrintF(stderr, "FATAL ERROR: %s %s\n", location, message);
   } else {
@@ -595,7 +601,7 @@ TryCatchScope::~TryCatchScope() {
     if (message.IsEmpty())
       message = Exception::CreateMessage(env_->isolate(), exception);
     ReportFatalException(env_, exception, message, enhance);
-    env_->Exit(7);
+    env_->Exit(ExitCode::kExceptionInFatalExceptionHandler);
   }
 }
 
@@ -954,9 +960,9 @@ void PerIsolateMessageListener(Local<Message> message, Local<Value> error) {
 }
 
 void SetPrepareStackTraceCallback(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
+  Realm* realm = Realm::GetCurrent(args);
   CHECK(args[0]->IsFunction());
-  env->set_prepare_stack_trace_callback(args[0].As<Function>());
+  realm->set_prepare_stack_trace_callback(args[0].As<Function>());
 }
 
 static void SetSourceMapsEnabled(const FunctionCallbackInfo<Value>& args) {
@@ -981,11 +987,11 @@ static void SetMaybeCacheGeneratedSourceMap(
 
 static void SetEnhanceStackForFatalException(
     const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
+  Realm* realm = Realm::GetCurrent(args);
   CHECK(args[0]->IsFunction());
   CHECK(args[1]->IsFunction());
-  env->set_enhance_fatal_stack_before_inspector(args[0].As<Function>());
-  env->set_enhance_fatal_stack_after_inspector(args[1].As<Function>());
+  realm->set_enhance_fatal_stack_before_inspector(args[0].As<Function>());
+  realm->set_enhance_fatal_stack_after_inspector(args[1].As<Function>());
 }
 
 // Side effect-free stringification that will never throw exceptions.
@@ -1045,6 +1051,17 @@ void Initialize(Local<Object> target,
       context, target, "noSideEffectsToString", NoSideEffectsToString);
   SetMethod(
       context, target, "triggerUncaughtException", TriggerUncaughtException);
+
+  Isolate* isolate = context->GetIsolate();
+  Local<Object> exit_codes = Object::New(isolate);
+  READONLY_PROPERTY(target, "exitCodes", exit_codes);
+
+#define V(Name, Code)                                                          \
+  constexpr int k##Name = static_cast<int>(ExitCode::k##Name);                 \
+  NODE_DEFINE_CONSTANT(exit_codes, k##Name);
+
+  EXIT_CODE_LIST(V)
+#undef V
 }
 
 void DecorateErrorStack(Environment* env,
@@ -1121,7 +1138,7 @@ void TriggerUncaughtException(Isolate* isolate,
   if (!fatal_exception_function->IsFunction()) {
     ReportFatalException(
         env, error, message, EnhanceFatalException::kDontEnhance);
-    env->Exit(6);
+    env->Exit(ExitCode::kInvalidFatalExceptionMonkeyPatching);
     return;
   }
 
@@ -1167,15 +1184,8 @@ void TriggerUncaughtException(Isolate* isolate,
   RunAtExit(env);
 
   // If the global uncaught exception handler sets process.exitCode,
-  // exit with that code. Otherwise, exit with 1.
-  Local<String> exit_code = env->exit_code_string();
-  Local<Value> code;
-  if (process_object->Get(env->context(), exit_code).ToLocal(&code) &&
-      code->IsInt32()) {
-    env->Exit(code.As<Int32>()->Value());
-  } else {
-    env->Exit(1);
-  }
+  // exit with that code. Otherwise, exit with `ExitCode::kGenericUserError`.
+  env->Exit(env->exit_code(ExitCode::kGenericUserError));
 }
 
 void TriggerUncaughtException(Isolate* isolate, const v8::TryCatch& try_catch) {
@@ -1197,6 +1207,19 @@ void TriggerUncaughtException(Isolate* isolate, const v8::TryCatch& try_catch) {
                            try_catch.Exception(),
                            try_catch.Message(),
                            false /* from_promise */);
+}
+
+PrinterTryCatch::~PrinterTryCatch() {
+  if (!HasCaught()) {
+    return;
+  }
+  std::string str =
+      FormatCaughtException(isolate_,
+                            isolate_->GetCurrentContext(),
+                            Exception(),
+                            Message(),
+                            print_source_line_ == kPrintSourceLine);
+  PrintToStderrAndFlush(str);
 }
 
 }  // namespace errors

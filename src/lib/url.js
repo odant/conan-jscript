@@ -24,9 +24,7 @@
 const {
   Boolean,
   Int8Array,
-  ObjectCreate,
   ObjectKeys,
-  SafeSet,
   StringPrototypeCharCodeAt,
   decodeURIComponent,
 } = primordials;
@@ -55,8 +53,11 @@ const {
   domainToASCII,
   domainToUnicode,
   fileURLToPath,
-  pathToFileURL,
+  pathToFileURL: _pathToFileURL,
   urlToHttpOptions,
+  unsafeProtocol,
+  hostlessProtocol,
+  slashedProtocol,
 } = require('internal/url');
 
 const bindingUrl = internalBinding('url');
@@ -92,33 +93,6 @@ const hostPattern = /^\/\/[^@/]+@[^@/]+/;
 const simplePathPattern = /^(\/\/?(?!\/)[^?\s]*)(\?[^\s]*)?$/;
 
 const hostnameMaxLen = 255;
-// Protocols that can allow "unsafe" and "unwise" chars.
-const unsafeProtocol = new SafeSet([
-  'javascript',
-  'javascript:',
-]);
-// Protocols that never have a hostname.
-const hostlessProtocol = new SafeSet([
-  'javascript',
-  'javascript:',
-]);
-// Protocols that always contain a // bit.
-const slashedProtocol = new SafeSet([
-  'http',
-  'http:',
-  'https',
-  'https:',
-  'ftp',
-  'ftp:',
-  'gopher',
-  'gopher:',
-  'file',
-  'file:',
-  'ws',
-  'ws:',
-  'wss',
-  'wss:',
-]);
 const {
   CHAR_SPACE,
   CHAR_TAB,
@@ -287,7 +261,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
         }
       } else if (parseQueryString) {
         this.search = null;
-        this.query = ObjectCreate(null);
+        this.query = { __proto__: null };
       }
       return this;
     }
@@ -407,7 +381,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
 
     // validate a little.
     if (!ipv6Hostname) {
-      rest = getHostname(this, rest, hostname);
+      rest = getHostname(this, rest, hostname, url);
     }
 
     if (this.hostname.length > hostnameMaxLen) {
@@ -494,7 +468,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   } else if (parseQueryString) {
     // No query string, but parseQueryString still requested
     this.search = null;
-    this.query = ObjectCreate(null);
+    this.query = { __proto__: null };
   }
 
   const useQuestionIdx =
@@ -523,7 +497,8 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   return this;
 };
 
-function getHostname(self, rest, hostname) {
+let warnInvalidPort = true;
+function getHostname(self, rest, hostname, url) {
   for (let i = 0; i < hostname.length; ++i) {
     const code = hostname.charCodeAt(i);
     const isValid = (code !== CHAR_FORWARD_SLASH &&
@@ -533,6 +508,14 @@ function getHostname(self, rest, hostname) {
                      code !== CHAR_COLON);
 
     if (!isValid) {
+      // If leftover starts with :, then it represents an invalid port.
+      // But url.parse() is lenient about it for now.
+      // Issue a warning and continue.
+      if (warnInvalidPort && code === CHAR_COLON) {
+        const detail = `The URL ${url} is invalid. Future versions of Node.js will throw an error.`;
+        process.emitWarning(detail, 'DeprecationWarning', 'DEP0170');
+        warnInvalidPort = false;
+      }
       self.hostname = hostname.slice(0, i);
       return `/${hostname.slice(i)}${rest}`;
     }
@@ -1033,6 +1016,15 @@ Url.prototype.parseHost = function parseHost() {
   }
   if (host) this.hostname = host;
 };
+
+// When used internally, we are not obligated to associate TypeError with
+// this function, so non-strings can be rejected by underlying implementation.
+// Public API has to validate input and throw appropriate error.
+function pathToFileURL(path) {
+  validateString(path, 'path');
+
+  return _pathToFileURL(path);
+}
 
 module.exports = {
   // Original API

@@ -457,7 +457,9 @@ added:
   - v15.7.0
   - v14.18.0
 changes:
-  - version: v18.0.0
+  - version:
+    - v18.0.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/41270
     description: No longer experimental.
 -->
@@ -1070,7 +1072,7 @@ console.log(bufA.length);
 ### Static method: `Buffer.copyBytesFrom(view[, offset[, length]])`
 
 <!-- YAML
-added: v18.16.0
+added: v19.8.0
 -->
 
 * `view` {TypedArray} The {TypedArray} to copy.
@@ -3441,7 +3443,9 @@ console.log(buf.subarray(-5, -2).toString());
 <!-- YAML
 added: v0.3.0
 changes:
-  - version: v17.5.0
+  - version:
+    - v17.5.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41596
     description: The buf.slice() method has been deprecated.
   - version:
@@ -5064,10 +5068,14 @@ See [`Buffer.from(string[, encoding])`][`Buffer.from(string)`].
 ## Class: `File`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.2.0
+  - v18.13.0
+changes:
+  - version: v20.0.0
+    pr-url: https://github.com/nodejs/node/pull/47153
+    description: No longer experimental.
 -->
-
-> Stability: 1 - Experimental
 
 * Extends: {Blob}
 
@@ -5076,7 +5084,9 @@ A [`File`][] provides information about files.
 ### `new buffer.File(sources, fileName[, options])`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.2.0
+  - v18.13.0
 -->
 
 * `sources` {string\[]|ArrayBuffer\[]|TypedArray\[]|DataView\[]|Blob\[]|File\[]}
@@ -5094,7 +5104,9 @@ added: v18.13.0
 ### `file.name`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.2.0
+  - v18.13.0
 -->
 
 * Type: {string}
@@ -5104,7 +5116,9 @@ The name of the `File`.
 ### `file.lastModified`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.2.0
+  - v18.13.0
 -->
 
 * Type: {number}
@@ -5168,7 +5182,9 @@ and binary data should be performed using `Buffer.from(str, 'base64')` and
 ### `buffer.isAscii(input)`
 
 <!-- YAML
-added: v18.15.0
+added:
+  - v19.6.0
+  - v18.15.0
 -->
 
 * input {Buffer | ArrayBuffer | TypedArray} The input to validate.
@@ -5182,7 +5198,9 @@ Throws if the `input` is a detached array buffer.
 ### `buffer.isUtf8(input)`
 
 <!-- YAML
-added: v18.14.0
+added:
+  - v19.4.0
+  - v18.14.0
 -->
 
 * input {Buffer | ArrayBuffer | TypedArray} The input to validate.

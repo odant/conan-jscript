@@ -7,6 +7,7 @@
 #include "node_metadata.h"
 #include "node_mutex.h"
 #include "node_worker.h"
+#include "permission/permission.h"
 #include "util.h"
 
 #ifdef _WIN32
@@ -856,7 +857,13 @@ std::string TriggerNodeReport(Isolate* isolate,
   // Determine the required report filename. In order of priority:
   //   1) supplied on API 2) configured on startup 3) default generated
   if (!name.empty()) {
-    // Filename was specified as API parameter.
+    // we may not always be in a great state when generating a node report
+    // allow for the case where we don't have an env
+    if (env != nullptr) {
+      THROW_IF_INSUFFICIENT_PERMISSIONS(
+          env, permission::PermissionScope::kFileSystemWrite, name, name);
+      // Filename was specified as API parameter.
+    }
     filename = name;
   } else {
     std::string report_filename;
@@ -870,6 +877,13 @@ std::string TriggerNodeReport(Isolate* isolate,
     } else {
       filename = *DiagnosticFilename(
           env != nullptr ? env->thread_id() : 0, "report", "json");
+    }
+    if (env != nullptr) {
+      THROW_IF_INSUFFICIENT_PERMISSIONS(
+          env,
+          permission::PermissionScope::kFileSystemWrite,
+          std::string_view(Environment::GetCwd(env->exec_path())),
+          filename);
     }
   }
 

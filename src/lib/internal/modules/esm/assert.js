@@ -3,7 +3,6 @@
 const {
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
-  ObjectCreate,
   ObjectKeys,
   ObjectValues,
   ObjectPrototypeHasOwnProperty,
@@ -56,7 +55,7 @@ const supportedAssertionTypes = ArrayPrototypeFilter(
  * @throws {TypeError} If the format and assertion type are incompatible.
  */
 function validateAssertions(url, format,
-                            importAssertions = ObjectCreate(null)) {
+                            importAssertions = { __proto__: null }) {
   const validType = formatTypeMap[format];
 
   if (!alreadyWarned && ObjectKeys(importAssertions).length !== 0) {

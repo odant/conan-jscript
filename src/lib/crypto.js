@@ -37,6 +37,7 @@ assertCrypto();
 
 const {
   ERR_CRYPTO_FIPS_FORCED,
+  ERR_WORKER_UNSUPPORTED_OPERATION,
 } = require('internal/errors').codes;
 const constants = internalBinding('constants').crypto;
 const { getOptionValue } = require('internal/options');
@@ -113,9 +114,7 @@ const {
 const {
   getCiphers,
   getCurves,
-  getDefaultEncoding,
   getHashes,
-  setDefaultEncoding,
   setEngine,
   secureHeapUsed,
 } = require('internal/crypto/util');
@@ -125,6 +124,12 @@ let webcrypto;
 function lazyWebCrypto() {
   webcrypto ??= require('internal/crypto/webcrypto');
   return webcrypto;
+}
+
+let ownsProcessState;
+function lazyOwnsProcessState() {
+  ownsProcessState ??= require('internal/worker').ownsProcessState;
+  return ownsProcessState;
 }
 
 // These helper functions are needed because the constructors can
@@ -250,6 +255,9 @@ function setFips(val) {
     if (val) return;
     throw new ERR_CRYPTO_FIPS_FORCED();
   } else {
+    if (!lazyOwnsProcessState()) {
+      throw new ERR_WORKER_UNSUPPORTED_OPERATION('Calling crypto.setFips()');
+    }
     setFipsCrypto(val);
   }
 }
@@ -345,15 +353,6 @@ ObjectDefineProperties(module.exports, {
     __proto__: null,
     get: getFips,
     set: setFips,
-  },
-  DEFAULT_ENCODING: {
-    __proto__: null,
-    enumerable: false,
-    configurable: true,
-    get: deprecate(getDefaultEncoding,
-                   'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091'),
-    set: deprecate(setDefaultEncoding,
-                   'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091'),
   },
   constants: {
     __proto__: null,

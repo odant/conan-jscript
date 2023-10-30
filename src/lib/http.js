@@ -52,6 +52,7 @@ let maxHeaderSize;
  *   ServerResponse?: ServerResponse;
  *   insecureHTTPParser?: boolean;
  *   maxHeaderSize?: number;
+ *   requireHostHeader?: boolean;
  *   joinDuplicateHeaders?: boolean;
  *   highWaterMark?: number;
  *   rejectNonStandardBodyWrites?: boolean;

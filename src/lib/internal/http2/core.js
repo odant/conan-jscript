@@ -10,7 +10,6 @@ const {
   FunctionPrototypeCall,
   MathMin,
   ObjectAssign,
-  ObjectCreate,
   ObjectKeys,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
@@ -27,6 +26,7 @@ const {
   SafeSet,
   StringPrototypeSlice,
   Symbol,
+  SymbolAsyncDispose,
   SymbolDispose,
   TypedArrayPrototypeGetLength,
   Uint32Array,
@@ -47,7 +47,7 @@ const EventEmitter = require('events');
 const fs = require('fs');
 const http = require('http');
 const { readUInt16BE, readUInt32BE } = require('internal/buffer');
-const { URL } = require('internal/url');
+const { URL, getURLOrigin } = require('internal/url');
 const net = require('net');
 const { Duplex } = require('stream');
 const tls = require('tls');
@@ -121,6 +121,7 @@ const {
 const {
   isUint32,
   validateAbortSignal,
+  validateBoolean,
   validateBuffer,
   validateFunction,
   validateInt32,
@@ -637,7 +638,7 @@ function initOriginSet(session) {
       // We have to ensure that it is a properly serialized
       // ASCII origin string. The socket.servername might not
       // be properly ASCII encoded.
-      originSet.add((new URL(originString)).origin);
+      originSet.add(getURLOrigin(originString));
     }
   }
   return originSet;
@@ -764,26 +765,26 @@ function requestOnConnect(headers, options) {
 const setAndValidatePriorityOptions = hideStackFrames((options) => {
   if (options.weight === undefined) {
     options.weight = NGHTTP2_DEFAULT_WEIGHT;
-  } else if (typeof options.weight !== 'number') {
-    throw new ERR_INVALID_ARG_VALUE('options.weight', options.weight);
+  } else {
+    validateNumber(options.weight, 'options.weight');
   }
 
   if (options.parent === undefined) {
     options.parent = 0;
-  } else if (typeof options.parent !== 'number' || options.parent < 0) {
-    throw new ERR_INVALID_ARG_VALUE('options.parent', options.parent);
+  } else {
+    validateNumber(options.parent, 'options.parent', 0);
   }
 
   if (options.exclusive === undefined) {
     options.exclusive = false;
-  } else if (typeof options.exclusive !== 'boolean') {
-    throw new ERR_INVALID_ARG_VALUE('options.exclusive', options.exclusive);
+  } else {
+    validateBoolean(options.exclusive, 'options.exclusive');
   }
 
   if (options.silent === undefined) {
     options.silent = false;
-  } else if (typeof options.silent !== 'boolean') {
-    throw new ERR_INVALID_ARG_VALUE('options.silent', options.silent);
+  } else {
+    validateBoolean(options.silent, 'options.silent');
   }
 });
 
@@ -1642,7 +1643,7 @@ class ServerHttp2Session extends Http2Session {
     let origin;
 
     if (typeof originOrStream === 'string') {
-      origin = (new URL(originOrStream)).origin;
+      origin = getURLOrigin(originOrStream);
       if (origin === 'null')
         throw new ERR_HTTP2_ALTSVC_INVALID_ORIGIN();
     } else if (typeof originOrStream === 'number') {
@@ -1694,7 +1695,7 @@ class ServerHttp2Session extends Http2Session {
     for (let i = 0; i < count; i++) {
       let origin = origins[i];
       if (typeof origin === 'string') {
-        origin = (new URL(origin)).origin;
+        origin = getURLOrigin(origin);
       } else if (origin != null && typeof origin === 'object') {
         origin = origin.origin;
       }
@@ -1751,7 +1752,7 @@ class ClientHttp2Session extends Http2Session {
     assertIsObject(headers, 'headers');
     assertIsObject(options, 'options');
 
-    headers = ObjectAssign(ObjectCreate(null), headers);
+    headers = ObjectAssign({ __proto__: null }, headers);
     options = { ...options };
 
     if (headers[HTTP2_HEADER_METHOD] === undefined)
@@ -1783,8 +1784,8 @@ class ClientHttp2Session extends Http2Session {
       // stream by default if the user has not specifically indicated a
       // preference.
       options.endStream = isPayloadMeaningless(headers[HTTP2_HEADER_METHOD]);
-    } else if (typeof options.endStream !== 'boolean') {
-      throw new ERR_INVALID_ARG_VALUE('options.endStream', options.endStream);
+    } else {
+      validateBoolean(options.endStream, 'options.endStream');
     }
 
     const headersList = mapToHeaders(headers);
@@ -2249,7 +2250,7 @@ class Http2Stream extends Duplex {
       throw new ERR_HTTP2_TRAILERS_NOT_READY();
 
     assertIsObject(headers, 'headers');
-    headers = ObjectAssign(ObjectCreate(null), headers);
+    headers = ObjectAssign({ __proto__: null }, headers);
 
     debugStreamObj(this, 'sending trailers');
 
@@ -2424,7 +2425,7 @@ function callStreamClose(stream) {
 
 function processHeaders(oldHeaders, options) {
   assertIsObject(oldHeaders, 'headers');
-  const headers = ObjectCreate(null);
+  const headers = { __proto__: null };
 
   if (oldHeaders !== null && oldHeaders !== undefined) {
     // This loop is here for performance reason. Do not change.
@@ -2700,7 +2701,7 @@ class ServerHttp2Stream extends Http2Stream {
     options.endStream = !!options.endStream;
 
     assertIsObject(headers, 'headers');
-    headers = ObjectAssign(ObjectCreate(null), headers);
+    headers = ObjectAssign({ __proto__: null }, headers);
 
     if (headers[HTTP2_HEADER_METHOD] === undefined)
       headers[HTTP2_HEADER_METHOD] = HTTP2_METHOD_GET;
@@ -2935,7 +2936,7 @@ class ServerHttp2Stream extends Http2Stream {
       throw new ERR_HTTP2_HEADERS_AFTER_RESPOND();
 
     assertIsObject(headers, 'headers');
-    headers = ObjectAssign(ObjectCreate(null), headers);
+    headers = ObjectAssign({ __proto__: null }, headers);
 
     debugStreamObj(this, 'sending additional headers');
 
@@ -3066,7 +3067,7 @@ function connectionListener(socket) {
       // going on in a format that they *might* understand.
       socket.end('HTTP/1.0 403 Forbidden\r\n' +
                  'Content-Type: text/plain\r\n\r\n' +
-                 'Unknown ALPN Protocol, expected `h2` to be available.\n' +
+                 'Missing ALPN Protocol, expected `h2` to be available.\n' +
                  'If this is a HTTP request: The server was not ' +
                  'configured with the `allowHTTP1` option or a ' +
                  'listener for the `unknownProtocol` event.\n');
@@ -3194,6 +3195,10 @@ class Http2Server extends NETServer {
     assertIsObject(settings, 'settings');
     validateSettings(settings);
     this[kOptions].settings = { ...this[kOptions].settings, ...settings };
+  }
+
+  async [SymbolAsyncDispose]() {
+    return FunctionPrototypeCall(promisify(super.close), this);
   }
 }
 

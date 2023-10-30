@@ -26,6 +26,7 @@ const process = global.process;  // Some tests tamper with the process global.
 const assert = require('assert');
 const { exec, execSync, spawn, spawnSync } = require('child_process');
 const fs = require('fs');
+const net = require('net');
 // Do not require 'os' until needed so that test-os-checked-function can
 // monkey patch it. If 'os' is required here, that test will fail.
 const path = require('path');
@@ -56,7 +57,10 @@ const hasCrypto = Boolean(process.versions.openssl) &&
                   !process.env.NODE_SKIP_CRYPTO;
 
 const hasOpenSSL3 = hasCrypto &&
-    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 805306368;
+    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 0x30000000;
+
+const hasOpenSSL31 = hasCrypto &&
+    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 0x30100000;
 
 const hasQuic = hasCrypto && !!process.config.variables.openssl_quic;
 
@@ -141,6 +145,14 @@ const isPi = (() => {
 })();
 
 const isDumbTerminal = process.env.TERM === 'dumb';
+
+// When using high concurrency or in the CI we need much more time for each connection attempt
+const defaultAutoSelectFamilyAttemptTimeout = platformTimeout(2500);
+// Since this is also used by tools outside of the test suite,
+// make sure setDefaultAutoSelectFamilyAttemptTimeout
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === 'function') {
+  net.setDefaultAutoSelectFamilyAttemptTimeout(platformTimeout(defaultAutoSelectFamilyAttemptTimeout));
+}
 
 const buildType = process.config.target_defaults ?
   process.config.target_defaults.default_configuration :
@@ -365,7 +377,9 @@ if (process.env.NODE_TEST_KNOWN_GLOBALS !== '0') {
     const leaked = [];
 
     for (const val in global) {
-      if (!knownGlobals.includes(global[val])) {
+      // globalThis.crypto is a getter that throws if Node.js was compiled
+      // without OpenSSL.
+      if (val !== 'crypto' && !knownGlobals.includes(global[val])) {
         leaked.push(val);
       }
     }
@@ -889,6 +903,7 @@ const common = {
   canCreateSymLink,
   childShouldThrowAndAbort,
   createZeroFilledFile,
+  defaultAutoSelectFamilyAttemptTimeout,
   expectsError,
   expectWarning,
   gcUntil,
@@ -899,6 +914,7 @@ const common = {
   hasIntl,
   hasCrypto,
   hasOpenSSL3,
+  hasOpenSSL31,
   hasQuic,
   hasMultiLocalhost,
   invalidArgTypeHelper,
@@ -946,7 +962,14 @@ const common = {
 
   get hasIPv6() {
     const iFaces = require('os').networkInterfaces();
-    const re = isWindows ? /Loopback Pseudo-Interface/ : /lo/;
+    let re;
+    if (isWindows) {
+      re = /Loopback Pseudo-Interface/;
+    } else if (this.isIBMi) {
+      re = /\*LOOPBACK/;
+    } else {
+      re = /lo/;
+    }
     return Object.keys(iFaces).some((name) => {
       return re.test(name) &&
              iFaces[name].some(({ family }) => family === 'IPv6');

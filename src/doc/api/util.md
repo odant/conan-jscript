@@ -490,6 +490,9 @@ changes:
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41003
     description: The `numericSeparator` option is supported now.
+  - version: v16.18.0
+    pr-url: https://github.com/nodejs/node/pull/43576
+    description: add support for `maxArrayLength` when inspecting `Set` and `Map`.
   - version:
     - v14.6.0
     - v12.19.0
@@ -586,8 +589,9 @@ changes:
   * `showProxy` {boolean} If `true`, `Proxy` inspection includes
     the [`target` and `handler`][] objects. **Default:** `false`.
   * `maxArrayLength` {integer} Specifies the maximum number of `Array`,
-    [`TypedArray`][], [`WeakMap`][], and [`WeakSet`][] elements to include when
-    formatting. Set to `null` or `Infinity` to show all elements. Set to `0` or
+    [`TypedArray`][], [`Map`][], [`Set`][], [`WeakMap`][],
+    and [`WeakSet`][] elements to include when formatting.
+    Set to `null` or `Infinity` to show all elements. Set to `0` or
     negative to show no elements. **Default:** `100`.
   * `maxStringLength` {integer} Specifies the maximum number of characters to
     include when formatting. Set to `null` or `Infinity` to show all elements.
@@ -773,8 +777,14 @@ const million = 1_000_000;
 const bigNumber = 123_456_789n;
 const bigDecimal = 1_234.123_45;
 
-console.log(thousand, million, bigNumber, bigDecimal);
-// 1_000 1_000_000 123_456_789n 1_234.123_45
+console.log(inspect(thousand, { numericSeparator: true }));
+// 1_000
+console.log(inspect(million, { numericSeparator: true }));
+// 1_000_000
+console.log(inspect(bigNumber, { numericSeparator: true }));
+// 123_456_789n
+console.log(inspect(bigDecimal, { numericSeparator: true }));
+// 1_234.123_45
 ```
 
 `util.inspect()` is a synchronous method intended for debugging. Its maximum
@@ -1023,7 +1033,9 @@ equality.
 ## Class: `util.MIMEType`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.1.0
+  - v18.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -1222,7 +1234,9 @@ console.log(JSON.stringify(myMIMES));
 ## Class: `util.MIMEParams`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.1.0
+  - v18.13.0
 -->
 
 The `MIMEParams` API provides read and write access to the parameters of a
@@ -1320,7 +1334,7 @@ const { params } = new MIMEType('text/plain;foo=0;bar=1');
 params.set('foo', 'def');
 params.set('baz', 'xyz');
 console.log(params.toString());
-// Prints: foo=def&bar=1&baz=xyz
+// Prints: foo=def;bar=1;baz=xyz
 ```
 
 ```cjs
@@ -1330,7 +1344,7 @@ const { params } = new MIMEType('text/plain;foo=0;bar=1');
 params.set('foo', 'def');
 params.set('baz', 'xyz');
 console.log(params.toString());
-// Prints: foo=def&bar=1&baz=xyz
+// Prints: foo=def;bar=1;baz=xyz
 ```
 
 ### `mimeParams.values()`
@@ -1372,9 +1386,17 @@ for (const [name, value] of params) {
 ## `util.parseArgs([config])`
 
 <!-- YAML
-added: v18.3.0
+added:
+  - v18.3.0
+  - v16.17.0
 changes:
-  - version: v18.11.0
+  - version:
+    - v20.0.0
+    pr-url: https://github.com/nodejs/node/pull/46718
+    description: The API is no longer experimental.
+  - version:
+    - v18.11.0
+    - v16.19.0
     pr-url: https://github.com/nodejs/node/pull/44631
     description: Add support for default values in input `config`.
   - version:
@@ -1384,8 +1406,6 @@ changes:
     description: add support for returning detailed parse information
                  using `tokens` in input `config` and returned properties.
 -->
-
-> Stability: 1 - Experimental
 
 * `config` {Object} Used to provide arguments for parsing and to configure
   the parser. `config` supports the following properties:
@@ -1464,9 +1484,6 @@ const {
 console.log(values, positionals);
 // Prints: [Object: null prototype] { foo: true, bar: 'b' } []
 ```
-
-`util.parseArgs` is experimental and behavior may change. Join the
-conversation in [pkgjs/parseargs][] to contribute to the design.
 
 ### `parseArgs` `tokens`
 
@@ -1580,6 +1597,11 @@ $ node negate.js --no-logfile --logfile=test.log --color --no-color
 
 <!-- YAML
 added: v8.0.0
+changes:
+  - version: v20.8.0
+    pr-url: https://github.com/nodejs/node/pull/49647
+    description: Calling `promisify` on a function that returns a `Promise` is
+                 deprecated.
 -->
 
 * `original` {Function}
@@ -1613,6 +1635,8 @@ async function callStat() {
   const stats = await stat('.');
   console.log(`This directory is owned by ${stats.uid}`);
 }
+
+callStat();
 ```
 
 If there is an `original[util.promisify.custom]` property present, `promisify`
@@ -1980,7 +2004,7 @@ channel.port2.postMessage(signal, [signal]);
 ## `util.aborted(signal, resource)`
 
 <!-- YAML
-added: v18.16.0
+added: v19.7.0
 -->
 
 > Stability: 1 - Experimental
@@ -3361,7 +3385,6 @@ util.log('Timestamped message.');
 [default sort]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 [global symbol registry]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/for
 [list of deprecated APIS]: deprecations.md#list-of-deprecated-apis
-[pkgjs/parseargs]: https://github.com/pkgjs/parseargs
 [realm]: https://tc39.es/ecma262/#realm
 [semantically incompatible]: https://github.com/nodejs/node/issues/4179
 [util.inspect.custom]: #utilinspectcustom

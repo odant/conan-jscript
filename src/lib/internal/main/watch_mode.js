@@ -13,7 +13,10 @@ const {
   prepareMainThreadExecution,
   markBootstrapComplete,
 } = require('internal/process/pre_execution');
-const { triggerUncaughtException } = internalBinding('errors');
+const {
+  triggerUncaughtException,
+  exitCodes: { kNoFailure },
+} = internalBinding('errors');
 const { getOptionValue } = require('internal/options');
 const { emitExperimentalWarning } = require('internal/util');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
@@ -24,7 +27,6 @@ const { inspect } = require('util');
 const { setTimeout, clearTimeout } = require('timers');
 const { resolve } = require('path');
 const { once, on } = require('events');
-
 
 prepareMainThreadExecution(false, false);
 markBootstrapComplete();
@@ -42,7 +44,7 @@ const args = ArrayPrototypeFilter(process.execArgv, (arg, i, arr) =>
   arg !== '--watch' && arg !== '--watch-preserve-output');
 ArrayPrototypePushApply(args, kCommand);
 
-const watcher = new FilesWatcher({ throttle: 500, mode: kShouldFilterModules ? 'filter' : 'all' });
+const watcher = new FilesWatcher({ debounce: 200, mode: kShouldFilterModules ? 'filter' : 'all' });
 ArrayPrototypeForEach(kWatchedPaths, (p) => watcher.watchPath(p));
 
 let graceTimer;
@@ -130,7 +132,7 @@ function signalHandler(signal) {
   return async () => {
     watcher.clear();
     const exitCode = await killAndWait(signal, true);
-    process.exit(exitCode ?? 0);
+    process.exit(exitCode ?? kNoFailure);
   };
 }
 process.on('SIGTERM', signalHandler('SIGTERM'));

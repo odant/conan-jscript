@@ -43,6 +43,7 @@
 'use strict';
 
 const {
+  ArrayPrototypeAt,
   ArrayPrototypeFilter,
   ArrayPrototypeFindIndex,
   ArrayPrototypeForEach,
@@ -62,11 +63,11 @@ const {
   Boolean,
   Error,
   FunctionPrototypeBind,
+  JSONStringify,
   MathMaxApply,
   NumberIsNaN,
   NumberParseFloat,
   ObjectAssign,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyNames,
@@ -97,15 +98,17 @@ const {
   globalThis,
 } = primordials;
 
-const { BuiltinModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/realm');
 const {
   makeRequireFunction,
   addBuiltinLibsToObject,
-} = require('internal/modules/cjs/helpers');
+} = require('internal/modules/helpers');
 const {
   isIdentifierStart,
   isIdentifierChar,
+  parse: acornParse,
 } = require('internal/deps/acorn/acorn/dist/acorn');
+const acornWalk = require('internal/deps/acorn/acorn-walk/dist/walk');
 const {
   decorateErrorStack,
   isError,
@@ -181,7 +184,6 @@ const {
 const history = require('internal/repl/history');
 const {
   extensionFormatMap,
-  legacyExtensionFormatMap,
 } = require('internal/modules/esm/formats');
 
 let nextREPLResourceNumber = 1;
@@ -202,6 +204,7 @@ const domainSet = new SafeWeakSet();
 
 const kBufferedCommandSymbol = Symbol('bufferedCommand');
 const kContextId = Symbol('contextId');
+const kLoadingSymbol = Symbol('loading');
 
 let addedNewListener = false;
 
@@ -224,6 +227,28 @@ module.paths = CJSModule._nodeModulePaths(module.filename);
 // `eyes.js`.
 const writer = (obj) => inspect(obj, writer.options);
 writer.options = { ...inspect.defaultOptions, showProxy: true };
+
+// Converts static import statement to dynamic import statement
+const toDynamicImport = (codeLine) => {
+  let dynamicImportStatement = '';
+  const ast = acornParse(codeLine, { __proto__: null, sourceType: 'module', ecmaVersion: 'latest' });
+  acornWalk.ancestor(ast, {
+    ImportDeclaration(node) {
+      const awaitDynamicImport = `await import(${JSONStringify(node.source.value)});`;
+      if (node.specifiers.length === 0) {
+        dynamicImportStatement += awaitDynamicImport;
+      } else if (node.specifiers.length === 1 && node.specifiers[0].type === 'ImportNamespaceSpecifier') {
+        dynamicImportStatement += `const ${node.specifiers[0].local.name} = ${awaitDynamicImport}`;
+      } else {
+        const importNames = ArrayPrototypeJoin(ArrayPrototypeMap(node.specifiers, ({ local, imported }) =>
+          (local.name === imported?.name ? local.name : `${imported?.name ?? 'default'}: ${local.name}`),
+        ), ', ');
+        dynamicImportStatement += `const { ${importNames} } = ${awaitDynamicImport}`;
+      }
+    },
+  });
+  return dynamicImportStatement;
+};
 
 function REPLServer(prompt,
                     stream,
@@ -443,7 +468,7 @@ function REPLServer(prompt,
         if (e.name === 'SyntaxError') {
           let parentURL;
           try {
-            const { pathToFileURL } = require('url');
+            const { pathToFileURL } = require('internal/url');
             // Adding `/repl` prevents dynamic imports from loading relative
             // to the parent of `process.cwd()`.
             parentURL = pathToFileURL(path.join(process.cwd(), 'repl')).href;
@@ -484,7 +509,7 @@ function REPLServer(prompt,
     if (err === null) {
       let parentURL;
       try {
-        const { pathToFileURL } = require('url');
+        const { pathToFileURL } = require('internal/url');
         // Adding `/repl` prevents dynamic imports from loading relative
         // to the parent of `process.cwd()`.
         parentURL = pathToFileURL(path.join(process.cwd(), 'repl')).href;
@@ -686,7 +711,7 @@ function REPLServer(prompt,
               'module';
             if (StringPrototypeIncludes(e.message, importErrorStr)) {
               e.message = 'Cannot use import statement inside the Node.js ' +
-                'REPL, alternatively use dynamic import';
+                'REPL, alternatively use dynamic import: ' + toDynamicImport(ArrayPrototypeAt(self.lines, -1));
               e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
                 /SyntaxError:.*\n/,
                 e.stack,
@@ -771,7 +796,7 @@ function REPLServer(prompt,
 
   self.resetContext();
 
-  this.commands = ObjectCreate(null);
+  this.commands = { __proto__: null };
   defineDefaultCommands(this);
 
   // Figure out which "writer" function to use
@@ -858,7 +883,7 @@ function REPLServer(prompt,
       self[kBufferedCommandSymbol] += cmd + '\n';
 
       // code alignment
-      const matches = self._sawKeyPress ?
+      const matches = self._sawKeyPress && !self[kLoadingSymbol] ?
         RegExpPrototypeExec(/^\s+/, cmd) : null;
       if (matches) {
         const prefix = matches[0];
@@ -1375,10 +1400,7 @@ function complete(line, callback) {
     if (this.allowBlockingCompletions) {
       const subdir = match[2] || '';
       // File extensions that can be imported:
-      const extensions = ObjectKeys(
-        getOptionValue('--experimental-specifier-resolution') === 'node' ?
-          legacyExtensionFormatMap :
-          extensionFormatMap);
+      const extensions = ObjectKeys(extensionFormatMap);
 
       // Only used when loading bare module specifiers from `node_modules`:
       const indexes = ArrayPrototypeMap(extensions, (ext) => `index${ext}`);
@@ -1780,8 +1802,10 @@ function defineDefaultCommands(repl) {
         const stats = fs.statSync(file);
         if (stats && stats.isFile()) {
           _turnOnEditorMode(this);
+          this[kLoadingSymbol] = true;
           const data = fs.readFileSync(file, 'utf8');
           this.write(data);
+          this[kLoadingSymbol] = false;
           _turnOffEditorMode(this);
           this.write('\n');
         } else {

@@ -33,10 +33,10 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   Promise,
+  PromiseResolve,
   ReflectApply,
   SafeMap,
   SafeSet,
-  String,
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
   StringPrototypeSlice,
@@ -60,33 +60,35 @@ const {
 const pathModule = require('path');
 const { isArrayBufferView } = require('internal/util/types');
 
-// We need to get the statValues from the binding at the callsite since
-// it's re-initialized after deserialization.
-
 const binding = internalBinding('fs');
+
+const { createBlobFromFilePath } = require('internal/blob');
+
 const { Buffer } = require('buffer');
 const {
   aggregateTwoErrors,
   codes: {
     ERR_FS_FILE_TOO_LARGE,
     ERR_INVALID_ARG_VALUE,
-    ERR_FEATURE_UNAVAILABLE_ON_PLATFORM,
   },
   AbortError,
   uvErrmapGet,
   uvException,
 } = require('internal/errors');
 
-const { FSReqCallback } = binding;
+const {
+  FSReqCallback,
+  statValues,
+} = binding;
 const { toPathIfFileURL } = require('internal/url');
 const {
   customPromisifyArgs: kCustomPromisifyArgsSymbol,
-  deprecate,
   kEmptyObject,
   promisify: {
     custom: kCustomPromisifiedSymbol,
   },
   SideEffectFreeRegExpPrototypeExec,
+  defineLazyProperties,
 } = require('internal/util');
 const {
   constants: {
@@ -103,7 +105,7 @@ const {
   getValidatedPath,
   getValidMode,
   handleErrorFromBinding,
-  nullCheck,
+  possiblyTransformPath,
   preprocessSymlinkDestination,
   Stats,
   getStatFsFromBinding,
@@ -122,20 +124,14 @@ const {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
-  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
-const {
-  Dir,
-  opendir,
-  opendirSync,
-} = require('internal/fs/dir');
 const {
   CHAR_FORWARD_SLASH,
   CHAR_BACKWARD_SLASH,
 } = require('internal/constants');
 const {
-  isUint32,
+  isInt32,
   parseFileMode,
   validateBoolean,
   validateBuffer,
@@ -145,9 +141,7 @@ const {
   validateObject,
   validateString,
 } = require('internal/validators');
-
-const watchers = require('internal/fs/watchers');
-const ReadFileContext = require('internal/fs/read_file_context');
+const syncFs = require('internal/fs/sync');
 
 let truncateWarn = true;
 let fs;
@@ -160,6 +154,7 @@ let ReadStream;
 let WriteStream;
 let rimraf;
 let rimrafSync;
+let kResistStopPropagation;
 
 // These have to be separate because of how graceful-fs happens to do it's
 // monkeypatching.
@@ -169,12 +164,6 @@ let FileWriteStream;
 const isWindows = process.platform === 'win32';
 const isOSX = process.platform === 'darwin';
 
-
-const showStringCoercionDeprecation = deprecate(
-  () => {},
-  'Implicit coercion of objects with own toString property is deprecated.',
-  'DEP0162',
-);
 function showTruncateDeprecation() {
   if (truncateWarn) {
     process.emitWarning(
@@ -212,7 +201,7 @@ function makeStatsCallback(cb) {
   };
 }
 
-const isFd = isUint32;
+const isFd = isInt32;
 
 function isFileType(stats, fileType) {
   // Use stats array directly to avoid creating an fs.Stats instance just for
@@ -254,12 +243,7 @@ function access(path, mode, callback) {
  * @returns {void}
  */
 function accessSync(path, mode) {
-  path = getValidatedPath(path);
-  mode = getValidMode(mode, 'access');
-
-  const ctx = { path };
-  binding.access(pathModule.toNamespacedPath(path), mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  syncFs.access(path, mode);
 }
 
 /**
@@ -301,23 +285,7 @@ ObjectDefineProperty(exists, kCustomPromisifiedSymbol, {
  * @returns {boolean}
  */
 function existsSync(path) {
-  try {
-    path = getValidatedPath(path);
-  } catch {
-    return false;
-  }
-  const ctx = { path };
-  const nPath = pathModule.toNamespacedPath(path);
-  binding.access(nPath, F_OK, undefined, ctx);
-
-  // In case of an invalid symlink, `binding.access()` on win32
-  // will **not** return an error and is therefore not enough.
-  // Double check with `binding.stat()`.
-  if (isWindows && ctx.errno === undefined) {
-    binding.stat(nPath, false, undefined, ctx);
-  }
-
-  return ctx.errno === undefined;
+  return syncFs.exists(path);
 }
 
 function readFileAfterOpen(err, fd) {
@@ -391,6 +359,7 @@ function checkAborted(signal, callback) {
 function readFile(path, options, callback) {
   callback = maybeCallback(callback || options);
   options = getOptions(options, { flag: 'r' });
+  const ReadFileContext = require('internal/fs/read/context');
   const context = new ReadFileContext(callback, options.encoding);
   context.isUserFd = isFd(path); // File descriptor ownership
 
@@ -467,6 +436,11 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
  */
 function readFileSync(path, options) {
   options = getOptions(options, { flag: 'r' });
+
+  if (options.encoding === 'utf8' || options.encoding === 'utf-8') {
+    return syncFs.readFileUtf8(path, options.flag);
+  }
+
   const isUserFd = isFd(path); // File descriptor ownership
   const fd = isUserFd ? path : fs.openSync(path, options.flag, 0o666);
 
@@ -542,11 +516,7 @@ function close(fd, callback = defaultCloseCallback) {
  * @returns {void}
  */
 function closeSync(fd) {
-  fd = getValidatedFd(fd);
-
-  const ctx = {};
-  binding.close(fd, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  return syncFs.close(fd);
 }
 
 /**
@@ -592,16 +562,25 @@ function open(path, flags, mode, callback) {
  * @returns {number}
  */
 function openSync(path, flags, mode) {
-  path = getValidatedPath(path);
-  const flagsNumber = stringToFlags(flags);
-  mode = parseFileMode(mode, 'mode', 0o666);
+  return syncFs.open(path, flags, mode);
+}
 
-  const ctx = { path };
-  const result = binding.open(pathModule.toNamespacedPath(path),
-                              flagsNumber, mode,
-                              undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+/**
+ * @param {string | Buffer | URL } path
+ * @param {{
+ *   type?: string;
+ *   }} [options]
+ * @returns {Promise<Blob>}
+ */
+function openAsBlob(path, options = kEmptyObject) {
+  validateObject(options, 'options');
+  const type = options.type || '';
+  validateString(type, 'options.type');
+  // The underlying implementation here returns the Blob synchronously for now.
+  // To give ourselves flexibility to maybe return the Blob asynchronously,
+  // this API returns a Promise.
+  path = getValidatedPath(path);
+  return PromiseResolve(createBlobFromFilePath(pathModule.toNamespacedPath(path), { type }));
 }
 
 /**
@@ -643,9 +622,12 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
       buffer = Buffer.alloc(16384);
     }
 
+    if (params !== undefined) {
+      validateObject(params, 'options', { nullable: true });
+    }
     ({
       offset = 0,
-      length = buffer.byteLength - offset,
+      length = buffer?.byteLength - offset,
       position = null,
     } = params ?? kEmptyObject);
   }
@@ -702,26 +684,28 @@ ObjectDefineProperty(read, kCustomPromisifyArgsSymbol,
  *   offset?: number;
  *   length?: number;
  *   position?: number | bigint | null;
- *   }} [offset]
+ *   }} [offsetOrOptions]
  * @returns {number}
  */
-function readSync(fd, buffer, offset, length, position) {
+function readSync(fd, buffer, offsetOrOptions, length, position) {
   fd = getValidatedFd(fd);
 
   validateBuffer(buffer);
 
-  if (arguments.length <= 3) {
-    // Assume fs.readSync(fd, buffer, options)
-    const options = offset || kEmptyObject;
+  let offset = offsetOrOptions;
+  if (arguments.length <= 3 || typeof offsetOrOptions === 'object') {
+    if (offsetOrOptions !== undefined) {
+      validateObject(offsetOrOptions, 'options', { nullable: true });
+    }
 
     ({
       offset = 0,
       length = buffer.byteLength - offset,
       position = null,
-    } = options);
+    } = offsetOrOptions ?? kEmptyObject);
   }
 
-  if (offset == null) {
+  if (offset === undefined) {
     offset = 0;
   } else {
     validateInteger(offset, 'offset', 0);
@@ -812,7 +796,7 @@ function readvSync(fd, buffers, position) {
 /**
  * Writes `buffer` to the specified `fd` (file descriptor).
  * @param {number} fd
- * @param {Buffer | TypedArray | DataView | string | object} buffer
+ * @param {Buffer | TypedArray | DataView | string} buffer
  * @param {number | object} [offsetOrOptions]
  * @param {number} [length]
  * @param {number | null} [position]
@@ -860,9 +844,6 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
   }
 
   validateStringAfterArrayBufferView(buffer, 'buffer');
-  if (typeof buffer !== 'string') {
-    showStringCoercionDeprecation();
-  }
 
   if (typeof position !== 'function') {
     if (typeof offset === 'function') {
@@ -874,7 +855,7 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
     length = 'utf8';
   }
 
-  const str = String(buffer);
+  const str = buffer;
   validateEncoding(str, length);
   callback = maybeCallback(position);
 
@@ -925,7 +906,7 @@ function writeSync(fd, buffer, offsetOrOptions, length, position) {
     result = binding.writeBuffer(fd, buffer, offset, length, position,
                                  undefined, ctx);
   } else {
-    validatePrimitiveStringAfterArrayBufferView(buffer, 'buffer');
+    validateStringAfterArrayBufferView(buffer, 'buffer');
     validateEncoding(buffer, length);
 
     if (offset === undefined)
@@ -1404,14 +1385,12 @@ function mkdirSync(path, options) {
 /**
  * An iterative algorithm for reading the entire contents of the `basePath` directory.
  * This function does not validate `basePath` as a directory. It is passed directly to
- * `binding.readdir` after a `nullCheck`.
+ * `binding.readdir`.
  * @param {string} basePath
  * @param {{ encoding: string, withFileTypes: boolean }} options
  * @returns {string[] | Dirent[]}
  */
 function readdirSyncRecursive(basePath, options) {
-  nullCheck(basePath, 'path', true);
-
   const withFileTypes = Boolean(options.withFileTypes);
   const encoding = options.encoding;
 
@@ -1430,14 +1409,21 @@ function readdirSyncRecursive(basePath, options) {
     );
     handleErrorFromBinding(ctx);
 
-    for (let i = 0; i < readdirResult.length; i++) {
-      if (withFileTypes) {
+    if (withFileTypes) {
+      // Calling `readdir` with `withFileTypes=true`, the result is an array of arrays.
+      // The first array is the names, and the second array is the types.
+      // They are guaranteed to be the same length; hence, setting `length` to the length
+      // of the first array within the result.
+      const length = readdirResult[0].length;
+      for (let i = 0; i < length; i++) {
         const dirent = getDirent(path, readdirResult[0][i], readdirResult[1][i]);
         ArrayPrototypePush(readdirResults, dirent);
         if (dirent.isDirectory()) {
           ArrayPrototypePush(pathsQueue, pathModule.join(dirent.path, dirent.name));
         }
-      } else {
+      }
+    } else {
+      for (let i = 0; i < readdirResult.length; i++) {
         const resultPath = pathModule.join(path, readdirResult[i]);
         const relativeResultPath = pathModule.relative(basePath, resultPath);
         const stat = binding.internalModuleStat(resultPath);
@@ -1679,25 +1665,12 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
  *   }} [options]
  * @returns {Stats}
  */
-function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
-  path = getValidatedPath(path);
-  const ctx = { path };
-  const stats = binding.stat(pathModule.toNamespacedPath(path),
-                             options.bigint, undefined, ctx);
-  if (options.throwIfNoEntry === false && hasNoEntryError(ctx)) {
-    return undefined;
-  }
-  handleErrorFromBinding(ctx);
-  return getStatsFromBinding(stats);
+function statSync(path, options) {
+  return syncFs.stat(path, options);
 }
 
-function statfsSync(path, options = { bigint: false }) {
-  path = getValidatedPath(path);
-  const ctx = { path };
-  const stats = binding.statfs(pathModule.toNamespacedPath(path),
-                               options.bigint, undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return getStatFsFromBinding(stats);
+function statfsSync(path, options) {
+  return syncFs.statfs(path, options);
 }
 
 /**
@@ -1877,10 +1850,7 @@ function unlink(path, callback) {
  * @returns {void}
  */
 function unlinkSync(path) {
-  path = getValidatedPath(path);
-  const ctx = { path };
-  binding.unlink(pathModule.toNamespacedPath(path), undefined, ctx);
-  handleErrorFromBinding(ctx);
+  return syncFs.unlink(path);
 }
 
 /**
@@ -2252,7 +2222,7 @@ function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
 /**
  * Asynchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | object} data
+ * @param {string | Buffer | TypedArray | DataView} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
@@ -2269,10 +2239,7 @@ function writeFile(path, data, options, callback) {
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
-    if (typeof data !== 'string') {
-      showStringCoercionDeprecation();
-    }
-    data = Buffer.from(String(data), options.encoding || 'utf8');
+    data = Buffer.from(data, options.encoding || 'utf8');
   }
 
   if (isFd(path)) {
@@ -2299,7 +2266,7 @@ function writeFile(path, data, options, callback) {
 /**
  * Synchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | object} data
+ * @param {string | Buffer | TypedArray | DataView} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
@@ -2312,10 +2279,7 @@ function writeFileSync(path, data, options) {
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
-    if (typeof data !== 'string') {
-      showStringCoercionDeprecation();
-    }
-    data = Buffer.from(String(data), options.encoding || 'utf8');
+    data = Buffer.from(data, options.encoding || 'utf8');
   }
 
   const flag = options.flag || 'w';
@@ -2412,13 +2376,24 @@ function watch(filename, options, listener) {
 
   if (options.persistent === undefined) options.persistent = true;
   if (options.recursive === undefined) options.recursive = false;
-  if (options.recursive && !(isOSX || isWindows))
-    throw new ERR_FEATURE_UNAVAILABLE_ON_PLATFORM('watch recursively');
-  const watcher = new watchers.FSWatcher();
-  watcher[watchers.kFSWatchStart](filename,
-                                  options.persistent,
-                                  options.recursive,
-                                  options.encoding);
+
+  let watcher;
+  const watchers = require('internal/fs/watchers');
+  const path = possiblyTransformPath(filename);
+  // TODO(anonrig): Remove non-native watcher when/if libuv supports recursive.
+  // As of November 2022, libuv does not support recursive file watch on all platforms,
+  // e.g. Linux due to the limitations of inotify.
+  if (options.recursive && !isOSX && !isWindows) {
+    const nonNativeWatcher = require('internal/fs/recursive_watch');
+    watcher = new nonNativeWatcher.FSWatcher(options);
+    watcher[watchers.kFSWatchStart](path);
+  } else {
+    watcher = new watchers.FSWatcher();
+    watcher[watchers.kFSWatchStart](path,
+                                    options.persistent,
+                                    options.recursive,
+                                    options.encoding);
+  }
 
   if (listener) {
     watcher.addListener('change', listener);
@@ -2428,7 +2403,8 @@ function watch(filename, options, listener) {
       process.nextTick(() => watcher.close());
     } else {
       const listener = () => watcher.close();
-      options.signal.addEventListener('abort', listener);
+      kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+      options.signal.addEventListener('abort', listener, { __proto__: null, [kResistStopPropagation]: true });
       watcher.once('close', () => {
         options.signal.removeEventListener('abort', listener);
       });
@@ -2477,7 +2453,7 @@ function watchFile(filename, options, listener) {
   validateFunction(listener, 'listener');
 
   stat = statWatchers.get(filename);
-
+  const watchers = require('internal/fs/watchers');
   if (stat === undefined) {
     stat = new watchers.StatWatcher(options.bigint);
     stat[watchers.kFSStatWatcherStart](filename,
@@ -2503,7 +2479,7 @@ function unwatchFile(filename, listener) {
   const stat = statWatchers.get(filename);
 
   if (stat === undefined) return;
-
+  const watchers = require('internal/fs/watchers');
   if (typeof listener === 'function') {
     const beforeListenerCount = stat.listenerCount('change');
     stat.removeListener('change', listener);
@@ -2634,8 +2610,8 @@ function realpathSync(p, options) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base) || cache?.get(base) === base) {
-      if (isFileType(binding.statValues, S_IFIFO) ||
-          isFileType(binding.statValues, S_IFSOCK)) {
+      if (isFileType(statValues, S_IFIFO) ||
+          isFileType(statValues, S_IFSOCK)) {
         break;
       }
       continue;
@@ -2792,8 +2768,8 @@ function realpath(p, options, callback) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base)) {
-      if (isFileType(binding.statValues, S_IFIFO) ||
-          isFileType(binding.statValues, S_IFSOCK)) {
+      if (isFileType(statValues, S_IFIFO) ||
+          isFileType(statValues, S_IFSOCK)) {
         return callback(null, encodeRealpathResult(p, options));
       }
       return process.nextTick(LOOP);
@@ -2880,7 +2856,7 @@ realpath.native = (path, options, callback) => {
 
 /**
  * Creates a unique temporary directory.
- * @param {string} prefix
+ * @param {string | Buffer | URL} prefix
  * @param {string | { encoding?: string; }} [options]
  * @param {(
  *   err?: Error,
@@ -2892,27 +2868,40 @@ function mkdtemp(prefix, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix, 'prefix');
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, req);
+  binding.mkdtemp(path, options.encoding, req);
 }
 
 /**
  * Synchronously creates a unique temporary directory.
- * @param {string} prefix
+ * @param {string | Buffer | URL} prefix
  * @param {string | { encoding?: string; }} [options]
  * @returns {string}
  */
 function mkdtempSync(prefix, options) {
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix, 'prefix');
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
-  const path = `${prefix}XXXXXX`;
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
   const ctx = { path };
   const result = binding.mkdtemp(path, options.encoding,
                                  undefined, ctx);
@@ -2957,16 +2946,7 @@ function copyFile(src, dest, mode, callback) {
  * @returns {void}
  */
 function copyFileSync(src, dest, mode) {
-  src = getValidatedPath(src, 'src');
-  dest = getValidatedPath(dest, 'dest');
-
-  const ctx = { path: src, dest };  // non-prefixed
-
-  src = pathModule._makeLong(src);
-  dest = pathModule._makeLong(dest);
-  mode = getValidMode(mode, 'copyFile');
-  binding.copyFile(src, dest, mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  syncFs.copyFile(src, dest, mode);
 }
 
 /**
@@ -3107,8 +3087,7 @@ module.exports = fs = {
   mkdtempSync,
   open,
   openSync,
-  opendir,
-  opendirSync,
+  openAsBlob,
   readdir,
   readdirSync,
   read,
@@ -3148,7 +3127,6 @@ module.exports = fs = {
   writeSync,
   writev,
   writevSync,
-  Dir,
   Dirent,
   Stats,
 
@@ -3193,6 +3171,12 @@ module.exports = fs = {
   // For tests
   _toUnixTimestamp: toUnixTimestamp,
 };
+
+defineLazyProperties(
+  fs,
+  'internal/fs/dir',
+  ['Dir', 'opendir', 'opendirSync'],
+);
 
 ObjectDefineProperties(fs, {
   F_OK: { __proto__: null, enumerable: true, value: F_OK || 0 },

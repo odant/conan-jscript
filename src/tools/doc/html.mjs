@@ -35,7 +35,7 @@ import * as common from './common.mjs';
 import * as typeParser from './type-parser.mjs';
 import buildCSSForFlavoredJS from './buildCSSForFlavoredJS.mjs';
 
-const dynamicSizes = Object.create(null);
+const dynamicSizes = { __proto__: null };
 
 const { highlight, getLanguage } = highlightJs;
 
@@ -250,7 +250,7 @@ export function preprocessElements({ filename }) {
             const actualCharCount = Math.max(charCountFirstTwoLines, previousNode.charCountFirstTwoLines);
             (dynamicSizes[filename] ??= new Set()).add(actualCharCount);
             node.value = `<pre class="with-${actualCharCount}-chars">` +
-              '<input class="js-flavor-selector" type="checkbox"' +
+              '<input class="js-flavor-toggle" type="checkbox"' +
               // If CJS comes in second, ESM should display by default.
               (node.lang === 'cjs' ? ' checked' : '') +
               ' aria-label="Show modern ES modules syntax">' +
@@ -402,8 +402,8 @@ function versionSort(a, b) {
 const DEPRECATION_HEADING_PATTERN = /^DEP\d+:/;
 export function buildToc({ filename, apilinks }) {
   return (tree, file) => {
-    const idCounters = Object.create(null);
-    const legacyIdCounters = Object.create(null);
+    const idCounters = { __proto__: null };
+    const legacyIdCounters = { __proto__: null };
     let toc = '';
     let depth = 0;
 

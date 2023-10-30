@@ -75,16 +75,6 @@ const {
 const kHandle = Symbol('kHandle');
 const kKeyObject = Symbol('kKeyObject');
 
-let defaultEncoding = 'buffer';
-
-function setDefaultEncoding(val) {
-  defaultEncoding = val;
-}
-
-function getDefaultEncoding() {
-  return defaultEncoding;
-}
-
 // This is here because many functions accepted binary strings without
 // any explicit encoding in older versions of node, and we don't want
 // to break them unnecessarily.
@@ -560,11 +550,9 @@ module.exports = {
   getCiphers,
   getCurves,
   getDataViewOrTypedArrayBuffer,
-  getDefaultEncoding,
   getHashes,
   kHandle,
   kKeyObject,
-  setDefaultEncoding,
   setEngine,
   toBuf,
 

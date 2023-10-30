@@ -14,6 +14,7 @@ const {
     ERR_EVAL_ESM_CANNOT_PRINT,
   },
 } = require('internal/errors');
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
 
 const {
   executionAsyncId,
@@ -53,7 +54,7 @@ function evalModule(source, print) {
 function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
   const CJSModule = require('internal/modules/cjs/loader').Module;
   const { kVmBreakFirstLineSymbol } = require('internal/util');
-  const { pathToFileURL } = require('url');
+  const { pathToFileURL } = require('internal/url');
 
   const cwd = tryGetCwd();
   const origModule = globalThis.module;  // Set e.g. when called from the REPL.
@@ -161,8 +162,8 @@ function createOnGlobalUncaughtException() {
       try {
         if (!process._exiting) {
           process._exiting = true;
-          process.exitCode = 1;
-          process.emit('exit', 1);
+          process.exitCode = kGenericUserError;
+          process.emit('exit', kGenericUserError);
         }
       } catch {
         // Nothing to be done about it at this point.

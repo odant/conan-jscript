@@ -2,9 +2,9 @@
 const {
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
+  ArrayPrototypeFlatMap,
   ArrayPrototypePush,
   ArrayPrototypeReduce,
-  ObjectCreate,
   ObjectGetOwnPropertyDescriptor,
   MathFloor,
   MathMax,
@@ -82,7 +82,7 @@ function createDeferredCallback() {
     resolve();
   };
 
-  return { promise, cb };
+  return { __proto__: null, promise, cb };
 }
 
 function isTestFailureError(err) {
@@ -116,6 +116,7 @@ const kBuiltinReporters = new SafeMap([
   ['spec', 'internal/test_runner/reporter/spec'],
   ['dot', 'internal/test_runner/reporter/dot'],
   ['tap', 'internal/test_runner/reporter/tap'],
+  ['junit', 'internal/test_runner/reporter/junit'],
 ]);
 
 const kDefaultReporter = process.stdout.isTTY ? 'spec' : 'tap';
@@ -149,7 +150,7 @@ async function getReportersMap(reporters, destinations, rootTest) {
       }
 
       const { esmLoader } = require('internal/process/esm_loader');
-      reporter = await esmLoader.import(name, parentURL, ObjectCreate(null));
+      reporter = await esmLoader.import(name, parentURL, { __proto__: null });
     }
 
     if (reporter?.default) {
@@ -304,6 +305,10 @@ function formatLinesToRanges(values) {
   }, []), (range) => ArrayPrototypeJoin(range, '-'));
 }
 
+function getUncoveredLines(lines) {
+  return ArrayPrototypeFlatMap(lines, (line) => (line.count === 0 ? line.line : []));
+}
+
 function formatUncoveredLines(lines, table) {
   if (table) return ArrayPrototypeJoin(formatLinesToRanges(lines), ' ');
   return ArrayPrototypeJoin(lines, ', ');
@@ -333,7 +338,7 @@ function getCoverageReport(pad, summary, symbol, color, table) {
     const columnsWidth = ArrayPrototypeReduce(columnPadLengths, (acc, columnPadLength) => acc + columnPadLength + 3, 0);
 
     uncoveredLinesPadLength = table && ArrayPrototypeReduce(summary.files, (acc, file) =>
-      MathMax(acc, formatUncoveredLines(file.uncoveredLineNumbers, table).length), 0);
+      MathMax(acc, formatUncoveredLines(getUncoveredLines(file.lines), table).length), 0);
     uncoveredLinesPadLength = MathMax(uncoveredLinesPadLength, 'uncovered lines'.length);
     const uncoveredLinesWidth = uncoveredLinesPadLength + 2;
 
@@ -395,7 +400,7 @@ function getCoverageReport(pad, summary, symbol, color, table) {
 
     report += `${prefix}${getCell(relativePath, filePadLength, StringPrototypePadEnd, truncateStart, fileCoverage)}${kSeparator}` +
               `${ArrayPrototypeJoin(ArrayPrototypeMap(coverages, (coverage, j) => getCell(NumberPrototypeToFixed(coverage, 2), columnPadLengths[j], StringPrototypePadStart, false, coverage)), kSeparator)}${kSeparator}` +
-              `${getCell(formatUncoveredLines(file.uncoveredLineNumbers, table), uncoveredLinesPadLength, false, truncateEnd)}\n`;
+              `${getCell(formatUncoveredLines(getUncoveredLines(file.lines), table), uncoveredLinesPadLength, false, truncateEnd)}\n`;
   }
 
   // Foot

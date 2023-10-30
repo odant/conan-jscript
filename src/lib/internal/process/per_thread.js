@@ -49,15 +49,12 @@ const {
 } = require('internal/validators');
 const constants = internalBinding('constants').os.signals;
 
-const {
-  handleProcessExit,
-} = require('internal/modules/esm/handle_process_exit');
-
 const kInternal = Symbol('internal properties');
 
 function assert(x, msg) {
   if (!x) throw new ERR_ASSERTION(msg || 'assertion error');
 }
+const { exitCodes: { kNoFailure } } = internalBinding('errors');
 
 const binding = internalBinding('process_methods');
 
@@ -182,19 +179,23 @@ function wrapProcessMethods(binding) {
   memoryUsage.rss = rss;
 
   function exit(code) {
+    const {
+      handleProcessExit,
+    } = require('internal/modules/esm/handle_process_exit');
     process.off('exit', handleProcessExit);
 
-    if (code || code === 0)
+    if (arguments.length !== 0) {
       process.exitCode = code;
+    }
 
     if (!process._exiting) {
       process._exiting = true;
-      process.emit('exit', process.exitCode || 0);
+      process.emit('exit', process.exitCode || kNoFailure);
     }
     // FIXME(joyeecheung): This is an undocumented API that gets monkey-patched
     // in the user land. Either document it, or deprecate it in favor of a
     // better public alternative.
-    process.reallyExit(process.exitCode || 0);
+    process.reallyExit(process.exitCode || kNoFailure);
 
     // If this is a worker, v8::Isolate::TerminateExecution() is called above.
     // That function spoofs the stack pointer to cause the stack guard

@@ -31,6 +31,7 @@ using v8::MaybeLocal;
 using v8::Nothing;
 using v8::Object;
 using v8::SharedArrayBuffer;
+using v8::SharedValueConveyor;
 using v8::String;
 using v8::Symbol;
 using v8::Value;
@@ -92,10 +93,12 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
       Environment* env,
       const std::vector<BaseObjectPtr<BaseObject>>& host_objects,
       const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers,
-      const std::vector<CompiledWasmModule>& wasm_modules)
+      const std::vector<CompiledWasmModule>& wasm_modules,
+      const std::optional<SharedValueConveyor>& shared_value_conveyor)
       : host_objects_(host_objects),
         shared_array_buffers_(shared_array_buffers),
-        wasm_modules_(wasm_modules) {}
+        wasm_modules_(wasm_modules),
+        shared_value_conveyor_(shared_value_conveyor) {}
 
   MaybeLocal<Object> ReadHostObject(Isolate* isolate) override {
     // Identifying the index in the message's BaseObject array is sufficient.
@@ -128,12 +131,18 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
         isolate, wasm_modules_[transfer_id]);
   }
 
+  const SharedValueConveyor* GetSharedValueConveyor(Isolate* isolate) override {
+    CHECK(shared_value_conveyor_.has_value());
+    return &shared_value_conveyor_.value();
+  }
+
   ValueDeserializer* deserializer = nullptr;
 
  private:
   const std::vector<BaseObjectPtr<BaseObject>>& host_objects_;
   const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers_;
   const std::vector<CompiledWasmModule>& wasm_modules_;
+  const std::optional<SharedValueConveyor>& shared_value_conveyor_;
 };
 
 }  // anonymous namespace
@@ -198,8 +207,12 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
     shared_array_buffers.push_back(sab);
   }
 
-  DeserializerDelegate delegate(
-      this, env, host_objects, shared_array_buffers, wasm_modules_);
+  DeserializerDelegate delegate(this,
+                                env,
+                                host_objects,
+                                shared_array_buffers,
+                                wasm_modules_,
+                                shared_value_conveyor_);
   ValueDeserializer deserializer(
       env->isolate(),
       reinterpret_cast<const uint8_t*>(main_message_buf_.data),
@@ -241,6 +254,10 @@ void Message::AddTransferable(std::unique_ptr<TransferData>&& data) {
 uint32_t Message::AddWASMModule(CompiledWasmModule&& mod) {
   wasm_modules_.emplace_back(std::move(mod));
   return wasm_modules_.size() - 1;
+}
+
+void Message::AdoptSharedValueConveyor(SharedValueConveyor&& conveyor) {
+  shared_value_conveyor_.emplace(std::move(conveyor));
 }
 
 namespace {
@@ -301,7 +318,7 @@ class SerializerDelegate : public ValueSerializer::Delegate {
   }
 
   Maybe<bool> WriteHostObject(Isolate* isolate, Local<Object> object) override {
-    if (env_->base_object_ctor_template()->HasInstance(object)) {
+    if (BaseObject::IsBaseObject(env_->isolate_data(), object)) {
       return WriteHostObject(
           BaseObjectPtr<BaseObject> { Unwrap<BaseObject>(object) });
     }
@@ -345,6 +362,12 @@ class SerializerDelegate : public ValueSerializer::Delegate {
   Maybe<uint32_t> GetWasmModuleTransferId(
       Isolate* isolate, Local<WasmModuleObject> module) override {
     return Just(msg_->AddWASMModule(module->GetCompiledModule()));
+  }
+
+  bool AdoptSharedValueConveyor(Isolate* isolate,
+                                SharedValueConveyor&& conveyor) override {
+    msg_->AdoptSharedValueConveyor(std::move(conveyor));
+    return true;
   }
 
   Maybe<bool> Finish(Local<Context> context) {
@@ -490,7 +513,9 @@ Maybe<bool> Message::Serialize(Environment* env,
       array_buffers.push_back(ab);
       serializer.TransferArrayBuffer(id, ab);
       continue;
-    } else if (env->base_object_ctor_template()->HasInstance(entry)) {
+    } else if (entry->IsObject() &&
+               BaseObject::IsBaseObject(env->isolate_data(),
+                                        entry.As<Object>())) {
       // Check if the source MessagePort is being transferred.
       if (!source_port.IsEmpty() && entry == source_port) {
         ThrowDataCloneException(
@@ -544,7 +569,7 @@ Maybe<bool> Message::Serialize(Environment* env,
   for (Local<ArrayBuffer> ab : array_buffers) {
     // If serialization succeeded, we render it inaccessible in this Isolate.
     std::shared_ptr<BackingStore> backing_store = ab->GetBackingStore();
-    ab->Detach();
+    ab->Detach(Local<Value>()).Check();
 
     array_buffers_.emplace_back(std::move(backing_store));
   }
@@ -1257,7 +1282,8 @@ JSTransferable::NestedTransferables() const {
     Local<Value> value;
     if (!list->Get(context, i).ToLocal(&value))
       return Nothing<BaseObjectList>();
-    if (env()->base_object_ctor_template()->HasInstance(value))
+    if (value->IsObject() &&
+        BaseObject::IsBaseObject(env()->isolate_data(), value.As<Object>()))
       ret.emplace_back(Unwrap<BaseObject>(value));
   }
   return Just(ret);
@@ -1309,9 +1335,11 @@ BaseObjectPtr<BaseObject> JSTransferable::Data::Deserialize(
 
   Local<Value> ret;
   CHECK(!env->messaging_deserialize_create_object().IsEmpty());
-  if (!env->messaging_deserialize_create_object()->Call(
-          context, Null(env->isolate()), 1, &info).ToLocal(&ret) ||
-      !env->base_object_ctor_template()->HasInstance(ret)) {
+  if (!env->messaging_deserialize_create_object()
+           ->Call(context, Null(env->isolate()), 1, &info)
+           .ToLocal(&ret) ||
+      !ret->IsObject() ||
+      !BaseObject::IsBaseObject(env->isolate_data(), ret.As<Object>())) {
     return {};
   }
 
@@ -1492,7 +1520,6 @@ static void InitMessaging(Local<Object> target,
   {
     Local<FunctionTemplate> t =
         NewFunctionTemplate(isolate, JSTransferable::New);
-    t->Inherit(BaseObject::GetConstructorTemplate(env));
     t->InstanceTemplate()->SetInternalFieldCount(
         JSTransferable::kInternalFieldCount);
     t->SetClassName(OneByteString(isolate, "JSTransferable"));

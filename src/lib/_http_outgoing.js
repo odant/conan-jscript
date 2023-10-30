@@ -27,7 +27,6 @@ const {
   ArrayPrototypeJoin,
   MathFloor,
   NumberPrototypeToString,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectKeys,
   ObjectValues,
@@ -221,7 +220,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
     if (val == null) {
       this[kOutHeaders] = null;
     } else if (typeof val === 'object') {
-      const headers = this[kOutHeaders] = ObjectCreate(null);
+      const headers = this[kOutHeaders] = { __proto__: null };
       const keys = ObjectKeys(val);
       // Retain for(;;) loop for performance reasons
       // Refs: https://github.com/nodejs/node/pull/30958
@@ -248,7 +247,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headerNames', {
   get: internalUtil.deprecate(function() {
     const headers = this[kOutHeaders];
     if (headers !== null) {
-      const out = ObjectCreate(null);
+      const out = { __proto__: null };
       const keys = ObjectKeys(headers);
       // Retain for(;;) loop for performance reasons
       // Refs: https://github.com/nodejs/node/pull/30958
@@ -483,8 +482,9 @@ function _storeHeader(firstLine, headers) {
 
   // keep-alive logic
   if (this._removedConnection) {
-    this._last = true;
-    this.shouldKeepAlive = false;
+    // shouldKeepAlive is generally true for HTTP/1.1. In that common case,
+    // even if the connection header isn't sent, we still persist by default.
+    this._last = !this.shouldKeepAlive;
   } else if (!state.connection) {
     const shouldSendKeepAlive = this.shouldKeepAlive &&
         (state.contLen || this.useChunkedEncodingByDefault || this.agent);
@@ -524,6 +524,10 @@ function _storeHeader(firstLine, headers) {
       // Transfer-Encoding are removed by the user.
       // See: test/parallel/test-http-remove-header-stays-removed.js
       debug('Both Content-Length and Transfer-Encoding are removed');
+
+      // We can't keep alive in this case, because with no header info the body
+      // is defined as all data until the connection is closed.
+      this._last = true;
     }
   }
 
@@ -652,7 +656,7 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
 
   let headers = this[kOutHeaders];
   if (headers === null)
-    this[kOutHeaders] = headers = ObjectCreate(null);
+    this[kOutHeaders] = headers = { __proto__: null };
 
   headers[StringPrototypeToLowerCase(name)] = [name, value];
   return this;
@@ -749,7 +753,7 @@ OutgoingMessage.prototype.getRawHeaderNames = function getRawHeaderNames() {
 // Returns a shallow copy of the current outgoing headers.
 OutgoingMessage.prototype.getHeaders = function getHeaders() {
   const headers = this[kOutHeaders];
-  const ret = ObjectCreate(null);
+  const ret = { __proto__: null };
   if (headers) {
     const keys = ObjectKeys(headers);
     // Retain for(;;) loop for performance reasons

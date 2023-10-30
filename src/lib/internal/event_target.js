@@ -34,7 +34,7 @@ const {
     ERR_INVALID_THIS,
   },
 } = require('internal/errors');
-const { validateObject, validateString } = require('internal/validators');
+const { validateAbortSignal, validateObject, validateString, validateInternalField } = require('internal/validators');
 
 const {
   customInspectSymbol,
@@ -62,6 +62,7 @@ const kWeakHandler = Symbol('kWeak');
 const kResistStopPropagation = Symbol('kResistStopPropagation');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
+const kRemoveWeakListenerHelper = Symbol('nodejs.internal.removeWeakListenerHelper');
 const kCreateEvent = Symbol('kCreateEvent');
 const kNewListener = Symbol('kNewListener');
 const kRemoveListener = Symbol('kRemoveListener');
@@ -123,6 +124,23 @@ class Event {
 
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
+  }
+
+  /**
+   * @param {string} type
+   * @param {boolean} [bubbles]
+   * @param {boolean} [cancelable]
+   */
+  initEvent(type, bubbles = false, cancelable = false) {
+    if (arguments.length === 0)
+      throw new ERR_MISSING_ARGS('type');
+
+    if (this[kIsBeingDispatched]) {
+      return;
+    }
+    this[kType] = `${type}`;
+    this.#bubbles = !!bubbles;
+    this.#cancelable = !!cancelable;
   }
 
   [customInspectSymbol](depth, options) {
@@ -309,6 +327,7 @@ ObjectDefineProperties(
       configurable: true,
       value: 'Event',
     },
+    initEvent: kEnumerableProperty,
     stopImmediatePropagation: kEnumerableProperty,
     preventDefault: kEnumerableProperty,
     target: kEnumerableProperty,
@@ -392,7 +411,7 @@ let weakListenersState = null;
 let objectToWeakListenerMap = null;
 function weakListeners() {
   weakListenersState ??= new SafeFinalizationRegistry(
-    (listener) => listener.remove(),
+    ({ eventTarget, listener, eventType }) => eventTarget.deref()?.[kRemoveWeakListenerHelper](eventType, listener),
   );
   objectToWeakListenerMap ??= new SafeWeakMap();
   return { registry: weakListenersState, map: objectToWeakListenerMap };
@@ -414,7 +433,7 @@ const kFlagResistStopPropagation = 1 << 6;
 // the linked list makes dispatching faster, even if adding/removing is
 // slower.
 class Listener {
-  constructor(previous, listener, once, capture, passive,
+  constructor(eventTarget, eventType, previous, listener, once, capture, passive,
               isNodeStyleListener, weak, resistStopPropagation) {
     this.next = undefined;
     if (previous !== undefined)
@@ -441,7 +460,13 @@ class Listener {
 
     if (this.weak) {
       this.callback = new SafeWeakRef(listener);
-      weakListeners().registry.register(listener, this, this);
+      weakListeners().registry.register(listener, {
+        __proto__: null,
+        // Weak ref so the listener won't hold the eventTarget alive
+        eventTarget: new SafeWeakRef(eventTarget),
+        listener: this,
+        eventType,
+      }, this);
       // Make the retainer retain the listener in a WeakMap
       weakListeners().map.set(weak, listener);
       this.listener = this.callback;
@@ -505,6 +530,7 @@ function initEventTarget(self) {
   self[kEvents] = new SafeMap();
   self[kMaxEventTargetListeners] = EventEmitter.defaultMaxListeners;
   self[kMaxEventTargetListenersWarned] = false;
+  self[kHandlers] = new SafeMap();
 }
 
 class EventTarget {
@@ -574,6 +600,8 @@ class EventTarget {
       resistStopPropagation,
     } = validateEventListenerOptions(options);
 
+    validateAbortSignal(signal, 'options.signal');
+
     if (!validateEventListener(listener)) {
       // The DOM silently allows passing undefined as a second argument
       // No error code for this since it is a Warning
@@ -604,7 +632,7 @@ class EventTarget {
     if (root === undefined) {
       root = { size: 1, next: undefined, resistStopPropagation: Boolean(resistStopPropagation) };
       // This is the first handler in our linked list.
-      new Listener(root, listener, once, capture, passive,
+      new Listener(this, type, root, listener, once, capture, passive,
                    isNodeStyleListener, weak, resistStopPropagation);
       this[kNewListener](
         root.size,
@@ -631,7 +659,7 @@ class EventTarget {
       return;
     }
 
-    new Listener(previous, listener, once, capture, passive,
+    new Listener(this, type, previous, listener, once, capture, passive,
                  isNodeStyleListener, weak, resistStopPropagation);
     root.size++;
     root.resistStopPropagation ||= Boolean(resistStopPropagation);
@@ -668,6 +696,28 @@ class EventTarget {
         if (root.size === 0)
           this[kEvents].delete(type);
         this[kRemoveListener](root.size, type, listener, capture);
+        break;
+      }
+      handler = handler.next;
+    }
+  }
+
+  [kRemoveWeakListenerHelper](type, listener) {
+    const root = this[kEvents].get(type);
+    if (root === undefined || root.next === undefined)
+      return;
+
+    const capture = listener.capture === true;
+
+    let handler = root.next;
+    while (handler !== undefined) {
+      if (handler === listener) {
+        handler.remove();
+        root.size--;
+        if (root.size === 0)
+          this[kEvents].delete(type);
+        // Undefined is passed as the listener as the listener was GCed
+        this[kRemoveListener](root.size, type, undefined, capture);
         break;
       }
       handler = handler.next;
@@ -1046,36 +1096,48 @@ function makeEventHandler(handler) {
   return eventHandler;
 }
 
-function defineEventHandler(emitter, name) {
+function defineEventHandler(emitter, name, event = name) {
   // 8.1.5.1 Event handlers - basically `on[eventName]` attributes
-  ObjectDefineProperty(emitter, `on${name}`, {
+  const propName = `on${name}`;
+  function get() {
+    validateInternalField(this, kHandlers, 'EventTarget');
+    return this[kHandlers]?.get(event)?.handler ?? null;
+  }
+  ObjectDefineProperty(get, 'name', {
     __proto__: null,
-    get() {
-      return this[kHandlers]?.get(name)?.handler ?? null;
-    },
-    set(value) {
-      if (!this[kHandlers]) {
-        this[kHandlers] = new SafeMap();
+    value: `get ${propName}`,
+  });
+
+  function set(value) {
+    validateInternalField(this, kHandlers, 'EventTarget');
+    let wrappedHandler = this[kHandlers]?.get(event);
+    if (wrappedHandler) {
+      if (typeof wrappedHandler.handler === 'function') {
+        this[kEvents].get(event).size--;
+        const size = this[kEvents].get(event).size;
+        this[kRemoveListener](size, event, wrappedHandler.handler, false);
       }
-      let wrappedHandler = this[kHandlers]?.get(name);
-      if (wrappedHandler) {
-        if (typeof wrappedHandler.handler === 'function') {
-          this[kEvents].get(name).size--;
-          const size = this[kEvents].get(name).size;
-          this[kRemoveListener](size, name, wrappedHandler.handler, false);
-        }
-        wrappedHandler.handler = value;
-        if (typeof wrappedHandler.handler === 'function') {
-          this[kEvents].get(name).size++;
-          const size = this[kEvents].get(name).size;
-          this[kNewListener](size, name, value, false, false, false, false);
-        }
-      } else {
-        wrappedHandler = makeEventHandler(value);
-        this.addEventListener(name, wrappedHandler);
+      wrappedHandler.handler = value;
+      if (typeof wrappedHandler.handler === 'function') {
+        this[kEvents].get(event).size++;
+        const size = this[kEvents].get(event).size;
+        this[kNewListener](size, event, value, false, false, false, false);
       }
-      this[kHandlers].set(name, wrappedHandler);
-    },
+    } else {
+      wrappedHandler = makeEventHandler(value);
+      this.addEventListener(event, wrappedHandler);
+    }
+    this[kHandlers].set(event, wrappedHandler);
+  }
+  ObjectDefineProperty(set, 'name', {
+    __proto__: null,
+    value: `set ${propName}`,
+  });
+
+  ObjectDefineProperty(emitter, propName, {
+    __proto__: null,
+    get,
+    set,
     configurable: true,
     enumerable: true,
   });

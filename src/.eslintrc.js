@@ -111,6 +111,14 @@ module.exports = {
         },
       ] },
     },
+    {
+      files: [
+        'lib/internal/test_runner/**/*.js',
+      ],
+      rules: {
+        'node-core/set-proto-to-null-in-object': 'error',
+      },
+    },
   ],
   rules: {
     // ESLint built-in rules
@@ -233,6 +241,12 @@ module.exports = {
         selector: "CallExpression[callee.name='isNaN']",
         message: 'Use Number.isNaN() instead of the global isNaN() function.',
       },
+      {
+        // TODO(@panva): move this to no-restricted-properties
+        // when https://github.com/eslint/eslint/issues/16412 is fixed
+        selector: "Identifier[name='webcrypto']",
+        message: 'Use `globalThis.crypto`.',
+      },
     ],
     'no-return-await': 'error',
     'no-self-compare': 'error',
@@ -309,12 +323,14 @@ module.exports = {
     // Custom rules from eslint-plugin-node-core
     'node-core/no-unescaped-regexp-dot': 'error',
     'node-core/no-duplicate-requires': 'error',
+    'node-core/prefer-proto': 'error',
   },
   globals: {
     ByteLengthQueuingStrategy: 'readable',
     CompressionStream: 'readable',
     CountQueuingStrategy: 'readable',
     CustomEvent: 'readable',
+    crypto: 'readable',
     Crypto: 'readable',
     CryptoKey: 'readable',
     DecompressionStream: 'readable',

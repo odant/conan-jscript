@@ -31,51 +31,51 @@
 
 namespace node {
 
-#define NODE_ASYNC_NON_CRYPTO_PROVIDER_TYPES(V)                               \
-  V(NONE)                                                                     \
-  V(DIRHANDLE)                                                                \
-  V(DNSCHANNEL)                                                               \
-  V(ELDHISTOGRAM)                                                             \
-  V(FILEHANDLE)                                                               \
-  V(FILEHANDLECLOSEREQ)                                                       \
-  V(FIXEDSIZEBLOBCOPY)                                                        \
-  V(FSEVENTWRAP)                                                              \
-  V(FSREQCALLBACK)                                                            \
-  V(FSREQPROMISE)                                                             \
-  V(GETADDRINFOREQWRAP)                                                       \
-  V(GETNAMEINFOREQWRAP)                                                       \
-  V(HEAPSNAPSHOT)                                                             \
-  V(HTTP2SESSION)                                                             \
-  V(HTTP2STREAM)                                                              \
-  V(HTTP2PING)                                                                \
-  V(HTTP2SETTINGS)                                                            \
-  V(HTTPINCOMINGMESSAGE)                                                      \
-  V(HTTPCLIENTREQUEST)                                                        \
-  V(JSSTREAM)                                                                 \
-  V(JSUDPWRAP)                                                                \
-  V(MESSAGEPORT)                                                              \
-  V(PIPECONNECTWRAP)                                                          \
-  V(PIPESERVERWRAP)                                                           \
-  V(PIPEWRAP)                                                                 \
-  V(PROCESSWRAP)                                                              \
-  V(PROMISE)                                                                  \
-  V(QUERYWRAP)                                                                \
-  V(QUIC_LOGSTREAM)                                                           \
-  V(QUIC_PACKET)                                                              \
-  V(SHUTDOWNWRAP)                                                             \
-  V(SIGNALWRAP)                                                               \
-  V(STATWATCHER)                                                              \
-  V(STREAMPIPE)                                                               \
-  V(TCPCONNECTWRAP)                                                           \
-  V(TCPSERVERWRAP)                                                            \
-  V(TCPWRAP)                                                                  \
-  V(TTYWRAP)                                                                  \
-  V(UDPSENDWRAP)                                                              \
-  V(UDPWRAP)                                                                  \
-  V(SIGINTWATCHDOG)                                                           \
-  V(WORKER)                                                                   \
-  V(WORKERHEAPSNAPSHOT)                                                       \
-  V(WRITEWRAP)                                                                \
+#define NODE_ASYNC_NON_CRYPTO_PROVIDER_TYPES(V)                                \
+  V(NONE)                                                                      \
+  V(DIRHANDLE)                                                                 \
+  V(DNSCHANNEL)                                                                \
+  V(ELDHISTOGRAM)                                                              \
+  V(FILEHANDLE)                                                                \
+  V(FILEHANDLECLOSEREQ)                                                        \
+  V(BLOBREADER)                                                                \
+  V(FSEVENTWRAP)                                                               \
+  V(FSREQCALLBACK)                                                             \
+  V(FSREQPROMISE)                                                              \
+  V(GETADDRINFOREQWRAP)                                                        \
+  V(GETNAMEINFOREQWRAP)                                                        \
+  V(HEAPSNAPSHOT)                                                              \
+  V(HTTP2SESSION)                                                              \
+  V(HTTP2STREAM)                                                               \
+  V(HTTP2PING)                                                                 \
+  V(HTTP2SETTINGS)                                                             \
+  V(HTTPINCOMINGMESSAGE)                                                       \
+  V(HTTPCLIENTREQUEST)                                                         \
+  V(JSSTREAM)                                                                  \
+  V(JSUDPWRAP)                                                                 \
+  V(MESSAGEPORT)                                                               \
+  V(PIPECONNECTWRAP)                                                           \
+  V(PIPESERVERWRAP)                                                            \
+  V(PIPEWRAP)                                                                  \
+  V(PROCESSWRAP)                                                               \
+  V(PROMISE)                                                                   \
+  V(QUERYWRAP)                                                                 \
+  V(QUIC_LOGSTREAM)                                                            \
+  V(QUIC_PACKET)                                                               \
+  V(SHUTDOWNWRAP)                                                              \
+  V(SIGNALWRAP)                                                                \
+  V(STATWATCHER)                                                               \
+  V(STREAMPIPE)                                                                \
+  V(TCPCONNECTWRAP)                                                            \
+  V(TCPSERVERWRAP)                                                             \
+  V(TCPWRAP)                                                                   \
+  V(TTYWRAP)                                                                   \
+  V(UDPSENDWRAP)                                                               \
+  V(UDPWRAP)                                                                   \
+  V(SIGINTWATCHDOG)                                                            \
+  V(WORKER)                                                                    \
+  V(WORKERHEAPSNAPSHOT)                                                        \
+  V(WRITEWRAP)                                                                 \
   V(ZLIB)
 
 #if HAVE_OPENSSL
@@ -140,13 +140,17 @@ class AsyncWrap : public BaseObject {
   static constexpr double kInvalidAsyncId = -1;
 
   static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
+      IsolateData* isolate_data);
+  inline static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
       Environment* env);
 
   static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
-  static void Initialize(v8::Local<v8::Object> target,
-                         v8::Local<v8::Value> unused,
-                         v8::Local<v8::Context> context,
-                         void* priv);
+  static void CreatePerContextProperties(v8::Local<v8::Object> target,
+                                         v8::Local<v8::Value> unused,
+                                         v8::Local<v8::Context> context,
+                                         void* priv);
+  static void CreatePerIsolateProperties(IsolateData* isolate_data,
+                                         v8::Local<v8::ObjectTemplate> target);
 
   static void GetAsyncId(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PushAsyncContext(const v8::FunctionCallbackInfo<v8::Value>& args);

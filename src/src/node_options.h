@@ -111,16 +111,20 @@ class EnvironmentOptions : public Options {
   std::string dns_result_order;
   bool enable_source_maps = false;
   bool experimental_fetch = true;
-  bool experimental_global_customevent = false;
-  bool experimental_global_web_crypto = false;
+  bool experimental_global_customevent = true;
+  bool experimental_global_web_crypto = true;
   bool experimental_https_modules = false;
-  std::string experimental_specifier_resolution;
   bool experimental_wasm_modules = false;
   bool experimental_import_meta_resolve = false;
   std::string module_type;
   std::string experimental_policy;
   std::string experimental_policy_integrity;
   bool has_policy_integrity_string = false;
+  bool experimental_permission = false;
+  std::vector<std::string> allow_fs_read;
+  std::vector<std::string> allow_fs_write;
+  bool allow_child_process = false;
+  bool allow_worker_threads = false;
   bool experimental_repl_await = true;
   bool experimental_vm_modules = false;
   bool expose_internals = false;
@@ -128,7 +132,7 @@ class EnvironmentOptions : public Options {
   bool frozen_intrinsics = false;
   int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
-  bool enable_network_family_autoselection = false;
+  bool network_family_autoselection = true;
   uint64_t max_http_header_size = 16 * 1024;
   bool deprecation = true;
   bool force_async_hooks_checks = true;
@@ -154,6 +158,8 @@ class EnvironmentOptions : public Options {
 #endif  // HAVE_INSPECTOR
   std::string redirect_warnings;
   std::string diagnostic_dir;
+  std::string env_file;
+  bool has_env_file_string = false;
   bool test_runner = false;
   bool test_runner_coverage = false;
   std::vector<std::string> test_name_pattern;
@@ -161,6 +167,7 @@ class EnvironmentOptions : public Options {
   std::vector<std::string> test_reporter_destination;
   bool test_only = false;
   bool test_udp_no_try_send = false;
+  std::string test_shard;
   bool throw_deprecation = false;
   bool trace_atomics_wait = false;
   bool trace_deprecation = false;
@@ -224,6 +231,7 @@ class PerIsolateOptions : public Options {
   bool report_on_signal = false;
   bool experimental_shadow_realm = false;
   std::string report_signal = "SIGUSR2";
+  bool build_snapshot = false;
   inline EnvironmentOptions* get_per_env_options();
   void CheckOptions(std::vector<std::string>* errors,
                     std::vector<std::string>* argv) override;
@@ -248,7 +256,6 @@ class PerProcessOptions : public Options {
   bool zero_fill_all_buffers = false;
   bool debug_arraybuffer_allocations = false;
   std::string disable_proto;
-  bool build_snapshot = false;
   // We enable the shared read-only heap which currently requires that the
   // snapshot used in different isolates in the same process to be the same.
   // Therefore --node-snapshot is a per-process option.
@@ -260,6 +267,7 @@ class PerProcessOptions : public Options {
   bool print_help = false;
   bool print_v8_help = false;
   bool print_version = false;
+  std::string experimental_sea_config;
 
 #ifdef NODE_HAVE_I18N_SUPPORT
   std::string icu_data_dir;

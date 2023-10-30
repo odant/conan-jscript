@@ -15,7 +15,8 @@ namespace permission {
 
 class FSPermission final : public PermissionBase {
  public:
-  void Apply(const std::string& allow, PermissionScope scope) override;
+  void Apply(const std::vector<std::string>& allow,
+             PermissionScope scope) override;
   bool is_granted(PermissionScope perm, const std::string_view& param) override;
 
   struct RadixTree {
@@ -23,13 +24,18 @@ class FSPermission final : public PermissionBase {
       std::string prefix;
       std::unordered_map<char, Node*> children;
       Node* wildcard_child;
+      bool is_leaf;
 
       explicit Node(const std::string& pre)
-          : prefix(pre), wildcard_child(nullptr) {}
+          : prefix(pre), wildcard_child(nullptr), is_leaf(false) {}
 
-      Node() : wildcard_child(nullptr) {}
+      Node() : wildcard_child(nullptr), is_leaf(false) {}
 
       Node* CreateChild(std::string prefix) {
+        if (prefix.empty() && !is_leaf) {
+          is_leaf = true;
+          return this;
+        }
         char label = prefix[0];
 
         Node* child = children[label];
@@ -54,6 +60,7 @@ class FSPermission final : public PermissionBase {
             return split_child->CreateChild(prefix.substr(i));
           }
         }
+        child->is_leaf = true;
         return child->CreateChild(prefix.substr(i));
       }
 
@@ -112,7 +119,7 @@ class FSPermission final : public PermissionBase {
         if (children.size() == 0) {
           return true;
         }
-        return children['\0'] != nullptr;
+        return is_leaf;
       }
     };
 

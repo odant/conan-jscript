@@ -284,7 +284,9 @@ Emitted when the server has been bound after calling [`server.listen()`][].
 ### Event: `'drop'`
 
 <!-- YAML
-added: v18.6.0
+added:
+  - v18.6.0
+  - v16.17.0
 -->
 
 When the number of connections reaches the threshold of `server.maxConnections`,
@@ -358,7 +360,7 @@ was not open when it was closed.
 ### `server[Symbol.asyncDispose]()`
 
 <!-- YAML
-added: v18.18.0
+added: v20.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -792,7 +794,7 @@ socket as reported by the operating system:
 ### `socket.autoSelectFamilyAttemptedAddresses`
 
 <!-- YAML
-added: v18.18.0
+added: v19.4.0
 -->
 
 * {string\[]}
@@ -879,15 +881,25 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v18.18.0
+  - version: v20.0.0
+    pr-url: https://github.com/nodejs/node/pull/46790
+    description: The default value for the autoSelectFamily option is now true.
+                 The `--enable-network-family-autoselection` CLI flag has been renamed
+                 to `--network-family-autoselection`. The old name is now an
+                 alias but it is discouraged.
+  - version: v19.4.0
     pr-url: https://github.com/nodejs/node/pull/45777
     description: The default value for autoSelectFamily option can be changed
                  at runtime using `setDefaultAutoSelectFamily` or via the
                  command line option `--enable-network-family-autoselection`.
-  - version: v18.13.0
+  - version:
+      - v19.3.0
+      - v18.13.0
     pr-url: https://github.com/nodejs/node/pull/44731
     description: Added the `autoSelectFamily` option.
-  - version: v17.7.0
+  - version:
+    - v17.7.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41310
     description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
                  options are supported now.
@@ -941,12 +953,12 @@ For TCP connections, available `options` are:
   option before timing out and trying the next address.
   Ignored if the `family` option is not `0` or if `localAddress` is set.
   Connection errors are not emitted if at least one connection succeeds.
-  **Default:** initially `false`, but it can be changed at runtime using [`net.setDefaultAutoSelectFamily(value)`][]
-  or via the command line option `--enable-network-family-autoselection`.
+  If all connections attempts fails, a single `AggregateError` with all failed attempts is emitted.
+  **Default:** [`net.getDefaultAutoSelectFamily()`][]
 * `autoSelectFamilyAttemptTimeout` {number}: The amount of time in milliseconds to wait
   for a connection attempt to finish before trying the next address when using the `autoSelectFamily` option.
   If set to a positive integer less than `10`, then the value `10` will be used instead.
-  **Default:** initially `250`, but it can be changed at runtime using [`net.setDefaultAutoSelectFamilyAttemptTimeout(value)`][]
+  **Default:** [`net.getDefaultAutoSelectFamilyAttemptTimeout()`][]
 
 For [IPC][] connections, available `options` are:
 
@@ -1108,7 +1120,9 @@ The numeric representation of the local port. For example, `80` or `21`.
 ### `socket.localFamily`
 
 <!-- YAML
-added: v18.8.0
+added:
+  - v18.8.0
+  - v16.18.0
 -->
 
 * {string}
@@ -1185,7 +1199,9 @@ the socket is destroyed (for example, if the client disconnected).
 ### `socket.resetAndDestroy()`
 
 <!-- YAML
-added: v18.3.0
+added:
+  - v18.3.0
+  - v16.17.0
 -->
 
 * Returns: {net.Socket}
@@ -1536,7 +1552,7 @@ then returns the `net.Socket` that starts the connection.
 <!-- YAML
 added: v0.5.0
 changes:
-  - version: v18.17.0
+  - version: v20.1.0
     pr-url: https://github.com/nodejs/node/pull/47405
     description: The `highWaterMark` option is supported now.
   - version:
@@ -1613,8 +1629,8 @@ server.listen(8124, () => {
 
 Test this by using `telnet`:
 
-```console
-$ telnet localhost 8124
+```bash
+telnet localhost 8124
 ```
 
 To listen on the socket `/tmp/echo.sock`:
@@ -1627,8 +1643,8 @@ server.listen('/tmp/echo.sock', () => {
 
 Use `nc` to connect to a Unix domain socket server:
 
-```console
-$ nc -U /tmp/echo.sock
+```bash
+nc -U /tmp/echo.sock
 ```
 
 ## `net.getDefaultAutoSelectFamily()`
@@ -1638,6 +1654,8 @@ added: v19.4.0
 -->
 
 Gets the current default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
+The initial default value is `true`, unless the command line option
+`--no-network-family-autoselection` is provided.
 
 * Returns: {boolean} The current default value of the `autoSelectFamily` option.
 
@@ -1654,23 +1672,24 @@ Sets the default value of the `autoSelectFamily` option of [`socket.connect(opt
 ## `net.getDefaultAutoSelectFamilyAttemptTimeout()`
 
 <!-- YAML
-added: v18.18.0
+added: v19.8.0
 -->
 
 Gets the current default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
+The initial default value is `250`.
 
 * Returns: {number} The current default value of the `autoSelectFamilyAttemptTimeout` option.
 
 ## `net.setDefaultAutoSelectFamilyAttemptTimeout(value)`
 
 <!-- YAML
-added: v18.18.0
+added: v19.8.0
 -->
 
 Sets the default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
 
 * `value` {number} The new default value, which must be a positive number. If the number is less than `10`,
-  the value `10` is used insted The initial default value is `250`.
+  the value `10` is used instead. The initial default value is `250`.
 
 ## `net.isIP(input)`
 
@@ -1756,8 +1775,8 @@ net.isIPv6('fhqwhgads'); // returns false
 [`net.createConnection(path)`]: #netcreateconnectionpath-connectlistener
 [`net.createConnection(port, host)`]: #netcreateconnectionport-host-connectlistener
 [`net.createServer()`]: #netcreateserveroptions-connectionlistener
-[`net.setDefaultAutoSelectFamily(value)`]: #netsetdefaultautoselectfamilyvalue
-[`net.setDefaultAutoSelectFamilyAttemptTimeout(value)`]: #netsetdefaultautoselectfamilyattempttimeoutvalue
+[`net.getDefaultAutoSelectFamily()`]: #netgetdefaultautoselectfamily
+[`net.getDefaultAutoSelectFamilyAttemptTimeout()`]: #netgetdefaultautoselectfamilyattempttimeout
 [`new net.Socket(options)`]: #new-netsocketoptions
 [`readable.setEncoding()`]: stream.md#readablesetencodingencoding
 [`server.close()`]: #serverclosecallback

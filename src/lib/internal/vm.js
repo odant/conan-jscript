@@ -97,13 +97,13 @@ function internalCompileFunction(code, params, options) {
   if (importModuleDynamically !== undefined) {
     validateFunction(importModuleDynamically,
                      'options.importModuleDynamically');
-    const { importModuleDynamicallyWrap } =
-      require('internal/vm/module');
-    const { callbackMap } = internalBinding('module_wrap');
+    const { importModuleDynamicallyWrap } = require('internal/vm/module');
     const wrapped = importModuleDynamicallyWrap(importModuleDynamically);
     const func = result.function;
-    callbackMap.set(result.cacheKey, {
-      importModuleDynamically: (s, _k, i) => wrapped(s, func, i),
+    const { registerModule } = require('internal/modules/esm/utils');
+    registerModule(func, {
+      __proto__: null,
+      importModuleDynamically: wrapped,
     });
   }
 

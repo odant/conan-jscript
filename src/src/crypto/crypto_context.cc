@@ -267,7 +267,6 @@ Local<FunctionTemplate> SecureContext::GetConstructorTemplate(
     tmpl = NewFunctionTemplate(isolate, New);
     tmpl->InstanceTemplate()->SetInternalFieldCount(
         SecureContext::kInternalFieldCount);
-    tmpl->Inherit(BaseObject::GetConstructorTemplate(env));
     tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "SecureContext"));
 
     SetProtoMethod(isolate, tmpl, "init", Init);
@@ -648,6 +647,13 @@ void SecureContext::SetEngineKey(const FunctionCallbackInfo<Value>& args) {
   ASSIGN_OR_RETURN_UNWRAP(&sc, args.Holder());
 
   CHECK_EQ(args.Length(), 2);
+
+  if (UNLIKELY(env->permission()->enabled())) {
+    return THROW_ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED(
+        env,
+        "Programmatic selection of OpenSSL engines is unsupported while the "
+        "experimental permission model is enabled");
+  }
 
   CryptoErrorStore errors;
   Utf8Value engine_id(env->isolate(), args[1]);
@@ -1102,6 +1108,13 @@ void SecureContext::SetClientCertEngine(
   // Instead of trying to fix up this problem we in turn also do not
   // support multiple calls to SetClientCertEngine.
   CHECK(!sc->client_cert_engine_provided_);
+
+  if (UNLIKELY(env->permission()->enabled())) {
+    return THROW_ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED(
+        env,
+        "Programmatic selection of OpenSSL engines is unsupported while the "
+        "experimental permission model is enabled");
+  }
 
   CryptoErrorStore errors;
   const Utf8Value engine_id(env->isolate(), args[0]);

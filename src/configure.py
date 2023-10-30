@@ -457,14 +457,9 @@ parser.add_argument_group(shared_builtin_optgroup)
 static_optgroup.add_argument('--static-zoslib-gyp',
     action='store',
     dest='static_zoslib_gyp',
-    help='path to zoslib.gyp file for includes and to link to static zoslib libray')
+    help='path to zoslib.gyp file for includes and to link to static zoslib library')
 
 parser.add_argument_group(static_optgroup)
-
-parser.add_argument('--systemtap-includes',
-    action='store',
-    dest='systemtap_includes',
-    help='directory containing systemtap header files')
 
 parser.add_argument('--tag',
     action='store',
@@ -546,18 +541,6 @@ parser.add_argument('--with-mips-float-abi',
     choices=valid_mips_float_abi,
     help=f"MIPS floating-point ABI ({', '.join(valid_mips_float_abi)}) [default: %(default)s]")
 
-parser.add_argument('--with-dtrace',
-    action='store_true',
-    dest='with_dtrace',
-    default=None,
-    help='build with DTrace (default is true on sunos and darwin)')
-
-parser.add_argument('--with-etw',
-    action='store_true',
-    dest='with_etw',
-    default=None,
-    help='build with ETW (default is true on Windows)')
-
 parser.add_argument('--use-largepages',
     action='store_true',
     dest='node_use_large_pages',
@@ -626,6 +609,14 @@ parser.add_argument('--with-ltcg',
     default=None,
     help='Use Link Time Code Generation. This feature is only available on Windows.')
 
+parser.add_argument('--write-snapshot-as-array-literals',
+    action='store_true',
+    dest='write_snapshot_as_array_literals',
+    default=None,
+    help='Write the snapshot data as array literals for readability.'
+         'By default the snapshot data may be written as string literals on some '
+         'platforms to speed up compilation.')
+
 parser.add_argument('--without-node-snapshot',
     action='store_true',
     dest='without_node_snapshot',
@@ -664,18 +655,6 @@ http2_optgroup.add_argument('--debug-nghttp2',
     help='build nghttp2 with DEBUGBUILD (default is false)')
 
 parser.add_argument_group(http2_optgroup)
-
-parser.add_argument('--without-dtrace',
-    action='store_true',
-    dest='without_dtrace',
-    default=None,
-    help='build without DTrace')
-
-parser.add_argument('--without-etw',
-    action='store_true',
-    dest='without_etw',
-    default=None,
-    help='build without ETW')
 
 parser.add_argument('--without-npm',
     action='store_true',
@@ -1056,7 +1035,7 @@ def check_compiler(o):
   print_verbose(f"Detected {'clang ' if is_clang else ''}C++ compiler (CXX={CXX}) version: {version_str}")
   if not ok:
     warn(f'failed to autodetect C++ compiler version (CXX={CXX})')
-  elif clang_version < (8, 0, 0) if is_clang else gcc_version < (8, 3, 0):
+  elif clang_version < (8, 0, 0) if is_clang else gcc_version < (10, 1, 0):
     warn(f'C++ compiler (CXX={CXX}, {version_str}) too old, need g++ 10.1.0 or clang++ 8.0.0')
 
   ok, is_clang, clang_version, gcc_version = try_check_compiler(CC, 'c')
@@ -1319,6 +1298,11 @@ def configure_node(o):
     o['variables']['node_use_node_code_cache'] = b(
       not cross_compiling and not options.shared)
 
+  if options.write_snapshot_as_array_literals is not None:
+     o['variables']['node_write_snapshot_as_array_literals'] = b(options.write_snapshot_as_array_literals)
+  else:
+     o['variables']['node_write_snapshot_as_array_literals'] = b(flavor != 'mac' and flavor != 'linux')
+
   if target_arch == 'arm':
     configure_arm(o)
   elif target_arch in ('mips', 'mipsel', 'mips64el'):
@@ -1377,22 +1361,6 @@ def configure_node(o):
 
   o['variables']['enable_lto'] = b(options.enable_lto)
 
-  if flavor in ('solaris', 'mac', 'linux', 'freebsd'):
-    use_dtrace = not options.without_dtrace
-    # Don't enable by default on linux and freebsd
-    if flavor in ('linux', 'freebsd'):
-      use_dtrace = options.with_dtrace
-
-    if flavor == 'linux':
-      if options.systemtap_includes:
-        o['include_dirs'] += [options.systemtap_includes]
-    o['variables']['node_use_dtrace'] = b(use_dtrace)
-  elif options.with_dtrace:
-    raise Exception(
-       'DTrace is currently only supported on SunOS, MacOS or Linux systems.')
-  else:
-    o['variables']['node_use_dtrace'] = 'false'
-
   if options.node_use_large_pages or options.node_use_large_pages_script_lld:
     warn('''The `--use-largepages` and `--use-largepages-script-lld` options
          have no effect during build time. Support for mapping to large pages is
@@ -1406,14 +1374,6 @@ def configure_node(o):
   o['variables']['single_executable_application'] = b(not options.disable_single_executable_application)
   if options.disable_single_executable_application:
     o['defines'] += ['DISABLE_SINGLE_EXECUTABLE_APPLICATION']
-
-  # By default, enable ETW on Windows.
-  if flavor == 'win':
-    o['variables']['node_use_etw'] = b(not options.without_etw)
-  elif options.with_etw:
-    raise Exception('ETW is only supported on Windows.')
-  else:
-    o['variables']['node_use_etw'] = 'false'
 
   o['variables']['node_with_ltcg'] = b(options.with_ltcg)
   if flavor != 'win' and options.with_ltcg:
@@ -1464,7 +1424,7 @@ def configure_node(o):
   o['variables']['shlib_suffix'] = shlib_suffix
 
   if options.linked_module:
-    o['variables']['library_files'] = options.linked_module
+    o['variables']['linked_module_files'] = options.linked_module
 
   o['variables']['asan'] = int(options.enable_asan or 0)
 
@@ -2169,6 +2129,8 @@ else:
 
 if options.compile_commands_json:
   gyp_args += ['-f', 'compile_commands_json']
+  os.path.islink('./compile_commands.json') and os.unlink('./compile_commands.json')
+  os.symlink('./out/' + config['BUILDTYPE'] + '/compile_commands.json', './compile_commands.json')
 
 # override the variable `python` defined in common.gypi
 if bin_override is not None:

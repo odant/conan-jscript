@@ -120,14 +120,6 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     }
   }
 
-  if (!experimental_specifier_resolution.empty()) {
-    if (experimental_specifier_resolution != "node" &&
-        experimental_specifier_resolution != "explicit") {
-      errors->push_back(
-        "invalid value for --experimental-specifier-resolution");
-    }
-  }
-
   if (syntax_check_only && has_eval_string) {
     errors->push_back("either --check or --eval can be used, not both");
   }
@@ -181,7 +173,7 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     } else if (force_repl) {
       errors->push_back("either --watch or --interactive "
                         "can be used, not both");
-    } else if (argv->size() < 1 || (*argv)[1].empty()) {
+    } else if (!test_runner && (argv->size() < 1 || (*argv)[1].empty())) {
       errors->push_back("--watch requires specifying a file");
     }
 
@@ -361,10 +353,13 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "returned)",
             &EnvironmentOptions::dns_result_order,
             kAllowedInEnvvar);
-  AddOption("--enable-network-family-autoselection",
-            "Enable network address family autodetection algorithm",
-            &EnvironmentOptions::enable_network_family_autoselection,
-            kAllowedInEnvvar);
+  AddOption("--network-family-autoselection",
+            "Disable network address family autodetection algorithm",
+            &EnvironmentOptions::network_family_autoselection,
+            kAllowedInEnvvar,
+            true);
+  AddAlias("--enable-network-family-autoselection",
+           "--network-family-autoselection");
   AddOption("--enable-source-maps",
             "Source Map V3 support for stack traces",
             &EnvironmentOptions::enable_source_maps,
@@ -378,11 +373,13 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-global-customevent",
             "expose experimental CustomEvent on the global scope",
             &EnvironmentOptions::experimental_global_customevent,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            true);
   AddOption("--experimental-global-webcrypto",
             "expose experimental Web Crypto API on the global scope",
             &EnvironmentOptions::experimental_global_web_crypto,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            true);
   AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-loader",
             "use the specified module as a custom loader",
@@ -399,9 +396,14 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_wasm_modules,
             kAllowedInEnvvar);
   AddOption("--experimental-import-meta-resolve",
-            "experimental ES Module import.meta.resolve() support",
+            "experimental ES Module import.meta.resolve() parentURL support",
             &EnvironmentOptions::experimental_import_meta_resolve,
             kAllowedInEnvvar);
+  AddOption("--experimental-permission",
+            "enable the permission system",
+            &EnvironmentOptions::experimental_permission,
+            kAllowedInEnvvar,
+            false);
   AddOption("--experimental-policy",
             "use the specified file as a "
             "security policy",
@@ -416,6 +418,22 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_policy_integrity,
             kAllowedInEnvvar);
   Implies("--policy-integrity", "[has_policy_integrity_string]");
+  AddOption("--allow-fs-read",
+            "allow permissions to read the filesystem",
+            &EnvironmentOptions::allow_fs_read,
+            kAllowedInEnvvar);
+  AddOption("--allow-fs-write",
+            "allow permissions to write in the filesystem",
+            &EnvironmentOptions::allow_fs_write,
+            kAllowedInEnvvar);
+  AddOption("--allow-child-process",
+            "allow use of child process when any permissions are set",
+            &EnvironmentOptions::allow_child_process,
+            kAllowedInEnvvar);
+  AddOption("--allow-worker",
+            "allow worker threads when any permissions are set",
+            &EnvironmentOptions::allow_worker_threads,
+            kAllowedInEnvvar);
   AddOption("--experimental-repl-await",
             "experimental await keyword support in REPL",
             &EnvironmentOptions::experimental_repl_await,
@@ -453,11 +471,8 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "set module type for string input",
             &EnvironmentOptions::module_type,
             kAllowedInEnvvar);
-  AddOption("--experimental-specifier-resolution",
-            "Select extension resolution algorithm for es modules; "
-            "either 'explicit' (default) or 'node'",
-            &EnvironmentOptions::experimental_specifier_resolution,
-            kAllowedInEnvvar);
+  AddOption(
+      "--experimental-specifier-resolution", "", NoOp{}, kAllowedInEnvvar);
   AddAlias("--es-module-specifier-resolution",
            "--experimental-specifier-resolution");
   AddOption("--deprecation",
@@ -560,6 +575,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "write warnings to file instead of stderr",
             &EnvironmentOptions::redirect_warnings,
             kAllowedInEnvvar);
+  AddOption(
+      "[has_env_file_string]", "", &EnvironmentOptions::has_env_file_string);
+  AddOption("--env-file",
+            "set environment variables from supplied file",
+            &EnvironmentOptions::env_file);
+  Implies("--env-file", "[has_env_file_string]");
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner);
@@ -580,6 +601,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test-only",
             "run tests with 'only' option set",
             &EnvironmentOptions::test_only,
+            kAllowedInEnvvar);
+  AddOption("--test-shard",
+            "run test at specific shard",
+            &EnvironmentOptions::test_shard,
             kAllowedInEnvvar);
   AddOption("--test-udp-no-try-send", "",  // For testing only.
             &EnvironmentOptions::test_udp_no_try_send);
@@ -675,7 +700,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--import",
             "ES module to preload (option can be repeated)",
             &EnvironmentOptions::preload_esm_modules,
-            kAllowedInEnvironment);
+            kAllowedInEnvvar);
   AddOption("--interactive",
             "always enter the REPL even if stdin does not appear "
             "to be a terminal",
@@ -734,15 +759,10 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             kAllowedInEnvvar);
   AddOption("--interpreted-frames-native-stack",
             "help system profilers to translate JavaScript interpreted frames",
-            V8Option{}, kAllowedInEnvvar);
-  AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--perf-basic-prof-only-functions",
-            "",
             V8Option{},
             kAllowedInEnvvar);
   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
+  AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
   AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
   AddOption(
       "--perf-basic-prof-only-functions", "", V8Option{}, kAllowedInEnvvar);
@@ -779,7 +799,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   AddOption("--enable-etw-stack-walking",
             "provides heap data to ETW Windows native tracing",
             V8Option{},
-            kAllowedInEnvironment);
+            kAllowedInEnvvar);
 
   AddOption("--experimental-top-level-await", "", NoOp{}, kAllowedInEnvvar);
 
@@ -791,6 +811,10 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   Implies("--experimental-shadow-realm", "--harmony-shadow-realm");
   Implies("--harmony-shadow-realm", "--experimental-shadow-realm");
   ImpliesNot("--no-harmony-shadow-realm", "--experimental-shadow-realm");
+  AddOption("--build-snapshot",
+            "Generate a snapshot blob when the process exits.",
+            &PerIsolateOptions::build_snapshot,
+            kDisallowedInEnvvar);
 
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
@@ -829,11 +853,6 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "disable Object.prototype.__proto__",
             &PerProcessOptions::disable_proto,
             kAllowedInEnvvar);
-  AddOption("--build-snapshot",
-            "Generate a snapshot blob when the process exits."
-            " Currently only supported in the node_mksnapshot binary.",
-            &PerProcessOptions::build_snapshot,
-            kDisallowedInEnvvar);
   AddOption("--node-snapshot",
             "",  // It's a debug-only option.
             &PerProcessOptions::node_snapshot,
@@ -977,6 +996,11 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             kAllowedInEnvvar);
   Implies("--node-memory-debug", "--debug-arraybuffer-allocations");
   Implies("--node-memory-debug", "--verify-base-objects");
+
+  AddOption("--experimental-sea-config",
+            "Generate a blob that can be embedded into the single executable "
+            "application",
+            &PerProcessOptions::experimental_sea_config);
 }
 
 inline std::string RemoveBrackets(const std::string& host) {
@@ -1224,6 +1248,12 @@ void GetEmbedderOptions(const FunctionCallbackInfo<Value>& args) {
            FIXED_ONE_BYTE_STRING(env->isolate(), "noGlobalSearchPaths"),
            Boolean::New(isolate, env->no_global_search_paths()))
       .IsNothing()) return;
+
+  if (ret->Set(context,
+               FIXED_ONE_BYTE_STRING(env->isolate(), "noBrowserGlobals"),
+               Boolean::New(isolate, env->no_browser_globals()))
+          .IsNothing())
+    return;
 
   args.GetReturnValue().Set(ret);
 }

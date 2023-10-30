@@ -86,11 +86,6 @@ const {
 } = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
 const {
-  DTRACE_HTTP_CLIENT_REQUEST,
-  DTRACE_HTTP_CLIENT_RESPONSE,
-} = require('internal/dtrace');
-
-const {
   hasObserver,
   startPerf,
   stopPerf,
@@ -372,7 +367,6 @@ ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
 ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
 
 ClientRequest.prototype._finish = function _finish() {
-  DTRACE_HTTP_CLIENT_REQUEST(this, this.socket);
   FunctionPrototypeCall(OutgoingMessage.prototype._finish, this);
   if (hasObserver('http')) {
     startPerf(this, kClientRequestStatistics, {
@@ -662,7 +656,6 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
     req.shouldKeepAlive = false;
   }
 
-  DTRACE_HTTP_CLIENT_RESPONSE(socket, req);
   if (req[kClientRequestStatistics] && hasObserver('http')) {
     stopPerf(req, kClientRequestStatistics, {
       detail: {

@@ -42,6 +42,7 @@ function lazyLoadFsSync() {
   internalSync ??= require('fs');
   return internalSync;
 }
+let kResistStopPropagation;
 
 async function traverse(dir, files = new SafeMap(), symbolicLinks = new SafeSet()) {
   const { opendir } = lazyLoadFsPromises();
@@ -154,14 +155,11 @@ class FSWatcher extends EventEmitter {
             this.#symbolicFiles.add(f);
           }
 
+          this.#files.set(f, file);
           if (file.isFile()) {
             this.#watchFile(f);
-          } else {
-            this.#files.set(f, file);
-
-            if (file.isDirectory() && !file.isSymbolicLink()) {
-              await this.#watchFolder(f);
-            }
+          } else if (file.isDirectory() && !file.isSymbolicLink()) {
+            await this.#watchFolder(f);
           }
         }
       }
@@ -202,6 +200,9 @@ class FSWatcher extends EventEmitter {
         this.emit('change', 'rename', pathRelative(this.#rootPath, file));
       } else if (currentStats.isDirectory()) {
         this.#watchFolder(file);
+      } else {
+        // Watching a directory will trigger a change event for child files)
+        this.emit('change', 'change', pathRelative(this.#rootPath, file));
       }
     });
   }
@@ -265,7 +266,8 @@ class FSWatcher extends EventEmitter {
       } : (resolve, reject) => {
         const onAbort = () => reject(new AbortError(undefined, { cause: signal.reason }));
         if (signal.aborted) return onAbort();
-        signal.addEventListener('abort', onAbort, { __proto__: null, once: true });
+        kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+        signal.addEventListener('abort', onAbort, { __proto__: null, once: true, [kResistStopPropagation]: true });
         this.once('change', (eventType, filename) => {
           signal.removeEventListener('abort', onAbort);
           resolve({ __proto__: null, value: { eventType, filename } });

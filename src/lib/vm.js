@@ -30,7 +30,6 @@ const {
 
 const {
   ContextifyScript,
-  MicrotaskQueue,
   makeContext,
   constants,
   measureMemory: _measureMemory,
@@ -105,10 +104,10 @@ class Script extends ContextifyScript {
     if (importModuleDynamically !== undefined) {
       validateFunction(importModuleDynamically,
                        'options.importModuleDynamically');
-      const { importModuleDynamicallyWrap } =
-        require('internal/vm/module');
-      const { callbackMap } = internalBinding('module_wrap');
-      callbackMap.set(this, {
+      const { importModuleDynamicallyWrap } = require('internal/vm/module');
+      const { registerModule } = require('internal/modules/esm/utils');
+      registerModule(this, {
+        __proto__: null,
         importModuleDynamically:
           importModuleDynamicallyWrap(importModuleDynamically),
       });
@@ -239,9 +238,7 @@ function createContext(contextObject = {}, options = kEmptyObject) {
   validateOneOf(microtaskMode,
                 'options.microtaskMode',
                 ['afterEvaluate', undefined]);
-  const microtaskQueue = microtaskMode === 'afterEvaluate' ?
-    new MicrotaskQueue() :
-    null;
+  const microtaskQueue = (microtaskMode === 'afterEvaluate');
 
   makeContext(contextObject, name, origin, strings, wasm, microtaskQueue);
   return contextObject;

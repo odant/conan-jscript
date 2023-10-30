@@ -13,7 +13,6 @@ const {
   MathMin,
   MathRound,
   ObjectIs,
-  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   ReflectApply,
   ReflectOwnKeys,
@@ -21,8 +20,12 @@ const {
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
   Symbol,
+  TypedArrayPrototypeAt,
   TypedArrayPrototypeIncludes,
+  uncurryThis,
 } = primordials;
+
+const permission = require('internal/process/permission');
 
 const { Buffer } = require('buffer');
 const {
@@ -232,7 +235,7 @@ function join(path, name) {
   }
 
   if (typeof path === 'string' && typeof name === 'string') {
-    return pathModule.basename(path) === name ? path : pathModule.join(path, name);
+    return pathModule.join(path, name);
   }
 
   if (isUint8Array(path) && isUint8Array(name)) {
@@ -374,7 +377,7 @@ const nullCheck = hideStackFrames((path, propName, throwError = true) => {
   const err = new ERR_INVALID_ARG_VALUE(
     propName,
     path,
-    'must be a string or Uint8Array without null bytes',
+    'must be a string, Uint8Array, or URL without null bytes',
   );
   if (throwError) {
     throw err;
@@ -703,10 +706,28 @@ const validatePath = hideStackFrames((path, propName = 'path') => {
   }
 });
 
+// TODO(rafaelgss): implement the path.resolve on C++ side
+// See: https://github.com/nodejs/node/pull/44004#discussion_r930958420
+// The permission model needs the absolute path for the fs_permission
+const resolvePath = pathModule.resolve;
+const { isBuffer: BufferIsBuffer, from: BufferFrom } = Buffer;
+const BufferToString = uncurryThis(Buffer.prototype.toString);
+function possiblyTransformPath(path) {
+  if (permission.isEnabled()) {
+    if (typeof path === 'string') {
+      return resolvePath(path);
+    }
+    assert(isUint8Array(path));
+    if (!BufferIsBuffer(path)) path = BufferFrom(path);
+    return BufferFrom(resolvePath(BufferToString(path)));
+  }
+  return path;
+}
+
 const getValidatedPath = hideStackFrames((fileURLOrPath, propName = 'path') => {
   const path = toPathIfFileURL(fileURLOrPath);
   validatePath(path, propName);
-  return path;
+  return possiblyTransformPath(path);
 });
 
 const getValidatedFd = hideStackFrames((fd, propName = 'fd') => {
@@ -736,7 +757,9 @@ let nonPortableTemplateWarn = true;
 function warnOnNonPortableTemplate(template) {
   // Template strings passed to the mkdtemp() family of functions should not
   // end with 'X' because they are handled inconsistently across platforms.
-  if (nonPortableTemplateWarn && StringPrototypeEndsWith(template, 'X')) {
+  if (nonPortableTemplateWarn &&
+    ((typeof template === 'string' && StringPrototypeEndsWith(template, 'X')) ||
+    (typeof template !== 'string' && TypedArrayPrototypeAt(template, -1) === 0x58))) {
     process.emitWarning('mkdtemp() templates ending with X are not portable. ' +
                         'For details see: https://nodejs.org/api/fs.html');
     nonPortableTemplateWarn = false;
@@ -889,27 +912,6 @@ const getValidMode = hideStackFrames((mode, type) => {
 });
 
 const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
-  if (typeof buffer === 'string') {
-    return;
-  }
-
-  if (
-    typeof buffer === 'object' &&
-    buffer !== null &&
-    typeof buffer.toString === 'function' &&
-    ObjectPrototypeHasOwnProperty(buffer, 'toString')
-  ) {
-    return;
-  }
-
-  throw new ERR_INVALID_ARG_TYPE(
-    name,
-    ['string', 'Buffer', 'TypedArray', 'DataView'],
-    buffer,
-  );
-});
-
-const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   if (typeof buffer !== 'string') {
     throw new ERR_INVALID_ARG_TYPE(
       name,
@@ -954,6 +956,7 @@ module.exports = {
   getValidMode,
   handleErrorFromBinding,
   nullCheck,
+  possiblyTransformPath,
   preprocessSymlinkDestination,
   realpathCacheKey: Symbol('realpathCacheKey'),
   getStatFsFromBinding,
@@ -972,6 +975,5 @@ module.exports = {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
-  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 };

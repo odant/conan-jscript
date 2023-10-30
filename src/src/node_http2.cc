@@ -1,5 +1,5 @@
 #include "node_http2.h"
-#include "aliased_buffer.h"
+#include "aliased_buffer-inl.h"
 #include "aliased_struct-inl.h"
 #include "debug_utils-inl.h"
 #include "histogram-inl.h"
@@ -639,7 +639,7 @@ void Http2Stream::EmitStatistics() {
   std::unique_ptr<Http2StreamPerformanceEntry> entry =
       std::make_unique<Http2StreamPerformanceEntry>(
           "Http2Stream",
-          start - (node::performance::timeOrigin / 1e6),
+          start - (env()->time_origin() / 1e6),
           duration,
           statistics_);
 
@@ -659,7 +659,7 @@ void Http2Session::EmitStatistics() {
   std::unique_ptr<Http2SessionPerformanceEntry> entry =
       std::make_unique<Http2SessionPerformanceEntry>(
           "Http2Session",
-          start - (node::performance::timeOrigin / 1e6),
+          start - (env()->time_origin() / 1e6),
           duration,
           statistics_);
 
@@ -2650,12 +2650,12 @@ void Http2Session::RefreshState(const FunctionCallbackInfo<Value>& args) {
 
 // Constructor for new Http2Session instances.
 void Http2Session::New(const FunctionCallbackInfo<Value>& args) {
-  Http2State* state = Realm::GetBindingData<Http2State>(args);
-  Environment* env = state->env();
+  Realm* realm = Realm::GetCurrent(args);
+  Http2State* state = realm->GetBindingData<Http2State>();
+
   CHECK(args.IsConstructCall());
-  SessionType type =
-      static_cast<SessionType>(
-          args[0]->Int32Value(env->context()).ToChecked());
+  SessionType type = static_cast<SessionType>(
+      args[0]->Int32Value(realm->context()).ToChecked());
   Http2Session* session = new Http2Session(state, args.This(), type);
   Debug(session, "session created");
 }
@@ -3180,7 +3180,7 @@ void Initialize(Local<Object> target,
   Isolate* isolate = env->isolate();
   HandleScope handle_scope(isolate);
 
-  Http2State* const state = realm->AddBindingData<Http2State>(context, target);
+  Http2State* const state = realm->AddBindingData<Http2State>(target);
   if (state == nullptr) return;
 
 #define SET_STATE_TYPEDARRAY(name, field)             \

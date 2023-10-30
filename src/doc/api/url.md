@@ -129,9 +129,9 @@ return `true`.
 
 #### `new URL(input[, base])`
 
-<!--
+<!-- YAML
 changes:
-  - version: v18.17.0
+  - version: v20.0.0
     pr-url: https://github.com/nodejs/node/pull/47339
     description: ICU requirement is removed.
 -->
@@ -669,7 +669,7 @@ ID that isn't registered will silently fail.
 #### `URL.canParse(input[, base])`
 
 <!-- YAML
-added: v18.17.0
+added: v19.9.0
 -->
 
 * `input` {string} The absolute or relative input URL to parse. If `input`
@@ -863,7 +863,7 @@ Append a new name-value pair to the query string.
 
 <!-- YAML
 changes:
-  - version: v18.18.0
+  - version: v20.2.0
     pr-url: https://github.com/nodejs/node/pull/47885
     description: Add support for optional `value` argument.
 -->
@@ -933,7 +933,7 @@ no such pairs, an empty array is returned.
 
 <!-- YAML
 changes:
-  - version: v18.18.0
+  - version: v20.2.0
     pr-url: https://github.com/nodejs/node/pull/47885
     description: Add support for optional `value` argument.
 -->
@@ -994,7 +994,7 @@ console.log(params.toString());
 #### `urlSearchParams.size`
 
 <!-- YAML
-added: v18.16.0
+added: v19.8.0
 -->
 
 The total number of parameter entries.
@@ -1060,7 +1060,7 @@ added:
   - v7.4.0
   - v6.13.0
 changes:
-  - version: v18.17.0
+  - version: v20.0.0
     pr-url: https://github.com/nodejs/node/pull/47339
     description: ICU requirement is removed.
 -->
@@ -1102,7 +1102,7 @@ added:
   - v7.4.0
   - v6.13.0
 changes:
-  - version: v18.17.0
+  - version: v20.0.0
     pr-url: https://github.com/nodejs/node/pull/47339
     description: ICU requirement is removed.
 -->
@@ -1280,7 +1280,7 @@ added:
   - v15.7.0
   - v14.18.0
 changes:
-  - version: v18.17.0
+  - version: v19.9.0
     pr-url: https://github.com/nodejs/node/pull/46989
     description: The returned object will also contain all the own enumerable
                  properties of the `url` argument.
@@ -1587,7 +1587,9 @@ The formatting process operates as follows:
 <!-- YAML
 added: v0.1.25
 changes:
-  - version: v18.13.0
+  - version:
+      - v19.0.0
+      - v18.13.0
     pr-url: https://github.com/nodejs/node/pull/44919
     description: Documentation-only deprecation.
   - version:
@@ -1726,18 +1728,19 @@ The WHATWG algorithm defines four "percent-encode sets" that describe ranges
 of characters that must be percent-encoded:
 
 * The _C0 control percent-encode set_ includes code points in range U+0000 to
-  U+001F (inclusive) and all code points greater than U+007E.
+  U+001F (inclusive) and all code points greater than U+007E (\~).
 
 * The _fragment percent-encode set_ includes the _C0 control percent-encode set_
-  and code points U+0020, U+0022, U+003C, U+003E, and U+0060.
+  and code points U+0020 SPACE, U+0022 ("), U+003C (<), U+003E (>),
+  and U+0060 (\`).
 
 * The _path percent-encode set_ includes the _C0 control percent-encode set_
-  and code points U+0020, U+0022, U+0023, U+003C, U+003E, U+003F, U+0060,
-  U+007B, and U+007D.
+  and code points U+0020 SPACE, U+0022 ("), U+0023 (#), U+003C (<), U+003E (>),
+  U+003F (?), U+0060 (\`), U+007B ({), and U+007D (}).
 
 * The _userinfo encode set_ includes the _path percent-encode set_ and code
-  points U+002F, U+003A, U+003B, U+003D, U+0040, U+005B, U+005C, U+005D,
-  U+005E, and U+007C.
+  points U+002F (/), U+003A (:), U+003B (;), U+003D (=), U+0040 (@),
+  U+005B (\[) to U+005E(^), and U+007C (|).
 
 The _userinfo percent-encode set_ is used exclusively for username and
 passwords encoded within the URL. The _path percent-encode set_ is used for the

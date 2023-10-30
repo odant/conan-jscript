@@ -15,7 +15,6 @@ const {
   MathFloor,
   Number,
   NumberPrototypeToFixed,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
@@ -575,7 +574,7 @@ const consoleMethods = {
       return final([iterKey, valuesKey], [getIndexArray(length), values]);
     }
 
-    const map = ObjectCreate(null);
+    const map = { __proto__: null };
     let hasPrimitives = false;
     const valuesKeyArray = [];
     const indexKeyArray = ObjectKeys(tabularData);
@@ -693,9 +692,11 @@ function initializeGlobalConsole(globalConsole) {
   globalConsole[kBindProperties](true, 'auto');
 
   const {
-    addSerializeCallback,
-    isBuildingSnapshot,
-  } = require('v8').startupSnapshot;
+    namespace: {
+      addSerializeCallback,
+      isBuildingSnapshot,
+    },
+  } = require('internal/v8/startup_snapshot');
 
   if (!internalBinding('config').hasInspector || !isBuildingSnapshot()) {
     return;

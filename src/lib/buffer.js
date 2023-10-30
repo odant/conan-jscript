@@ -33,7 +33,6 @@ const {
   NumberIsNaN,
   NumberMAX_SAFE_INTEGER,
   NumberMIN_SAFE_INTEGER,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
@@ -85,6 +84,7 @@ const {
   lazyDOMException,
   normalizeEncoding,
   kIsEncodingSymbol,
+  defineLazyProperties,
 } = require('internal/util');
 const {
   isAnyArrayBuffer,
@@ -113,8 +113,8 @@ const {
 const {
   validateArray,
   validateBuffer,
-  validateNumber,
   validateInteger,
+  validateNumber,
   validateString,
 } = require('internal/validators');
 // Provide validateInteger() but with kMaxLength as the default maximum value.
@@ -127,15 +127,6 @@ const {
   addBufferPrototypeMethods,
   createUnsafeBuffer,
 } = require('internal/buffer');
-
-const {
-  Blob,
-  resolveObjectURL,
-} = require('internal/blob');
-
-const {
-  File,
-} = require('internal/file');
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -159,7 +150,7 @@ const constants = ObjectDefineProperties({}, {
 Buffer.poolSize = 8 * 1024;
 let poolSize, poolOffset, allocPool;
 
-const encodingsMap = ObjectCreate(null);
+const encodingsMap = { __proto__: null };
 for (let i = 0; i < encodings.length; ++i)
   encodingsMap[encodings[i]] = i;
 
@@ -399,10 +390,7 @@ ObjectSetPrototypeOf(Buffer, Uint8Array);
 // occurs. This is done simply to keep the internal details of the
 // implementation from bleeding out to users.
 const assertSize = hideStackFrames((size) => {
-  validateNumber(size, 'size');
-  if (!(size >= 0 && size <= kMaxLength)) {
-    throw new ERR_INVALID_ARG_VALUE.RangeError('size', size);
-  }
+  validateNumber(size, 'size', 0, kMaxLength);
 });
 
 /**
@@ -894,7 +882,7 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
   if (ctx) {
     let extras = false;
     const filter = ctx.showHidden ? ALL_PROPERTIES : ONLY_ENUMERABLE;
-    const obj = ObjectCreate(null);
+    const obj = { __proto__: null };
     ArrayPrototypeForEach(getOwnNonIndexProperties(this, filter),
                           (key) => {
                             extras = true;
@@ -1382,9 +1370,6 @@ function isAscii(input) {
 }
 
 module.exports = {
-  Blob,
-  File,
-  resolveObjectURL,
   Buffer,
   SlowBuffer,
   transcode,
@@ -1410,6 +1395,20 @@ ObjectDefineProperties(module.exports, {
     configurable: true,
     enumerable: true,
     get() { return INSPECT_MAX_BYTES; },
-    set(val) { INSPECT_MAX_BYTES = val; },
+    set(val) {
+      validateNumber(val, 'INSPECT_MAX_BYTES', 0);
+      INSPECT_MAX_BYTES = val;
+    },
   },
 });
+
+defineLazyProperties(
+  module.exports,
+  'internal/blob',
+  ['Blob', 'resolveObjectURL'],
+);
+defineLazyProperties(
+  module.exports,
+  'internal/file',
+  ['File'],
+);

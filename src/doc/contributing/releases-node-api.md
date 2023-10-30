@@ -9,7 +9,7 @@ release process.
   * [0. Pre-release steps](#0-pre-release-steps)
   * [1. Update the main branch](#1-update-the-main-branch)
   * [2. Create a new branch for the release](#2-create-a-new-branch-for-the-release)
-  * [3. Update `NAPI_VERSION`](#3-update-napi_version)
+  * [3. Update `NODE_API_SUPPORTED_VERSION_MAX`](#3-update-node_api_supported_version_max)
   * [4. Define `addon_context_register_func`](#4-define-addon_context_register_func)
   * [5. Update version guards](#5-update-version-guards)
   * [6. Create release commit](#6-create-release-commit)
@@ -38,10 +38,10 @@ Node-API Working Group can be contacted best by opening up an issue on the
 
 Checkout the staging branch locally.
 
-```console
-$ git remote update
-$ git checkout main
-$ git reset --hard upstream/main
+```bash
+git remote update
+git checkout main
+git reset --hard upstream/main
 ```
 
 If the staging branch is not up to date relative to `main`, bring the
@@ -51,17 +51,17 @@ appropriate PRs and commits into it.
 
 Create a new branch named `node-api-x-proposal`, off the main branch.
 
-```console
-$ git checkout -b node-api-10-proposal upstream/main
+```bash
+git checkout -b node-api-10-proposal upstream/main
 ```
 
-### 3. Update `NAPI_VERSION`
+### 3. Update `NODE_API_SUPPORTED_VERSION_MAX`
 
 Set the version for the proposed release using the following macros, which are
 already defined in `src/node_version.h`:
 
 ```c
-#define NAPI_VERSION x
+#define NODE_API_SUPPORTED_VERSION_MAX x
 ```
 
 > Note: Do not update the `NAPI_VERSION` defined in `src/js_native_api.h`. It
@@ -83,7 +83,7 @@ version, the relevant commits should already include the `NAPI_EXPERIMENTAL`
 define guards on the declaration of the new Node-API. Check for these guards
 with:
 
-```console
+```bash
 grep NAPI_EXPERIMENTAL src/js_native_api{_types,}.h src/node_api{_types,}.h
 ```
 
@@ -115,7 +115,7 @@ If this release includes runtime behavior version guards, the relevant commits
 should already include `NAPI_VERSION_EXPERIMENTAL` guard for the change. Check
 for these guards with:
 
-```console
+```bash
 grep NAPI_VERSION_EXPERIMENTAL src/js_native_api_v8* src/node_api.cc
 ```
 
@@ -127,7 +127,7 @@ If this release includes add-on tests for the new Node-APIs, the relevant
 commits should already include `NAPI_EXPERIMENTAL` definition for the tests.
 Check for these definitions with:
 
-```console
+```bash
 grep NAPI_EXPERIMENTAL test/node-api/*/{*.{h,c},binding.gyp} test/js-native-api/*/{*.{h,c},binding.gyp}
 ```
 
@@ -170,7 +170,7 @@ should already have documented the new behavior in a "Change History" section.
 For all runtime version guards updated in Step 2, check for these definitions
 with:
 
-```console
+```bash
 grep NAPI_EXPERIMENTAL doc/api/n-api.md
 ```
 

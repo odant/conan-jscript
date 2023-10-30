@@ -57,9 +57,7 @@ void Hash::Initialize(Environment* env, Local<Object> target) {
   Local<Context> context = env->context();
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
 
-  t->InstanceTemplate()->SetInternalFieldCount(
-      Hash::kInternalFieldCount);
-  t->Inherit(BaseObject::GetConstructorTemplate(env));
+  t->InstanceTemplate()->SetInternalFieldCount(Hash::kInternalFieldCount);
 
   SetProtoMethod(isolate, t, "update", HashUpdate);
   SetProtoMethod(isolate, t, "digest", HashDigest);
@@ -323,7 +321,7 @@ void InternalVerifyIntegrity(const v8::FunctionCallbackInfo<v8::Value>& args) {
   CHECK(args[0]->IsString());
   Utf8Value algorithm(env->isolate(), args[0]);
 
-  CHECK(args[1]->IsString() || IsAnyByteSource(args[1]));
+  CHECK(args[1]->IsString() || IsAnyBufferSource(args[1]));
   ByteSource content = ByteSource::FromStringOrBuffer(env, args[1]);
 
   CHECK(args[2]->IsArrayBufferView());

@@ -5,6 +5,9 @@
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
+#include "node_exit_code.h"
 #include "node_mutex.h"
 #include "v8.h"
 
@@ -15,14 +18,18 @@ struct SnapshotData;
 
 class NODE_EXTERN_PRIVATE SnapshotBuilder {
  public:
-  static int Generate(std::ostream& out,
-                      const std::vector<std::string> args,
-                      const std::vector<std::string> exec_args);
+  static ExitCode GenerateAsSource(
+      const char* out_path,
+      const std::vector<std::string>& args,
+      const std::vector<std::string>& exec_args,
+      std::optional<std::string_view> main_script_path = std::nullopt,
+      bool use_array_literals = false);
 
   // Generate the snapshot into out.
-  static int Generate(SnapshotData* out,
-                      const std::vector<std::string> args,
-                      const std::vector<std::string> exec_args);
+  static ExitCode Generate(SnapshotData* out,
+                           const std::vector<std::string>& args,
+                           const std::vector<std::string>& exec_args,
+                           std::optional<std::string_view> main_script);
 
   // If nullptr is returned, the binary is not built with embedded
   // snapshot.
@@ -30,9 +37,14 @@ class NODE_EXTERN_PRIVATE SnapshotBuilder {
   static void InitializeIsolateParams(const SnapshotData* data,
                                       v8::Isolate::CreateParams* params);
 
- private:
   static const std::vector<intptr_t>& CollectExternalReferences();
 
+  static ExitCode CreateSnapshot(
+      SnapshotData* out,
+      CommonEnvironmentSetup* setup,
+      /*SnapshotMetadata::Type*/ uint8_t snapshot_type);
+
+ private:
   static std::unique_ptr<ExternalReferenceRegistry> registry_;
 };
 }  // namespace node

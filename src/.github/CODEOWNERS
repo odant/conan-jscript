@@ -11,6 +11,8 @@
 # tsc
 
 /.github/CODEOWNERS @nodejs/tsc
+/.github/PULL_REQUEST_TEMPLATE.md @nodejs/tsc
+/.github/ISSUE_TEMPLATE/* @nodejs/tsc
 /CODE_OF_CONDUCT.md @nodejs/tsc
 /CONTRIBUTING.md @nodejs/tsc
 /doc/contributing/*.md @nodejs/tsc
@@ -85,16 +87,16 @@
 
 # modules, including loaders
 
-/doc/api/esm.md @nodejs/modules @nodejs/loaders
-/doc/api/module.md @nodejs/modules @nodejs/loaders
-/doc/api/modules.md @nodejs/modules @nodejs/loaders
-/doc/api/packages.md @nodejs/modules @nodejs/loaders
-/lib/internal/bootstrap/loaders.js @nodejs/modules @nodejs/loaders
-/lib/internal/modules/* @nodejs/modules @nodejs/loaders
-/lib/internal/process/esm_loader.js @nodejs/modules @nodejs/loaders
-/lib/internal/process/execution.js @nodejs/modules @nodejs/loaders
-/lib/module.js @nodejs/modules @nodejs/loaders
-/src/module_wrap* @nodejs/modules @nodejs/loaders @nodejs/vm
+/doc/api/esm.md @nodejs/loaders
+/doc/api/module.md @nodejs/loaders
+/doc/api/modules.md @nodejs/loaders
+/doc/api/packages.md @nodejs/loaders
+/lib/internal/bootstrap/realm.js @nodejs/loaders
+/lib/internal/modules/* @nodejs/loaders
+/lib/internal/process/esm_loader.js @nodejs/loaders
+/lib/internal/process/execution.js @nodejs/loaders
+/lib/module.js @nodejs/loaders
+/src/module_wrap* @nodejs/loaders @nodejs/vm
 
 # Node-API
 
@@ -146,6 +148,7 @@
 /lib/internal/main/test_runner.js @nodejs/test_runner
 /lib/internal/test_runner/* @nodejs/test_runner
 /lib/test.js @nodejs/test_runner
+/lib/test/reporters.js @nodejs/test_runner
 /test/parallel/test-runner-* @nodejs/test_runner
 
 # Single Executable Applications
@@ -155,10 +158,12 @@
 /src/node_sea* @nodejs/single-executable
 /test/fixtures/postject-copy @nodejs/single-executable
 /test/parallel/test-single-executable-* @nodejs/single-executable
+/test/sequential/test-single-executable-* @nodejs/single-executable
 /tools/dep_updaters/update-postject.sh @nodejs/single-executable
 
 # Permission Model
 /doc/api/permissions.md @nodejs/security-wg
+/lib/internal/process/permission.js @nodejs/security-wg
 /src/permission/* @nodejs/security-wg
 
 # Dependency Update Tools

@@ -5,6 +5,7 @@ const {
   PromiseResolve,
   SafeMap,
 } = primordials;
+const { getCallerLocation } = internalBinding('util');
 const {
   createHook,
   executionAsyncId,
@@ -14,6 +15,8 @@ const {
     ERR_TEST_FAILURE,
   },
 } = require('internal/errors');
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
+
 const { kEmptyObject } = require('internal/util');
 const { kCancelledByParent, Test, Suite } = require('internal/test_runner/test');
 const {
@@ -57,7 +60,7 @@ function createProcessEventHandler(eventName, rootTest) {
       }
 
       rootTest.diagnostic(msg);
-      process.exitCode = 1;
+      process.exitCode = kGenericUserError;
       return;
     }
 
@@ -79,7 +82,7 @@ function configureCoverage(rootTest, globalOptions) {
     const msg = `Warning: Code coverage could not be enabled. ${err}`;
 
     rootTest.diagnostic(msg);
-    process.exitCode = 1;
+    process.exitCode = kGenericUserError;
   }
 }
 
@@ -98,7 +101,7 @@ function collectCoverage(rootTest, coverage) {
     const msg = `Warning: Could not ${op} code coverage. ${err}`;
 
     rootTest.diagnostic(msg);
-    process.exitCode = 1;
+    process.exitCode = kGenericUserError;
   }
 
   return summary;
@@ -114,6 +117,7 @@ function setup(root) {
   const globalOptions = parseCommandLine();
 
   const hook = createHook({
+    __proto__: null,
     init(asyncId, type, triggerAsyncId, resource) {
       if (resource instanceof Test) {
         testResources.set(asyncId, resource);
@@ -138,8 +142,8 @@ function setup(root) {
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
   const coverage = configureCoverage(root, globalOptions);
-  const exitHandler = async () => {
-    await root.run(new ERR_TEST_FAILURE(
+  const exitHandler = () => {
+    root.postRun(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
 
@@ -148,8 +152,8 @@ function setup(root) {
     process.removeListener('uncaughtException', exceptionHandler);
   };
 
-  const terminationHandler = async () => {
-    await exitHandler();
+  const terminationHandler = () => {
+    exitHandler();
     process.exit();
   };
 
@@ -188,8 +192,10 @@ let reportersSetup;
 function getGlobalRoot() {
   if (!globalRoot) {
     globalRoot = createTestTree();
-    globalRoot.reporter.once('test:fail', () => {
-      process.exitCode = 1;
+    globalRoot.reporter.on('test:fail', (data) => {
+      if (data.todo === undefined || data.todo === false) {
+        process.exitCode = kGenericUserError;
+      }
     });
     reportersSetup = setupTestReporters(globalRoot);
   }
@@ -212,9 +218,24 @@ function runInParentContext(Factory) {
     return PromiseResolve();
   }
 
-  const test = (name, options, fn) => run(name, options, fn);
+  const test = (name, options, fn) => {
+    const overrides = {
+      __proto__: null,
+      loc: getCallerLocation(),
+    };
+
+    return run(name, options, fn, overrides);
+  };
   ArrayPrototypeForEach(['skip', 'todo', 'only'], (keyword) => {
-    test[keyword] = (name, options, fn) => run(name, options, fn, { [keyword]: true });
+    test[keyword] = (name, options, fn) => {
+      const overrides = {
+        __proto__: null,
+        [keyword]: true,
+        loc: getCallerLocation(),
+      };
+
+      return run(name, options, fn, overrides);
+    };
   });
   return test;
 }
@@ -222,7 +243,13 @@ function runInParentContext(Factory) {
 function hook(hook) {
   return (fn, options) => {
     const parent = testResources.get(executionAsyncId()) || getGlobalRoot();
-    parent.createHook(hook, fn, options);
+    parent.createHook(hook, fn, {
+      __proto__: null,
+      ...options,
+      parent,
+      hookType: hook,
+      loc: getCallerLocation(),
+    });
   };
 }
 

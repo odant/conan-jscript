@@ -19,7 +19,6 @@ const {
   MathMax,
   MathMaxApply,
   NumberIsFinite,
-  NumberIsNaN,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
   StringPrototypeCodePointAt,
@@ -43,6 +42,7 @@ const {
 const {
   validateAbortSignal,
   validateArray,
+  validateNumber,
   validateString,
   validateUint32,
 } = require('internal/validators');
@@ -60,6 +60,7 @@ const {
   kSubstringSearch,
 } = require('internal/readline/utils');
 let emitKeypressEvents;
+let kFirstEventParam;
 const {
   clearScreenDown,
   cursorTo,
@@ -67,9 +68,6 @@ const {
 } = require('internal/readline/callbacks');
 
 const { StringDecoder } = require('string_decoder');
-
-// Lazy load Readable for startup performance.
-let Readable;
 
 const kHistorySize = 30;
 const kMaxUndoRedoStackSize = 2048;
@@ -79,6 +77,7 @@ const lineEnding = /\r?\n|\r(?!\n)/g;
 
 const kLineObjectStream = Symbol('line object stream');
 const kQuestionCancel = Symbol('kQuestionCancel');
+const kQuestion = Symbol('kQuestion');
 
 // GNU readline library - keyseq-timeout is 500ms (default)
 const ESCAPE_CODE_TIMEOUT = 500;
@@ -198,13 +197,7 @@ function InterfaceConstructor(input, output, completer, terminal) {
     historySize = kHistorySize;
   }
 
-  if (
-    typeof historySize !== 'number' ||
-      NumberIsNaN(historySize) ||
-      historySize < 0
-  ) {
-    throw new ERR_INVALID_ARG_VALUE.RangeError('historySize', historySize);
-  }
+  validateNumber(historySize, 'historySize', 0);
 
   // Backwards compat; check the isTTY prop of the output stream
   //  when `terminal` was not specified
@@ -399,7 +392,7 @@ class Interface extends InterfaceConstructor {
     }
   }
 
-  question(query, cb) {
+  [kQuestion](query, cb) {
     if (this.closed) {
       throw new ERR_USE_AFTER_CLOSE('readline');
     }
@@ -1361,40 +1354,15 @@ class Interface extends InterfaceConstructor {
    */
   [SymbolAsyncIterator]() {
     if (this[kLineObjectStream] === undefined) {
-      if (Readable === undefined) {
-        Readable = require('stream').Readable;
-      }
-      const readable = new Readable({
-        objectMode: true,
-        read: () => {
-          this.resume();
-        },
-        destroy: (err, cb) => {
-          this.off('line', lineListener);
-          this.off('close', closeListener);
-          this.close();
-          cb(err);
-        },
-      });
-      const lineListener = (input) => {
-        if (!readable.push(input)) {
-          // TODO(rexagod): drain to resume flow
-          this.pause();
-        }
-      };
-      const closeListener = () => {
-        readable.push(null);
-      };
-      const errorListener = (err) => {
-        readable.destroy(err);
-      };
-      this.on('error', errorListener);
-      this.on('line', lineListener);
-      this.on('close', closeListener);
-      this[kLineObjectStream] = readable;
+      kFirstEventParam ??= require('internal/events/symbols').kFirstEventParam;
+      this[kLineObjectStream] = EventEmitter.on(
+        this, 'line', {
+          close: ['close'],
+          highWatermark: 1024,
+          [kFirstEventParam]: true,
+        });
     }
-
-    return this[kLineObjectStream][SymbolAsyncIterator]();
+    return this[kLineObjectStream];
   }
 }
 
@@ -1421,6 +1389,7 @@ module.exports = {
   kOnLine,
   kPreviousKey,
   kPrompt,
+  kQuestion,
   kQuestionCallback,
   kQuestionCancel,
   kRefreshLine,

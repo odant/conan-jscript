@@ -7,23 +7,36 @@ const {
   ObjectSetPrototypeOf,
   SafeArrayIterator,
   SafeSet,
-  StringPrototypeStartsWith,
-  StringPrototypeSlice,
 } = primordials;
 
-const binding = internalBinding('mksnapshot');
-const { BuiltinModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule: { normalizeRequirableId } } = require('internal/bootstrap/realm');
 const {
+  runEmbedderEntryPoint,
   compileSerializeMain,
-} = binding;
+  anonymousMainPath,
+} = internalBinding('mksnapshot');
+
+const { isExperimentalSeaWarningNeeded } = internalBinding('sea');
+
+const { emitExperimentalWarning } = require('internal/util');
 
 const {
   getOptionValue,
 } = require('internal/options');
 
 const {
-  readFileSync,
-} = require('fs');
+  initializeCallbacks,
+  namespace: {
+    addSerializeCallback,
+    addDeserializeCallback,
+  },
+} = require('internal/v8/startup_snapshot');
+
+const {
+  prepareMainThreadExecution,
+} = require('internal/process/pre_execution');
+
+const path = require('path');
 
 const supportedModules = new SafeSet(new SafeArrayIterator([
   // '_http_agent',
@@ -50,7 +63,7 @@ const supportedModules = new SafeSet(new SafeArrayIterator([
   'constants',
   'crypto',
   // 'dgram',
-  // 'diagnostics_channel',
+  'diagnostics_channel',
   'dns',
   // 'dns/promises',
   // 'domain',
@@ -62,7 +75,7 @@ const supportedModules = new SafeSet(new SafeArrayIterator([
   // 'https',
   // 'inspector',
   // 'module',
-  // 'net',
+  'net',
   'os',
   'path',
   'path/posix',
@@ -97,13 +110,8 @@ function supportedInUserSnapshot(id) {
 }
 
 function requireForUserSnapshot(id) {
-  let normalizedId = id;
-  if (StringPrototypeStartsWith(id, 'node:')) {
-    normalizedId = StringPrototypeSlice(id, 5);
-  }
-  if (!BuiltinModule.canBeRequiredByUsers(normalizedId) ||
-      (id !== normalizedId &&
-        !BuiltinModule.canBeRequiredWithoutScheme(normalizedId))) {
+  const normalizedId = normalizeRequirableId(id);
+  if (!normalizedId) {
     // eslint-disable-next-line no-restricted-syntax
     const err = new Error(
       `Cannot find module '${id}'. `,
@@ -122,27 +130,9 @@ function requireForUserSnapshot(id) {
   return require(normalizedId);
 }
 
+
 function main() {
-  const {
-    prepareMainThreadExecution,
-  } = require('internal/process/pre_execution');
-
-  prepareMainThreadExecution(true, false);
-
-  const file = process.argv[1];
-  const path = require('path');
-  const filename = path.resolve(file);
-  const dirname = path.dirname(filename);
-  const source = readFileSync(file, 'utf-8');
-  const serializeMainFunction = compileSerializeMain(filename, source);
-
-  const {
-    initializeCallbacks,
-    namespace: {
-      addSerializeCallback,
-      addDeserializeCallback,
-    },
-  } = require('internal/v8/startup_snapshot');
+  prepareMainThreadExecution(false, false);
   initializeCallbacks();
 
   let stackTraceLimitDesc;
@@ -151,15 +141,6 @@ function main() {
       ObjectDefineProperty(Error, 'stackTraceLimit', stackTraceLimitDesc);
     }
   });
-
-  if (getOptionValue('--inspect-brk')) {
-    internalBinding('inspector').callAndPauseOnStart(
-      serializeMainFunction, undefined,
-      requireForUserSnapshot, filename, dirname);
-  } else {
-    serializeMainFunction(requireForUserSnapshot, filename, dirname);
-  }
-
   addSerializeCallback(() => {
     stackTraceLimitDesc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
 
@@ -172,6 +153,35 @@ function main() {
       delete Error.stackTraceLimit;
     }
   });
+
+  // TODO(addaleax): Make this `embedderRunCjs` once require('module')
+  // is supported in snapshots.
+  function minimalRunCjs(source) {
+    let filename;
+    let dirname;
+    if (process.argv[1] === anonymousMainPath) {
+      filename = dirname = process.argv[1];
+    } else {
+      filename = path.resolve(process.argv[1]);
+      dirname = path.dirname(filename);
+    }
+
+    const fn = compileSerializeMain(filename, source);
+    return fn(requireForUserSnapshot, filename, dirname);
+  }
+
+  const serializeMainArgs = [process, requireForUserSnapshot, minimalRunCjs];
+
+  if (isExperimentalSeaWarningNeeded()) {
+    emitExperimentalWarning('Single executable application');
+  }
+
+  if (getOptionValue('--inspect-brk')) {
+    internalBinding('inspector').callAndPauseOnStart(
+      runEmbedderEntryPoint, undefined, ...serializeMainArgs);
+  } else {
+    runEmbedderEntryPoint(...serializeMainArgs);
+  }
 }
 
 main();

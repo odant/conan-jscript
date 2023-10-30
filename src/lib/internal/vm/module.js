@@ -6,13 +6,11 @@ const {
   ArrayPrototypeForEach,
   ArrayPrototypeIndexOf,
   ArrayPrototypeSome,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   ReflectApply,
   SafePromiseAllReturnVoid,
-  SafeWeakMap,
   Symbol,
   SymbolToStringTag,
   TypeError,
@@ -70,7 +68,6 @@ const STATUS_MAP = {
 
 let globalModuleId = 0;
 const defaultModuleName = 'vm:module';
-const wrapToModuleMap = new SafeWeakMap();
 
 const kWrap = Symbol('kWrap');
 const kContext = Symbol('kContext');
@@ -121,17 +118,18 @@ class Module {
       });
     }
 
+    let registry = { __proto__: null };
     if (sourceText !== undefined) {
       this[kWrap] = new ModuleWrap(identifier, context, sourceText,
                                    options.lineOffset, options.columnOffset,
                                    options.cachedData);
-
-      binding.callbackMap.set(this[kWrap], {
+      registry = {
+        __proto__: null,
         initializeImportMeta: options.initializeImportMeta,
         importModuleDynamically: options.importModuleDynamically ?
           importModuleDynamicallyWrap(options.importModuleDynamically) :
           undefined,
-      });
+      };
     } else {
       assert(syntheticEvaluationSteps);
       this[kWrap] = new ModuleWrap(identifier, context,
@@ -139,7 +137,11 @@ class Module {
                                    syntheticEvaluationSteps);
     }
 
-    wrapToModuleMap.set(this[kWrap], this);
+    // This will take precedence over the referrer as the object being
+    // passed into the callbacks.
+    registry.callbackReferrer = this;
+    const { registerModule } = require('internal/modules/esm/utils');
+    registerModule(this[kWrap], registry);
 
     this[kContext] = context;
   }
@@ -234,7 +236,7 @@ class Module {
       return this;
 
     const constructor = getConstructorOf(this) || Module;
-    const o = ObjectCreate({ constructor });
+    const o = { __proto__: { constructor } };
     o.status = this.status;
     o.identifier = this.identifier;
     o.context = this.context;
@@ -446,5 +448,4 @@ module.exports = {
   SourceTextModule,
   SyntheticModule,
   importModuleDynamicallyWrap,
-  getModuleFromWrap: (wrap) => wrapToModuleMap.get(wrap),
 };

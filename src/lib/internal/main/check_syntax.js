@@ -3,8 +3,8 @@
 // If user passed `-c` or `--check` arguments to Node, check its syntax
 // instead of actually running the file.
 
-const { URL } = require('internal/url');
 const { getOptionValue } = require('internal/options');
+const { URL, pathToFileURL } = require('internal/url');
 const {
   prepareMainThreadExecution,
   markBootstrapComplete,
@@ -13,8 +13,6 @@ const {
 const {
   readStdin,
 } = require('internal/process/execution');
-
-const { pathToFileURL } = require('url');
 
 const {
   Module: {
@@ -49,7 +47,6 @@ if (process.argv[1] && process.argv[1] !== '-') {
 }
 
 function loadESMIfNeeded(cb) {
-  const { getOptionValue } = require('internal/options');
   const hasModulePreImport = getOptionValue('--import').length > 0;
 
   if (hasModulePreImport) {

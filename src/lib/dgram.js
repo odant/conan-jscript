@@ -40,7 +40,6 @@ const {
   _createSocketHandle,
   newHandle,
 } = require('internal/dgram');
-const { guessHandleType } = internalBinding('util');
 const {
   ERR_BUFFER_OUT_OF_BOUNDS,
   ERR_INVALID_ARG_TYPE,
@@ -61,7 +60,7 @@ const {
   validatePort,
 } = require('internal/validators');
 const { Buffer } = require('buffer');
-const { deprecate, promisify } = require('internal/util');
+const { deprecate, guessHandleType, promisify } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
 const {

@@ -23,16 +23,15 @@
 
 const {
   MathTrunc,
-  ObjectCreate,
   ObjectDefineProperty,
   SymbolDispose,
   SymbolToPrimitive,
 } = primordials;
 
+const binding = internalBinding('timers');
 const {
   immediateInfo,
-  toggleImmediateRef,
-} = internalBinding('timers');
+} = binding;
 const L = require('internal/linkedlist');
 const {
   async_id_symbol,
@@ -73,7 +72,7 @@ const {
 // This stores all the known timer async ids to allow users to clearTimeout and
 // clearInterval using those ids, to match the spec and the rest of the web
 // platform.
-const knownTimersById = ObjectCreate(null);
+const knownTimersById = { __proto__: null };
 
 // Remove a timer. Cancels the timeout and resets the relevant timer properties.
 function unenroll(item) {
@@ -329,8 +328,10 @@ function clearImmediate(immediate) {
   immediateInfo[kCount]--;
   immediate._destroyed = true;
 
-  if (immediate[kRefed] && --immediateInfo[kRefCount] === 0)
-    toggleImmediateRef(false);
+  if (immediate[kRefed] && --immediateInfo[kRefCount] === 0) {
+    // We need to use the binding as the receiver for fast API calls.
+    binding.toggleImmediateRef(false);
+  }
   immediate[kRefed] = null;
 
   if (destroyHooksExist() && immediate[async_id_symbol] !== undefined) {

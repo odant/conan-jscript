@@ -57,6 +57,8 @@ const customTypesMap = {
   'Module Namespace Object':
     'https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects',
 
+  'AsyncLocalStorage': 'async_context.html#class-asynclocalstorage',
+
   'AsyncHook': 'async_hooks.html#async_hookscreatehookcallbacks',
   'AsyncResource': 'async_hooks.html#class-asyncresource',
 
@@ -108,6 +110,7 @@ const customTypesMap = {
   'dgram.Socket': 'dgram.html#class-dgramsocket',
 
   'Channel': 'diagnostics_channel.html#class-channel',
+  'TracingChannel': 'diagnostics_channel.html#class-tracingchannel',
 
   'Domain': 'domain.html#class-domain',
 
@@ -181,7 +184,7 @@ const customTypesMap = {
   'PerformanceNodeTiming':
     'perf_hooks.html#class-performancenodetiming',
   'PerformanceObserver':
-    'perf_hooks.html#class-perf_hooksperformanceobserver',
+    'perf_hooks.html#class-performanceobserver',
   'PerformanceObserverEntryList':
     'perf_hooks.html#class-performanceobserverentrylist',
 
