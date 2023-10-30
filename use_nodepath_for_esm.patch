@@ -1,8 +1,8 @@
 diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/esm/resolve.js
-index dadad4ff57..5500908d6e 100644
+index acb5ddca8..75c79fe7a 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -885,6 +885,36 @@ function packageResolve(specifier, base, conditions) {
+@@ -784,6 +784,36 @@ function packageResolve(specifier, base, conditions) {
      // Cross-platform root check.
    } while (packageJSONPath.length !== lastPath.length);
  
@@ -19,15 +19,15 @@ index dadad4ff57..5500908d6e 100644
 +
 +      const packageJSONPath = fileURLToPath(packageJSONUrl);
 +
-+      const stat = tryStatSync(StringPrototypeSlice(packageJSONPath, 0,
-+                                                    packageJSONPath.length - 13));
-+      if (!stat.isDirectory()) {
++      const stat = internalModuleStat(toNamespacedPath(StringPrototypeSlice(packageJSONPath, 0,
++                                                                            packageJSONPath.length - 13)));
++      if (stat !== 1) {
 +        continue;
 +      }
 +
 +      // Package match.
-+      const packageConfig = getPackageConfig(packageJSONPath, specifier, base);
-+      if (packageConfig.exports !== undefined && packageConfig.exports !== null)
++      const packageConfig = packageJsonReader.read(packageJSONPath, { __proto__: null, specifier, base, isESM: true });
++      if (packageConfig.exports != null)
 +        return packageExportsResolve(
 +          packageJSONUrl, packageSubpath, packageConfig, base, conditions);
 +      if (packageSubpath === '.')
@@ -38,4 +38,4 @@ index dadad4ff57..5500908d6e 100644
 +
    // eslint can't handle the above code.
    // eslint-disable-next-line no-unreachable
-   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base));
+   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
