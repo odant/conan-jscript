@@ -1,6 +1,10 @@
 git apply .\oda.patch
-git apply .\fix_vs2022_build.patch
-git apply .\use_nodepath_for_esm.patch
 git apply .\experimental.patch
-git apply .\fix_no_optimization_build.patch
+git apply .\use_nodepath_for_esm.patch
+git apply .\add_v8_options.patch
+git apply .\disable_gen_node_def.patch
+git apply .\libuv_win7support.patch
+git apply .\fix_v8_windows_build.patch
+git apply .\disable_v8_slow_dcheck.patch
+git apply .\fix_deps_undici.patch
 git apply .\fix_vcbuild.patch
