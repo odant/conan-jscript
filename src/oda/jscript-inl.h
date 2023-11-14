@@ -9,6 +9,7 @@
 #include "node_v8_platform-inl.h"
 #include "node_crypto.h"
 #include "large_pages/node_large_page.h"
+#include "node.h"
 
 #include <atomic>
 #include <cstring>
@@ -24,12 +25,11 @@
 #include <optional>
 
 
-namespace node {
-namespace jscript {
+namespace node::jscript {
 using namespace ::node;
 
 
-std::atomic<bool> is_initilized{false};
+std::atomic<bool> is_initilized{ false };
 
 std::vector<std::string> args;
 std::vector<std::string> exec_args;
@@ -38,142 +38,149 @@ std::vector<std::string> exec_args;
 class NodeInstanceData
 {
 public:
-  NodeInstanceData();
-  ~NodeInstanceData();
+    NodeInstanceData();
+    ~NodeInstanceData();
 
-  uv_loop_t* event_loop();
+    uv_loop_t* event_loop();
 
-  void print_handles();
+    void print_handles();
 
-  void close_loop();
+    void close_loop();
 
-  int exit_code();
-  void set_exit_code(int);
+    int  exit_code();
+    void set_exit_code(int);
 
 protected:
-  std::unique_ptr<IsolateData> isolate_data_;
-  const bool deserialize_mode_ = false;
+    std::unique_ptr<IsolateData> isolate_data_;
 
 private:
-  int exit_code_;
+    int exit_code_;
 
-  bool isClosedEventLoop;
-  uv_loop_t event_loop_;
+    bool      isClosedEventLoop;
+    uv_loop_t event_loop_;
 };
 
 
 NodeInstanceData::NodeInstanceData()
-  :
-    exit_code_{1},
-    isClosedEventLoop{false}
-{
-  CHECK_EQ(::uv_loop_init(event_loop()), 0);
-  CHECK_EQ(::uv_loop_configure(event_loop(), UV_METRICS_IDLE_TIME), 0);
+    : exit_code_{ 1 }, isClosedEventLoop{ false } {
+    CHECK_EQ(::uv_loop_init(event_loop()), 0);
+    CHECK_EQ(::uv_loop_configure(event_loop(), UV_METRICS_IDLE_TIME), 0);
 }
 
 NodeInstanceData::~NodeInstanceData() {
-  close_loop();
+    close_loop();
 }
 
 uv_loop_t* NodeInstanceData::event_loop() {
-  return &event_loop_;
+    return &event_loop_;
 }
 
 void NodeInstanceData::print_handles() {
-  ::fprintf(stderr, "\r\n%p\r\n", event_loop());
-  ::uv_print_all_handles(event_loop(), stderr);
-  ::fprintf(stderr, "\r\n");
+    ::fprintf(stderr, "\r\n%p\r\n", event_loop());
+    ::uv_print_all_handles(event_loop(), stderr);
+    ::fprintf(stderr, "\r\n");
 }
 
 void NodeInstanceData::close_loop() {
-  if (isClosedEventLoop) {
-      return;
-  }
-  isClosedEventLoop = true;
+    if (isClosedEventLoop) {
+        return;
+    }
+    isClosedEventLoop = true;
 
-  while (::uv_loop_close(event_loop()) == UV_EBUSY) {
-    auto cb = [](uv_handle_t* handle, void* arg) {
-      if (::uv_is_closing(handle) == 0) {
-        ::uv_close(handle, nullptr);
-      }
-    };
-    ::uv_walk(event_loop(), cb, nullptr);
+    while (::uv_loop_close(event_loop()) == UV_EBUSY) {
+        auto cb = [](uv_handle_t* handle, void* arg) {
+            if (::uv_is_closing(handle) == 0) {
+                ::uv_close(handle, nullptr);
+            }
+        };
+        ::uv_walk(event_loop(), cb, nullptr);
 
-    ::uv_run(event_loop(), UV_RUN_DEFAULT);
-  }
+        ::uv_run(event_loop(), UV_RUN_DEFAULT);
+    }
 }
 
 int NodeInstanceData::exit_code() {
-  return exit_code_;
+    return exit_code_;
 }
 
 void NodeInstanceData::set_exit_code(int exit_code) {
-  exit_code_ = exit_code;
+    exit_code_ = exit_code;
 }
 
 
-class JSInstanceImpl : public JSInstance, public RefCounter, public NodeInstanceData
+class JSInstanceImpl : public JSInstance,
+                       public RefCounter,
+                       public NodeInstanceData
 {
 private:
-  struct CtorTag {};
+    struct CtorTag
+    { };
 
 public:
-  using Ptr = RefCounter::Ptr<JSInstanceImpl>;
+    using Ptr = RefCounter::Ptr<JSInstanceImpl>;
 
-  JSInstanceImpl(CtorTag);
+    JSInstanceImpl(CtorTag);
 
-  static JSInstanceImpl::Ptr create();
+    static JSInstanceImpl::Ptr create();
 
 #ifdef ERROR
-  #undef ERROR
+#    undef ERROR
 #endif
-  enum state_t { CREATE, RUN, STOPPING, STOP, TIMEOUT, ERROR };
-  using AutoResetState = std::unique_ptr<void, std::function<void(void*)>>;
-  AutoResetState createAutoReset(state_t);
+    enum state_t
+    {
+        CREATE,
+        RUN,
+        STOPPING,
+        STOP,
+        TIMEOUT,
+        ERROR
+    };
+    using AutoResetState = std::unique_ptr<void, std::function<void(void*)>>;
+    AutoResetState createAutoReset(state_t);
 
-  void StartNodeInstance();
+    void StartNodeInstance();
 
-  bool isStopping() const;
-  bool isStop() const;
-  bool isError() const;
-  bool isRun() const;
-  bool isInitialize() const;
+    bool isStopping() const;
+    bool isStop() const;
+    bool isError() const;
+    bool isRun() const;
+    bool isInitialize() const;
 
-  void setState(state_t state);
+    void setState(state_t state);
 
-  void SetConsoleCallback(ConsoleCallback cb);
-  const std::optional<ConsoleCallback>& GetConsoleCallback();
+    void                                  SetConsoleCallback(ConsoleCallback cb);
+    const std::optional<ConsoleCallback>& GetConsoleCallback();
 
-  static const std::string defaultOrigin;
-  static const std::string externalOrigin;
-  static const std::string stopScript;
+    static const std::string defaultOrigin;
+    static const std::string externalOrigin;
+    static const std::string stopScript;
 
-  Mutex _isolate_mutex;
-  v8::Isolate* _isolate{nullptr};
-  Environment* _env{nullptr};
-  std::thread _thread;
+    Mutex        _isolate_mutex;
+    v8::Isolate* _isolate{ nullptr };
+    Environment* _env{ nullptr };
+    std::thread  _thread;
 
-  std::mutex _state_mutex;
-  std::condition_variable _state_cv;
+    std::mutex              _state_mutex;
+    std::condition_variable _state_cv;
 
-  const std::atomic<std::uintmax_t> id = ATOMIC_VAR_INIT(idCounter++);
+    const std::atomic<std::uintmax_t> id = ATOMIC_VAR_INIT(idCounter++);
 
 private:
-  static std::atomic<std::uintmax_t> idCounter;
+    static std::atomic<std::uintmax_t> idCounter;
 
-  DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(int*, const EnvSerializeInfo* env_info);
+    DeleteFnPtr<Environment, FreeEnvironment> CreateEnvironment(ExitCode*);
 
-  void addSetStates(v8::Local<v8::Context>);
-  void addSetState(v8::Local<v8::Context> context, const char* name, const state_t state);
+    void addSetStates(v8::Local<v8::Context>);
+    void addSetState(v8::Local<v8::Context> context, const char* name, const state_t state);
 
-  void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
+    void addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value);
 
-  void overrideConsole(v8::Local<v8::Context>);
-  void overrideConsole(v8::Local<v8::Context>, const char* name, const ConsoleType type);
+    void overrideConsole(v8::Local<v8::Context>);
+    void overrideConsole(v8::Local<v8::Context>, const char* name, const ConsoleType type);
 
-  std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
+    std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
-  std::optional<ConsoleCallback> _consoleCallback;
+    std::optional<ConsoleCallback> _consoleCallback;
 };
 
 
@@ -184,261 +191,210 @@ const std::string JSInstanceImpl::stopScript;
 std::atomic<std::uintmax_t> JSInstanceImpl::idCounter = ATOMIC_VAR_INIT(0);
 
 
-inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag)
-{}
+inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag) { }
 
 inline JSInstanceImpl::Ptr JSInstanceImpl::create() {
-  return JSInstanceImpl::Ptr{
-    new JSInstanceImpl{CtorTag{}}
-  };
+    return JSInstanceImpl::Ptr{ new JSInstanceImpl{ CtorTag{} } };
 }
 
 bool JSInstanceImpl::isStopping() const {
-  const bool envStopped = !(_env && _env->is_stopping());
-  return _state == JSInstanceImpl::state_t::STOPPING || envStopped;
+    const bool envStopped = !(_env && _env->is_stopping());
+    return _state == JSInstanceImpl::state_t::STOPPING || envStopped;
 }
 
 bool JSInstanceImpl::isStop() const {
-  return _state == JSInstanceImpl::state_t::STOP;
+    return _state == JSInstanceImpl::state_t::STOP;
 }
 
 bool JSInstanceImpl::isError() const {
-  return _state == JSInstanceImpl::state_t::ERROR;
+    return _state == JSInstanceImpl::state_t::ERROR;
 }
 
 bool JSInstanceImpl::isRun() const {
-  const bool envNotStopped = _env && !(_env->is_stopping());
-  return _state == JSInstanceImpl::state_t::RUN && envNotStopped;
+    const bool envNotStopped = _env && !(_env->is_stopping());
+    return _state == JSInstanceImpl::state_t::RUN && envNotStopped;
 }
 
 bool JSInstanceImpl::isInitialize() const {
-  return _state != JSInstanceImpl::state_t::CREATE;
+    return _state != JSInstanceImpl::state_t::CREATE;
 }
 
 void JSInstanceImpl::setState(state_t state) {
-  {
-    std::unique_lock<std::mutex> lock(_state_mutex);
-    _state = state;
-  }
-  _state_cv.notify_all();
+    {
+        std::unique_lock<std::mutex> lock(_state_mutex);
+        _state = state;
+    }
+    _state_cv.notify_all();
 }
 
 const std::optional<ConsoleCallback>& JSInstanceImpl::GetConsoleCallback() {
-  return _consoleCallback;
+    return _consoleCallback;
 }
 
 void JSInstanceImpl::SetConsoleCallback(ConsoleCallback cb) {
-  _consoleCallback = std::move(cb);
+    _consoleCallback = std::move(cb);
 }
 
 
 JSInstanceImpl::AutoResetState JSInstanceImpl::createAutoReset(state_t state) {
-  const auto deleter = [that = JSInstanceImpl::Ptr{ this }, state](void*) {
-    that->setState(state);
-  };
+    const auto deleter = [that = JSInstanceImpl::Ptr{ this }, state](void*) { that->setState(state); };
 
-  return AutoResetState{ this, deleter };
+    return AutoResetState{ this, deleter };
 }
 
 void JSInstanceImpl::StartNodeInstance() {
-  auto autoResetState = createAutoReset(state_t::STOP);
+    auto autoResetState = createAutoReset(state_t::STOP);
 
-  v8::Isolate::CreateParams params;
-  const EnvSerializeInfo* env_info = nullptr;
-  auto allocator = ArrayBufferAllocator::Create();
-  MultiIsolatePlatform* platform = per_process::v8_platform.Platform();
+    v8::Isolate::CreateParams params;
+    auto                      allocator = ArrayBufferAllocator::Create();
+    MultiIsolatePlatform*     platform  = per_process::v8_platform.Platform();
 
-  // Following code from NodeMainInstance::NodeMainInstance
+    // Following code from NodeMainInstance::NodeMainInstance
 
-  params.array_buffer_allocator = allocator.get();
-  _isolate = v8::Isolate::Allocate();
-  CHECK_NOT_NULL(_isolate);
-  // Register the isolate on the platform before the isolate gets initialized,
-  // so that the isolate can access the platform during initialization.
-  platform->RegisterIsolate(_isolate, event_loop());
-  SetIsolateCreateParamsForNode(&params);
-  v8::Isolate::Initialize(_isolate, params);
+    params.array_buffer_allocator = allocator.get();
+    _isolate                      = v8::Isolate::Allocate();
+    CHECK_NOT_NULL(_isolate);
+    // Register the isolate on the platform before the isolate gets initialized,
+    // so that the isolate can access the platform during initialization.
+    platform->RegisterIsolate(_isolate, event_loop());
+    SetIsolateCreateParamsForNode(&params);
+    v8::Isolate::Initialize(_isolate, params);
 
-  // deserialize_mode_ = per_isolate_data_indexes != nullptr;
-  // If the indexes are not nullptr, we are not deserializing
-  //CHECK_IMPLIES(deserialize_mode_, params.external_references != nullptr);
-  {
-    // ctor IsolateData call Isolate::GetCurrent, need enter
-    v8::Locker locker{ _isolate };
-    isolate_data_ = std::make_unique<IsolateData>(
-      _isolate, event_loop(), platform, allocator.get());
-  }
-
-  IsolateSettings s;
-  SetIsolateMiscHandlers(_isolate, s);
-  if (!deserialize_mode_) {
-    // If in deserialize mode, delay until after the deserialization is
-    // complete.
-    SetIsolateErrorHandlers(_isolate, s);
-  }
-  
-  isolate_data_->max_young_gen_size =
-      params.constraints.max_young_generation_size_in_bytes();
-
-  // Following code from NodeMainInstance::Run
-
-  int exit_code = 0;
-  {
-    v8::Locker locker{_isolate};
-    v8::Isolate::Scope isolateScope{_isolate};
-    v8::HandleScope handleScope{_isolate};
-
-    auto env = this->CreateEnvironment(&exit_code, env_info);
-    CHECK(env);
-    _env = env.get();
-
-    v8::Local<v8::Context> context = env->context();
-    v8::Context::Scope contextScope{context};
-    if (exit_code == 0) {
-      LoadEnvironment(env.get(), StartExecutionCallback{});
-      this->overrideConsole(context);
-
-      env->set_trace_sync_io(env->options()->trace_sync_io);
-
-      {
-        v8::SealHandleScope seal(_isolate);
-        bool more;
-        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
-
-        do {
-          if (env->is_stopping()) break;
-          uv_run(env->event_loop(), UV_RUN_DEFAULT);
-          if (env->is_stopping()) break;
-
-          per_process::v8_platform.DrainVMTasks(_isolate);
-
-          more = uv_loop_alive(env->event_loop());
-          if (more && !env->is_stopping()) {
-            continue;
-          }
-
-          if (EmitProcessBeforeExit(env.get()).IsNothing())
-            break;
-
-          // Emit `beforeExit` if the loop became alive either after emitting
-          // event, or after running some callbacks.
-          more = uv_loop_alive(env->event_loop());
-        } while (more == true && !env->is_stopping());
-
-        env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-      }
-
-      env->set_trace_sync_io(false);
-
-      // Disabling validation due to ContextifyScript (comment MakeWeak() in constructor)
-      //if (!env->is_stopping()) env->VerifyNoStrongBaseObjects();
-
-      exit_code = EmitExit(env.get());
+    {
+        // ctor IsolateData call Isolate::GetCurrent, need enter
+        v8::Locker locker{ _isolate };
+        isolate_data_ = std::make_unique<IsolateData>(_isolate, event_loop(), platform, allocator.get());
     }
 
-    ResetStdio();
+    IsolateSettings s;
+    SetIsolateMiscHandlers(_isolate, s);
+    SetIsolateErrorHandlers(_isolate, s);
+
+    isolate_data_->max_young_gen_size = params.constraints.max_young_generation_size_in_bytes();
+
+    // Following code from NodeMainInstance::Run
+
+    ExitCode exit_code = ExitCode::kNoFailure;
+    {
+        v8::Locker         locker{ _isolate };
+        v8::Isolate::Scope isolateScope{ _isolate };
+        v8::HandleScope    handleScope{ _isolate };
+
+        auto env = this->CreateEnvironment(&exit_code);
+        CHECK(env);
+        _env = env.get();
+
+        v8::Local<v8::Context> context = env->context();
+        v8::Context::Scope     contextScope{ context };
+        if (exit_code == ExitCode::kNoFailure) {
+            LoadEnvironment(env.get(), StartExecutionCallback{});
+            this->overrideConsole(context);
+
+            env->set_trace_sync_io(env->options()->trace_sync_io);
+
+            {
+                v8::SealHandleScope seal(_isolate);
+                bool                more;
+                env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_START);
+
+                do {
+                    if (env->is_stopping())
+                        break;
+                    uv_run(env->event_loop(), UV_RUN_DEFAULT);
+                    if (env->is_stopping())
+                        break;
+
+                    per_process::v8_platform.DrainVMTasks(_isolate);
+
+                    more = uv_loop_alive(env->event_loop());
+                    if (more && !env->is_stopping()) {
+                        continue;
+                    }
+
+                    if (EmitProcessBeforeExit(env.get()).IsNothing())
+                        break;
+
+                    // Emit `beforeExit` if the loop became alive either after emitting
+                    // event, or after running some callbacks.
+                    more = uv_loop_alive(env->event_loop());
+                }
+                while (more == true && !env->is_stopping());
+
+                env->performance_state()->Mark(node::performance::NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+            }
+
+            env->set_trace_sync_io(false);
+
+            // Disabling validation due to ContextifyScript (comment MakeWeak() in constructor)
+            //if (!env->is_stopping()) env->VerifyNoStrongBaseObjects();
+
+            exit_code = EmitProcessExitInternal(env.get()).FromMaybe(ExitCode::kGenericUserError);
+        }
+
+        ResetStdio();
 
 #if defined(LEAK_SANITIZER)
-    __lsan_do_leak_check();
+        __lsan_do_leak_check();
 #endif
-  }
-  set_exit_code(exit_code);
-  _env = nullptr;
+    }
+    set_exit_code(static_cast<int>(exit_code));
+    _env = nullptr;
 
-  platform->DrainTasks(_isolate);
-  platform->UnregisterIsolate(_isolate);
-  _isolate->Dispose();
+    platform->DrainTasks(_isolate);
+    platform->UnregisterIsolate(_isolate);
+    _isolate->Dispose();
 
-  _isolate = nullptr;
-  close_loop();
+    _isolate = nullptr;
+    close_loop();
 }
 
-DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(
-      int* exit_code, const EnvSerializeInfo* env_info) {
-    *exit_code = 0;  // Reset the exit code to 0
+DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(ExitCode* exit_code) {
+    *exit_code = ExitCode::kNoFailure;    // Reset the exit code to 0
 
     v8::HandleScope handle_scope(_isolate);
 
     // TODO(addaleax): This should load a real per-Isolate option, currently
     // this is still effectively per-process.
     if (isolate_data_->options()->track_heap_objects) {
-      _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
+        _isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
     }
 
-    const size_t kNodeContextIndex = 0;
-    v8::Local<v8::Context> context;
+    const size_t                              kNodeContextIndex = 0;
+    v8::Local<v8::Context>                    context;
     DeleteFnPtr<Environment, FreeEnvironment> env;
-    
-    if (deserialize_mode_) {
-      env.reset(new Environment(isolate_data_.get(),
-                                _isolate,
-                                args,
-                                exec_args,
-                                env_info,
-                                EnvironmentFlags::kDefaultFlags,
-                                {}));
-      context = v8::Context::FromSnapshot(_isolate,
-                                      kNodeContextIndex,
-                                      {DeserializeNodeInternalFields, env.get()})
-                    .ToLocalChecked();
 
-      CHECK(!context.IsEmpty());
-      v8::Context::Scope context_scope(context);
-      CHECK(InitializeContextRuntime(context).IsJust());
-      SetIsolateErrorHandlers(_isolate, {});
-      env->InitializeMainContext(context, env_info);
+    context = NewContext(_isolate);
+    CHECK(!context.IsEmpty());
+
+    v8::Context::Scope context_scope(context);
+
+    env.reset(node::CreateEnvironment(isolate_data_.get(), context, args, exec_args));
+
+    addSetStates(context);
+
+    const std::string defaultOriginName{ "DEFAULTORIGIN" };
+    addGlobalStringValue(context, defaultOriginName, defaultOrigin);
+
+    const std::string externalOriginName{ "EXTERNALORIGIN" };
+    addGlobalStringValue(context, externalOriginName, externalOrigin);
+
+    // TODO(joyeecheung): when we snapshot the bootstrapped context,
+    // the inspector and diagnostics setup should after after deserialization.
 #if HAVE_INSPECTOR
-      //env->InitializeInspector({});
+    //env->InitializeInspector({});
 #endif
-    }
-    else {
-      context = NewContext(_isolate);
-      CHECK(!context.IsEmpty());
-
-      v8::Context::Scope context_scope(context);
-
-      env.reset(
-        new Environment(
-          isolate_data_.get(),
-          context,
-          args,
-          exec_args,
-          nullptr,
-          static_cast<EnvironmentFlags::Flags>(/* EnvironmentFlags::kIsMainThread | */
-                                             EnvironmentFlags::kDefaultFlags     | 
-                                             EnvironmentFlags::kOwnsProcessState |
-                                             EnvironmentFlags::kOwnsInspector),
-          ThreadId{}
-        )
-      );
-
-      addSetStates(context);
-
-      const std::string defaultOriginName{ "DEFAULTORIGIN" };
-      addGlobalStringValue(context, defaultOriginName, defaultOrigin);
-
-      const std::string externalOriginName{ "EXTERNALORIGIN" };
-      addGlobalStringValue(context, externalOriginName, externalOrigin);
-
-      // TODO(joyeecheung): when we snapshot the bootstrapped context,
-      // the inspector and diagnostics setup should after after deserialization.
-#if HAVE_INSPECTOR
-      //env->InitializeInspector({});
-#endif
-      if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
+    if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
         return nullptr;
-      }
     }
 
     return env;
 }
 
-void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context)
-{
-  static const char* __oda_setRunState{ "__oda_setRunState" };
-  addSetState(context, __oda_setRunState, JSInstanceImpl::RUN);
-  static const char* __oda_setErrorState{ "__oda_setErrorState" };
-  addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
+void JSInstanceImpl::addSetStates(v8::Local<v8::Context> context) {
+    static const char* __oda_setRunState{ "__oda_setRunState" };
+    addSetState(context, __oda_setRunState, JSInstanceImpl::RUN);
+    static const char* __oda_setErrorState{ "__oda_setErrorState" };
+    addSetState(context, __oda_setErrorState, JSInstanceImpl::ERROR);
 }
 
 void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* name, const state_t state) {
@@ -448,39 +404,40 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
     v8::Local<v8::String> functionName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
     const auto callback = [](const v8::FunctionCallbackInfo<v8::Value>& args) {
-          v8::Isolate* isolate = args.GetIsolate();
-          v8::HandleScope handleScope(isolate);
+        v8::Isolate*    isolate = args.GetIsolate();
+        v8::HandleScope handleScope(isolate);
 
-          v8::Local<v8::Value> data = args.Data();
-          DCHECK(!data.IsEmpty());
-          DCHECK(data->IsArray());
-          if (data.IsEmpty() || !data->IsArray()) {
-              return;
-          }
+        v8::Local<v8::Value> data = args.Data();
+        DCHECK(!data.IsEmpty());
+        DCHECK(data->IsArray());
+        if (data.IsEmpty() || !data->IsArray()) {
+            return;
+        }
 
-          v8::Local<v8::Array> array = data.As<v8::Array>();
-          DCHECK_GE(array->Length(), 2);
-          if (array->Length() < 2) {
-              return;
-          }
+        v8::Local<v8::Array> array = data.As<v8::Array>();
+        DCHECK_GE(array->Length(), 2);
+        if (array->Length() < 2) {
+            return;
+        }
 
-          v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
-          v8::Local<v8::Context> context;
-          if (!contextMaybe.ToLocal(&context)) {
-              return;
-          }
+        v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
+        v8::Local<v8::Context>      context;
+        if (!contextMaybe.ToLocal(&context)) {
+            return;
+        }
 
-          v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
+        v8::Local<v8::External> instanceExt = array->Get(context, 0).ToLocalChecked().As<v8::External>();
 
-          JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-          DCHECK_NOT_NULL(instance);
+        JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+        DCHECK_NOT_NULL(instance);
 
-          v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
-          instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode-> Value()));
-    };  // callback
+        v8::Local<v8::Int32> stateCode = array->Get(context, 1).ToLocalChecked().As<v8::Int32>();
+        instance->setState(static_cast<JSInstanceImpl::state_t>(stateCode->Value()));
+    };    // callback
 
     v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-    v8::Local<v8::Int32> stateCode = v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(context).ToLocalChecked();
+    v8::Local<v8::Int32>    stateCode =
+        v8::Integer::New(_isolate, static_cast<int32_t>(state))->ToInt32(context).ToLocalChecked();
     v8::Local<v8::Array> array = v8::Array::New(_isolate, 2);
     array->Set(context, 0, instanceExt).Check();
     array->Set(context, 1, stateCode).Check();
@@ -489,362 +446,358 @@ void JSInstanceImpl::addSetState(v8::Local<v8::Context> context, const char* nam
     global->Set(context, functionName, setRunStateFunction).Check();
 }
 
-void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context, const std::string& name, const std::string& value) {
-  v8::Local<v8::Object> global = context->Global();
-  CHECK(!global.IsEmpty());
+void JSInstanceImpl::addGlobalStringValue(v8::Local<v8::Context> context,
+                                          const std::string&     name,
+                                          const std::string&     value) {
+    v8::Local<v8::Object> global = context->Global();
+    CHECK(!global.IsEmpty());
 
-  v8::Local<v8::String> stringName = v8::String::NewFromUtf8(_isolate, name.c_str()).ToLocalChecked();
-  v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str()).ToLocalChecked();
-  global->Set(context, stringName, stringValue).Check();
+    v8::Local<v8::String> stringName  = v8::String::NewFromUtf8(_isolate, name.c_str()).ToLocalChecked();
+    v8::Local<v8::String> stringValue = v8::String::NewFromUtf8(_isolate, value.c_str()).ToLocalChecked();
+    global->Set(context, stringName, stringValue).Check();
 }
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context) {
-  overrideConsole(context, "log", ConsoleType::Log);
-  overrideConsole(context, "warn", ConsoleType::Warn);
-  overrideConsole(context, "error", ConsoleType::Error);
+    overrideConsole(context, "log", ConsoleType::Log);
+    overrideConsole(context, "warn", ConsoleType::Warn);
+    overrideConsole(context, "error", ConsoleType::Error);
 }
 
 
 namespace {
 
-void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args);
+    void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 }
 
 
 void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char* name, const ConsoleType type) {
-  v8::HandleScope handleScope{_isolate};
+    v8::HandleScope handleScope{ _isolate };
 
-  v8::Local<v8::Object> globalObj = context->Global();
-  DCHECK(!globalObj.IsEmpty());
+    v8::Local<v8::Object> globalObj = context->Global();
+    DCHECK(!globalObj.IsEmpty());
 
-  v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, "console").ToLocalChecked();
-  v8::Local<v8::String> methodName = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
+    v8::Local<v8::String> consoleName = v8::String::NewFromUtf8(_isolate, "console").ToLocalChecked();
+    v8::Local<v8::String> methodName  = v8::String::NewFromUtf8(_isolate, name).ToLocalChecked();
 
-  v8::Local<v8::Object> globalConsoleObj = globalObj->Get(context, consoleName).ToLocalChecked().As<v8::Object>();
+    v8::Local<v8::Object> globalConsoleObj = globalObj->Get(context, consoleName).ToLocalChecked().As<v8::Object>();
 
-  //TODO: add check re-override control
+    //TODO: add check re-override control
 
-  v8::Local<v8::Array> array = v8::Array::New(_isolate, 3);
+    v8::Local<v8::Array> array = v8::Array::New(_isolate, 3);
 
-  v8::Local<v8::Value> globalMethod = globalConsoleObj->Get(context, methodName).ToLocalChecked().As<v8::Function>();
-  v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
-  v8::Local<v8::External> typeExt = v8::External::New(_isolate, reinterpret_cast<void*>(type));
+    v8::Local<v8::Value> globalMethod = globalConsoleObj->Get(context, methodName).ToLocalChecked().As<v8::Function>();
+    v8::Local<v8::External> instanceExt = v8::External::New(_isolate, this);
+    v8::Local<v8::External> typeExt     = v8::External::New(_isolate, reinterpret_cast<void*>(type));
 
-  array->Set(context, 0, globalMethod).Check();
-  array->Set(context, 1, instanceExt).Check();
-  array->Set(context, 2, typeExt).Check();
+    array->Set(context, 0, globalMethod).Check();
+    array->Set(context, 1, instanceExt).Check();
+    array->Set(context, 2, typeExt).Check();
 
-  v8::Local<v8::Function> overrideFunction = v8::Function::New(context, consoleCallback, array).ToLocalChecked();
-  globalConsoleObj->Set(context, methodName, overrideFunction).Check();
+    v8::Local<v8::Function> overrideFunction = v8::Function::New(context, consoleCallback, array).ToLocalChecked();
+    globalConsoleObj->Set(context, methodName, overrideFunction).Check();
 }
 
 
 namespace {
 
 
-void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
-    v8::Isolate* isolate = args.GetIsolate();
-    v8::HandleScope handleScope(isolate);
+    void consoleCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
+        v8::Isolate*    isolate = args.GetIsolate();
+        v8::HandleScope handleScope(isolate);
 
-    v8::Local<v8::Value> data = args.Data();
-    DCHECK(!data.IsEmpty());
-    DCHECK(data->IsArray());
-    if (data.IsEmpty() || !data->IsArray()) {
-        return;
-    }
+        v8::Local<v8::Value> data = args.Data();
+        DCHECK(!data.IsEmpty());
+        DCHECK(data->IsArray());
+        if (data.IsEmpty() || !data->IsArray()) {
+            return;
+        }
 
-    v8::Local<v8::Array> array = data.As<v8::Array>();
-    const auto arraySize = array->Length();
-    DCHECK_GE(arraySize, 2);
-    if (arraySize < 2) {
-        return;
-    }
+        v8::Local<v8::Array> array     = data.As<v8::Array>();
+        const auto           arraySize = array->Length();
+        DCHECK_GE(arraySize, 2);
+        if (arraySize < 2) {
+            return;
+        }
 
-    v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
-    v8::Local<v8::Context> context;
-    if (!contextMaybe.ToLocal(&context)) {
-        return;
-    }
+        v8::MaybeLocal<v8::Context> contextMaybe = array->GetCreationContext();
+        v8::Local<v8::Context>      context;
+        if (!contextMaybe.ToLocal(&context)) {
+            return;
+        }
 
-    v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
+        v8::Local<v8::Function> globalLogFunc = array->Get(context, 0).ToLocalChecked().As<v8::Function>();
 
-    v8::TryCatch trycatch(isolate);
-    trycatch.SetVerbose(true);
+        v8::TryCatch trycatch(isolate);
+        trycatch.SetVerbose(true);
 
-    std::vector<v8::Local<v8::Value>> info;
-    v8::Local<v8::External> instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
-    JSInstanceImpl* instance = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
-    DCHECK_NOT_NULL(instance);
-    if (instance) {
-        const std::string id = std::to_string(instance->id);
-        v8::Local<v8::String> idV8 = v8::String::NewFromUtf8(isolate, id.c_str()).ToLocalChecked();
-        info.emplace_back(idV8);
-    }
+        std::vector<v8::Local<v8::Value>> info;
+        v8::Local<v8::External>           instanceExt = array->Get(context, 1).ToLocalChecked().As<v8::External>();
+        JSInstanceImpl*                   instance    = reinterpret_cast<JSInstanceImpl*>(instanceExt->Value());
+        DCHECK_NOT_NULL(instance);
+        if (instance) {
+            const std::string     id   = std::to_string(instance->id);
+            v8::Local<v8::String> idV8 = v8::String::NewFromUtf8(isolate, id.c_str()).ToLocalChecked();
+            info.emplace_back(idV8);
+        }
 
-    for (int i = 0; i < args.Length(); ++i) {
-        info.emplace_back(args[i]);
-    }
+        for (int i = 0; i < args.Length(); ++i) {
+            info.emplace_back(args[i]);
+        }
 
-    v8::MaybeLocal<v8::Value> globalLogFuncResult = globalLogFunc->Call(
-        context, v8::Null(isolate), info.size(), info.data());
-    (void)(globalLogFuncResult);
+        v8::MaybeLocal<v8::Value> globalLogFuncResult =
+            globalLogFunc->Call(context, v8::Null(isolate), info.size(), info.data());
+        (void) (globalLogFuncResult);
 
-    if (instance) {
-        const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
-        if (consoleCallback) {
-            ConsoleType type{ ConsoleType::Default };
-            if (arraySize >= 3) {
-                auto maybeValue = array->Get(context, 2);
-                if (!maybeValue.IsEmpty()) {
-                    auto localValue = maybeValue.ToLocalChecked();
-                    if (!localValue.IsEmpty() && localValue->IsExternal()) {
-                        v8::Local<v8::External> externalValue = localValue.As<v8::External>();
-                        if (!externalValue.IsEmpty()) {
-                            type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
+        if (instance) {
+            const std::optional<ConsoleCallback>& consoleCallback = instance->GetConsoleCallback();
+            if (consoleCallback) {
+                ConsoleType type{ ConsoleType::Default };
+                if (arraySize >= 3) {
+                    auto maybeValue = array->Get(context, 2);
+                    if (!maybeValue.IsEmpty()) {
+                        auto localValue = maybeValue.ToLocalChecked();
+                        if (!localValue.IsEmpty() && localValue->IsExternal()) {
+                            v8::Local<v8::External> externalValue = localValue.As<v8::External>();
+                            if (!externalValue.IsEmpty()) {
+                                type = static_cast<ConsoleType>(reinterpret_cast<std::size_t>(externalValue->Value()));
+                            }
                         }
                     }
                 }
-            }
 
-            consoleCallback->operator()(args, type);
+                consoleCallback->operator()(args, type);
+            }
         }
     }
-}
 
 
-} // Anonymouse namespace
+}    // namespace
 
 
-NODE_EXTERN void Initialize(const std::vector<std::string>& argv,
-                               const std::string& nodeFolder,
-                               std::function<void(const std::string&)> redirectFPrintF) {
+NODE_EXTERN void Initialize(const std::vector<std::string>&         argv,
+                            const std::string&                      nodeFolder,
+                            std::function<void(const std::string&)> redirectFPrintF) {
+    if (is_initilized.exchange(true)) {
+        return;
+    }
 
-  if (is_initilized.exchange(true)) {
-    return;
-  }
+    // Paths to node modules
+    CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
 
-  // Paths to node modules
-  CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
+    // categories is ','-separated list of C++ core debug categories that should print debug output
+    // 'none' - category for oda log callback
+    CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
 
-  // categories is ','-separated list of C++ core debug categories that should print debug output
-  // 'none' - category for oda log callback
-  CHECK_EQ(::uv_os_setenv("NODE_DEBUG_NATIVE", "none"), 0);
+    SetRedirectFPrintF(std::move(redirectFPrintF));
 
-  SetRedirectFPrintF(std::move(redirectFPrintF));
+    // Initialized the enabled list for Debug() calls with system
+    // environment variables.
+    per_process::enabled_debug_list.Parse();
 
-  // Initialized the enabled list for Debug() calls with system
-  // environment variables.
-  per_process::enabled_debug_list.Parse();
-
-  atexit(ResetStdio);
-  PlatformInit(ProcessFlags::kNoFlags);
+    PlatformInit(ProcessFlags::kNoFlags);
 
 #ifdef _DEBUG
-  {
-    std::ostringstream ss;
-    ss << "jscript:" << std::endl;
-    ss << "  " << "node argv:";
-    for (const auto& arg : argv) {
-      ss << ' ' << arg;
+    {
+        std::ostringstream ss;
+        ss << "jscript:" << std::endl;
+        ss << "  "
+           << "node argv:";
+        for (const auto& arg : argv) {
+            ss << ' ' << arg;
+        }
+        ss << std::endl;
+        ss << "  "
+           << "nodeFolder: " << nodeFolder << std::endl;
+        per_process::Debug(DebugCategory::NONE, ss.str().c_str());
     }
-    ss << std::endl;
-    ss << "  " << "nodeFolder: " << nodeFolder << std::endl;
-    per_process::Debug(DebugCategory::NONE, ss.str().c_str());
-  }
 #endif
 
-  args = argv;
-  std::vector<std::string> errors;
+    args = argv;
+    std::vector<std::string> errors;
 
-  // This needs to run *before* V8::Initialize().
-  {
-    const auto exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
-    for (const std::string& error : errors)
-      fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
-    CHECK_EQ(exit_code, 0);
-  }
-
-  if (per_process::cli_options->use_largepages == "on" ||
-      per_process::cli_options->use_largepages == "silent") {
-    int result = node::MapStaticCodeToLargePages();
-    if (per_process::cli_options->use_largepages == "on" && result != 0) {
-      fprintf(stderr, "%s\n", node::LargePagesError(result));
+    // This needs to run *before* V8::Initialize().
+    {
+        const auto exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
+        for (const std::string& error : errors)
+            fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
+        CHECK_EQ(exit_code, 0);
     }
-  }
+
+    if (per_process::cli_options->use_largepages == "on" || per_process::cli_options->use_largepages == "silent") {
+        int result = node::MapStaticCodeToLargePages();
+        if (per_process::cli_options->use_largepages == "on" && result != 0) {
+            fprintf(stderr, "%s\n", node::LargePagesError(result));
+        }
+    }
 
 #if HAVE_OPENSSL
-  {
-    std::string extra_ca_certs;
-    if (credentials::SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
-      crypto::UseExtraCaCerts(extra_ca_certs);
-  }
-#ifdef NODE_FIPS_MODE
-  // In the case of FIPS builds we should make sure
-  // the random source is properly initialized first.
-  OPENSSL_init();
-#endif  // NODE_FIPS_MODE
-  // V8 on Windows doesn't have a good source of entropy. Seed it from
-  // OpenSSL's pool.
-  v8::V8::SetEntropySource([](unsigned char* buffer, size_t length) {
-      // V8 falls back to very weak entropy when this function fails
-      // and /dev/urandom isn't available. That wouldn't be so bad if
-      // the entropy was only used for Math.random() but it's also used for
-      // hash table and address space layout randomization. Better to abort.
-      CHECK(crypto::CSPRNG(buffer, length).is_ok());
-      return true;
-  });
-#endif  // HAVE_OPENSSL
+    {
+        std::string extra_ca_certs;
+        if (credentials::SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
+            crypto::UseExtraCaCerts(extra_ca_certs);
+    }
+#    ifdef NODE_FIPS_MODE
+    // In the case of FIPS builds we should make sure
+    // the random source is properly initialized first.
+    OPENSSL_init();
+#    endif    // NODE_FIPS_MODE
+    // V8 on Windows doesn't have a good source of entropy. Seed it from
+    // OpenSSL's pool.
+    v8::V8::SetEntropySource([](unsigned char* buffer, size_t length) {
+        // V8 falls back to very weak entropy when this function fails
+        // and /dev/urandom isn't available. That wouldn't be so bad if
+        // the entropy was only used for Math.random() but it's also used for
+        // hash table and address space layout randomization. Better to abort.
+        CHECK(crypto::CSPRNG(buffer, length).is_ok());
+        return true;
+    });
+#endif    // HAVE_OPENSSL
 
-  per_process::v8_platform.Initialize(
-      per_process::cli_options->v8_thread_pool_size);
-  v8::V8::Initialize();
-  performance::performance_v8_start = PERFORMANCE_NOW();
-  per_process::v8_initialized = true;
+    per_process::v8_platform.Initialize(per_process::cli_options->v8_thread_pool_size);
+    v8::V8::Initialize();
+    performance::performance_v8_start = PERFORMANCE_NOW();
+    per_process::v8_initialized       = true;
 }
 
 
 namespace {
 
-void setOrigin(const std::string& origin, const std::string& externalOrigin);
-void setStopScript(std::string stopScript);
-std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder);
-std::string findModule(const std::string& folder, const std::string& name);
-std::string getInitScript(std::string odaFrameworkPath);
-std::string getStopScript(const std::string& coreFolder);
-std::string convertNodeFolders(const std::vector<std::string>&);
+    void                     setOrigin(const std::string& origin, const std::string& externalOrigin);
+    void                     setStopScript(std::string stopScript);
+    std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder);
+    std::string              findModule(const std::string& folder, const std::string& name);
+    std::string              getInitScript(std::string odaFrameworkPath);
+    std::string              getStopScript(const std::string& coreFolder);
+    std::string              convertNodeFolders(const std::vector<std::string>&);
 
+}    // namespace
+
+
+NODE_EXTERN void Initialize(const std::string&                      origin,
+                            const std::string&                      externalOrigin,
+                            const std::string&                      executeFile,
+                            const std::string&                      coreFolder,
+                            const std::string&                      nodeFolder,
+                            std::function<void(const std::string&)> redirectFPrintF) {
+    setOrigin(origin, externalOrigin);
+    setStopScript(getStopScript(coreFolder));
+
+    std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
+
+    std::string moduleInit = findModule(coreFolder + "/web/core", "jscript-init");
+    if (moduleInit.empty()) {
+        moduleInit = findModule(coreFolder + "/web", "jscript-init");
+    }
+    if (moduleInit.empty()) {
+        argv.push_back("-e");
+        std::string initScript = getInitScript(coreFolder + "/web/core/odant.js");
+        argv.push_back(std::move(initScript));
+    }
+    else {
+        argv.push_back(std::move(moduleInit));
+    }
+
+    Initialize(argv, nodeFolder, std::move(redirectFPrintF));
 }
 
+NODE_EXTERN void Initialize(const std::string&                      origin,
+                            const std::string&                      externalOrigin,
+                            const std::string&                      executeFile,
+                            const std::string&                      coreFolder,
+                            const std::vector<std::string>&         nodeFolders,
+                            std::function<void(const std::string&)> redirectFPrintF) {
+    const std::string nodeFolder = convertNodeFolders(nodeFolders);
 
-NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::string& nodeFolder,
-                               std::function<void(const std::string&)> redirectFPrintF) {
+    Initialize(origin, externalOrigin, executeFile, coreFolder, nodeFolder, std::move(redirectFPrintF));
+}
 
-  setOrigin(origin, externalOrigin);
-  setStopScript(getStopScript(coreFolder));
+NODE_EXTERN void Initialize(const std::string&                      origin,
+                            const std::string&                      externalOrigin,
+                            const std::string&                      executeFile,
+                            const std::string&                      coreFolder,
+                            const std::vector<std::string>&         nodeFolders,
+                            const std::string&                      initScript,
+                            std::function<void(const std::string&)> redirectFPrintF) {
+    setOrigin(origin, externalOrigin);
+    setStopScript(getStopScript(coreFolder));
 
-  std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
+    std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
 
-  std::string moduleInit = findModule(coreFolder + "/web/core", "jscript-init");
-  if (moduleInit.empty()) {
-      moduleInit = findModule(coreFolder + "/web", "jscript-init");
-  }
-  if (moduleInit.empty()) {
     argv.push_back("-e");
-    std::string initScript = getInitScript(coreFolder + "/web/core/odant.js");
-    argv.push_back(std::move(initScript));
-  }
-  else {
-    argv.push_back(std::move(moduleInit));
-  }
-
-  Initialize(argv,
-             nodeFolder,
-             std::move(redirectFPrintF));
-}
-
-NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
-                               std::function<void(const std::string&)> redirectFPrintF) {
+    argv.push_back(initScript);
 
     const std::string nodeFolder = convertNodeFolders(nodeFolders);
 
-    Initialize(origin, externalOrigin,
-               executeFile, coreFolder, nodeFolder,
-               std::move(redirectFPrintF));
-}
-
-NODE_EXTERN void Initialize(const std::string& origin, const std::string& externalOrigin,
-                               const std::string& executeFile, const std::string& coreFolder, const std::vector<std::string>& nodeFolders,
-                               const std::string& initScript,
-                               std::function<void(const std::string&)> redirectFPrintF) {
-
-  setOrigin(origin, externalOrigin);
-  setStopScript(getStopScript(coreFolder));
-
-  std::vector<std::string> argv = getCommonNodeArgs(executeFile, coreFolder);
-
-  argv.push_back("-e");
-  argv.push_back(initScript);
-
-  const std::string nodeFolder = convertNodeFolders(nodeFolders);
-
-  Initialize(argv,
-             nodeFolder,
-             std::move(redirectFPrintF));
+    Initialize(argv, nodeFolder, std::move(redirectFPrintF));
 }
 
 
 namespace {
 
 
-void setOrigin(const std::string& origin, const std::string& externalOrigin) {
-    const_cast<std::string&>(JSInstanceImpl::defaultOrigin) = origin;
-    const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
-}
-
-void setStopScript(std::string stopScript) {
-  const_cast<std::string&>(JSInstanceImpl::stopScript) = std::move(stopScript);
-}
-
-
-std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder) {
-    std::vector<std::string> argv{
-        std::move(executeFile),
-        "--experimental-vm-modules",
-        "--no-addons"
-    };
-
-    std::string modulesLoader = findModule(coreFolder + "/web/core", "modules-loader");
-    if (modulesLoader.empty()) {
-        modulesLoader = findModule(coreFolder + "/web", "modules-loader");
+    void setOrigin(const std::string& origin, const std::string& externalOrigin) {
+        const_cast<std::string&>(JSInstanceImpl::defaultOrigin)  = origin;
+        const_cast<std::string&>(JSInstanceImpl::externalOrigin) = externalOrigin;
     }
-    if (!modulesLoader.empty()) {
-        argv.push_back("--experimental-loader");
-  #ifdef _WIN32
+
+    void setStopScript(std::string stopScript) {
+        const_cast<std::string&>(JSInstanceImpl::stopScript) = std::move(stopScript);
+    }
+
+
+    std::vector<std::string> getCommonNodeArgs(const std::string& executeFile, const std::string& coreFolder) {
+        std::vector<std::string> argv{ std::move(executeFile), "--experimental-vm-modules", "--no-addons" };
+
+        std::string modulesLoader = findModule(coreFolder + "/web/core", "modules-loader");
+        if (modulesLoader.empty()) {
+            modulesLoader = findModule(coreFolder + "/web", "modules-loader");
+        }
+        if (!modulesLoader.empty()) {
+            argv.push_back("--experimental-loader");
+#ifdef _WIN32
             static const std::string fileScheme{ "file:///" };
-  #else
+#else
             static const std::string fileScheme{ "file://" };
-  #endif
-        modulesLoader = fileScheme + modulesLoader;
-        argv.push_back(std::move(modulesLoader));
+#endif
+            modulesLoader = fileScheme + modulesLoader;
+            argv.push_back(std::move(modulesLoader));
+        }
+
+        return argv;
     }
 
-    return argv;
-}
+    std::string findModule(const std::string& folder, const std::string& name) {
+        FILE* file;
 
-std::string findModule(const std::string& folder, const std::string& name) {
-    FILE* file;
+        const std::string esModulesLoader{ folder + '/' + name + ".mjs" };
+        file = ::fopen(esModulesLoader.c_str(), "r");
+        if (file != nullptr) {
+            ::fclose(file);
+            return esModulesLoader;
+        }
 
-    const std::string esModulesLoader{ folder + '/' + name + ".mjs" };
-    file = ::fopen(esModulesLoader.c_str(), "r");
-    if (file != nullptr) {
-        ::fclose(file);
-        return esModulesLoader;
+        const std::string commonModulesLoader{ folder + '/' + name + ".cjs" };
+        file = ::fopen(commonModulesLoader.c_str(), "r");
+        if (file != nullptr) {
+            ::fclose(file);
+            return commonModulesLoader;
+        }
+
+        const std::string jsModulesLoader{ folder + '/' + name + ".js" };
+        file = ::fopen(jsModulesLoader.c_str(), "r");
+        if (file != nullptr) {
+            ::fclose(file);
+            return jsModulesLoader;
+        }
+
+        return std::string{};
     }
 
-    const std::string commonModulesLoader{ folder + '/' + name + ".cjs"};
-    file = ::fopen(commonModulesLoader.c_str(), "r");
-    if (file != nullptr) {
-        ::fclose(file);
-        return commonModulesLoader;
-    }
+    std::string getInitScript(std::string odaFrameworkPath) {
+        std::replace(std::begin(odaFrameworkPath), std::end(odaFrameworkPath), '\\', '/');
 
-    const std::string jsModulesLoader{ folder + '/' + name + ".js" };
-    file = ::fopen(jsModulesLoader.c_str(), "r");
-    if (file != nullptr) {
-        ::fclose(file);
-        return jsModulesLoader;
-    }
-
-    return std::string{};
-}
-
-std::string getInitScript(std::string odaFrameworkPath) {
-  std::replace(std::begin(odaFrameworkPath), std::end(odaFrameworkPath), '\\', '/');
-
-  std::string script =  ""
+        std::string script =  ""
     "'use strict';\n"
     "process.stdout.write = (msg) => {\n"
     "   process._rawDebug(msg);\n"
@@ -883,36 +836,36 @@ std::string getInitScript(std::string odaFrameworkPath) {
     "});\n"
   ;
 
-  return script;
-}
-
-std::string getStopScript(const std::string& coreFolder) {
-    const std::string stopModuleName{ "jscript-stop" };
-    std::string path = findModule(coreFolder + "/web/core", stopModuleName);
-    if (path.empty()) {
-        path = findModule(coreFolder + "/web", stopModuleName);
+        return script;
     }
 
-    std::string script;
-    if (!path.empty()) {
-        FILE* file = ::fopen(path.c_str(), "r");
-        if (file != nullptr) {
-            ::fseek(file, 0L, SEEK_END);
-            const auto fileSize = ::ftell(file);
-            assert(fileSize > 0);
-            if (fileSize > 0) {
-                ::rewind(file);
-                script.reserve(fileSize + 1);
-                for (char symbol = ::fgetc(file); !::feof(file); symbol = ::fgetc(file)) {
-                    script += symbol;
-                }
-            }
-            ::fclose(file);
+    std::string getStopScript(const std::string& coreFolder) {
+        const std::string stopModuleName{ "jscript-stop" };
+        std::string       path = findModule(coreFolder + "/web/core", stopModuleName);
+        if (path.empty()) {
+            path = findModule(coreFolder + "/web", stopModuleName);
         }
-    }
-    if (script.empty()) {
-        script =
-R"eof(
+
+        std::string script;
+        if (!path.empty()) {
+            FILE* file = ::fopen(path.c_str(), "r");
+            if (file != nullptr) {
+                ::fseek(file, 0L, SEEK_END);
+                const auto fileSize = ::ftell(file);
+                assert(fileSize > 0);
+                if (fileSize > 0) {
+                    ::rewind(file);
+                    script.reserve(fileSize + 1);
+                    for (char symbol = ::fgetc(file); !::feof(file); symbol = ::fgetc(file)) {
+                        script += symbol;
+                    }
+                }
+                ::fclose(file);
+            }
+        }
+        if (script.empty()) {
+            script =
+                R"eof(
 if (globalThis.__oda_stopInstance && typeof globalThis.__oda_stopInstance === 'function') {
     globalThis.__oda_stopInstance();
 }
@@ -920,73 +873,74 @@ else if (globalThis.__oda_setErrorState && typeof globalThis.__oda_setErrorState
     globalThis.__oda_setErrorState();
 }
 )eof";
+        }
+
+        return script;
     }
 
-    return script;
-}
-
-std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
+    std::string convertNodeFolders(const std::vector<std::string>& nodeFolders) {
 #ifdef _WIN32
-    const char delimiter = ';';
+        const char delimiter = ';';
 #else
-    const char delimiter = ':';
+        const char delimiter = ':';
 #endif
 
-    std::string nodeFolder;
-    for (const std::string& folder : nodeFolders) {
-        if (!nodeFolder.empty()) {
-            nodeFolder += delimiter;
+        std::string nodeFolder;
+        for (const std::string& folder : nodeFolders) {
+            if (!nodeFolder.empty()) {
+                nodeFolder += delimiter;
+            }
+            nodeFolder += folder;
         }
-        nodeFolder += folder;
+
+        return nodeFolder;
     }
 
-    return nodeFolder;
-}
 
-
-} // Anonymouse namespace
+}    // namespace
 
 
 NODE_EXTERN void SetConsoleCallback(JSInstance* instance, ConsoleCallback cb) {
-  DCHECK(is_initilized);
-  DCHECK_NOT_NULL(instance);
+    DCHECK(is_initilized);
+    DCHECK_NOT_NULL(instance);
 
-  JSInstanceImpl* instanceImpl = static_cast<JSInstanceImpl*>(instance);
+    JSInstanceImpl* instanceImpl = static_cast<JSInstanceImpl*>(instance);
 
-  instanceImpl->SetConsoleCallback(std::move(cb));
+    instanceImpl->SetConsoleCallback(std::move(cb));
 }
 
 NODE_EXTERN void Uninitilize() {
-  if (!is_initilized.exchange(false)) {
-    return;
-  }
+    if (!is_initilized.exchange(false)) {
+        return;
+    }
 
-  ExecutorCounter::global().waitAllStop();
+    ExecutorCounter::global().waitAllStop();
 
-  TearDownOncePerProcess();
+    TearDownOncePerProcess();
 }
 
 NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
-  JSInstanceImpl::Ptr instance = JSInstanceImpl::create();
-  if (!instance) return JS_ERROR;
+    JSInstanceImpl::Ptr instance = JSInstanceImpl::create();
+    if (!instance)
+        return JS_ERROR;
 
-  instance->_thread = std::thread([instance]() {
-    ExecutorCounter::ScopeExecute scopeExecute;
-    instance->StartNodeInstance();
-    instance->_thread.detach();
-  });
+    instance->_thread = std::thread([instance]() {
+        ExecutorCounter::ScopeExecute scopeExecute;
+        instance->StartNodeInstance();
+        instance->_thread.detach();
+    });
 
-  const auto timeout = std::chrono::seconds(30);
-  std::unique_lock<std::mutex> lock(instance->_state_mutex);
-  while (!instance->isInitialize()) {
-      if (instance->_state_cv.wait_for(lock, timeout) ==  std::cv_status::timeout) {
-          instance->setState(JSInstanceImpl::TIMEOUT);
-      }
-  }
+    const auto                   timeout = std::chrono::seconds(30);
+    std::unique_lock<std::mutex> lock(instance->_state_mutex);
+    while (!instance->isInitialize()) {
+        if (instance->_state_cv.wait_for(lock, timeout) == std::cv_status::timeout) {
+            instance->setState(JSInstanceImpl::TIMEOUT);
+        }
+    }
 
-  *outNewInstance = instance.detach();
+    *outNewInstance = instance.detach();
 
-  return JS_SUCCESS;
+    return JS_SUCCESS;
 }
 
 
@@ -1000,7 +954,7 @@ NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
         assert(!JSInstanceImpl::stopScript.empty());
         RunScriptText(instance_, JSInstanceImpl::stopScript);
         std::unique_lock<std::mutex> lock(instance->_state_mutex);
-        const auto timeout = std::chrono::seconds(30);
+        const auto                   timeout = std::chrono::seconds(30);
         while (true) {
             if (instance->isStop())
                 break;
@@ -1025,211 +979,208 @@ NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
 namespace {
 
 
-struct JSAsyncInfo
-{
-  std::string script;
-  std::vector<JSCallbackInfo> callbacks;
-  JSInstanceImpl::Ptr instance;
-  uv_async_t async_handle;
+    struct JSAsyncInfo
+    {
+        std::string                 script;
+        std::vector<JSCallbackInfo> callbacks;
+        JSInstanceImpl::Ptr         instance;
+        uv_async_t                  async_handle;
 
-  static JSAsyncInfo* create();
-  void Dispose();
-};
+        static JSAsyncInfo* create();
+        void                Dispose();
+    };
 
-JSAsyncInfo* JSAsyncInfo::create() {
-    return new JSAsyncInfo;
-}
+    JSAsyncInfo* JSAsyncInfo::create() {
+        return new JSAsyncInfo;
+    }
 
-void JSAsyncInfo::Dispose() {
-    delete this;
-}
-
-
-void compileAndRun(node::Environment& env, const std::string&, const std::vector<JSCallbackInfo>&);
+    void JSAsyncInfo::Dispose() {
+        delete this;
+    }
 
 
-} // Anonymous namespace
+    void compileAndRun(node::Environment& env, const std::string&, const std::vector<JSCallbackInfo>&);
+
+
+}    // Anonymous namespace
 
 
 void _async_execute_script(uv_async_t* handle) {
-  JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, handle);
-  CHECK_NOT_NULL(asyncInfo);
+    JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, handle);
+    CHECK_NOT_NULL(asyncInfo);
 
-  JSInstanceImpl::Ptr instance = asyncInfo->instance;
-  CHECK(instance);
-
-
-  node::Mutex::ScopedLock scopedLock{instance->_isolate_mutex};
+    JSInstanceImpl::Ptr instance = asyncInfo->instance;
+    CHECK(instance);
 
 
-  node::Environment* env = instance->_env;
-  CHECK_NOT_NULL(env);
+    node::Mutex::ScopedLock scopedLock{ instance->_isolate_mutex };
 
-  const std::string& text = asyncInfo->script;
-  const auto& callbacks = asyncInfo->callbacks;
 
-  compileAndRun(*env, text, callbacks);
+    node::Environment* env = instance->_env;
+    CHECK_NOT_NULL(env);
 
-  if (::uv_is_closing(reinterpret_cast<uv_handle_t*>(handle)) == 0) {
-    const auto cb = [](uv_handle_t* handle) {
-      JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, reinterpret_cast<uv_async_t*>(handle));
-      if (asyncInfo != nullptr) {
-          asyncInfo->Dispose();
-      }
-    };
+    const std::string& text      = asyncInfo->script;
+    const auto&        callbacks = asyncInfo->callbacks;
 
-    ::uv_close(reinterpret_cast<uv_handle_t*>(handle), cb);
-  }
+    compileAndRun(*env, text, callbacks);
+
+    if (::uv_is_closing(reinterpret_cast<uv_handle_t*>(handle)) == 0) {
+        const auto cb = [](uv_handle_t* handle) {
+            JSAsyncInfo* asyncInfo = ContainerOf(&JSAsyncInfo::async_handle, reinterpret_cast<uv_async_t*>(handle));
+            if (asyncInfo != nullptr) {
+                asyncInfo->Dispose();
+            }
+        };
+
+        ::uv_close(reinterpret_cast<uv_handle_t*>(handle), cb);
+    }
 }
 
 
 namespace {
 
 
-void insertCallbacks(v8::Local<v8::Context>, const JSCallbackInfo&);
-void processTryCatch(node::Environment&, const v8::TryCatch&);
+    void insertCallbacks(v8::Local<v8::Context>, const JSCallbackInfo&);
+    void processTryCatch(node::Environment&, const v8::TryCatch&);
 
-void compileAndRun(node::Environment& env, const std::string& text, const std::vector<JSCallbackInfo>& callbacks) {
-  v8::Local<v8::Context> context = env.context();
-  CHECK(!context.IsEmpty());
+    void compileAndRun(node::Environment& env, const std::string& text, const std::vector<JSCallbackInfo>& callbacks) {
+        v8::Local<v8::Context> context = env.context();
+        CHECK(!context.IsEmpty());
 
-  v8::Isolate* isolate = context->GetIsolate();
-  CHECK_NOT_NULL(isolate);
+        v8::Isolate* isolate = context->GetIsolate();
+        CHECK_NOT_NULL(isolate);
 
-  v8::Isolate::Scope isolateScope(isolate);
-  v8::HandleScope scope(isolate);
-  v8::Context::Scope contextScope(context);
+        v8::Isolate::Scope isolateScope(isolate);
+        v8::HandleScope    scope(isolate);
+        v8::Context::Scope contextScope(context);
 
-  for (const auto& cbInfo : callbacks) {
-    insertCallbacks(context, cbInfo);
-  }
+        for (const auto& cbInfo : callbacks) {
+            insertCallbacks(context, cbInfo);
+        }
 
-  v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, text.c_str()).ToLocalChecked();
+        v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, text.c_str()).ToLocalChecked();
 
-  v8::TryCatch tryCatch{isolate};
+        v8::TryCatch tryCatch{ isolate };
 #ifdef _DEBUG
-  tryCatch.SetVerbose(true);
+        tryCatch.SetVerbose(true);
 #else
-  tryCatch.SetVerbose(false);
+        tryCatch.SetVerbose(false);
 #endif
 
-  v8::MaybeLocal<v8::Script> compileResult = v8::Script::Compile(context, source);
+        v8::MaybeLocal<v8::Script> compileResult = v8::Script::Compile(context, source);
 
-  if (tryCatch.HasCaught()) {
-    processTryCatch(env, tryCatch);
-  }
-  else if (!compileResult.IsEmpty()) {
-    v8::Local<v8::Script> script = compileResult.ToLocalChecked();
+        if (tryCatch.HasCaught()) {
+            processTryCatch(env, tryCatch);
+        }
+        else if (!compileResult.IsEmpty()) {
+            v8::Local<v8::Script> script = compileResult.ToLocalChecked();
 
-    v8::MaybeLocal<v8::Value> result = script->Run(context);
-    if (result.IsEmpty()) {
-      node::Debug(&env, node::DebugCategory::NONE, "Run script faild");
+            v8::MaybeLocal<v8::Value> result = script->Run(context);
+            if (result.IsEmpty()) {
+                node::Debug(&env, node::DebugCategory::NONE, "Run script faild");
+            }
+
+            if (tryCatch.HasCaught()) {
+                processTryCatch(env, tryCatch);
+            }
+        }
     }
 
-    if (tryCatch.HasCaught()) {
-      processTryCatch(env, tryCatch);
+    void insertCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
+        v8::Isolate* isolate = context->GetIsolate();
+
+        v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate,
+                                                             callbackInfo.name.c_str(),
+                                                             v8::NewStringType::kInternalized,
+                                                             callbackInfo.name.length())
+                                         .ToLocalChecked();
+
+        v8::Local<v8::External> external;
+        if (callbackInfo.external) {
+            external = v8::External::New(isolate, callbackInfo.external);
+        }
+
+        v8::Local<v8::Function> function = v8::Function::New(context, callbackInfo.function, external).ToLocalChecked();
+        function->SetName(name);
+
+        v8::Local<v8::Object> global = context->Global();
+        global->Set(context, name, function).Check();
     }
-  }
-}
 
-void insertCallbacks(v8::Local<v8::Context> context, const JSCallbackInfo& callbackInfo) {
-  v8::Isolate* isolate = context->GetIsolate();
+    void processTryCatch(node::Environment& env, const v8::TryCatch& tryCatch) {
+        v8::Local<v8::Context> context = env.context();
+        DCHECK(!context.IsEmpty());
 
-  v8::Local<v8::String> name = v8::String::NewFromUtf8(isolate, callbackInfo.name.c_str(),
-                                                       v8::NewStringType::kInternalized, callbackInfo.name.length()).ToLocalChecked();
+        v8::Isolate* isolate = context->GetIsolate();
+        DCHECK_NOT_NULL(isolate);
 
-  v8::Local<v8::External> external;
-  if (callbackInfo.external) {
-    external = v8::External::New(isolate, callbackInfo.external);
-  }
-
-  v8::Local<v8::Function> function = v8::Function::New(context, callbackInfo.function, external).ToLocalChecked();
-  function->SetName(name);
-
-  v8::Local<v8::Object> global = context->Global();
-  global->Set(context, name, function).Check();
-}
-
-void processTryCatch(node::Environment& env, const v8::TryCatch& tryCatch) {
-  v8::Local<v8::Context> context = env.context();
-  DCHECK(!context.IsEmpty());
-
-  v8::Isolate* isolate = context->GetIsolate();
-  DCHECK_NOT_NULL(isolate);
-
-  v8::Local<v8::Value> exception = tryCatch.Exception();
-  v8::String::Utf8Value message{isolate, exception};
-  node::Debug(&env, node::DebugCategory::NONE, *message);
+        v8::Local<v8::Value>  exception = tryCatch.Exception();
+        v8::String::Utf8Value message{ isolate, exception };
+        node::Debug(&env, node::DebugCategory::NONE, *message);
 
 #ifdef _DEBUG
-    v8::MaybeLocal<v8::Value> maybeStackTrace = tryCatch.StackTrace(context);
-    if (!maybeStackTrace.IsEmpty()) {
-      v8::Local<v8::Value> stackTrace;
-      DCHECK(maybeStackTrace.ToLocal(&stackTrace));
-      v8::String::Utf8Value messageStackTrace{isolate, stackTrace};
-      node::Debug(&env, node::DebugCategory::NONE, *messageStackTrace);
-    }
-    else {
-        node::Debug(&env, node::DebugCategory::NONE, "tryCatch.StackTrace(context) is empty");
-    }
+        v8::MaybeLocal<v8::Value> maybeStackTrace = tryCatch.StackTrace(context);
+        if (!maybeStackTrace.IsEmpty()) {
+            v8::Local<v8::Value> stackTrace;
+            DCHECK(maybeStackTrace.ToLocal(&stackTrace));
+            v8::String::Utf8Value messageStackTrace{ isolate, stackTrace };
+            node::Debug(&env, node::DebugCategory::NONE, *messageStackTrace);
+        }
+        else {
+            node::Debug(&env, node::DebugCategory::NONE, "tryCatch.StackTrace(context) is empty");
+        }
 #endif
-
-}
-
-
-} // Anonymous namespace
+    }
 
 
-NODE_EXTERN result_t RunScriptText(JSInstance* instance,
-                                      const std::string& script) {
+}    // Anonymous namespace
+
+
+NODE_EXTERN result_t RunScriptText(JSInstance* instance, const std::string& script) {
     const std::vector<JSCallbackInfo> dummy{};
     return RunScriptText(instance, script, dummy);
 }
 
-NODE_EXTERN result_t RunScriptText(JSInstance* instance_,
-                                      const std::string& script,
-                                      const std::vector<JSCallbackInfo>& callbacks) {
-  if (instance_ == nullptr) {
-    return JS_ERROR;
-  }
+NODE_EXTERN result_t RunScriptText(JSInstance*                        instance_,
+                                   const std::string&                 script,
+                                   const std::vector<JSCallbackInfo>& callbacks) {
+    if (instance_ == nullptr) {
+        return JS_ERROR;
+    }
 
-  JSInstanceImpl* instance  = static_cast<JSInstanceImpl*>(instance_);
-  if (!instance->isRun()) {
-    return JS_ERROR;
-  }
+    JSInstanceImpl* instance = static_cast<JSInstanceImpl*>(instance_);
+    if (!instance->isRun()) {
+        return JS_ERROR;
+    }
 
-  if (script.empty()) {
-    return JS_ERROR;
-  }
+    if (script.empty()) {
+        return JS_ERROR;
+    }
 
-  std::unique_ptr<JSAsyncInfo> info{JSAsyncInfo::create()};
+    std::unique_ptr<JSAsyncInfo> info{ JSAsyncInfo::create() };
 
-  info->instance.reset(instance);
-  info->script = script;
+    info->instance.reset(instance);
+    info->script = script;
 
-  const auto pred = [](const JSCallbackInfo& cbInfo) -> bool {
-      return (!cbInfo.name.empty()) && (cbInfo.function != nullptr);
-  };
-  std::copy_if(std::cbegin(callbacks), std::cend(callbacks), std::back_inserter(info->callbacks), pred);
+    const auto pred = [](const JSCallbackInfo& cbInfo) -> bool {
+        return (!cbInfo.name.empty()) && (cbInfo.function != nullptr);
+    };
+    std::copy_if(std::cbegin(callbacks), std::cend(callbacks), std::back_inserter(info->callbacks), pred);
 
-  const int resInit = ::uv_async_init(instance->event_loop(),
-                                      &info->async_handle,
-                                      _async_execute_script);
-  CHECK_EQ(resInit, 0);
+    const int resInit = ::uv_async_init(instance->event_loop(), &info->async_handle, _async_execute_script);
+    CHECK_EQ(resInit, 0);
 
-  ::uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
-  const int resSend = ::uv_async_send(&info->async_handle);
+    ::uv_unref(reinterpret_cast<uv_handle_t*>(&info->async_handle));
+    const int resSend = ::uv_async_send(&info->async_handle);
 
-  CHECK_EQ(resSend, 0);
-  info.release();
+    CHECK_EQ(resSend, 0);
+    info.release();
 
-  return JS_SUCCESS;
+    return JS_SUCCESS;
 }
 
 MultiIsolatePlatform* GetGlobalPlatform() {
     return per_process::v8_platform.Platform();
 }
 
-
-}  // namespace jscript
-}  // namespace node
+}    // namespace node::jscript
