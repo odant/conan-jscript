@@ -110,6 +110,7 @@ platforms. This is true regardless of entries in the table below.
 | GNU/Linux        | armv6            | kernel >= 4.14, glibc >= 2.24     | Experimental                                    | Downgraded as of Node.js 12          |
 | GNU/Linux        | ppc64le >=power8 | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. Ubuntu 20.04, RHEL 8            |
 | GNU/Linux        | s390x            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. RHEL 8                          |
+| GNU/Linux        | loong64          | kernel >= 5.19, glibc >= 2.36     | Experimental                                    |                                      |
 | Windows          | x64, x86 (WoW64) | >= Windows 10/Server 2016         | Tier 1                                          | [^2],[^3]                            |
 | Windows          | x86 (native)     | >= Windows 10/Server 2016         | Tier 1 (running) / Experimental (compiling)[^4] |                                      |
 | Windows          | x64, x86         | Windows 8.1/Server 2012           | Experimental                                    |                                      |
@@ -543,7 +544,8 @@ export CC="ccache cc"    # add to ~/.zshrc or other shell config file
 export CXX="ccache c++"  # add to ~/.zshrc or other shell config file
 ```
 
-This will allow for near-instantaneous rebuilds even when switching branches.
+This will allow for near-instantaneous rebuilds when switching branches back
+and forth that were built with cache.
 
 When modifying only the JS layer in `lib`, it is possible to externally load it
 without modifying the executable:
@@ -576,9 +578,9 @@ to run it again before invoking `make -j4`.
 
 * [Python 3.11](https://apps.microsoft.com/store/detail/python-311/9NRWMJP3717K)
 * The "Desktop development with C++" workload from
-  [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/#visual-studio-2019-and-other-products) or
+  [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/) or
   the "C++ build tools" workload from the
-  [Build Tools](https://aka.ms/vs/16/release/vs_buildtools.exe),
+  [Build Tools](https://aka.ms/vs/17/release/vs_buildtools.exe),
   with the default optional components
 * Basic Unix tools required for some tests,
   [Git for Windows](https://git-scm.com/download/win) includes Git Bash
@@ -590,11 +592,12 @@ to run it again before invoking `make -j4`.
 
 Optional requirements to build the MSI installer package:
 
-* The .NET SDK component from [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/#visual-studio-2019-and-other-products)
+* The .NET SDK component from [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/)
+  * This component can be installed via the Visual Studio Installer Application
 
 Optional requirements for compiling for Windows 10 on ARM (ARM64):
 
-* Visual Studio 15.9.0 or newer
+* Visual Studio 17.6.0 or newer
 * Visual Studio optional components
   * Visual C++ compilers and libraries for ARM64
   * Visual C++ ATL for ARM64
@@ -610,8 +613,8 @@ packages:
 * [Git for Windows](https://chocolatey.org/packages/git) with the `git` and
   Unix tools added to the `PATH`
 * [Python 3.x](https://chocolatey.org/packages/python)
-* [Visual Studio 2019 Build Tools](https://chocolatey.org/packages/visualstudio2019buildtools)
-  with [Visual C++ workload](https://chocolatey.org/packages/visualstudio2019-workload-vctools)
+* [Visual Studio 2022 Build Tools](https://chocolatey.org/packages/visualstudio2022buildtools)
+  with [Visual C++ workload](https://chocolatey.org/packages/visualstudio2022-workload-vctools)
 * [NetWide Assembler](https://chocolatey.org/packages/nasm)
 
 To install Node.js prerequisites using
@@ -619,8 +622,8 @@ To install Node.js prerequisites using
 <https://boxstarter.org/package/nr/url?https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter>
 with Internet Explorer or Edge browser on the target machine.
 
-Alternatively, you can use PowerShell. Run those commands from an elevated
-PowerShell terminal:
+Alternatively, you can use PowerShell. Run those commands from
+an elevated (Administrator) PowerShell terminal:
 
 ```powershell
 Set-ExecutionPolicy Unrestricted -Force
@@ -635,8 +638,16 @@ disk space.
 
 #### Building Node.js
 
-If the path to your build directory contains a space or a non-ASCII character,
-the build will likely fail.
+* Remember to first clone the Node.js repository with the Git command
+  and head to the directory that Git created; If you haven't already
+  ```powershell
+  git clone https://github.com/nodejs/node.git
+  cd node
+  ```
+* If the path to your build directory contains a space or a non-ASCII character,
+  the build will likely fail
+
+To start the build process:
 
 ```powershell
 .\vcbuild
@@ -697,7 +708,7 @@ This is the default option.
 ### Trimmed: `small-icu` (English only) support
 
 In this configuration, only English data is included, but
-the full `Intl` (ECMA-402) APIs.  It does not need to download
+the full `Intl` (ECMA-402) APIs. It does not need to download
 any dependencies to function. You can add full data at runtime.
 
 #### Unix/macOS
