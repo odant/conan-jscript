@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "18.18.2.0"
+    version = "20.10.0.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -45,7 +45,7 @@ class JScriptConan(ConanFile):
         *exports_patches,
         "fix_no_optimization_build.patch",
         "disable_v8_slow_dcheck.patch",
-        "disable_gen_node_def.patch",
+        "fix_gen_node_def.patch",
         "fix_deps_undici.patch",
         "libuv_win7support.patch",
         "fix_v8_windows_build.patch"
@@ -81,7 +81,7 @@ class JScriptConan(ConanFile):
         for p in self.exports_patches:
             tools.patch(patch_file=p)
         if self.settings.os == "Windows":
-            tools.patch(patch_file="disable_gen_node_def.patch")
+            tools.patch(patch_file="fix_gen_node_def.patch")
             tools.patch(patch_file="libuv_win7support.patch")
             tools.patch(patch_file="fix_v8_windows_build.patch")
         if self.settings.build_type == "Debug":

@@ -235,7 +235,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1393,3 +1393,5 @@ void Initialize() {}
+@@ -1406,3 +1406,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -247,7 +247,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 20
- #define NODE_MINOR_VERSION 9
+ #define NODE_MINOR_VERSION 10
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
