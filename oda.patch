@@ -76,17 +76,10 @@ index 7fc7e0601..7fd5e575a 100644
          [ 'OS=="android"', {
            'defines': [
 diff --git a/src/node.gyp b/src/node.gyp
-index 4e614df1a..352e2ed0c 100644
+index 4e614df1a..fa722ae93 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -495,13 +495,10 @@
-         'NODE_WANT_INTERNALS=1',
-       ],
- 
--      'includes': [
--        'node.gypi'
--      ],
--
+@@ -502,6 +502,7 @@
        'include_dirs': [
          'src',
          'deps/v8/include',
@@ -94,46 +87,7 @@ index 4e614df1a..352e2ed0c 100644
          'deps/postject'
        ],
  
-@@ -707,7 +704,37 @@
-             '<(obj_dir)/<(node_text_start_object_path)'
-           ]
-         }],
--
-+        [ 'node_shared=="true"', {
-+          'defines': [
-+            'NODE_SHARED_MODE',
-+          ],
-+        }],
-+        [ 'OS=="win"', {
-+          'defines!': [
-+            'NODE_PLATFORM="win"',
-+          ],
-+          'defines': [
-+            'FD_SETSIZE=1024',
-+            # we need to use node's preferred "win32" rather than gyp's preferred "win"
-+            'NODE_PLATFORM="win32"',
-+            # Stop <windows.h> from defining macros that conflict with
-+            # std::min() and std::max().  We don't use <windows.h> (much)
-+            # but we still inherit it from uv.h.
-+            'NOMINMAX',
-+            '_UNICODE=1',
-+          ],
-+          'msvs_precompiled_header': 'tools/msvs/pch/node_pch.h',
-+          'msvs_precompiled_source': 'tools/msvs/pch/node_pch.cc',
-+          'sources': [
-+            '<(_msvs_precompiled_header)',
-+            '<(_msvs_precompiled_source)',
-+          ],
-+        }, { # POSIX
-+          'defines': [
-+            '__POSIX__'
-+          ],
-+        }],
-+        
-         ['node_fipsinstall=="true"', {
-           'variables': {
-             'openssl-cli': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)openssl-cli<(EXECUTABLE_SUFFIX)',
-@@ -813,6 +840,12 @@
+@@ -813,6 +814,12 @@
          'node_js2c#host',
        ],
  
@@ -146,7 +100,7 @@ index 4e614df1a..352e2ed0c 100644
        'sources': [
          '<@(node_sources)',
          # Dependency headers
-@@ -880,6 +913,13 @@
+@@ -880,6 +887,13 @@
          ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],

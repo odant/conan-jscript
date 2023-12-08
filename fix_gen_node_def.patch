@@ -2,7 +2,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index 4e614df1a..c5b3fa96a 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -1332,7 +1372,7 @@
+@@ -1346,7 +1346,7 @@
             {
               'action_name': 'generate_node_def_action',
               'inputs': [
