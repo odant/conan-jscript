@@ -173,10 +173,9 @@ class JScriptConan(ConanFile):
             if self.options.ninja:
                 ninja_binpath = self.deps_cpp_info["ninja"].bin_paths[0].replace("\\", "/")
                 env["PATH"].append(ninja_binpath)
-            # OpenSSL DLL in PATH for run tests
-            if self.options.with_unit_tests:
-                openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
-                env["PATH"].append(openssl_binpath)
+            # OpenSSL DLL in PATH for run gen_node_def, tests
+            openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
+            env["PATH"].append(openssl_binpath)
         if self.settings.compiler == "gcc":
             env["CFLAGS"] = "-Wno-unused-but-set-parameter"
             env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
