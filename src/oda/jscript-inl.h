@@ -31,9 +31,7 @@ using namespace ::node;
 
 std::atomic<bool> is_initilized{ false };
 
-std::vector<std::string> args;
-std::vector<std::string> exec_args;
-
+std::unique_ptr<InitializationResult> initializationResult;
 
 class NodeInstanceData
 {
@@ -342,6 +340,9 @@ void JSInstanceImpl::StartNodeInstance() {
 
     platform->DrainTasks(_isolate);
     platform->UnregisterIsolate(_isolate);
+
+    isolate_data_.reset();
+
     _isolate->Dispose();
 
     _isolate = nullptr;
@@ -368,7 +369,12 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(Exit
 
     v8::Context::Scope context_scope(context);
 
-    env.reset(node::CreateEnvironment(isolate_data_.get(), context, args, exec_args));
+    CHECK(initializationResult);
+
+    env.reset(node::CreateEnvironment(isolate_data_.get(),
+                                      context,
+                                      initializationResult->args(),
+                                      initializationResult->exec_args()));
 
     addSetStates(context);
 
@@ -377,15 +383,6 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(Exit
 
     const std::string externalOriginName{ "EXTERNALORIGIN" };
     addGlobalStringValue(context, externalOriginName, externalOrigin);
-
-    // TODO(joyeecheung): when we snapshot the bootstrapped context,
-    // the inspector and diagnostics setup should after after deserialization.
-#if HAVE_INSPECTOR
-    //env->InitializeInspector({});
-#endif
-    if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
-        return nullptr;
-    }
 
     return env;
 }
@@ -591,12 +588,6 @@ NODE_EXTERN void Initialize(const std::vector<std::string>&         argv,
 
     SetRedirectFPrintF(std::move(redirectFPrintF));
 
-    // Initialized the enabled list for Debug() calls with system
-    // environment variables.
-    per_process::enabled_debug_list.Parse();
-
-    PlatformInit(ProcessFlags::kNoFlags);
-
 #ifdef _DEBUG
     {
         std::ostringstream ss;
@@ -613,51 +604,13 @@ NODE_EXTERN void Initialize(const std::vector<std::string>&         argv,
     }
 #endif
 
-    args = argv;
-    std::vector<std::string> errors;
+    static constexpr ProcessInitializationFlags::Flags flags{
+        ProcessInitializationFlags::Flags::kNoFlags
+    };
+    initializationResult = node::InitializeOncePerProcess(argv, flags);
 
-    // This needs to run *before* V8::Initialize().
-    {
-        const auto exit_code = InitializeNodeWithArgs(&args, &exec_args, &errors);
-        for (const std::string& error : errors)
-            fprintf(stderr, "%s: %s\n", args.at(0).c_str(), error.c_str());
-        CHECK_EQ(exit_code, 0);
-    }
-
-    if (per_process::cli_options->use_largepages == "on" || per_process::cli_options->use_largepages == "silent") {
-        int result = node::MapStaticCodeToLargePages();
-        if (per_process::cli_options->use_largepages == "on" && result != 0) {
-            fprintf(stderr, "%s\n", node::LargePagesError(result));
-        }
-    }
-
-#if HAVE_OPENSSL
-    {
-        std::string extra_ca_certs;
-        if (credentials::SafeGetenv("NODE_EXTRA_CA_CERTS", &extra_ca_certs))
-            crypto::UseExtraCaCerts(extra_ca_certs);
-    }
-#    ifdef NODE_FIPS_MODE
-    // In the case of FIPS builds we should make sure
-    // the random source is properly initialized first.
-    OPENSSL_init();
-#    endif    // NODE_FIPS_MODE
-    // V8 on Windows doesn't have a good source of entropy. Seed it from
-    // OpenSSL's pool.
-    v8::V8::SetEntropySource([](unsigned char* buffer, size_t length) {
-        // V8 falls back to very weak entropy when this function fails
-        // and /dev/urandom isn't available. That wouldn't be so bad if
-        // the entropy was only used for Math.random() but it's also used for
-        // hash table and address space layout randomization. Better to abort.
-        CHECK(crypto::CSPRNG(buffer, length).is_ok());
-        return true;
-    });
-#endif    // HAVE_OPENSSL
-
-    per_process::v8_platform.Initialize(per_process::cli_options->v8_thread_pool_size);
-    v8::V8::Initialize();
-    performance::performance_v8_start = PERFORMANCE_NOW();
-    per_process::v8_initialized       = true;
+    DCHECK(initializationResult);
+    DCHECK_EQ(initializationResult->exit_code(), static_cast<int>(ExitCode::kNoFailure));
 }
 
 
