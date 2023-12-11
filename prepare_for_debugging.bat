@@ -8,3 +8,4 @@ git apply .\fix_v8_windows_build.patch
 git apply .\disable_v8_slow_dcheck.patch
 git apply .\fix_deps_undici.patch
 git apply .\fix_vcbuild.patch
+git apply .\debugging_console_app.patch
