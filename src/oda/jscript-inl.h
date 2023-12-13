@@ -371,10 +371,15 @@ DeleteFnPtr<Environment, FreeEnvironment> JSInstanceImpl::CreateEnvironment(Exit
 
     CHECK(initializationResult);
 
+    static constexpr node::EnvironmentFlags::Flags envFlags{
+        node::EnvironmentFlags::Flags::kDefaultFlags |
+        node::EnvironmentFlags::Flags::kNoCreateInspector
+    };
     env.reset(node::CreateEnvironment(isolate_data_.get(),
                                       context,
                                       initializationResult->args(),
-                                      initializationResult->exec_args()));
+                                      initializationResult->exec_args(),
+                                      envFlags));
 
     addSetStates(context);
 
