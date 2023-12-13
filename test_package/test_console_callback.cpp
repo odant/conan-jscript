@@ -72,11 +72,8 @@ int main(int argc, char** argv) {
         "};\n"
         "infiniteFunction();\n"
 
-        "global.__oda_setRunState();\n"
-
-        "global.odantFramework = new Object();\n"
-
         "console.log('initScript done');\n"
+        "if (globalThis.__oda_setRunState) globalThis.__oda_setRunState();\n"
         "";
 
 
@@ -97,7 +94,7 @@ int main(int argc, char** argv) {
     assert(instance != nullptr);
     assert(res == node::jscript::JS_SUCCESS);
 
-    bool isLogCbCalled= false;
+    bool isLogCbCalled = false;
     node::jscript::ConsoleCallback cb = [&isLogCbCalled](const v8::FunctionCallbackInfo<v8::Value>& args, node::jscript::ConsoleType type) {
         isLogCbCalled = true;
 
@@ -130,13 +127,9 @@ int main(int argc, char** argv) {
     node::jscript::SetConsoleCallback(instance, cb);
 
     const std::string script = ""
-        "console.log('console.log');\n"
-        "console.warn('console.warn', 'console.warn');\n"
-        "console.error('console.error', 'console.error', 'console.error');\n"
-
-        "odantFramework.console.log('odantFramework.console.log');\n"
-        "odantFramework.console.warn('odantFramework.console.warn');\n"
-        "odantFramework.console.error('odantFramework.console.error');\n"
+        "console.log('test console.log');\n"
+        "console.warn('test', 'console.warn');\n"
+        "console.error('test', 'console.error', 'with', 'many', 'arguments');\n"
 
         "scriptDone();\n"
         "";
