@@ -302,7 +302,7 @@ void JSInstanceImpl::StartNodeInstance() {
                     if (env->is_stopping())
                         break;
 
-                    per_process::v8_platform.DrainVMTasks(_isolate);
+                    platform->DrainTasks(_isolate);
 
                     more = uv_loop_alive(env->event_loop());
                     if (more && !env->is_stopping()) {
@@ -323,27 +323,32 @@ void JSInstanceImpl::StartNodeInstance() {
 
             env->set_trace_sync_io(false);
 
-            // Disabling validation due to ContextifyScript (comment MakeWeak() in constructor)
-            //if (!env->is_stopping()) env->VerifyNoStrongBaseObjects();
+            // Disabling validation due to ContextifyScript (comment
+            // MakeWeak() in constructor)
+            // env->ForEachRealm([](Realm* realm) { realm->VerifyNoStrongBaseObjects(); });
 
             exit_code = EmitProcessExitInternal(env.get()).FromMaybe(ExitCode::kGenericUserError);
         }
-
-        ResetStdio();
 
 #if defined(LEAK_SANITIZER)
         __lsan_do_leak_check();
 #endif
     }
+
     set_exit_code(static_cast<int>(exit_code));
     _env = nullptr;
 
-    platform->DrainTasks(_isolate);
-    platform->UnregisterIsolate(_isolate);
-
     isolate_data_.reset();
 
+    bool platform_finished = false;
+    platform->AddIsolateFinishedCallback(_isolate, [](void* data) {
+      *static_cast<bool*>(data) = true;
+    }, &platform_finished);
+    platform->UnregisterIsolate(_isolate);
     _isolate->Dispose();
+
+    while (!platform_finished)
+        uv_run(event_loop(), UV_RUN_ONCE);
 
     _isolate = nullptr;
     close_loop();
