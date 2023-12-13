@@ -2,6 +2,7 @@
 // Load external init script
 // Dmitriy Vetutnev, ODANT, 2020
 
+#include "TempJscriptInit.hpp"
 
 #include <jscript.h>
 
@@ -12,6 +13,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <filesystem>
+#include <system_error>
 
 
 static std::atomic_bool script_done{false};
@@ -26,30 +28,32 @@ static void script_cb(const v8::FunctionCallbackInfo<v8::Value>&) {
     script_cv.notify_all();
 }
 
-
 int main(int argc, char** argv) {
+    const std::filesystem::path binFile{ argv[0] };
+    assert(!binFile.empty());
+    const std::filesystem::path binFolder{ binFile.parent_path()};
+    assert(!binFolder.empty());
 
-    const std::string cwd = std::filesystem::current_path().string();
-    std::cout << "Current directory: " << cwd << std::endl;
+    std::cout << "Binary file: " << binFile.string() << std::endl << "Binary directory: " << binFolder.string() << std::endl;
 
-    std::ofstream externalScript{cwd + "/web/jscript-init.js"};
-    externalScript
-        << "console.log('I`m external script');" << std::endl
-        << "var infiniteFunction = function() {" << std::endl
-        << "    setTimeout(function() {" << std::endl
-        << "        infiniteFunction();" << std::endl
-        << "    }, 1000);" << std::endl
-        << "};" << std::endl
-        << "infiniteFunction()" << std::endl
-        << "global.__oda_setRunState();" << std::endl
-        << "console.log('External script done');" << std::endl
+    const std::string externalScript = 
+        "console.log('I`m external script');\n"
+        "var infiniteFunction = function() {\n"
+        "    setTimeout(function() {\n"
+        "        infiniteFunction();\n"
+        "    }, 1000);\n"
+        "};\n"
+        "infiniteFunction()\n"
+        "global.__oda_setRunState();\n"
+        "console.log('External script done');\n"
     ;
-    externalScript.close();
-
+    
+    TempJscriptInit jscriptInit(binFolder, externalScript);
+    
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
-    const std::string executeFile = argv[0];
-    const std::string coreFolder = cwd;
+    const std::string executeFile = binFile.string();
+    const std::string coreFolder = binFolder.string();
 
     node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder, std::string{});
     std::cout << "node::jscript::Initialize() done" << std::endl;

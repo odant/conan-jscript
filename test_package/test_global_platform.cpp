@@ -10,18 +10,24 @@
 
 #include <jscript.h>
 
+#include <iostream>
 #include <cassert>
 #include <cstdlib>
 #include <filesystem>
 
 
 int main(int argc, char** argv) {
-    const std::string cwd = std::filesystem::current_path().string();
+    const std::filesystem::path binFile{ argv[0] };
+    assert(!binFile.empty());
+    const std::filesystem::path binFolder{ binFile.parent_path() };
+    assert(!binFolder.empty());
+
+    std::cout << "Binary file: " << binFile.string() << std::endl << "Binary directory: " << binFolder.string() << std::endl;
 
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
-    const std::string executeFile = argv[0];
-    const std::string coreFolder = cwd;
+    const std::string executeFile = binFile.string();
+    const std::string coreFolder = binFolder.string();
     const std::vector<std::string> nodeFolders = {
         coreFolder + "/node_modules",
     };

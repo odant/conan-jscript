@@ -12,14 +12,17 @@
 
 
 int main(int argc, char** argv) {
+    const std::filesystem::path binFile{ argv[0] };
+    assert(!binFile.empty());
+    const std::filesystem::path binFolder{ binFile.parent_path() };
+    assert(!binFolder.empty());
 
-    const std::string cwd = std::filesystem::current_path().string();
-    std::cout << "Current directory: " << cwd << std::endl;
+    std::cout << "Binary file: " << binFile.string() << std::endl << "Binary directory: " << binFolder.string() << std::endl;
 
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
-    const std::string executeFile = argv[0];
-    const std::string coreFolder = cwd;
+    const std::string executeFile = binFile.string();
+    const std::string coreFolder = binFolder.string();
     const std::string nodeFolder = coreFolder + "/node_modules";
 
     auto redirectFPrintF = [](const std::string& msg) {

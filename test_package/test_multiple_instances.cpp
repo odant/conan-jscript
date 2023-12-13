@@ -10,10 +10,17 @@
 
 
 int main(int argc, char** argv) {
+    const std::filesystem::path binFile{ argv[0] };
+    assert(!binFile.empty());
+    const std::filesystem::path binFolder{ binFile.parent_path() };
+    assert(!binFolder.empty());
+
+    std::cout << "Binary file: " << binFile.string() << std::endl << "Binary directory: " << binFolder.string() << std::endl;
+
     const std::string origin = "http://127.0.0.1:8080";
     const std::string externalOrigin = "http://127.0.0.1:8080";
-    const std::string executeFile = argv[0];
-    const auto coreFolder = std::filesystem::current_path();
+    const std::string executeFile = binFile.string();
+    const auto coreFolder = binFolder;
     const auto nodeFolder = coreFolder / "node_modules";
 
     node::jscript::Initialize(origin, externalOrigin, executeFile, coreFolder.string(), nodeFolder.string());
