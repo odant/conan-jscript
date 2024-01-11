@@ -2,7 +2,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -713,6 +713,12 @@ parser.add_argument('--ninja',
+@@ -712,6 +712,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -15,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -846,6 +852,13 @@ parser.add_option('-C',
+@@ -851,6 +857,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -29,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  (options, args) = parser.parse_known_args()
  
  # Expand ~ in the install prefix now, it gets written to multiple files.
-@@ -1443,6 +1456,8 @@ def configure_node(o):
+@@ -1448,6 +1461,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2099,6 +2114,9 @@ if options.prefix:
+@@ -2107,6 +2122,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2122,6 +2140,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2141,6 +2159,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -152,7 +152,7 @@ diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
 index a601c5ecf..13a1a81da 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
-@@ -511,6 +511,12 @@ void FWrite(FILE* file, const std::string& str) {
+@@ -531,6 +531,12 @@ void FWrite(FILE* file, const std::string& str) {
    simple_fwrite();
  }
  
@@ -189,7 +189,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1406,3 +1406,5 @@ void Initialize() {}
+@@ -1408,3 +1408,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -201,7 +201,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 20
- #define NODE_MINOR_VERSION 10
+ #define NODE_MINOR_VERSION 11
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
@@ -281,7 +281,7 @@ diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gy
 index f5ceacfca..53c9a3151 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
-@@ -1039,17 +1039,6 @@ def WriteTarget(
+@@ -1036,17 +1036,6 @@ def WriteTarget(
          if ldflags is not None:
              SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
  
@@ -303,7 +303,7 @@ diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
 index 48ec392b6..73c3f072f 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
-@@ -1190,6 +1190,13 @@
+@@ -1200,6 +1200,13 @@
                '-lrt'
              ],
            },

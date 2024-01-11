@@ -2,7 +2,7 @@ diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/
 index acb5ddca8..75c79fe7a 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -839,6 +839,36 @@ function packageResolve(specifier, base, conditions) {
+@@ -848,6 +848,36 @@ function packageResolve(specifier, base, conditions) {
      // Cross-platform root check.
    } while (packageJSONPath.length !== lastPath.length);
  
