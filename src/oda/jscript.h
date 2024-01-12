@@ -53,6 +53,7 @@ typedef enum {
 class JSInstance { };
 
 NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance);
+NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance, const std::string& ssid);
 NODE_EXTERN result_t StopInstance(JSInstance* instance);
 
 

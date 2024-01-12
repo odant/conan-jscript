@@ -117,9 +117,9 @@ private:
 public:
     using Ptr = RefCounter::Ptr<JSInstanceImpl>;
 
-    JSInstanceImpl(CtorTag);
+    JSInstanceImpl(const std::string& ssid, CtorTag);
 
-    static JSInstanceImpl::Ptr create();
+    static JSInstanceImpl::Ptr create(const std::string& ssid);
 
 #ifdef ERROR
 #    undef ERROR
@@ -176,9 +176,12 @@ private:
     void overrideConsole(v8::Local<v8::Context>);
     void overrideConsole(v8::Local<v8::Context>, const char* name, const ConsoleType type);
 
+    void initSSID(v8::Local<v8::Context>);
+
     std::atomic<state_t> _state = ATOMIC_VAR_INIT(CREATE);
 
     std::optional<ConsoleCallback> _consoleCallback;
+    const std::string _ssid;
 };
 
 
@@ -189,10 +192,11 @@ const std::string JSInstanceImpl::stopScript;
 std::atomic<std::uintmax_t> JSInstanceImpl::idCounter = ATOMIC_VAR_INIT(0);
 
 
-inline JSInstanceImpl::JSInstanceImpl(JSInstanceImpl::CtorTag) { }
+inline JSInstanceImpl::JSInstanceImpl(
+    const std::string& ssid, JSInstanceImpl::CtorTag) : _ssid(ssid) {}
 
-inline JSInstanceImpl::Ptr JSInstanceImpl::create() {
-    return JSInstanceImpl::Ptr{ new JSInstanceImpl{ CtorTag{} } };
+inline JSInstanceImpl::Ptr JSInstanceImpl::create(const std::string& ssid) {
+    return JSInstanceImpl::Ptr{ new JSInstanceImpl{ ssid, CtorTag{} } };
 }
 
 bool JSInstanceImpl::isStopping() const {
@@ -287,6 +291,7 @@ void JSInstanceImpl::StartNodeInstance() {
         if (exit_code == ExitCode::kNoFailure) {
             LoadEnvironment(env.get(), StartExecutionCallback{});
             this->overrideConsole(context);
+            this->initSSID(context);
 
             env->set_trace_sync_io(env->options()->trace_sync_io);
 
@@ -503,6 +508,21 @@ void JSInstanceImpl::overrideConsole(v8::Local<v8::Context> context, const char*
 
     v8::Local<v8::Function> overrideFunction = v8::Function::New(context, consoleCallback, array).ToLocalChecked();
     globalConsoleObj->Set(context, methodName, overrideFunction).Check();
+}
+
+void JSInstanceImpl::initSSID(v8::Local<v8::Context> context) {
+    if (_ssid.empty())
+        return;
+
+    v8::HandleScope handleScope{_isolate};
+
+    v8::Local<v8::Object> globalObj = context->Global();
+    DCHECK(!globalObj.IsEmpty());
+
+    v8::Local<v8::String> ssidName  = v8::String::NewFromUtf8Literal(_isolate, u8"SSID");
+    v8::Local<v8::String> ssidValue = v8::String::NewFromUtf8(_isolate, _ssid.data(), v8::NewStringType::kNormal, _ssid.size()).ToLocalChecked();
+
+    globalObj->Set(context, ssidName, ssidValue).Check();
 }
 
 
@@ -882,8 +902,8 @@ NODE_EXTERN void Uninitilize() {
     TearDownOncePerProcess();
 }
 
-NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
-    JSInstanceImpl::Ptr instance = JSInstanceImpl::create();
+NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance, const std::string& ssid) {
+    JSInstanceImpl::Ptr instance = JSInstanceImpl::create(ssid);
     if (!instance)
         return JS_ERROR;
 
@@ -906,6 +926,9 @@ NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
     return JS_SUCCESS;
 }
 
+NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance) {
+  return CreateInstance(outNewInstance, std::string{});
+}
 
 NODE_EXTERN result_t StopInstance(JSInstance* instance_) {
     if (instance_ == nullptr)
