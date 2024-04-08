@@ -69,7 +69,7 @@ const {
 } = require('internal/async_hooks');
 const { IncomingMessage } = require('_http_incoming');
 const {
-  connResetException,
+  ConnResetException,
   codes,
 } = require('internal/errors');
 const {
@@ -561,6 +561,7 @@ ObjectSetPrototypeOf(Server, net.Server);
 Server.prototype.close = function() {
   httpServerPreClose(this);
   ReflectApply(net.Server.prototype.close, this, arguments);
+  return this;
 };
 
 Server.prototype[SymbolAsyncDispose] = async function() {
@@ -790,7 +791,7 @@ function socketOnClose(socket, state) {
 function abortIncoming(incoming) {
   while (incoming.length) {
     const req = incoming.shift();
-    req.destroy(connResetException('aborted'));
+    req.destroy(new ConnResetException('aborted'));
   }
   // Abort socket._httpMessage ?
 }
@@ -862,27 +863,12 @@ const requestChunkExtensionsTooLargeResponse = Buffer.from(
   'Connection: close\r\n\r\n', 'ascii',
 );
 
-function warnUnclosedSocket() {
-  if (warnUnclosedSocket.emitted) {
-    return;
-  }
-
-  warnUnclosedSocket.emitted = true;
-  process.emitWarning(
-    'An error event has already been emitted on the socket. ' +
-    'Please use the destroy method on the socket while handling ' +
-    "a 'clientError' event.",
-  );
-}
-
 function socketOnError(e) {
   // Ignore further errors
   this.removeListener('error', socketOnError);
 
   if (this.listenerCount('error', noop) === 0) {
     this.on('error', noop);
-  } else {
-    warnUnclosedSocket();
   }
 
   if (!this.server.emit('clientError', e, this)) {
