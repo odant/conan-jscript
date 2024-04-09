@@ -23,14 +23,16 @@ class JScriptConan(ConanFile):
         "ninja": [False, True],
         "cmake": [False, True],
         "with_unit_tests": [False, True],
-        "disable_v8_slow_dcheck": [False, True]
+        "disable_v8_slow_dcheck": [False, True],
+        "disable_sys_random": [False, True]
     }
     default_options = {
         "dll_sign": True,
         "ninja": False,
         "cmake": False,
         "with_unit_tests": False,
-        "disable_v8_slow_dcheck": True
+        "disable_v8_slow_dcheck": True,
+        "disable_sys_random": False
     }
     exports_patches = [
         "oda.patch",
@@ -48,7 +50,8 @@ class JScriptConan(ConanFile):
         "fix_gen_node_def.patch",
         "fix_deps_undici.patch",
         "libuv_win7support.patch",
-        "fix_v8_windows_build.patch"
+        "fix_v8_windows_build.patch",
+        "disable_sys_random.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -63,6 +66,8 @@ class JScriptConan(ConanFile):
         if self.settings.os != "Windows":
             del self.options.dll_sign
             self.options.ninja = True
+        else:
+            del self.options.disable_sys_random
         if self.settings.build_type != "Debug":
             del self.options.disable_v8_slow_dcheck
 
@@ -84,6 +89,8 @@ class JScriptConan(ConanFile):
             tools.patch(patch_file="fix_gen_node_def.patch")
             tools.patch(patch_file="libuv_win7support.patch")
             tools.patch(patch_file="fix_v8_windows_build.patch")
+        elif self.options.get_safe("disable_sys_random"):
+            tools.patch(patch_file="disable_sys_random.patch")
         if self.settings.build_type == "Debug":
 #            if self.settings.os == "Windows":
 #                tools.patch(patch_file="fix_no_optimization_build.patch")
