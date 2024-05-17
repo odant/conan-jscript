@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "20.12.2.0"
+    version = "20.13.1.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -57,9 +57,9 @@ class JScriptConan(ConanFile):
     build_policy = "missing"
     short_paths = True
     #
-    _openssl_version = "3.0.8+0"
+    _openssl_version = "[>=3.0.13]"
     _openssl_channel = "stable"
-    _zlib_version = "1.2.12+1"
+    _zlib_version = "[>=1.3.1]"
     _zlib_channel = "stable"
 
     def configure(self):
@@ -77,7 +77,7 @@ class JScriptConan(ConanFile):
 
     def build_requirements(self):
         if self.options.ninja:
-            self.build_requires("ninja/[>=1.10.2]")
+            self.build_requires("ninja/[>=1.12.1]")
         if self.options.get_safe("dll_sign"):
             self.build_requires("windows_signtool/[>=1.2]@%s/stable" % self.user)
 
