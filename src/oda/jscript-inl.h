@@ -110,7 +110,9 @@ class JSInstanceImpl : public JSInstance,
                        public RefCounter,
                        public NodeInstanceData
 {
-private:
+  friend result_t CreateInstance(JSInstance** outNewInstance, const std::string& ssid);
+
+ private:
     struct CtorTag
     { };
 
@@ -917,7 +919,7 @@ NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance, const std::stri
     std::unique_lock<std::mutex> lock(instance->_state_mutex);
     while (!instance->isInitialize()) {
         if (instance->_state_cv.wait_for(lock, timeout) == std::cv_status::timeout) {
-            instance->setState(JSInstanceImpl::TIMEOUT);
+            instance->_state = JSInstanceImpl::TIMEOUT;
         }
     }
 
