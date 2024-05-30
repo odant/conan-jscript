@@ -915,7 +915,7 @@ NODE_EXTERN result_t CreateInstance(JSInstance** outNewInstance, const std::stri
         instance->_thread.detach();
     });
 
-    const auto                   timeout = std::chrono::seconds(30);
+    const auto                   timeout = std::chrono::seconds(300);
     std::unique_lock<std::mutex> lock(instance->_state_mutex);
     while (!instance->isInitialize()) {
         if (instance->_state_cv.wait_for(lock, timeout) == std::cv_status::timeout) {
