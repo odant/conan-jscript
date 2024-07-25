@@ -79,7 +79,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index 4e614df1a..fa722ae93 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -523,6 +523,7 @@
+@@ -525,6 +525,7 @@
        'include_dirs': [
          'src',
          'deps/v8/include',
@@ -87,7 +87,7 @@ index 4e614df1a..fa722ae93 100644
          'deps/postject'
        ],
  
-@@ -834,6 +835,12 @@
+@@ -836,6 +837,12 @@
          'node_js2c#host',
        ],
  
@@ -100,7 +100,7 @@ index 4e614df1a..fa722ae93 100644
        'sources': [
          '<@(node_sources)',
          # Dependency headers
-@@ -901,6 +908,13 @@
+@@ -903,6 +910,13 @@
          ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],
@@ -189,7 +189,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1502,3 +1502,5 @@ void Initialize() {}
+@@ -1511,3 +1511,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -201,8 +201,8 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 20
- #define NODE_MINOR_VERSION 15
- #define NODE_PATCH_VERSION 1
+ #define NODE_MINOR_VERSION 16
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
