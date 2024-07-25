@@ -571,10 +571,11 @@ function initializePermission() {
     ObjectFreeze(require('path'));
     process.emitWarning('Permission is an experimental feature',
                         'ExperimentalWarning');
-    const { has, deny } = require('internal/process/permission');
+    const { has } = require('internal/process/permission');
     const warnFlags = [
       '--allow-addons',
       '--allow-child-process',
+      '--allow-wasi',
       '--allow-worker',
     ];
     for (const flag of warnFlags) {
@@ -607,7 +608,6 @@ function initializePermission() {
       configurable: false,
       value: {
         has,
-        deny,
       },
     });
   } else {
@@ -616,6 +616,7 @@ function initializePermission() {
       '--allow-fs-write',
       '--allow-addons',
       '--allow-child-process',
+      '--allow-wasi',
       '--allow-worker',
     ];
     ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
