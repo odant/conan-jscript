@@ -267,7 +267,9 @@ void JSInstanceImpl::StartNodeInstance() {
     {
         // ctor IsolateData call Isolate::GetCurrent, need enter
         v8::Locker locker{ _isolate };
-        isolate_data_ = std::make_unique<IsolateData>(_isolate, event_loop(), platform, allocator.get());
+        isolate_data_ = std::unique_ptr<node::IsolateData>(
+            node::IsolateData::CreateIsolateData(
+                _isolate, event_loop(), platform, allocator.get()));
     }
 
     IsolateSettings s;
