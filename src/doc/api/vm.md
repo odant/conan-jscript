@@ -59,6 +59,7 @@ executed in specific contexts.
 added: v0.3.1
 changes:
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
@@ -228,7 +229,7 @@ overhead.
 <!-- YAML
 added: v0.3.1
 changes:
-  - version: v20.18.0
+  - version: v22.8.0
     pr-url: https://github.com/nodejs/node/pull/54394
     description: The `contextObject` argument now accepts `vm.constants.DONT_CONTEXTIFY`.
   - version: v14.6.0
@@ -633,7 +634,10 @@ The identifier of the current module, as set in the constructor.
 
 <!-- YAML
 changes:
-  - version: v20.10.0
+  - version:
+    - v21.1.0
+    - v20.10.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/50141
     description: The option `extra.assert` is renamed to `extra.attributes`. The
                  former name is still provided for backward compatibility.
@@ -985,6 +989,7 @@ const vm = require('node:vm');
 added: v10.10.0
 changes:
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
@@ -1053,7 +1058,9 @@ function with the given `params`.
 ## `vm.constants`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.7.0
+  - v20.12.0
 -->
 
 * {Object}
@@ -1063,7 +1070,9 @@ Returns an object containing commonly used constants for VM operations.
 ### `vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.7.0
+  - v20.12.0
 -->
 
 > Stability: 1.1 - Active development
@@ -1081,15 +1090,17 @@ For detailed information, see
 added: v0.3.1
 changes:
   - version:
-    - v20.18.0
+    - v22.8.0
     pr-url: https://github.com/nodejs/node/pull/54394
     description: The `contextObject` argument now accepts `vm.constants.DONT_CONTEXTIFY`.
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
                  `vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER`.
   - version:
+    - v21.2.0
     - v20.11.0
     pr-url: https://github.com/nodejs/node/pull/50360
     description: The `importModuleDynamically` option is supported now.
@@ -1274,6 +1285,7 @@ vm.measureMemory({ mode: 'detailed', execution: 'eager' })
 added: v0.3.1
 changes:
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
@@ -1350,10 +1362,11 @@ console.log(contextObject);
 added: v0.3.1
 changes:
   - version:
-    - v20.18.0
+    - v22.8.0
     pr-url: https://github.com/nodejs/node/pull/54394
     description: The `contextObject` argument now accepts `vm.constants.DONT_CONTEXTIFY`.
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
@@ -1470,6 +1483,7 @@ const frozenContext = vm.runInNewContext('Object.freeze(globalThis); globalThis;
 added: v0.3.1
 changes:
   - version:
+    - v21.7.0
     - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51244
     description: Added support for
@@ -1604,12 +1618,12 @@ in the outer context.
 const vm = require('node:vm');
 
 // An undefined `contextObject` option makes the global object contextified.
-const context = vm.createContext();
+let context = vm.createContext();
 console.log(vm.runInContext('globalThis', context) === context);  // false
 // A contextified global object cannot be frozen.
 try {
   vm.runInContext('Object.freeze(globalThis);', context);
-} catch (e) {
+} catch(e) {
   console.log(e); // TypeError: Cannot freeze
 }
 console.log(vm.runInContext('globalThis.foo = 1; foo;', context));  // 1
@@ -1634,7 +1648,7 @@ const context = vm.createContext(vm.constants.DONT_CONTEXTIFY);
 vm.runInContext('Object.freeze(globalThis);', context);
 try {
   vm.runInContext('bar = 1; bar;', context);
-} catch (e) {
+} catch(e) {
   console.log(e); // Uncaught ReferenceError: bar is not defined
 }
 ```
@@ -1663,7 +1677,7 @@ console.log(vm.runInContext('bar;', context));  // 1
 Object.freeze(context);
 try {
   vm.runInContext('baz = 1; baz;', context);
-} catch (e) {
+} catch(e) {
   console.log(e); // Uncaught ReferenceError: baz is not defined
 }
 ```

@@ -518,7 +518,6 @@ the `Blob` data.
 <!-- YAML
 added:
   - v22.3.0
-  - v20.16.0
 -->
 
 The `blob.bytes()` method returns the byte of the `Blob` object as a `Promise<Uint8Array>`.
@@ -1089,7 +1088,9 @@ console.log(bufA.length);
 ### Static method: `Buffer.copyBytesFrom(view[, offset[, length]])`
 
 <!-- YAML
-added: v19.8.0
+added:
+ - v19.8.0
+ - v18.16.0
 -->
 
 * `view` {TypedArray} The {TypedArray} to copy.
@@ -5359,6 +5360,10 @@ added: v8.2.0
 <!-- YAML
 added: v8.2.0
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/52465
+    description: Value is changed to 2<sup>53</sup> - 1 on 64-bit
+      architectures.
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35415
     description: Value is changed to 2<sup>32</sup> on 64-bit
@@ -5374,7 +5379,7 @@ changes:
 On 32-bit architectures, this value currently is 2<sup>30</sup> - 1 (about 1
 GiB).
 
-On 64-bit architectures, this value currently is 2<sup>32</sup> (about 4 GiB).
+On 64-bit architectures, this value currently is 2<sup>53</sup> - 1 (about 8 PiB).
 
 It reflects [`v8::TypedArray::kMaxLength`][] under the hood.
 

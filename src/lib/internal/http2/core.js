@@ -19,8 +19,6 @@ const {
   SafeMap,
   SafeSet,
   Symbol,
-  SymbolAsyncDispose,
-  SymbolDispose,
   Uint32Array,
   Uint8Array,
 } = primordials;
@@ -30,6 +28,8 @@ const {
   customInspectSymbol: kInspect,
   kEmptyObject,
   promisify,
+  SymbolAsyncDispose,
+  SymbolDispose,
 } = require('internal/util');
 
 assertCrypto();
@@ -61,6 +61,7 @@ const {
   },
 } = require('internal/async_hooks');
 const {
+  AbortError,
   aggregateTwoErrors,
   codes: {
     ERR_HTTP2_ALTSVC_INVALID_ORIGIN,
@@ -110,7 +111,6 @@ const {
     ERR_SOCKET_CLOSED,
   },
   hideStackFrames,
-  AbortError,
 } = require('internal/errors');
 const {
   isUint32,

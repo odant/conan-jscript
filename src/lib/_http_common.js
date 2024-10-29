@@ -27,7 +27,7 @@ const {
 } = primordials;
 const { setImmediate } = require('timers');
 
-const { methods, HTTPParser } = internalBinding('http_parser');
+const { methods, allMethods, HTTPParser } = internalBinding('http_parser');
 const { getOptionValue } = require('internal/options');
 const insecureHTTPParser = getOptionValue('--insecure-http-parser');
 
@@ -85,8 +85,7 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
   }
 
   // Parser is also used by http client
-  const ParserIncomingMessage = (socket && socket.server &&
-                                 socket.server[kIncomingMessage]) ||
+  const ParserIncomingMessage = (socket?.server?.[kIncomingMessage]) ||
                                  IncomingMessage;
 
   const incoming = parser.incoming = new ParserIncomingMessage(socket);
@@ -108,7 +107,7 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
 
   if (typeof method === 'number') {
     // server only
-    incoming.method = methods[method];
+    incoming.method = allMethods[method];
   } else {
     // client only
     incoming.statusCode = statusCode;

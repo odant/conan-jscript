@@ -11,7 +11,6 @@ namespace node {
 namespace builtins {
 
 using v8::Context;
-using v8::DEFAULT;
 using v8::EscapableHandleScope;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -51,6 +50,13 @@ BuiltinLoader::BuiltinLoader()
   AddExternalizedBuiltin("internal/deps/undici/undici",
                          STRINGIFY(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH));
 #endif  // NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
+
+#if HAVE_AMARO
+#ifdef NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
+  AddExternalizedBuiltin("internal/deps/amaro/dist/index",
+                         STRINGIFY(NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH));
+#endif  // NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
+#endif  // HAVE_AMARO
 }
 
 bool BuiltinLoader::Exists(const char* id) {
@@ -124,11 +130,14 @@ BuiltinLoader::BuiltinCategories BuiltinLoader::GetBuiltinCategories() const {
         "_tls_wrap", "internal/tls/secure-pair",
         "internal/tls/parse-cert-string", "internal/tls/secure-context",
         "internal/http2/core", "internal/http2/compat",
-        "internal/policy/manifest", "internal/process/policy",
         "internal/streams/lazy_transform",
 #endif           // !HAVE_OPENSSL
-        "sys",   // Deprecated.
-        "wasi",  // Experimental.
+#if !NODE_OPENSSL_HAS_QUIC
+        "internal/quic/quic",
+#endif             // !NODE_OPENSSL_HAS_QUIC
+        "sqlite",  // Experimental.
+        "sys",     // Deprecated.
+        "wasi",    // Experimental.
         "internal/test/binding", "internal/v8_prof_polyfill",
         "internal/v8_prof_processor",
   };
@@ -179,7 +188,7 @@ MaybeLocal<String> BuiltinLoader::LoadBuiltinSource(Isolate* isolate,
   auto source = source_.read();
 #ifndef NODE_BUILTIN_MODULES_PATH
   const auto source_it = source->find(id);
-  if (UNLIKELY(source_it == source->end())) {
+  if (source_it == source->end()) [[unlikely]] {
     fprintf(stderr, "Cannot find native builtin: \"%s\".\n", id);
     ABORT();
   }
@@ -266,7 +275,7 @@ MaybeLocal<Function> BuiltinLoader::LookupAndCompileInternal(
   std::string filename_s = std::string("node:") + id;
   Local<String> filename =
       OneByteString(isolate, filename_s.c_str(), filename_s.size());
-  ScriptOrigin origin(isolate, filename, 0, 0, true);
+  ScriptOrigin origin(filename, 0, 0, true);
 
   BuiltinCodeCacheData cached_data{};
   {
@@ -719,7 +728,6 @@ void BuiltinLoader::CreatePerIsolateProperties(IsolateData* isolate_data,
                                 nullptr,
                                 Local<Value>(),
                                 None,
-                                DEFAULT,
                                 SideEffectType::kHasNoSideEffect);
 
   target->SetNativeDataProperty(FIXED_ONE_BYTE_STRING(isolate, "builtinIds"),
@@ -727,7 +735,6 @@ void BuiltinLoader::CreatePerIsolateProperties(IsolateData* isolate_data,
                                 nullptr,
                                 Local<Value>(),
                                 None,
-                                DEFAULT,
                                 SideEffectType::kHasNoSideEffect);
 
   target->SetNativeDataProperty(
@@ -736,7 +743,6 @@ void BuiltinLoader::CreatePerIsolateProperties(IsolateData* isolate_data,
       nullptr,
       Local<Value>(),
       None,
-      DEFAULT,
       SideEffectType::kHasNoSideEffect);
 
   target->SetNativeDataProperty(FIXED_ONE_BYTE_STRING(isolate, "natives"),
@@ -744,7 +750,6 @@ void BuiltinLoader::CreatePerIsolateProperties(IsolateData* isolate_data,
                                 nullptr,
                                 Local<Value>(),
                                 None,
-                                DEFAULT,
                                 SideEffectType::kHasNoSideEffect);
 
   SetMethod(isolate, target, "getCacheUsage", BuiltinLoader::GetCacheUsage);

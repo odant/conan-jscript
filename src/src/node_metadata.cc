@@ -1,14 +1,17 @@
 #include "node_metadata.h"
 #include "acorn_version.h"
 #include "ada.h"
+#include "amaro_version.h"
 #include "ares.h"
-#include "base64_version.h"
 #include "brotli/encode.h"
 #include "cjs_module_lexer_version.h"
 #include "llhttp.h"
+#include "nbytes.h"
 #include "nghttp2/nghttp2ver.h"
 #include "node.h"
+#include "simdjson.h"
 #include "simdutf.h"
+#include "sqlite3.h"
 #include "undici_version.h"
 #include "util.h"
 #include "uv.h"
@@ -23,12 +26,13 @@
 
 #if HAVE_OPENSSL
 #include <openssl/crypto.h>
+#include "ncrypto.h"
 #if NODE_OPENSSL_HAS_QUIC
 #include <openssl/quic.h>
 #endif
 #endif  // HAVE_OPENSSL
 
-#ifdef OPENSSL_INFO_QUIC
+#ifdef NODE_OPENSSL_HAS_QUIC
 #include <ngtcp2/version.h>
 #include <nghttp3/version.h>
 #endif
@@ -101,7 +105,7 @@ Metadata::Versions::Versions() {
   ares = ARES_VERSION_STR;
   modules = NODE_STRINGIFY(NODE_MODULE_VERSION);
   nghttp2 = NGHTTP2_VERSION;
-  napi = NODE_STRINGIFY(NAPI_VERSION);
+  napi = NODE_STRINGIFY(NODE_API_SUPPORTED_VERSION_MAX);
   llhttp =
       NODE_STRINGIFY(LLHTTP_VERSION_MAJOR)
       "."
@@ -121,11 +125,17 @@ Metadata::Versions::Versions() {
 
   acorn = ACORN_VERSION;
   cjs_module_lexer = CJS_MODULE_LEXER_VERSION;
-  base64 = BASE64_VERSION;
   uvwasi = UVWASI_VERSION_STRING;
+
+#ifndef NODE_SHARED_BUILTIN_AMARO_DIST_INDEX_PATH
+#if HAVE_AMARO
+  amaro = AMARO_VERSION;
+#endif
+#endif
 
 #if HAVE_OPENSSL
   openssl = GetOpenSSLVersion();
+  ncrypto = NCRYPTO_VERSION;
 #endif
 
 #ifdef NODE_HAVE_I18N_SUPPORT
@@ -133,13 +143,16 @@ Metadata::Versions::Versions() {
   unicode = U_UNICODE_VERSION;
 #endif  // NODE_HAVE_I18N_SUPPORT
 
-#ifdef OPENSSL_INFO_QUIC
+#ifdef NODE_OPENSSL_HAS_QUIC
   ngtcp2 = NGTCP2_VERSION;
   nghttp3 = NGHTTP3_VERSION;
 #endif
 
+  simdjson = SIMDJSON_VERSION;
   simdutf = SIMDUTF_VERSION;
+  sqlite = SQLITE_VERSION;
   ada = ADA_VERSION;
+  nbytes = NBYTES_VERSION;
 }
 
 Metadata::Release::Release() : name(NODE_RELEASE) {

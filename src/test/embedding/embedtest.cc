@@ -32,7 +32,7 @@ NODE_MAIN(int argc, node::argv_type raw_argv[]) {
   node::FixupMain(argc, raw_argv, &argv);
 
   std::vector<std::string> args(argv, argv + argc);
-  std::unique_ptr<node::InitializationResult> result =
+  std::shared_ptr<node::InitializationResult> result =
       node::InitializeOncePerProcess(
           args,
           {

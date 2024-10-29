@@ -236,6 +236,7 @@ diagnostics_channel.unsubscribe('my-channel', onMessage);
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -466,6 +467,7 @@ channel.unsubscribe(onMessage);
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -510,6 +512,7 @@ channel.bindStore(store, (data) => {
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -549,6 +552,7 @@ channel.unbindStore(store);
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -610,6 +614,7 @@ channel.runStores({ some: 'message' }, () => {
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -627,6 +632,7 @@ dynamically.
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -695,6 +701,7 @@ channels.subscribe({
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -765,6 +772,7 @@ channels.unsubscribe({
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -815,6 +823,7 @@ channels.traceSync(() => {
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -868,6 +877,7 @@ channels.tracePromise(async () => {
 <!-- YAML
 added:
  - v19.9.0
+ - v18.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -972,7 +982,6 @@ channels.asyncStart.bindStore(myStore, (data) => {
 <!-- YAML
 added:
  - v22.0.0
- - v20.13.0
 -->
 
 > Stability: 1 - Experimental
@@ -1150,6 +1159,58 @@ Emitted when server receives a request.
 * `server` {http.Server}
 
 Emitted when server sends a response.
+
+#### Modules
+
+`module.require.start`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `require()`. Module name.
+  * `parentFilename` - Name of the module that attempted to require(id).
+
+Emitted when `require()` is executed. See [`start` event][].
+
+`module.require.end`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `require()`. Module name.
+  * `parentFilename` - Name of the module that attempted to require(id).
+
+Emitted when a `require()` call returns. See [`end` event][].
+
+`module.require.error`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `require()`. Module name.
+  * `parentFilename` - Name of the module that attempted to require(id).
+* `error` {Error}
+
+Emitted when a `require()` throws an error. See [`error` event][].
+
+`module.import.asyncStart`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `import()`. Module name.
+  * `parentURL` - URL object of the module that attempted to import(id).
+
+Emitted when `import()` is invoked. See [`asyncStart` event][].
+
+`module.import.asyncEnd`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `import()`. Module name.
+  * `parentURL` - URL object of the module that attempted to import(id).
+
+Emitted when `import()` has completed. See [`asyncEnd` event][].
+
+`module.import.error`
+
+* `event` {Object} containing the following properties
+  * `id` - Argument passed to `import()`. Module name.
+  * `parentURL` - URL object of the module that attempted to import(id).
+* `error` {Error}
+
+Emitted when a `import()` throws an error. See [`error` event][].
 
 #### NET
 

@@ -24,9 +24,8 @@
 const {
   ArrayPrototypePush,
   MathTrunc,
-  ObjectDefineProperty,
   ObjectDefineProperties,
-  SymbolDispose,
+  ObjectDefineProperty,
   SymbolToPrimitive,
 } = primordials;
 
@@ -58,6 +57,7 @@ const {
 const {
   promisify: { custom: customPromisify },
   deprecate,
+  SymbolDispose,
 } = require('internal/util');
 let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
   debug = fn;
@@ -182,7 +182,7 @@ ObjectDefineProperty(setTimeout, customPromisify, {
  * @returns {void}
  */
 function clearTimeout(timer) {
-  if (timer && timer._onTimeout) {
+  if (timer?._onTimeout) {
     timer._onTimeout = null;
     unenroll(timer);
     return;

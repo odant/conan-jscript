@@ -1,29 +1,33 @@
 'use strict';
 
 const {
+  Array,
   ArrayPrototypeJoin,
-  ArrayPrototypePush,
   ArrayPrototypeSome,
   FunctionPrototype,
   ObjectSetPrototypeOf,
-  PromiseResolve,
   PromisePrototypeThen,
+  PromiseResolve,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  ReflectApply,
   SafePromiseAllReturnArrayLike,
   SafePromiseAllReturnVoid,
   SafeSet,
   StringPrototypeIncludes,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
+  globalThis,
 } = primordials;
 let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
   debug = fn;
 });
 
 const { ModuleWrap, kEvaluated } = internalBinding('module_wrap');
-
+const {
+  privateSymbols: {
+    entry_point_module_private_symbol,
+  },
+} = internalBinding('util');
 const { decorateErrorStack, kEmptyObject } = require('internal/util');
 const {
   getSourceMapsEnabled,
@@ -51,13 +55,12 @@ const isCommonJSGlobalLikeNotDefinedError = (errorMessage) =>
   );
 
 class ModuleJobBase {
-  constructor(url, importAttributes, moduleWrapMaybePromise, isMain, inspectBrk) {
+  constructor(url, importAttributes, isMain, inspectBrk) {
     this.importAttributes = importAttributes;
     this.isMain = isMain;
     this.inspectBrk = inspectBrk;
 
     this.url = url;
-    this.module = moduleWrapMaybePromise;
   }
 }
 
@@ -65,48 +68,33 @@ class ModuleJobBase {
  * its dependencies, over time. */
 class ModuleJob extends ModuleJobBase {
   #loader = null;
-  // `loader` is the Loader instance used for loading dependencies.
-  constructor(loader, url, importAttributes = { __proto__: null },
-              moduleProvider, isMain, inspectBrk, sync = false) {
-    const modulePromise = ReflectApply(moduleProvider, loader, [url, isMain]);
-    super(url, importAttributes, modulePromise, isMain, inspectBrk);
-    this.#loader = loader;
-    // Expose the promise to the ModuleWrap directly for linking below.
-    // `this.module` is also filled in below.
-    this.modulePromise = modulePromise;
 
-    if (sync) {
-      this.module = this.modulePromise;
+  /**
+   * @param {ModuleLoader} loader The ESM loader.
+   * @param {string} url URL of the module to be wrapped in ModuleJob.
+   * @param {ImportAttributes} importAttributes Import attributes from the import statement.
+   * @param {ModuleWrap|Promise<ModuleWrap>} moduleOrModulePromise Translated ModuleWrap for the module.
+   * @param {boolean} isMain Whether the module is the entry point.
+   * @param {boolean} inspectBrk Whether this module should be evaluated with the
+   *                             first line paused in the debugger (because --inspect-brk is passed).
+   * @param {boolean} isForRequireInImportedCJS Whether this is created for require() in imported CJS.
+   */
+  constructor(loader, url, importAttributes = { __proto__: null },
+              moduleOrModulePromise, isMain, inspectBrk, isForRequireInImportedCJS = false) {
+    super(url, importAttributes, isMain, inspectBrk);
+    this.#loader = loader;
+
+    // Expose the promise to the ModuleWrap directly for linking below.
+    if (isForRequireInImportedCJS) {
+      this.module = moduleOrModulePromise;
+      assert(this.module instanceof ModuleWrap);
       this.modulePromise = PromiseResolve(this.module);
     } else {
-      this.modulePromise = PromiseResolve(this.modulePromise);
+      this.modulePromise = moduleOrModulePromise;
     }
 
-    // Wait for the ModuleWrap instance being linked with all dependencies.
-    const link = async () => {
-      this.module = await this.modulePromise;
-      assert(this.module instanceof ModuleWrap);
-
-      // Explicitly keeping track of dependency jobs is needed in order
-      // to flatten out the dependency graph below in `_instantiate()`,
-      // so that circular dependencies can't cause a deadlock by two of
-      // these `link` callbacks depending on each other.
-      const dependencyJobs = [];
-      const promises = this.module.link(async (specifier, attributes) => {
-        const job = await this.#loader.getModuleJob(specifier, url, attributes);
-        debug(`async link() ${this.url} -> ${specifier}`, job);
-        ArrayPrototypePush(dependencyJobs, job);
-        return job.modulePromise;
-      });
-
-      if (promises !== undefined) {
-        await SafePromiseAllReturnVoid(promises);
-      }
-
-      return SafePromiseAllReturnArrayLike(dependencyJobs);
-    };
     // Promise for the list of all dependencyJobs.
-    this.linked = link();
+    this.linked = this._link();
     // This promise is awaited later anyway, so silence
     // 'unhandled rejection' warnings.
     PromisePrototypeThen(this.linked, undefined, noop);
@@ -114,6 +102,49 @@ class ModuleJob extends ModuleJobBase {
     // instantiated == deep dependency jobs wrappers are instantiated,
     // and module wrapper is instantiated.
     this.instantiated = undefined;
+  }
+
+  /**
+   * Iterates the module requests and links with the loader.
+   * @returns {Promise<ModuleJob[]>} Dependency module jobs.
+   */
+  async _link() {
+    this.module = await this.modulePromise;
+    assert(this.module instanceof ModuleWrap);
+
+    const moduleRequests = this.module.getModuleRequests();
+    // Explicitly keeping track of dependency jobs is needed in order
+    // to flatten out the dependency graph below in `_instantiate()`,
+    // so that circular dependencies can't cause a deadlock by two of
+    // these `link` callbacks depending on each other.
+    // Create an ArrayLike to avoid calling into userspace with `.then`
+    // when returned from the async function.
+    const dependencyJobs = Array(moduleRequests.length);
+    ObjectSetPrototypeOf(dependencyJobs, null);
+
+    // Specifiers should be aligned with the moduleRequests array in order.
+    const specifiers = Array(moduleRequests.length);
+    const modulePromises = Array(moduleRequests.length);
+    // Iterate with index to avoid calling into userspace with `Symbol.iterator`.
+    for (let idx = 0; idx < moduleRequests.length; idx++) {
+      const { specifier, attributes } = moduleRequests[idx];
+
+      const dependencyJobPromise = this.#loader.getModuleJobForImport(
+        specifier, this.url, attributes,
+      );
+      const modulePromise = PromisePrototypeThen(dependencyJobPromise, (job) => {
+        debug(`async link() ${this.url} -> ${specifier}`, job);
+        dependencyJobs[idx] = job;
+        return job.modulePromise;
+      });
+      modulePromises[idx] = modulePromise;
+      specifiers[idx] = specifier;
+    }
+
+    const modules = await SafePromiseAllReturnArrayLike(modulePromises);
+    this.module.link(specifiers, modules);
+
+    return dependencyJobs;
   }
 
   instantiate() {
@@ -225,8 +256,11 @@ class ModuleJob extends ModuleJobBase {
     return { __proto__: null, module: this.module };
   }
 
-  async run() {
+  async run(isEntryPoint = false) {
     await this.instantiate();
+    if (isEntryPoint) {
+      globalThis[entry_point_module_private_symbol] = this.module;
+    }
     const timeout = -1;
     const breakOnSigint = false;
     setHasStartedUserESMExecution();
@@ -244,7 +278,7 @@ class ModuleJob extends ModuleJobBase {
         const packageConfig =
           StringPrototypeStartsWith(this.module.url, 'file://') &&
             RegExpPrototypeExec(/\.js(\?[^#]*)?(#.*)?$/, this.module.url) !== null &&
-            require('internal/modules/esm/resolve')
+            require('internal/modules/package_json_reader')
               .getPackageScopeConfig(this.module.url);
         if (packageConfig.type === 'module') {
           e.message +=
@@ -260,27 +294,59 @@ class ModuleJob extends ModuleJobBase {
   }
 }
 
-// This is a fully synchronous job and does not spawn additional threads in any way.
-// All the steps are ensured to be synchronous and it throws on instantiating
-// an asynchronous graph.
+/**
+ * This is a fully synchronous job and does not spawn additional threads in any way.
+ * All the steps are ensured to be synchronous and it throws on instantiating
+ * an asynchronous graph. It also disallows CJS <-> ESM cycles.
+ *
+ * This is used for ES modules loaded via require(esm). Modules loaded by require() in
+ * imported CJS are handled by ModuleJob with the isForRequireInImportedCJS set to true instead.
+ * The two currently have different caching behaviors.
+ * TODO(joyeecheung): consolidate this with the isForRequireInImportedCJS variant of ModuleJob.
+ */
 class ModuleJobSync extends ModuleJobBase {
   #loader = null;
+
+  /**
+   * @param {ModuleLoader} loader The ESM loader.
+   * @param {string} url URL of the module to be wrapped in ModuleJob.
+   * @param {ImportAttributes} importAttributes Import attributes from the import statement.
+   * @param {ModuleWrap} moduleWrap Translated ModuleWrap for the module.
+   * @param {boolean} isMain Whether the module is the entry point.
+   * @param {boolean} inspectBrk Whether this module should be evaluated with the
+   *                             first line paused in the debugger (because --inspect-brk is passed).
+   */
   constructor(loader, url, importAttributes, moduleWrap, isMain, inspectBrk) {
-    super(url, importAttributes, moduleWrap, isMain, inspectBrk, true);
-    assert(this.module instanceof ModuleWrap);
+    super(url, importAttributes, isMain, inspectBrk, true);
+
     this.#loader = loader;
-    const moduleRequests = this.module.getModuleRequestsSync();
-    const linked = [];
-    for (let i = 0; i < moduleRequests.length; ++i) {
-      const { 0: specifier, 1: attributes } = moduleRequests[i];
-      const job = this.#loader.getModuleWrapForRequire(specifier, url, attributes);
-      const isLast = (i === moduleRequests.length - 1);
-      // TODO(joyeecheung): make the resolution callback deal with both promisified
-      // an raw module wraps, then we don't need to wrap it with a promise here.
-      this.module.cacheResolvedWrapsSync(specifier, PromiseResolve(job.module), isLast);
-      ArrayPrototypePush(linked, job);
+    this.module = moduleWrap;
+
+    assert(this.module instanceof ModuleWrap);
+    // Store itself into the cache first before linking in case there are circular
+    // references in the linking.
+    loader.loadCache.set(url, importAttributes.type, this);
+
+    try {
+      const moduleRequests = this.module.getModuleRequests();
+      // Specifiers should be aligned with the moduleRequests array in order.
+      const specifiers = Array(moduleRequests.length);
+      const modules = Array(moduleRequests.length);
+      const jobs = Array(moduleRequests.length);
+      for (let i = 0; i < moduleRequests.length; ++i) {
+        const { specifier, attributes } = moduleRequests[i];
+        const job = this.#loader.getModuleJobForRequire(specifier, url, attributes);
+        specifiers[i] = specifier;
+        modules[i] = job.module;
+        jobs[i] = job;
+      }
+      this.module.link(specifiers, modules);
+      this.linked = jobs;
+    } finally {
+      // Restore it - if it succeeds, we'll reset in the caller; Otherwise it's
+      // not cached and if the error is caught, subsequent attempt would still fail.
+      loader.loadCache.delete(url, importAttributes.type);
     }
-    this.linked = linked;
   }
 
   get modulePromise() {

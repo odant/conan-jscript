@@ -3,10 +3,10 @@
 const {
   FunctionPrototypeCall,
   ObjectDefineProperties,
+  ObjectSetPrototypeOf,
   PromisePrototypeThen,
-  ReflectConstruct,
-  SymbolToStringTag,
   Symbol,
+  SymbolToStringTag,
 } = primordials;
 
 const {
@@ -39,7 +39,7 @@ const {
   kDeserialize,
   kTransfer,
   kTransferList,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const {
@@ -128,6 +128,7 @@ class TransformStream {
     transformer = kEmptyObject,
     writableStrategy = kEmptyObject,
     readableStrategy = kEmptyObject) {
+    markTransferMode(this, false, true);
     validateObject(transformer, 'transformer', kValidateObjectAllowObjects);
     validateObject(writableStrategy, 'writableStrategy', kValidateObjectAllowObjectsAndNull);
     validateObject(readableStrategy, 'readableStrategy', kValidateObjectAllowObjectsAndNull);
@@ -181,9 +182,6 @@ class TransformStream {
     } else {
       startPromise.resolve();
     }
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   /**
@@ -257,26 +255,36 @@ ObjectDefineProperties(TransformStream.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(TransformStream.name),
 });
 
-function TransferredTransformStream() {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kType] = 'TransformStream';
-      this[kState] = {
-        __proto__: null,
-        readable: undefined,
-        writable: undefined,
-        backpressure: undefined,
-        backpressureChange: {
-          __proto__: null,
-          promise: undefined,
-          resolve: undefined,
-          reject: undefined,
-        },
-        controller: undefined,
-      };
+function InternalTransferredTransformStream() {
+  ObjectSetPrototypeOf(this, TransformStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'TransformStream';
+  this[kState] = {
+    __proto__: null,
+    readable: undefined,
+    writable: undefined,
+    backpressure: undefined,
+    backpressureChange: {
+      __proto__: null,
+      promise: undefined,
+      resolve: undefined,
+      reject: undefined,
     },
-    [], TransformStream));
+    controller: undefined,
+  };
 }
+
+ObjectSetPrototypeOf(InternalTransferredTransformStream.prototype, TransformStream.prototype);
+ObjectSetPrototypeOf(InternalTransferredTransformStream, TransformStream);
+
+function TransferredTransformStream() {
+  const stream = new InternalTransferredTransformStream();
+
+  stream.constructor = TransformStream;
+
+  return stream;
+}
+
 TransferredTransformStream.prototype[kDeserialize] = () => {};
 
 class TransformStreamDefaultController {

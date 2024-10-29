@@ -54,12 +54,11 @@ const {
 const {
   getLazy,
   emitExperimentalWarning,
+  isWindows,
+  isMacOS,
 } = require('internal/util');
 
 const lazyMinimatch = getLazy(() => require('internal/deps/minimatch/index'));
-
-const platformIsWin32 = (process.platform === 'win32');
-const platformIsOSX = (process.platform === 'darwin');
 
 function isPathSeparator(code) {
   return code === CHAR_FORWARD_SLASH || code === CHAR_BACKWARD_SLASH;
@@ -171,7 +170,7 @@ function glob(path, pattern, windows) {
   validateString(pattern, 'pattern');
   return lazyMinimatch().minimatch(path, pattern, {
     __proto__: null,
-    nocase: platformIsOSX || platformIsWin32,
+    nocase: isMacOS || isWindows,
     windowsPathsNoEscape: true,
     nonegate: true,
     nocomment: true,
@@ -1140,7 +1139,7 @@ const win32 = {
 };
 
 const posixCwd = (() => {
-  if (platformIsWin32) {
+  if (isWindows) {
     // Converts Windows' backslash path separators to POSIX forward slashes
     // and truncates any drive indicator
     const regexp = /\\/g;
@@ -1164,8 +1163,8 @@ const posix = {
     let resolvedPath = '';
     let resolvedAbsolute = false;
 
-    for (let i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-      const path = i >= 0 ? args[i] : posixCwd();
+    for (let i = args.length - 1; i >= 0 && !resolvedAbsolute; i--) {
+      const path = args[i];
       validateString(path, `paths[${i}]`);
 
       // Skip empty entries
@@ -1176,6 +1175,13 @@ const posix = {
       resolvedPath = `${path}/${resolvedPath}`;
       resolvedAbsolute =
         StringPrototypeCharCodeAt(path, 0) === CHAR_FORWARD_SLASH;
+    }
+
+    if (!resolvedAbsolute) {
+      const cwd = posixCwd();
+      resolvedPath = `${cwd}/${resolvedPath}`;
+      resolvedAbsolute =
+        StringPrototypeCharCodeAt(cwd, 0) === CHAR_FORWARD_SLASH;
     }
 
     // At this point the path should be resolved to a full absolute path, but
@@ -1615,4 +1621,4 @@ posix.posix = win32.posix = posix;
 win32._makeLong = win32.toNamespacedPath;
 posix._makeLong = posix.toNamespacedPath;
 
-module.exports = platformIsWin32 ? win32 : posix;
+module.exports = isWindows ? win32 : posix;

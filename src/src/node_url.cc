@@ -1,11 +1,13 @@
 #include "node_url.h"
 #include "ada.h"
 #include "base_object-inl.h"
+#include "node_debug.h"
 #include "node_errors.h"
 #include "node_external_reference.h"
 #include "node_i18n.h"
 #include "node_metadata.h"
 #include "node_process-inl.h"
+#include "path.h"
 #include "util-inl.h"
 #include "v8-fast-api-calls.h"
 #include "v8.h"
@@ -172,12 +174,14 @@ void BindingData::CanParse(const FunctionCallbackInfo<Value>& args) {
 
 bool BindingData::FastCanParse(Local<Value> receiver,
                                const FastOneByteString& input) {
+  TRACK_V8_FAST_API_CALL("url.canParse");
   return ada::can_parse(std::string_view(input.data, input.length));
 }
 
 bool BindingData::FastCanParseWithBase(Local<Value> receiver,
                                        const FastOneByteString& input,
                                        const FastOneByteString& base) {
+  TRACK_V8_FAST_API_CALL("url.canParse.withBase");
   auto base_view = std::string_view(base.data, base.length);
   return ada::can_parse(std::string_view(input.data, input.length), &base_view);
 }
@@ -227,35 +231,6 @@ void BindingData::Format(const FunctionCallbackInfo<Value>& args) {
                                                 NewStringType::kNormal,
                                                 result.length())
                                 .ToLocalChecked());
-}
-
-void BindingData::ThrowInvalidURL(node::Environment* env,
-                                  std::string_view input,
-                                  std::optional<std::string> base) {
-  Local<Value> err = ERR_INVALID_URL(env->isolate(), "Invalid URL");
-  DCHECK(err->IsObject());
-
-  auto err_object = err.As<Object>();
-
-  USE(err_object->Set(env->context(),
-                      env->input_string(),
-                      v8::String::NewFromUtf8(env->isolate(),
-                                              input.data(),
-                                              v8::NewStringType::kNormal,
-                                              input.size())
-                          .ToLocalChecked()));
-
-  if (base.has_value()) {
-    USE(err_object->Set(env->context(),
-                        env->base_string(),
-                        v8::String::NewFromUtf8(env->isolate(),
-                                                base.value().c_str(),
-                                                v8::NewStringType::kNormal,
-                                                base.value().size())
-                            .ToLocalChecked()));
-  }
-
-  env->isolate()->ThrowException(err);
 }
 
 void BindingData::Parse(const FunctionCallbackInfo<Value>& args) {
@@ -426,6 +401,35 @@ void BindingData::RegisterExternalReferences(
   }
 }
 
+void ThrowInvalidURL(node::Environment* env,
+                     std::string_view input,
+                     std::optional<std::string> base) {
+  Local<Value> err = ERR_INVALID_URL(env->isolate(), "Invalid URL");
+  DCHECK(err->IsObject());
+
+  auto err_object = err.As<Object>();
+
+  USE(err_object->Set(env->context(),
+                      env->input_string(),
+                      v8::String::NewFromUtf8(env->isolate(),
+                                              input.data(),
+                                              v8::NewStringType::kNormal,
+                                              input.size())
+                          .ToLocalChecked()));
+
+  if (base.has_value()) {
+    USE(err_object->Set(env->context(),
+                        env->base_string(),
+                        v8::String::NewFromUtf8(env->isolate(),
+                                                base.value().c_str(),
+                                                v8::NewStringType::kNormal,
+                                                base.value().size())
+                            .ToLocalChecked()));
+  }
+
+  env->isolate()->ThrowException(err);
+}
+
 std::string FromFilePath(std::string_view file_path) {
   // Avoid unnecessary allocations.
   size_t pos = file_path.empty() ? std::string_view::npos : file_path.find('%');
@@ -541,19 +545,6 @@ std::optional<std::string> FileURLToPath(Environment* env,
 
   return ada::unicode::percent_decode(pathname, first_percent);
 #endif  // _WIN32
-}
-
-// Reverse the logic applied by path.toNamespacedPath() to create a
-// namespace-prefixed path.
-void FromNamespacedPath(std::string* path) {
-#ifdef _WIN32
-  if (path->compare(0, 8, "\\\\?\\UNC\\", 8) == 0) {
-    *path = path->substr(8);
-    path->insert(0, "\\\\");
-  } else if (path->compare(0, 4, "\\\\?\\", 4) == 0) {
-    *path = path->substr(4);
-  }
-#endif
 }
 
 }  // namespace url

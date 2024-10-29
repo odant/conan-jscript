@@ -115,24 +115,25 @@ class EnvironmentOptions : public Options {
  public:
   bool abort_on_uncaught_exception = false;
   std::vector<std::string> conditions;
-  bool detect_module = false;
+  bool detect_module = true;
   bool print_required_tla = false;
   bool require_module = false;
   std::string dns_result_order;
   bool enable_source_maps = false;
   bool experimental_eventsource = false;
   bool experimental_fetch = true;
-  bool experimental_websocket = false;
+  bool experimental_websocket = true;
+  bool experimental_sqlite = false;
+  bool experimental_webstorage = false;
+  std::string localstorage_file;
   bool experimental_global_customevent = true;
+  bool experimental_global_navigator = true;
   bool experimental_global_web_crypto = true;
-  bool experimental_https_modules = false;
   bool experimental_wasm_modules = false;
   bool experimental_import_meta_resolve = false;
   std::string input_type;  // Value of --input-type
   std::string type;        // Value of --experimental-default-type
-  std::string experimental_policy;
-  std::string experimental_policy_integrity;
-  bool has_policy_integrity_string = false;
+  bool entry_is_url = false;
   bool experimental_permission = false;
   std::vector<std::string> allow_fs_read;
   std::vector<std::string> allow_fs_write;
@@ -142,6 +143,7 @@ class EnvironmentOptions : public Options {
   bool allow_worker_threads = false;
   bool experimental_repl_await = true;
   bool experimental_vm_modules = false;
+  bool async_context_frame = false;
   bool expose_internals = false;
   bool force_node_api_uncaught_exceptions_policy = false;
   bool frozen_intrinsics = false;
@@ -177,19 +179,29 @@ class EnvironmentOptions : public Options {
   std::string redirect_warnings;
   std::string diagnostic_dir;
   std::string env_file;
+  std::string optional_env_file;
   bool has_env_file_string = false;
   bool test_runner = false;
   uint64_t test_runner_concurrency = 0;
   uint64_t test_runner_timeout = 0;
   bool test_runner_coverage = false;
   bool test_runner_force_exit = false;
+  uint64_t test_coverage_branches = 0;
+  uint64_t test_coverage_functions = 0;
+  uint64_t test_coverage_lines = 0;
   bool test_runner_module_mocks = false;
+  bool test_runner_snapshots = false;
+  bool test_runner_update_snapshots = false;
   std::vector<std::string> test_name_pattern;
   std::vector<std::string> test_reporter;
   std::vector<std::string> test_reporter_destination;
   bool test_only = false;
   bool test_udp_no_try_send = false;
+  std::string test_isolation = "process";
   std::string test_shard;
+  std::vector<std::string> test_skip_pattern;
+  std::vector<std::string> coverage_include_pattern;
+  std::vector<std::string> coverage_exclude_pattern;
   bool throw_deprecation = false;
   bool trace_atomics_wait = false;
   bool trace_deprecation = false;
@@ -234,6 +246,9 @@ class EnvironmentOptions : public Options {
 
   std::vector<std::string> preload_esm_modules;
 
+  bool experimental_strip_types = false;
+  bool experimental_transform_types = false;
+
   std::vector<std::string> user_argv;
 
   bool report_exclude_network = false;
@@ -258,6 +273,7 @@ class PerIsolateOptions : public Options {
   bool report_uncaught_exception = false;
   bool report_on_signal = false;
   bool experimental_shadow_realm = false;
+  int64_t stack_trace_limit = 10;
   std::string report_signal = "SIGUSR2";
   bool build_snapshot = false;
   std::string build_snapshot_config;
@@ -302,6 +318,7 @@ class PerProcessOptions : public Options {
   bool print_v8_help = false;
   bool print_version = false;
   std::string experimental_sea_config;
+  std::string run;
 
 #ifdef NODE_HAVE_I18N_SUPPORT
   std::string icu_data_dir;

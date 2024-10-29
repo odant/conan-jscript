@@ -23,21 +23,16 @@
 
 const {
   ArrayBuffer,
-  ArrayPrototypeForEach,
-  ArrayPrototypeMap,
-  ArrayPrototypePush,
-  FunctionPrototypeBind,
-  MathMaxApply,
+  MathMax,
   NumberIsNaN,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectEntries,
   ObjectFreeze,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ReflectApply,
-  StringPrototypeStartsWith,
   Symbol,
-  TypedArrayPrototypeFill,
   Uint32Array,
 } = primordials;
 
@@ -47,7 +42,6 @@ const {
     ERR_BUFFER_TOO_LARGE,
     ERR_INVALID_ARG_TYPE,
     ERR_OUT_OF_RANGE,
-    ERR_ZLIB_INITIALIZATION_FAILED,
   },
   genericNodeError,
 } = require('internal/errors');
@@ -130,10 +124,11 @@ function zlibBuffer(engine, buffer, callback) {
 }
 
 function zlibBufferOnData(chunk) {
-  if (!this.buffers)
+  if (!this.buffers) {
     this.buffers = [chunk];
-  else
-    ArrayPrototypePush(this.buffers, chunk);
+  } else {
+    this.buffers.push(chunk);
+  }
   this.nread += chunk.length;
   if (this.nread > this._maxOutputLength) {
     this.close();
@@ -261,7 +256,7 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   this._defaultFlushFlag = flush;
   this._finishFlushFlag = finishFlush;
   this._defaultFullFlushFlag = fullFlush;
-  this._info = opts && opts.info;
+  this._info = opts?.info;
   this._maxOutputLength = maxOutputLength;
 }
 ObjectSetPrototypeOf(ZlibBase.prototype, Transform.prototype);
@@ -294,9 +289,12 @@ ObjectDefineProperty(ZlibBase.prototype, 'bytesRead', {
      'This feature will be removed in the future.', 'DEP0108'),
 });
 
+/**
+ * @this ZlibBase
+ * @returns {void}
+ */
 ZlibBase.prototype.reset = function() {
-  if (!this._handle)
-    assert(false, 'zlib binding closed');
+  assert(this._handle, 'zlib binding closed');
   return this._handle.reset();
 };
 
@@ -358,6 +356,10 @@ ZlibBase.prototype.flush = function(kind, callback) {
   }
 };
 
+/**
+ * @this import('stream').Transform
+ * @param {(err?: Error) => any} [callback]
+ */
 ZlibBase.prototype.close = function(callback) {
   if (callback) finished(this, callback);
   this.destroy();
@@ -398,7 +400,7 @@ function processChunkSync(self, chunk, flushFlag) {
   let availOutAfter;
   let availInAfter;
 
-  let buffers = null;
+  const buffers = [];
   let nread = 0;
   let inputRead = 0;
   const state = self._writeState;
@@ -435,10 +437,7 @@ function processChunkSync(self, chunk, flushFlag) {
     if (have > 0) {
       const out = buffer.slice(offset, offset + have);
       offset += have;
-      if (!buffers)
-        buffers = [out];
-      else
-        ArrayPrototypePush(buffers, out);
+      buffers.push(out);
       nread += out.byteLength;
 
       if (nread > self._maxOutputLength) {
@@ -589,12 +588,13 @@ function processCallback() {
   this.cb();
 }
 
+/**
+ * @param {ZlibBase} engine
+ * @private
+ */
 function _close(engine) {
-  // Caller may invoke .close after a zlib error (which will null _handle).
-  if (!engine._handle)
-    return;
-
-  engine._handle.close();
+  // Caller may invoke .close after a zlib error (which will null _handle)
+  engine._handle?.close();
   engine._handle = null;
 }
 
@@ -695,9 +695,10 @@ Zlib.prototype.params = function params(level, strategy, callback) {
   checkRangesOrGetDefault(strategy, 'strategy', Z_DEFAULT_STRATEGY, Z_FIXED);
 
   if (this._level !== level || this._strategy !== strategy) {
-    this.flush(Z_SYNC_FLUSH,
-               FunctionPrototypeBind(paramsAfterFlushCallback, this,
-                                     level, strategy, callback));
+    this.flush(
+      Z_SYNC_FLUSH,
+      paramsAfterFlushCallback.bind(this, level, strategy, callback),
+    );
   } else {
     process.nextTick(callback);
   }
@@ -777,13 +778,10 @@ function createConvenienceMethod(ctor, sync) {
   };
 }
 
-const kMaxBrotliParam = MathMaxApply(ArrayPrototypeMap(
-  ObjectKeys(constants),
-  (key) => (StringPrototypeStartsWith(key, 'BROTLI_PARAM_') ?
-    constants[key] :
-    0),
-));
-
+const kMaxBrotliParam = MathMax(
+  ...ObjectEntries(constants)
+    .map(({ 0: key, 1: value }) => (key.startsWith('BROTLI_PARAM_') ? value : 0)),
+);
 const brotliInitParamsArray = new Uint32Array(kMaxBrotliParam + 1);
 
 const brotliDefaultOpts = {
@@ -794,9 +792,9 @@ const brotliDefaultOpts = {
 function Brotli(opts, mode) {
   assert(mode === BROTLI_DECODE || mode === BROTLI_ENCODE);
 
-  TypedArrayPrototypeFill(brotliInitParamsArray, -1);
+  brotliInitParamsArray.fill(-1);
   if (opts?.params) {
-    ArrayPrototypeForEach(ObjectKeys(opts.params), (origKey) => {
+    ObjectKeys(opts.params).forEach((origKey) => {
       const key = +origKey;
       if (NumberIsNaN(key) || key < 0 || key > kMaxBrotliParam ||
           (brotliInitParamsArray[key] | 0) !== -1) {
@@ -816,14 +814,7 @@ function Brotli(opts, mode) {
     new binding.BrotliDecoder(mode) : new binding.BrotliEncoder(mode);
 
   this._writeState = new Uint32Array(2);
-  // TODO(addaleax): Sometimes we generate better error codes in C++ land,
-  // e.g. ERR_BROTLI_PARAM_SET_FAILED -- it's hard to access them with
-  // the current bindings setup, though.
-  if (!handle.init(brotliInitParamsArray,
-                   this._writeState,
-                   processCallback)) {
-    throw new ERR_ZLIB_INITIALIZATION_FAILED();
-  }
+  handle.init(brotliInitParamsArray, this._writeState, processCallback);
 
   ReflectApply(ZlibBase, this, [opts, mode, handle, brotliDefaultOpts]);
 }
@@ -934,10 +925,12 @@ ObjectDefineProperties(module.exports, {
 
 // These should be considered deprecated
 // expose all the zlib constants
-for (const bkey of ObjectKeys(constants)) {
-  if (StringPrototypeStartsWith(bkey, 'BROTLI')) continue;
-  ObjectDefineProperty(module.exports, bkey, {
+for (const { 0: key, 1: value } of ObjectEntries(constants)) {
+  if (key.startsWith('BROTLI')) continue;
+  ObjectDefineProperty(module.exports, key, {
     __proto__: null,
-    enumerable: false, value: constants[bkey], writable: false,
+    enumerable: false,
+    value,
+    writable: false,
   });
 }

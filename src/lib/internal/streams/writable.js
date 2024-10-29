@@ -29,13 +29,12 @@ const {
   ArrayPrototypeSlice,
   Error,
   FunctionPrototypeSymbolHasInstance,
-  ObjectDefineProperty,
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Promise,
   StringPrototypeToLowerCase,
   Symbol,
-  SymbolAsyncDispose,
   SymbolHasInstance,
 } = primordials;
 
@@ -47,6 +46,9 @@ const Stream = require('internal/streams/legacy').Stream;
 const { Buffer } = require('buffer');
 const destroyImpl = require('internal/streams/destroy');
 const eos = require('internal/streams/end-of-stream');
+const {
+  SymbolAsyncDispose,
+} = require('internal/util');
 
 const {
   addAbortSignal,
@@ -304,10 +306,10 @@ function WritableState(options, stream, isDuplex) {
   // instead of a V8 slot per field.
   this[kState] = kSync | kConstructed | kEmitClose | kAutoDestroy;
 
-  if (options && options.objectMode)
+  if (options?.objectMode)
     this[kState] |= kObjectMode;
 
-  if (isDuplex && options && options.writableObjectMode)
+  if (isDuplex && options?.writableObjectMode)
     this[kState] |= kObjectMode;
 
   // The point at which write() starts returning false
@@ -1066,7 +1068,7 @@ ObjectDefineProperties(Writable.prototype, {
     __proto__: null,
     get() {
       const state = this._writableState;
-      return state && state.highWaterMark;
+      return state?.highWaterMark;
     },
   },
 
@@ -1082,7 +1084,7 @@ ObjectDefineProperties(Writable.prototype, {
     __proto__: null,
     get() {
       const state = this._writableState;
-      return state && state.length;
+      return state?.length;
     },
   },
 

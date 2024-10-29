@@ -228,6 +228,10 @@ double GetCurrentTimeInMicroseconds() {
 }
 
 int WriteFileSync(const char* path, uv_buf_t buf) {
+  return WriteFileSync(path, &buf, 1);
+}
+
+int WriteFileSync(const char* path, uv_buf_t* bufs, size_t buf_count) {
   uv_fs_t req;
   int fd = uv_fs_open(nullptr,
                       &req,
@@ -240,7 +244,7 @@ int WriteFileSync(const char* path, uv_buf_t buf) {
     return fd;
   }
 
-  int err = uv_fs_write(nullptr, &req, fd, &buf, 1, 0, nullptr);
+  int err = uv_fs_write(nullptr, &req, fd, bufs, buf_count, 0, nullptr);
   uv_fs_req_cleanup(&req);
   if (err < 0) {
     return err;
@@ -671,8 +675,9 @@ void SetConstructorFunction(Local<Context> context,
                             Local<String> name,
                             Local<FunctionTemplate> tmpl,
                             SetConstructorFunctionFlag flag) {
-  if (LIKELY(flag == SetConstructorFunctionFlag::SET_CLASS_NAME))
+  if (flag == SetConstructorFunctionFlag::SET_CLASS_NAME) [[likely]] {
     tmpl->SetClassName(name);
+  }
   that->Set(context, name, tmpl->GetFunction(context).ToLocalChecked()).Check();
 }
 
@@ -690,8 +695,9 @@ void SetConstructorFunction(Isolate* isolate,
                             Local<String> name,
                             Local<FunctionTemplate> tmpl,
                             SetConstructorFunctionFlag flag) {
-  if (LIKELY(flag == SetConstructorFunctionFlag::SET_CLASS_NAME))
+  if (flag == SetConstructorFunctionFlag::SET_CLASS_NAME) [[likely]] {
     tmpl->SetClassName(name);
+  }
   that->Set(name, tmpl);
 }
 

@@ -1,10 +1,6 @@
 'use strict';
 
 const {
-  emitExperimentalWarning,
-} = require('internal/util');
-
-const {
   ArrayPrototypeAt,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
@@ -13,17 +9,17 @@ const {
   FunctionPrototypeApply,
   FunctionPrototypeBind,
   FunctionPrototypeToString,
-  globalThis,
   NumberIsNaN,
-  ObjectDefineProperty,
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
   Promise,
   Symbol,
   SymbolAsyncIterator,
-  SymbolDispose,
+  globalThis,
 } = primordials;
+
 const {
   validateAbortSignal,
   validateNumber,
@@ -31,8 +27,15 @@ const {
 } = require('internal/validators');
 
 const {
+  emitExperimentalWarning,
+  SymbolDispose,
+} = require('internal/util');
+const {
   AbortError,
-  codes: { ERR_INVALID_STATE, ERR_INVALID_ARG_VALUE },
+  codes: {
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_STATE,
+  },
 } = require('internal/errors');
 
 const PriorityQueue = require('internal/priority_queue');
@@ -374,7 +377,7 @@ class MockTimers {
       return FunctionPrototypeToString(MockDate[kMock].#nativeDateDescriptor.value);
     };
 
-    // We need to polute the prototype of this
+    // We need to pollute the prototype of this
     ObjectDefineProperties(MockDate, {
       __proto__: null,
       [kMock]: {

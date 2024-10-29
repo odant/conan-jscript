@@ -58,6 +58,7 @@ for (const moduleName of builtinModules) {
     'structuredClone',
     'fetch',
     'crypto',
+    'navigator',
   ];
   assert.deepStrictEqual(new Set(Object.keys(global)), new Set(expected));
   expected.forEach((value) => {

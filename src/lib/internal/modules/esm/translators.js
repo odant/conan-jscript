@@ -3,10 +3,10 @@
 const {
   ArrayPrototypeMap,
   Boolean,
+  FunctionPrototypeCall,
   JSONParse,
-  ObjectGetPrototypeOf,
-  ObjectPrototypeHasOwnProperty,
   ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
   ReflectApply,
   SafeArrayIterator,
   SafeMap,
@@ -15,22 +15,10 @@ const {
   StringPrototypeReplaceAll,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
-  SyntaxErrorPrototype,
   globalThis: { WebAssembly },
 } = primordials;
 
-/** @type {import('internal/util/types')} */
-let _TYPES = null;
-/**
- * Lazily loads and returns the internal/util/types module.
- */
-function lazyTypes() {
-  if (_TYPES !== null) { return _TYPES; }
-  return _TYPES = require('internal/util/types');
-}
-
 const {
-  containsModuleSyntax,
   compileFunctionForCJSLoader,
 } = internalBinding('contextify');
 
@@ -39,13 +27,17 @@ const assert = require('internal/assert');
 const { readFileSync } = require('fs');
 const { dirname, extname, isAbsolute } = require('path');
 const {
+  assertBufferSource,
   loadBuiltinModule,
+  stringify,
+  stripTypeScriptTypes,
   stripBOM,
   urlToFilename,
 } = require('internal/modules/helpers');
 const {
   kIsCachedByESMLoader,
   Module: CJSModule,
+  wrapModuleLoad,
   kModuleSource,
   kModuleExport,
   kModuleExportNames,
@@ -54,15 +46,13 @@ const { fileURLToPath, pathToFileURL, URL } = require('internal/url');
 let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
   debug = fn;
 });
-const { emitExperimentalWarning, kEmptyObject, setOwnProperty } = require('internal/util');
+const { emitExperimentalWarning, kEmptyObject, setOwnProperty, isWindows } = require('internal/util');
 const {
   ERR_UNKNOWN_BUILTIN_MODULE,
-  ERR_INVALID_RETURN_PROPERTY_VALUE,
 } = require('internal/errors').codes;
 const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
 const moduleWrap = internalBinding('module_wrap');
 const { ModuleWrap } = moduleWrap;
-const { emitWarningSync } = require('internal/process/warning');
 
 // Lazy-loading to avoid circular dependencies.
 let getSourceSync;
@@ -78,28 +68,11 @@ function getSource(url) {
 /** @type {import('deps/cjs-module-lexer/lexer.js').parse} */
 let cjsParse;
 /**
- * Initializes the CommonJS module lexer parser.
- * If WebAssembly is available, it uses the optimized version from the dist folder.
- * Otherwise, it falls back to the JavaScript version from the lexer folder.
+ * Initializes the CommonJS module lexer parser using the JavaScript version.
+ * TODO(joyeecheung): Use `require('internal/deps/cjs-module-lexer/dist/lexer').initSync()`
+ * when cjs-module-lexer 1.4.0 is rolled in.
  */
-async function initCJSParse() {
-  if (typeof WebAssembly === 'undefined') {
-    initCJSParseSync();
-  } else {
-    const { parse, init } =
-        require('internal/deps/cjs-module-lexer/dist/lexer');
-    try {
-      await init();
-      cjsParse = parse;
-    } catch {
-      initCJSParseSync();
-    }
-  }
-}
-
 function initCJSParseSync() {
-  // TODO(joyeecheung): implement a binding that directly compiles using
-  // v8::WasmModuleObject::Compile() synchronously.
   if (cjsParse === undefined) {
     cjsParse = require('internal/deps/cjs-module-lexer/lexer').parse;
   }
@@ -107,45 +80,6 @@ function initCJSParseSync() {
 
 const translators = new SafeMap();
 exports.translators = translators;
-exports.enrichCJSError = enrichCJSError;
-
-let DECODER = null;
-/**
- * Asserts that the given body is a buffer source (either a string, array buffer, or typed array).
- * Throws an error if the body is not a buffer source.
- * @param {string | ArrayBufferView | ArrayBuffer} body - The body to check.
- * @param {boolean} allowString - Whether or not to allow a string as a valid buffer source.
- * @param {string} hookName - The name of the hook being called.
- * @throws {ERR_INVALID_RETURN_PROPERTY_VALUE} If the body is not a buffer source.
- */
-function assertBufferSource(body, allowString, hookName) {
-  if (allowString && typeof body === 'string') {
-    return;
-  }
-  const { isArrayBufferView, isAnyArrayBuffer } = lazyTypes();
-  if (isArrayBufferView(body) || isAnyArrayBuffer(body)) {
-    return;
-  }
-  throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
-    `${allowString ? 'string, ' : ''}array buffer, or typed array`,
-    hookName,
-    'source',
-    body,
-  );
-}
-
-/**
- * Converts a buffer or buffer-like object to a string.
- * @param {string | ArrayBuffer | ArrayBufferView} body - The buffer or buffer-like object to convert to a string.
- * @returns {string} The resulting string.
- */
-function stringify(body) {
-  if (typeof body === 'string') { return body; }
-  assertBufferSource(body, false, 'load');
-  const { TextDecoder } = require('internal/encoding');
-  DECODER = DECODER === null ? new TextDecoder() : DECODER;
-  return DECODER.decode(body);
-}
 
 /**
  * Converts a URL to a file path if the URL protocol is 'file:'.
@@ -170,25 +104,6 @@ translators.set('module', function moduleStrategy(url, source, isMain) {
 });
 
 /**
- * Provide a more informative error for CommonJS imports.
- * @param {Error | any} err
- * @param {string} [content] Content of the file, if known.
- * @param {string} [filename] The filename of the erroring module.
- */
-function enrichCJSError(err, content, filename) {
-  if (err != null && ObjectGetPrototypeOf(err) === SyntaxErrorPrototype &&
-      containsModuleSyntax(content, filename)) {
-    // Emit the warning synchronously because we are in the middle of handling
-    // a SyntaxError that will throw and likely terminate the process before an
-    // asynchronous warning would be emitted.
-    emitWarningSync(
-      'To load an ES module, set "type": "module" in the package.json or use ' +
-      'the .mjs extension.',
-    );
-  }
-}
-
-/**
  * Loads a CommonJS module via the ESM Loader sync CommonJS translator.
  * This translator creates its own version of the `require` function passed into CommonJS modules.
  * Any monkey patches applied to the CommonJS Loader will not affect this module.
@@ -197,21 +112,16 @@ function enrichCJSError(err, content, filename) {
  * @param {string} source - The source code of the module.
  * @param {string} url - The URL of the module.
  * @param {string} filename - The filename of the module.
+ * @param {boolean} isMain - Whether the module is the entrypoint
  */
-function loadCJSModule(module, source, url, filename) {
-  let compileResult;
-  try {
-    compileResult = compileFunctionForCJSLoader(source, filename);
-  } catch (err) {
-    enrichCJSError(err, source, filename);
-    throw err;
-  }
-  // Cache the source map for the cjs module if present.
-  if (compileResult.sourceMapURL) {
-    maybeCacheSourceMap(url, source, null, false, undefined, compileResult.sourceMapURL);
-  }
+function loadCJSModule(module, source, url, filename, isMain) {
+  const compileResult = compileFunctionForCJSLoader(source, filename, false /* is_sea_main */, false);
 
-  const compiledWrapper = compileResult.function;
+  const { function: compiledWrapper, sourceMapURL } = compileResult;
+  // Cache the source map for the cjs module if present.
+  if (sourceMapURL) {
+    maybeCacheSourceMap(url, source, module, false, undefined, sourceMapURL);
+  }
 
   const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
   const __dirname = dirname(filename);
@@ -226,13 +136,13 @@ function loadCJSModule(module, source, url, filename) {
           importAttributes = { __proto__: null, type: 'json' };
           break;
         case '.node':
-          return CJSModule._load(specifier, module);
+          return wrapModuleLoad(specifier, module);
         default:
             // fall through
       }
       specifier = `${pathToFileURL(path)}`;
     }
-    const job = cascadedLoader.getModuleJobSync(specifier, url, importAttributes);
+    const job = cascadedLoader.getModuleJobForRequireInImportedCJS(specifier, url, importAttributes);
     job.runSync();
     return cjsCache.get(job.url).exports;
   };
@@ -283,7 +193,7 @@ function createCJSModuleWrap(url, source, isMain, loadCJS = loadCJSModule) {
     debug(`Loading CJSModule ${url}`);
 
     if (!module.loaded) {
-      loadCJS(module, source, url, filename);
+      loadCJS(module, source, url, filename, !!isMain);
     }
 
     let exports;
@@ -313,41 +223,44 @@ function createCJSModuleWrap(url, source, isMain, loadCJS = loadCJSModule) {
 
 translators.set('commonjs-sync', function requireCommonJS(url, source, isMain) {
   initCJSParseSync();
-  assert(!isMain);  // This is only used by imported CJS modules.
 
-  return createCJSModuleWrap(url, source, isMain, (module, source, url, filename) => {
+  return createCJSModuleWrap(url, source, isMain, (module, source, url, filename, isMain) => {
     assert(module === CJSModule._cache[filename]);
-    CJSModule._load(filename);
+    wrapModuleLoad(filename, null, isMain);
   });
 });
 
 // Handle CommonJS modules referenced by `require` calls.
 // This translator function must be sync, as `require` is sync.
 translators.set('require-commonjs', (url, source, isMain) => {
+  initCJSParseSync();
   assert(cjsParse);
 
   return createCJSModuleWrap(url, source);
 });
 
+// Handle CommonJS modules referenced by `require` calls.
+// This translator function must be sync, as `require` is sync.
+translators.set('require-commonjs-typescript', (url, source, isMain) => {
+  emitExperimentalWarning('Type Stripping');
+  assert(cjsParse);
+  const code = stripTypeScriptTypes(stringify(source), url);
+  return createCJSModuleWrap(url, code);
+});
+
 // Handle CommonJS modules referenced by `import` statements or expressions,
 // or as the initial entry point when the ESM loader handles a CommonJS entry.
-translators.set('commonjs', async function commonjsStrategy(url, source,
-                                                            isMain) {
+translators.set('commonjs', function commonjsStrategy(url, source, isMain) {
   if (!cjsParse) {
-    await initCJSParse();
+    initCJSParseSync();
   }
 
   // For backward-compatibility, it's possible to return a nullish value for
   // CJS source associated with a file: URL. In this case, the source is
   // obtained by calling the monkey-patchable CJS loader.
-  const cjsLoader = source == null ? (module, source, url, filename) => {
-    try {
-      assert(module === CJSModule._cache[filename]);
-      CJSModule._load(filename);
-    } catch (err) {
-      enrichCJSError(err, source, filename);
-      throw err;
-    }
+  const cjsLoader = source == null ? (module, source, url, filename, isMain) => {
+    assert(module === CJSModule._cache[filename]);
+    wrapModuleLoad(filename, undefined, isMain);
   } : loadCJSModule;
 
   try {
@@ -357,7 +270,6 @@ translators.set('commonjs', async function commonjsStrategy(url, source,
     // Continue regardless of error.
   }
   return createCJSModuleWrap(url, source, isMain, cjsLoader);
-
 });
 
 /**
@@ -448,7 +360,6 @@ translators.set('builtin', function builtinStrategy(url) {
 });
 
 // Strategy for loading a JSON file
-const isWindows = process.platform === 'win32';
 translators.set('json', function jsonStrategy(url, source) {
   emitExperimentalWarning('Importing JSON modules');
   assertBufferSource(source, true, 'load');
@@ -464,7 +375,7 @@ translators.set('json', function jsonStrategy(url, source) {
     modulePath = isWindows ?
       StringPrototypeReplaceAll(pathname, '/', '\\') : pathname;
     module = CJSModule._cache[modulePath];
-    if (module && module.loaded) {
+    if (module?.loaded) {
       const exports = module.exports;
       return new ModuleWrap(url, undefined, ['default'], function() {
         this.setExport('default', exports);
@@ -478,7 +389,7 @@ translators.set('json', function jsonStrategy(url, source) {
     // export, we have to check again if the module already exists or not.
     // TODO: remove CJS loader from here as well.
     module = CJSModule._cache[modulePath];
-    if (module && module.loaded) {
+    if (module?.loaded) {
       const exports = module.exports;
       return new ModuleWrap(url, undefined, ['default'], function() {
         this.setExport('default', exports);
@@ -519,8 +430,9 @@ translators.set('wasm', async function(url, source) {
 
   let compiled;
   try {
-    // TODO(joyeecheung): implement a binding that directly compiles using
-    // v8::WasmModuleObject::Compile() synchronously.
+    // TODO(joyeecheung): implement a translator that just uses
+    // compiled = new WebAssembly.Module(source) to compile it
+    // synchronously.
     compiled = await WebAssembly.compile(source);
   } catch (err) {
     err.message = errPath(url) + ': ' + err.message;
@@ -542,4 +454,22 @@ translators.set('wasm', async function(url, source) {
       reflect.exports[expt].set(exports[expt]);
     }
   }).module;
+});
+
+// Strategy for loading a commonjs TypeScript module
+translators.set('commonjs-typescript', function(url, source) {
+  emitExperimentalWarning('Type Stripping');
+  assertBufferSource(source, true, 'load');
+  const code = stripTypeScriptTypes(stringify(source), url);
+  debug(`Translating TypeScript ${url}`);
+  return FunctionPrototypeCall(translators.get('commonjs'), this, url, code, false);
+});
+
+// Strategy for loading an esm TypeScript module
+translators.set('module-typescript', function(url, source) {
+  emitExperimentalWarning('Type Stripping');
+  assertBufferSource(source, true, 'load');
+  const code = stripTypeScriptTypes(stringify(source), url);
+  debug(`Translating TypeScript ${url}`);
+  return FunctionPrototypeCall(translators.get('module'), this, url, code, false);
 });

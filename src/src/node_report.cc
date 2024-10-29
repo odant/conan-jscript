@@ -18,7 +18,6 @@
 #include <dlfcn.h>
 #endif
 
-#include <iostream>
 #include <cstring>
 #include <ctime>
 #include <cwctype>
@@ -888,9 +887,7 @@ std::string TriggerNodeReport(Isolate* isolate,
     }
     // Regular file. Append filename to directory path if one was specified
     if (report_directory.length() > 0) {
-      std::string pathname = report_directory;
-      pathname += kPathSeparator;
-      pathname += filename;
+      std::string pathname = report_directory + kPathSeparator + filename;
       outfile.open(pathname, std::ios::out | std::ios::binary);
     } else {
       outfile.open(filename, std::ios::out | std::ios::binary);

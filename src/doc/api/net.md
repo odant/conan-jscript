@@ -14,7 +14,11 @@ TCP or [IPC][] servers ([`net.createServer()`][]) and clients
 
 It can be accessed using:
 
-```js
+```mjs
+import net from 'node:net';
+```
+
+```cjs
 const net = require('node:net');
 ```
 
@@ -371,7 +375,9 @@ was not open when it was closed.
 ### `server[Symbol.asyncDispose]()`
 
 <!-- YAML
-added: v20.5.0
+added:
+ - v20.5.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -588,6 +594,11 @@ added: v5.7.0
 
 <!-- YAML
 added: v0.2.0
+changes:
+  - version: v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/48276
+    description: Setting `maxConnections` to `0` drops all the incoming
+                 connections. Previously, it was interpreted as `Infinity`.
 -->
 
 * {integer}
@@ -651,6 +662,9 @@ changes:
   - version: v15.14.0
     pr-url: https://github.com/nodejs/node/pull/37735
     description: AbortSignal support was added.
+  - version: v12.10.0
+    pr-url: https://github.com/nodejs/node/pull/25436
+    description: Added `onread` option.
 -->
 
 * `options` {Object} Available options are:
@@ -709,7 +723,9 @@ See [`net.createConnection()`][].
 ### Event: `'connectionAttempt'`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
 -->
 
 * `ip` {string} The IP which the socket is attempting to connect to.
@@ -722,7 +738,9 @@ if the family autoselection algorithm is enabled in [`socket.connect(options)`][
 ### Event: `'connectionAttemptFailed'`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
 -->
 
 * `ip` {string} The IP which the socket attempted to connect to.
@@ -736,7 +754,9 @@ if the family autoselection algorithm is enabled in [`socket.connect(options)`][
 ### Event: `'connectionAttemptTimeout'`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
 -->
 
 * `ip` {string} The IP which the socket attempted to connect to.
@@ -860,7 +880,9 @@ socket as reported by the operating system:
 ### `socket.autoSelectFamilyAttemptedAddresses`
 
 <!-- YAML
-added: v19.4.0
+added:
+ - v19.4.0
+ - v18.18.0
 -->
 
 * {string\[]}
@@ -947,7 +969,9 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v20.0.0
+  - version:
+      - v20.0.0
+      - v18.18.0
     pr-url: https://github.com/nodejs/node/pull/46790
     description: The default value for the autoSelectFamily option is now true.
                  The `--enable-network-family-autoselection` CLI flag has been renamed
@@ -969,9 +993,6 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/41310
     description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
                  options are supported now.
-  - version: v12.10.0
-    pr-url: https://github.com/nodejs/node/pull/25436
-    description: Added `onread` option.
   - version: v6.0.0
     pr-url: https://github.com/nodejs/node/pull/6021
     description: The `hints` option defaults to `0` in all cases now.
@@ -1514,7 +1535,23 @@ Additional options:
 Following is an example of a client of the echo server described
 in the [`net.createServer()`][] section:
 
-```js
+```mjs
+import net from 'node:net';
+const client = net.createConnection({ port: 8124 }, () => {
+  // 'connect' listener.
+  console.log('connected to server!');
+  client.write('world!\r\n');
+});
+client.on('data', (data) => {
+  console.log(data.toString());
+  client.end();
+});
+client.on('end', () => {
+  console.log('disconnected from server');
+});
+```
+
+```cjs
 const net = require('node:net');
 const client = net.createConnection({ port: 8124 }, () => {
   // 'connect' listener.
@@ -1541,10 +1578,26 @@ option. In this case, the `onread` option will be only used to call
 `new net.Socket([options])` and the `port` option will be used to
 call `socket.connect(options[, connectListener])`.
 
-```js
+```mjs
+import net from 'node:net';
+import { Buffer } from 'node:buffer';
+net.createConnection({
+  port: 8124,
+  onread: {
+    // Reuses a 4KiB Buffer for every read from the socket.
+    buffer: Buffer.alloc(4 * 1024),
+    callback: function(nread, buf) {
+      // Received data is available in `buf` from 0 to `nread`.
+      console.log(buf.toString('utf8', 0, nread));
+    },
+  },
+});
+```
+
+```cjs
 const net = require('node:net');
 net.createConnection({
-  port: 80,
+  port: 8124,
   onread: {
     // Reuses a 4KiB Buffer for every read from the socket.
     buffer: Buffer.alloc(4 * 1024),
@@ -1607,7 +1660,9 @@ then returns the `net.Socket` that starts the connection.
 <!-- YAML
 added: v0.5.0
 changes:
-  - version: v20.1.0
+  - version:
+    - v20.1.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/47405
     description: The `highWaterMark` option is supported now.
   - version:
@@ -1665,7 +1720,26 @@ The server can be a TCP server or an [IPC][] server, depending on what it
 Here is an example of a TCP echo server which listens for connections
 on port 8124:
 
-```js
+```mjs
+import net from 'node:net';
+const server = net.createServer((c) => {
+  // 'connection' listener.
+  console.log('client connected');
+  c.on('end', () => {
+    console.log('client disconnected');
+  });
+  c.write('hello\r\n');
+  c.pipe(c);
+});
+server.on('error', (err) => {
+  throw err;
+});
+server.listen(8124, () => {
+  console.log('server bound');
+});
+```
+
+```cjs
 const net = require('node:net');
 const server = net.createServer((c) => {
   // 'connection' listener.
@@ -1724,12 +1798,16 @@ added: v19.4.0
 
 Sets the default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
 
-* `value` {boolean} The new default value. The initial default value is `false`.
+* `value` {boolean} The new default value.
+  The initial default value is `true`, unless the command line option
+  `--no-network-family-autoselection` is provided.
 
 ## `net.getDefaultAutoSelectFamilyAttemptTimeout()`
 
 <!-- YAML
-added: v19.8.0
+added:
+ - v19.8.0
+ - v18.18.0
 -->
 
 Gets the current default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
@@ -1741,7 +1819,9 @@ option `--network-family-autoselection-attempt-timeout`.
 ## `net.setDefaultAutoSelectFamilyAttemptTimeout(value)`
 
 <!-- YAML
-added: v19.8.0
+added:
+ - v19.8.0
+ - v18.18.0
 -->
 
 Sets the default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].

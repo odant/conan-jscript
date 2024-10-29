@@ -13,12 +13,9 @@ const {
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
-  SafeMap,
   String,
   StringPrototypeStartsWith,
   Symbol,
-  SymbolAsyncDispose,
-  SymbolDispose,
   globalThis,
 } = primordials;
 
@@ -34,11 +31,13 @@ const {
   defineReplaceableLazyAttribute,
   setupCoverageHooks,
   emitExperimentalWarning,
+  SymbolAsyncDispose,
+  SymbolDispose,
+  deprecate,
 } = require('internal/util');
 
 const {
   ERR_INVALID_THIS,
-  ERR_MANIFEST_ASSERT_INTEGRITY,
   ERR_NO_CRYPTO,
   ERR_MISSING_OPTION,
   ERR_ACCESS_DENIED,
@@ -49,6 +48,7 @@ const {
     addSerializeCallback,
     isBuildingSnapshot,
   },
+  runDeserializeCallbacks,
 } = require('internal/v8/startup_snapshot');
 
 function prepareMainThreadExecution(expandArgv1 = false, initializeModules = true) {
@@ -62,7 +62,7 @@ function prepareMainThreadExecution(expandArgv1 = false, initializeModules = tru
 function prepareWorkerThreadExecution() {
   prepareExecution({
     expandArgv1: false,
-    initializeModules: false,  // Will need to initialize it after policy setup
+    initializeModules: false,
     isMainThread: false,
   });
 }
@@ -106,9 +106,12 @@ function prepareExecution(options) {
   setupTraceCategoryState();
   setupInspectorHooks();
   setupNetworkInspection();
+  setupNavigator();
   setupWarningHandler();
   setupUndici();
   setupWebCrypto();
+  setupSQLite();
+  setupWebStorage();
   setupCustomEvent();
   setupEventsource();
   setupCodeCoverage();
@@ -129,11 +132,6 @@ function prepareExecution(options) {
   if (isMainThread) {
     assert(internalBinding('worker').isMainThread);
     // Worker threads will get the manifest in the message handler.
-    const policy = readPolicyFromDisk();
-    if (policy) {
-      require('internal/process/policy')
-        .setup(policy.manifestSrc, policy.manifestURL);
-    }
 
     // Print stack trace on `SIGINT` if option `--trace-sigint` presents.
     setupStacktracePrinterOnSigint();
@@ -151,7 +149,7 @@ function prepareExecution(options) {
     initializeClusterIPC();
 
     // TODO(joyeecheung): do this for worker threads as well.
-    require('internal/v8/startup_snapshot').runDeserializeCallbacks();
+    runDeserializeCallbacks();
   } else {
     assert(!internalBinding('worker').isMainThread);
     // The setup should be called in LOAD_SCRIPT message handler.
@@ -325,8 +323,8 @@ function setupUndici() {
     delete globalThis.Response;
   }
 
-  if (!getEmbedderOptions().noBrowserGlobals && getOptionValue('--experimental-websocket')) {
-    exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['WebSocket']);
+  if (getOptionValue('--no-experimental-websocket')) {
+    delete globalThis.WebSocket;
   }
 }
 
@@ -335,6 +333,19 @@ function setupEventsource() {
   if (!getOptionValue('--experimental-eventsource')) {
     delete globalThis.EventSource;
   }
+}
+
+// TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
+//               removed.
+function setupNavigator() {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      getOptionValue('--no-experimental-global-navigator')) {
+    return;
+  }
+
+  // https://html.spec.whatwg.org/multipage/system-state.html#the-navigator-object
+  exposeLazyInterfaces(globalThis, 'internal/navigator', ['Navigator']);
+  defineReplaceableLazyAttribute(globalThis, 'internal/navigator', ['navigator'], false);
 }
 
 // TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
@@ -370,6 +381,28 @@ function setupWebCrypto() {
                          }, 'crypto') });
 
   }
+}
+
+function setupSQLite() {
+  if (!getOptionValue('--experimental-sqlite')) {
+    return;
+  }
+
+  const { BuiltinModule } = require('internal/bootstrap/realm');
+  BuiltinModule.allowRequireByUsers('sqlite');
+}
+
+function setupWebStorage() {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      !getOptionValue('--experimental-webstorage')) {
+    return;
+  }
+
+  // https://html.spec.whatwg.org/multipage/webstorage.html#webstorage
+  exposeLazyInterfaces(globalThis, 'internal/webstorage', ['Storage']);
+  defineReplaceableLazyAttribute(globalThis, 'internal/webstorage', [
+    'localStorage', 'sessionStorage',
+  ]);
 }
 
 function setupCodeCoverage() {
@@ -493,7 +526,6 @@ function setupNetworkInspection() {
 // this is used to deprecate APIs implemented in C++ where the deprecation
 // utilities are not easily accessible.
 function initializeDeprecations() {
-  const { deprecate } = require('internal/util');
   const pendingDeprecation = getOptionValue('--pending-deprecation');
 
   // DEP0103: access to `process.binding('util').isX` type checkers
@@ -555,8 +587,6 @@ function initializeDeprecations() {
 
 function setupChildProcessIpcChannel() {
   if (process.env.NODE_CHANNEL_FD) {
-    const assert = require('internal/assert');
-
     const fd = NumberParseInt(process.env.NODE_CHANNEL_FD, 10);
     assert(fd >= 0);
 
@@ -644,56 +674,6 @@ function initializePermission() {
         throw new ERR_MISSING_OPTION('--experimental-permission');
       }
     });
-  }
-}
-
-function readPolicyFromDisk() {
-  const experimentalPolicy = getOptionValue('--experimental-policy');
-  if (experimentalPolicy) {
-    process.emitWarning('Policies are experimental.',
-                        'ExperimentalWarning');
-    const { pathToFileURL, URL } = require('internal/url');
-    // URL here as it is slightly different parsing
-    // no bare specifiers for now
-    let manifestURL;
-    if (require('path').isAbsolute(experimentalPolicy)) {
-      manifestURL = pathToFileURL(experimentalPolicy);
-    } else {
-      const cwdURL = pathToFileURL(process.cwd());
-      cwdURL.pathname += '/';
-      manifestURL = new URL(experimentalPolicy, cwdURL);
-    }
-    const fs = require('fs');
-    const src = fs.readFileSync(manifestURL, 'utf8');
-    const experimentalPolicyIntegrity = getOptionValue('--policy-integrity');
-    if (experimentalPolicyIntegrity) {
-      const SRI = require('internal/policy/sri');
-      const { createHash, timingSafeEqual } = require('crypto');
-      const realIntegrities = new SafeMap();
-      const integrityEntries = SRI.parse(experimentalPolicyIntegrity);
-      let foundMatch = false;
-      for (let i = 0; i < integrityEntries.length; i++) {
-        const {
-          algorithm,
-          value: expected,
-        } = integrityEntries[i];
-        const hash = createHash(algorithm);
-        hash.update(src);
-        const digest = hash.digest();
-        if (digest.length === expected.length &&
-          timingSafeEqual(digest, expected)) {
-          foundMatch = true;
-          break;
-        }
-        realIntegrities.set(algorithm, digest.toString('base64'));
-      }
-      if (!foundMatch) {
-        throw new ERR_MANIFEST_ASSERT_INTEGRITY(manifestURL, realIntegrities);
-      }
-    }
-    return {
-      manifestSrc: src, manifestURL: manifestURL.href,
-    };
   }
 }
 

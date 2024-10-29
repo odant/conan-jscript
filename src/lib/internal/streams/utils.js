@@ -1,10 +1,10 @@
 'use strict';
 
 const {
-  SymbolAsyncIterator,
-  SymbolIterator,
-  SymbolFor,
   Symbol,
+  SymbolAsyncIterator,
+  SymbolFor,
+  SymbolIterator,
 } = primordials;
 
 // We need to use SymbolFor to make these globally available
@@ -290,8 +290,7 @@ function willEmitClose(stream) {
   const state = wState || rState;
 
   return (!state && isServerResponse(stream)) || !!(
-    state &&
-    state.autoDestroy &&
+    state?.autoDestroy &&
     state.emitClose &&
     state.closed === false
   );

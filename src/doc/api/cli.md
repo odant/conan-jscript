@@ -106,7 +106,9 @@ If this flag is passed, the behavior can still be set to not abort through
 ### `--allow-addons`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
 -->
 
 > Stability: 1.1 - Active development
@@ -218,7 +220,7 @@ The initializer module also needs to be allowed. Consider the following example:
 ```console
 $ node --experimental-permission t.js
 node:internal/modules/cjs/loader:162
-  const result = internalModuleStat(filename);
+  const result = internalModuleStat(receiver, filename);
                  ^
 
 Error: Access to this API has been restricted
@@ -270,7 +272,7 @@ Relative paths are NOT supported through the CLI flag.
 ### `--allow-wasi`
 
 <!-- YAML
-added: v20.16.0
+added: v22.3.0
 -->
 
 > Stability: 1.1 - Active development
@@ -414,7 +416,9 @@ Currently the support for run-time snapshot is experimental in that:
 ### `--build-snapshot-config`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
 -->
 
 > Stability: 1 - Experimental
@@ -470,7 +474,7 @@ added:
   - v12.19.0
 changes:
   - version:
-    - v20.18.0
+    - v22.9.0
     pr-url: https://github.com/nodejs/node/pull/54209
     description: The flag is no longer experimental.
 -->
@@ -496,7 +500,7 @@ node -C development app.js
 added: v12.0.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--cpu-prof` flags are now stable.
 -->
@@ -524,7 +528,7 @@ CPU.20190409.202950.15293.0.0.cpuprofile
 added: v12.0.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--cpu-prof` flags are now stable.
 -->
@@ -543,7 +547,7 @@ The default value is controlled by the
 added: v12.2.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--cpu-prof` flags are now stable.
 -->
@@ -559,7 +563,7 @@ by `--cpu-prof`. The default is 1000 microseconds.
 added: v12.0.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--cpu-prof` flags are now stable.
 -->
@@ -584,7 +588,9 @@ Affects the default output directory of:
 > Stability: 1.1 - Active development
 
 <!-- YAML
-added: v20.11.0
+added:
+  - v21.3.0
+  - v20.11.0
 -->
 
 Disable specific process warnings by `code` or `type`.
@@ -633,7 +639,7 @@ vm.measureMemory();
 ### `--disable-wasm-trap-handler`
 
 <!-- YAML
-added: v20.15.0
+added: v22.2.0
 -->
 
 By default, Node.js enables trap-handler-based WebAssembly bound
@@ -694,7 +700,7 @@ code from strings throw an exception instead. This does not affect the Node.js
 ### `--expose-gc`
 
 <!-- YAML
-added: v20.18.0
+added: v22.3.0
 -->
 
 > Stability: 1 - Experimental. This flag is inherited from V8 and is subject to
@@ -715,7 +721,7 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` is supported now.
   - version: v17.0.0
@@ -741,6 +747,15 @@ added: v6.0.0
 
 Enable FIPS-compliant crypto at startup. (Requires Node.js to be built
 against FIPS-compatible OpenSSL.)
+
+### `--enable-network-family-autoselection`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+Enables the family autoselection algorithm unless connection options explicitly
+disables it.
 
 ### `--enable-source-maps`
 
@@ -780,6 +795,28 @@ when `Error.stack` is accessed. If you access `Error.stack` frequently
 in your application, take into account the performance implications
 of `--enable-source-maps`.
 
+### `--entry-url`
+
+<!-- YAML
+added:
+  - v22.10.0
+-->
+
+> Stability: 1 - Experimental
+
+When present, Node.js will interpret the entry point as a URL, rather than a
+path.
+
+Follows [ECMAScript module][] resolution rules.
+
+Any query parameter or hash in the URL will be accessible via [`import.meta.url`][].
+
+```bash
+node --entry-url 'file:///path/to/file.js?queryparams=work#and-hashes-too'
+node --entry-url --experimental-strip-types 'file.ts?query#hash'
+node --entry-url 'data:text/javascript,console.log("Hello")'
+```
+
 ### `--env-file=config`
 
 > Stability: 1.1 - Active development
@@ -787,7 +824,9 @@ of `--enable-source-maps`.
 <!-- YAML
 added: v20.6.0
 changes:
-  - version: v20.12.0
+  - version:
+    - v21.7.0
+    - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/51289
     description: Add support to multi-line values.
 -->
@@ -800,6 +839,8 @@ in the file, the value from the environment takes precedence.
 
 You can pass multiple `--env-file` arguments. Subsequent files override
 pre-existing variables defined in previous files.
+
+An error is thrown if the file does not exist.
 
 ```bash
 node --env-file=.env --env-file=.development.env index.js
@@ -840,11 +881,26 @@ Export keyword before a key is ignored:
 export USERNAME="nodejs" # will result in `nodejs` as the value.
 ```
 
+If you want to load environment variables from a file that may not exist, you
+can use the [`--env-file-if-exists`][] flag instead.
+
+### `--env-file-if-exists=config`
+
+<!-- YAML
+added: v22.9.0
+-->
+
+Behavior is the same as [`--env-file`][], but an error is not thrown if the file
+does not exist.
+
 ### `-e`, `--eval "script"`
 
 <!-- YAML
 added: v0.5.2
 changes:
+  - version: v22.6.0
+    pr-url: https://github.com/nodejs/node/pull/53725
+    description: Eval now supports experimental type-stripping.
   - version: v5.11.0
     pr-url: https://github.com/nodejs/node/pull/5348
     description: Built-in libraries are now available as predefined variables.
@@ -857,11 +913,31 @@ On Windows, using `cmd.exe` a single quote will not work correctly because it
 only recognizes double `"` for quoting. In Powershell or Git bash, both `'`
 and `"` are usable.
 
+It is possible to run code containing inline types by passing
+[`--experimental-strip-types`][].
+
+### `--experimental-async-context-frame`
+
+<!-- YAML
+added: v22.7.0
+-->
+
+> Stability: 1 - Experimental
+
+Enables the use of [`AsyncLocalStorage`][] backed by `AsyncContextFrame` rather
+than the default implementation which relies on async\_hooks. This new model is
+implemented very differently and so could have differences in how context data
+flows within the application. As such, it is presently recommended to be sure
+your application behaviour is unaffected by this change before using it in
+production.
+
 ### `--experimental-default-type=type`
 
 <!-- YAML
 added:
+  - v21.0.0
   - v20.10.0
+  - v18.19.0
 -->
 
 > Stability: 1.0 - Early development
@@ -887,42 +963,21 @@ files with no extension will be treated as WebAssembly if they begin with the
 WebAssembly magic number (`\0asm`); otherwise they will be treated as ES module
 JavaScript.
 
-### `--experimental-detect-module`
+### `--experimental-transform-types`
 
 <!-- YAML
-added:
-  - v20.10.0
+added: v22.7.0
 -->
 
-> Stability: 1.1 - Active development
+> Stability: 1.0 - Early development
 
-Node.js will inspect the source code of ambiguous input to determine whether it
-contains ES module syntax; if such syntax is detected, the input will be treated
-as an ES module.
-
-Ambiguous input is defined as:
-
-* Files with a `.js` extension or no extension; and either no controlling
-  `package.json` file or one that lacks a `type` field; and
-  `--experimental-default-type` is not specified.
-* String input (`--eval` or STDIN) when neither `--input-type` nor
-  `--experimental-default-type` are specified.
-
-ES module syntax is defined as syntax that would throw when evaluated as
-CommonJS. This includes the following:
-
-* `import` statements (but _not_ `import()` expressions, which are valid in
-  CommonJS).
-* `export` statements.
-* `import.meta` references.
-* `await` at the top level of a module.
-* Lexical redeclarations of the CommonJS wrapper variables (`require`, `module`,
-  `exports`, `__dirname`, `__filename`).
+Enables the transformation of TypeScript-only syntax into JavaScript code.
+Implies `--experimental-strip-types` and `--enable-source-maps`.
 
 ### `--experimental-eventsource`
 
 <!-- YAML
-added: v20.18.0
+added: v22.3.0
 -->
 
 Enable exposition of [EventSource Web API][] on the global scope.
@@ -934,7 +989,9 @@ added:
   - v13.9.0
   - v12.16.2
 changes:
-  - version: v20.6.0
+  - version:
+    - v20.6.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/49028
     description: synchronous import.meta.resolve made available by default, with
                  the flag retained for enabling the experimental second argument
@@ -964,23 +1021,11 @@ changes:
 Specify the `module` containing exported [module customization hooks][].
 `module` may be any string accepted as an [`import` specifier][].
 
-### `--experimental-network-imports`
-
-<!-- YAML
-added:
-  - v17.6.0
-  - v16.15.0
--->
-
-> Stability: 1 - Experimental
-
-Enable experimental support for the `https:` protocol in `import` specifiers.
-
 ### `--experimental-network-inspection`
 
 <!-- YAML
 added:
-  - v20.18.0
+  - v22.6.0
 -->
 
 > Stability: 1 - Experimental
@@ -1003,21 +1048,12 @@ following permissions are restricted:
 * Child Process - manageable through [`--allow-child-process`][] flag
 * Worker Threads - manageable through [`--allow-worker`][] flag
 * WASI - manageable through [`--allow-wasi`][] flag
-
-### `--experimental-policy`
-
-<!-- YAML
-added: v11.8.0
--->
-
-> Stability: 0 - Deprecated: Will be removed shortly.
-
-Use the specified file as a security policy.
+* Addons - manageable through [`--allow-addons`][] flag
 
 ### `--experimental-require-module`
 
 <!-- YAML
-added: v20.17.0
+added: v22.0.0
 -->
 
 > Stability: 1.1 - Active Development
@@ -1048,6 +1084,25 @@ added:
 
 Use this flag to enable [ShadowRealm][] support.
 
+### `--experimental-sqlite`
+
+<!-- YAML
+added: v22.5.0
+-->
+
+Enable the experimental [`node:sqlite`][] module.
+
+### `--experimental-strip-types`
+
+<!-- YAML
+added: v22.6.0
+-->
+
+> Stability: 1.0 - Early development
+
+Enable experimental type-stripping for TypeScript files.
+For more information, see the [TypeScript type-stripping][] documentation.
+
 ### `--experimental-test-coverage`
 
 <!-- YAML
@@ -1055,7 +1110,9 @@ added:
   - v19.7.0
   - v18.15.0
 changes:
-  - version: v20.1.0
+  - version:
+    - v20.1.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/47686
     description: This option can be used with `--test`.
 -->
@@ -1065,15 +1122,39 @@ generated as part of the test runner output. If no tests are run, a coverage
 report is not generated. See the documentation on
 [collecting code coverage from tests][] for more details.
 
+### `--experimental-test-isolation=mode`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.0 - Early development
+
+Configures the type of test isolation used in the test runner. When `mode` is
+`'process'`, each test file is run in a separate child process. When `mode` is
+`'none'`, all test files run in the same process as the test runner. The default
+isolation mode is `'process'`. This flag is ignored if the `--test` flag is not
+present. See the [test runner execution model][] section for more information.
+
 ### `--experimental-test-module-mocks`
 
 <!-- YAML
-added: v20.18.0
+added: v22.3.0
 -->
 
 > Stability: 1.0 - Early development
 
 Enable module mocking in the test runner.
+
+### `--experimental-test-snapshots`
+
+<!-- YAML
+added: v22.3.0
+-->
+
+> Stability: 1.0 - Early development
+
+Enable [snapshot testing][] in the test runner.
 
 ### `--experimental-vm-modules`
 
@@ -1090,7 +1171,9 @@ added:
   - v13.3.0
   - v12.16.0
 changes:
-  - version: v20.0.0
+  - version:
+    - v20.0.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/47286
     description: This option is no longer required as WASI is
                  enabled by default, but can still be passed.
@@ -1110,13 +1193,13 @@ added: v12.3.0
 
 Enable experimental WebAssembly module support.
 
-### `--experimental-websocket`
+### `--experimental-webstorage`
 
 <!-- YAML
-added: v20.10.0
+added: v22.4.0
 -->
 
-Enable experimental [`WebSocket`][] support.
+Enable experimental [`Web Storage`][] support.
 
 ### `--force-context-aware`
 
@@ -1172,7 +1255,7 @@ To allow polyfills to be added,
 added: v12.4.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--heap-prof` flags are now stable.
 -->
@@ -1200,7 +1283,7 @@ Heap.20190409.202950.15293.0.001.heapprofile
 added: v12.4.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--heap-prof` flags are now stable.
 -->
@@ -1219,7 +1302,7 @@ The default value is controlled by the
 added: v12.4.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--heap-prof` flags are now stable.
 -->
@@ -1235,7 +1318,7 @@ by `--heap-prof`. The default is 512 \* 1024 bytes.
 added: v12.4.0
 changes:
   - version:
-    - v20.16.0
+    - v22.4.0
     pr-url: https://github.com/nodejs/node/pull/53343
     description: The `--heap-prof` flags are now stable.
 -->
@@ -1333,7 +1416,9 @@ Specify ICU data load path. (Overrides `NODE_ICU_DATA`.)
 ### `--import=module`
 
 <!-- YAML
-added: v19.0.0
+added:
+ - v19.0.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -1345,6 +1430,9 @@ with the ones provided in [`NODE_OPTIONS`][].
 Follows [ECMAScript module][] resolution rules.
 Use [`--require`][] to load a [CommonJS module][].
 Modules preloaded with `--require` will run before modules preloaded with `--import`.
+
+Modules are preloaded into the main thread as well as any worker threads,
+forked processes, or clustered processes.
 
 ### `--input-type=type`
 
@@ -1369,10 +1457,23 @@ added:
  - v10.19.0
 -->
 
-Use an insecure HTTP parser that accepts invalid HTTP headers. This may allow
-interoperability with non-conformant HTTP implementations. It may also allow
-request smuggling and other HTTP attacks that rely on invalid headers being
-accepted. Avoid using this option.
+Enable leniency flags on the HTTP parser. This may allow
+interoperability with non-conformant HTTP implementations.
+
+When enabled, the parser will accept the following:
+
+* Invalid HTTP headers values.
+* Invalid HTTP versions.
+* Allow message containing both `Transfer-Encoding`
+  and `Content-Length` headers.
+* Allow extra data after message when `Connection: close` is present.
+* Allow extra transfer encodings after `chunked` has been provided.
+* Allow `\n` to be used as token separator instead of `\r\n`.
+* Allow `\r\n` not to be provided after a chunk.
+* Allow spaces to be present after a chunk size and before `\r\n`.
+
+All the above will expose your application to request smuggling
+or poisoning attack. Avoid using this option.
 
 ### `--inspect[=[host:]port]`
 
@@ -1445,7 +1546,7 @@ endpoint on `http://host:port/json/list`.
 ### `--inspect-wait[=[host:]port]`
 
 <!-- YAML
-added: v20.15.0
+added: v22.2.0
 -->
 
 Activate inspector on `host:port` and wait for debugger to be attached.
@@ -1475,6 +1576,17 @@ Disable [runtime allocation of executable memory][jitless]. This may be
 required on some platforms for security reasons. It can also reduce attack
 surface on other platforms, but the performance impact may be severe.
 
+### `--localstorage-file=file`
+
+<!-- YAML
+added: v22.4.0
+-->
+
+The file used to store `localStorage` data. If the file does not exist, it is
+created the first time `localStorage` is accessed. The same file may be shared
+between multiple Node.js processes concurrently. This flag is a no-op unless
+Node.js is started with the `--experimental-webstorage` flag.
+
 ### `--max-http-header-size=size`
 
 <!-- YAML
@@ -1500,7 +1612,7 @@ This option is a no-op. It is kept for compatibility.
 ### `--network-family-autoselection-attempt-timeout`
 
 <!-- YAML
-added: v20.13.0
+added: v22.1.0
 -->
 
 Sets the default value for the network family autoselection attempt timeout.
@@ -1532,7 +1644,22 @@ Silence deprecation warnings.
 added: v18.0.0
 -->
 
-Disable experimental support for the [Fetch API][].
+Disable exposition of [Fetch API][] on the global scope.
+
+### `--no-experimental-detect-module`
+
+<!-- YAML
+added:
+  - v21.1.0
+  - v20.10.0
+changes:
+  - version:
+    - v22.7.0
+    pr-url: https://github.com/nodejs/node/pull/53619
+    description: Syntax detection is enabled by default.
+-->
+
+Disable using [syntax detection][] to determine module type.
 
 ### `--no-experimental-global-customevent`
 
@@ -1541,6 +1668,16 @@ added: v19.0.0
 -->
 
 Disable exposition of [CustomEvent Web API][] on the global scope.
+
+### `--no-experimental-global-navigator`
+
+<!-- YAML
+added: v21.2.0
+-->
+
+> Stability: 1 - Experimental
+
+Disable exposition of [Navigator API][] on the global scope.
 
 ### `--no-experimental-global-webcrypto`
 
@@ -1557,6 +1694,14 @@ added: v16.6.0
 -->
 
 Use this flag to disable top-level await in REPL.
+
+### `--no-experimental-websocket`
+
+<!-- YAML
+added: v22.0.0
+-->
+
+Disable exposition of [`WebSocket`][] on the global scope.
 
 ### `--no-extra-info-on-fatal-exception`
 
@@ -1672,18 +1817,6 @@ unless either the `--pending-deprecation` command-line flag, or the
 are used to provide a kind of selective "early warning" mechanism that
 developers may leverage to detect deprecated API usage.
 
-### `--policy-integrity=sri`
-
-<!-- YAML
-added: v12.7.0
--->
-
-> Stability: 0 - Deprecated: Will be removed shortly.
-
-Instructs Node.js to error prior to running any code if the policy does not have
-the specified integrity. It expects a [Subresource Integrity][] string as a
-parameter.
-
 ### `--preserve-symlinks`
 
 <!-- YAML
@@ -1764,7 +1897,7 @@ Identical to `-e` but prints the result.
 ### `--experimental-print-required-tla`
 
 <!-- YAML
-added: v20.17.0
+added: v22.0.0
 -->
 
 This flag is only useful when `--experimental-require-module` is enabled.
@@ -1945,7 +2078,7 @@ native stack and other runtime environment data.
 ### `--report-exclude-network`
 
 <!-- YAML
-added: v20.13.0
+added: v22.0.0
 -->
 
 Exclude `header.networkInterfaces` from the diagnostic report. By default
@@ -1965,6 +2098,77 @@ rules. `module` may be either a path to a file, or a node module name.
 Only CommonJS modules are supported.
 Use [`--import`][] to preload an [ECMAScript module][].
 Modules preloaded with `--require` will run before modules preloaded with `--import`.
+
+Modules are preloaded into the main thread as well as any worker threads,
+forked processes, or clustered processes.
+
+### `--run`
+
+<!-- YAML
+added: v22.0.0
+changes:
+  - version: v22.3.0
+    pr-url: https://github.com/nodejs/node/pull/53032
+    description: NODE_RUN_SCRIPT_NAME environment variable is added.
+  - version: v22.3.0
+    pr-url: https://github.com/nodejs/node/pull/53058
+    description: NODE_RUN_PACKAGE_JSON_PATH environment variable is added.
+  - version: v22.3.0
+    pr-url: https://github.com/nodejs/node/pull/53154
+    description: Traverses up to the root directory and finds
+                 a `package.json` file to run the command from, and updates
+                 `PATH` environment variable accordingly.
+-->
+
+> Stability: 2 - Stable
+
+This runs a specified command from a package.json's `"scripts"` object.
+If a missing `"command"` is provided, it will list the available scripts.
+
+`--run` will traverse up to the root directory and finds a `package.json`
+file to run the command from.
+
+`--run` prepends `./node_modules/.bin` for each ancestor of
+the current directory, to the `PATH` in order to execute the binaries from
+different folders where multiple `node_modules` directories are present, if
+`ancestor-folder/node_modules/.bin` is a directory.
+
+`--run` executes the command in the directory containing the related `package.json`.
+
+For example, the following command will run the `test` script of
+the `package.json` in the current folder:
+
+```console
+$ node --run test
+```
+
+You can also pass arguments to the command. Any argument after `--` will
+be appended to the script:
+
+```console
+$ node --run test -- --verbose
+```
+
+#### Intentional limitations
+
+`node --run` is not meant to match the behaviors of `npm run` or of the `run`
+commands of other package managers. The Node.js implementation is intentionally
+more limited, in order to focus on top performance for the most common use
+cases.
+Some features of other `run` implementations that are intentionally excluded
+are:
+
+* Running `pre` or `post` scripts in addition to the specified script.
+* Defining package manager-specific environment variables.
+
+#### Environment variables
+
+The following environment variables are set when running a script with `--run`:
+
+* `NODE_RUN_SCRIPT_NAME`: The name of the script being run. For example, if
+  `--run` is used to run `test`, the value of this variable will be `test`.
+* `NODE_RUN_PACKAGE_JSON_PATH`: The path to the `package.json` that is being
+  processed.
 
 ### `--secure-heap=n`
 
@@ -2052,11 +2256,27 @@ for more details.
 ### `--test-concurrency`
 
 <!-- YAML
-added: v20.10.0
+added:
+  - v21.0.0
+  - v20.10.0
+  - v18.19.0
 -->
 
 The maximum number of test files that the test runner CLI will execute
-concurrently. The default value is `os.availableParallelism() - 1`.
+concurrently. If `--experimental-test-isolation` is set to `'none'`, this flag
+is ignored and concurrency is one. Otherwise, concurrency defaults to
+`os.availableParallelism() - 1`.
+
+### `--test-coverage-branches=threshold`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1 - Experimental
+
+Require a minimum percent of covered branches. If code coverage does not reach
+the threshold specified, the process will exit with code `1`.
 
 ### `--test-coverage-exclude`
 
@@ -2075,6 +2295,17 @@ This option may be specified multiple times to exclude multiple glob patterns.
 If both `--test-coverage-exclude` and `--test-coverage-include` are provided,
 files must meet **both** criteria to be included in the coverage report.
 
+### `--test-coverage-functions=threshold`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1 - Experimental
+
+Require a minimum percent of covered functions. If code coverage does not reach
+the threshold specified, the process will exit with code `1`.
+
 ### `--test-coverage-include`
 
 <!-- YAML
@@ -2092,10 +2323,21 @@ This option may be specified multiple times to include multiple glob patterns.
 If both `--test-coverage-exclude` and `--test-coverage-include` are provided,
 files must meet **both** criteria to be included in the coverage report.
 
+### `--test-coverage-lines=threshold`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1 - Experimental
+
+Require a minimum percent of covered lines. If code coverage does not reach
+the threshold specified, the process will exit with code `1`.
+
 ### `--test-force-exit`
 
 <!-- YAML
-added: v20.14.0
+added: v22.0.0
 -->
 
 Configures the test runner to exit the process once all known tests have
@@ -2115,6 +2357,9 @@ A regular expression that configures the test runner to only execute tests
 whose name matches the provided pattern. See the documentation on
 [filtering tests by name][] for more details.
 
+If both `--test-name-pattern` and `--test-skip-pattern` are supplied,
+tests must satisfy **both** requirements in order to be executed.
+
 ### `--test-only`
 
 <!-- YAML
@@ -2128,7 +2373,7 @@ changes:
 -->
 
 Configures the test runner to only execute top level tests that have the `only`
-option set.
+option set. This flag is not necessary when test isolation is disabled.
 
 ### `--test-reporter`
 
@@ -2163,7 +2408,9 @@ The destination for the corresponding test reporter. See the documentation on
 ### `--test-shard`
 
 <!-- YAML
-added: v20.5.0
+added:
+  - v20.5.0
+  - v18.19.0
 -->
 
 Test suite shard to execute in a format of `<index>/<total>`, where
@@ -2181,14 +2428,42 @@ node --test --test-shard=2/3
 node --test --test-shard=3/3
 ```
 
+### `--test-skip-pattern`
+
+<!-- YAML
+added:
+  - v22.1.0
+-->
+
+A regular expression that configures the test runner to skip tests
+whose name matches the provided pattern. See the documentation on
+[filtering tests by name][] for more details.
+
+If both `--test-name-pattern` and `--test-skip-pattern` are supplied,
+tests must satisfy **both** requirements in order to be executed.
+
 ### `--test-timeout`
 
 <!-- YAML
-added: v20.11.0
+added:
+  - v21.2.0
+  - v20.11.0
 -->
 
 A number of milliseconds the test execution will fail after. If unspecified,
 subtests inherit this value from their parent. The default value is `Infinity`.
+
+### `--test-update-snapshots`
+
+<!-- YAML
+added: v22.3.0
+-->
+
+> Stability: 1.0 - Early development
+
+Regenerates the snapshot files used by the test runner for [snapshot testing][].
+Node.js must be started with the `--experimental-test-snapshots` flag in order
+to use this functionality.
 
 ### `--throw-deprecation`
 
@@ -2533,7 +2808,7 @@ added:
   - v18.11.0
   - v16.19.0
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/52074
     description: Watch mode is now stable.
   - version:
@@ -2566,7 +2841,7 @@ added:
   - v18.11.0
   - v16.19.0
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/52074
     description: Watch mode is now stable.
 -->
@@ -2634,6 +2909,17 @@ Any other value will result in colorized output being disabled.
 [`NO_COLOR`][]  is an alias for `NODE_DISABLE_COLORS`. The value of the
 environment variable is arbitrary.
 
+### `NODE_COMPILE_CACHE=dir`
+
+<!-- YAML
+added: v22.1.0
+-->
+
+> Stability: 1.1 - Active Development
+
+Enable the [module compile cache][] for the Node.js instance. See the documentation of
+[module compile cache][] for details.
+
 ### `NODE_DEBUG=module[,…]`
 
 <!-- YAML
@@ -2653,6 +2939,17 @@ added: v0.3.0
 -->
 
 When set, colors will not be used in the REPL.
+
+### `NODE_DISABLE_COMPILE_CACHE=1`
+
+<!-- YAML
+added: v22.8.0
+-->
+
+> Stability: 1.1 - Active Development
+
+Disable the [module compile cache][] for the Node.js instance. See the documentation of
+[module compile cache][] for details.
 
 ### `NODE_EXTRA_CA_CERTS=file`
 
@@ -2750,7 +3047,9 @@ one is included in the list below.
 * `--enable-fips`
 * `--enable-network-family-autoselection`
 * `--enable-source-maps`
+* `--entry-url`
 * `--experimental-abortcontroller`
+* `--experimental-async-context-frame`
 * `--experimental-default-type`
 * `--experimental-detect-module`
 * `--experimental-eventsource`
@@ -2758,18 +3057,19 @@ one is included in the list below.
 * `--experimental-json-modules`
 * `--experimental-loader`
 * `--experimental-modules`
-* `--experimental-network-imports`
 * `--experimental-permission`
-* `--experimental-policy`
 * `--experimental-print-required-tla`
 * `--experimental-require-module`
 * `--experimental-shadow-realm`
 * `--experimental-specifier-resolution`
+* `--experimental-sqlite`
+* `--experimental-strip-types`
 * `--experimental-top-level-await`
+* `--experimental-transform-types`
 * `--experimental-vm-modules`
 * `--experimental-wasi-unstable-preview1`
 * `--experimental-wasm-modules`
-* `--experimental-websocket`
+* `--experimental-webstorage`
 * `--force-context-aware`
 * `--force-fips`
 * `--force-node-api-uncaught-exceptions-policy`
@@ -2786,6 +3086,7 @@ one is included in the list below.
 * `--inspect-publish-uid`
 * `--inspect-wait`
 * `--inspect`
+* `--localstorage-file`
 * `--max-http-header-size`
 * `--napi-modules`
 * `--network-family-autoselection-attempt-timeout`
@@ -2793,8 +3094,10 @@ one is included in the list below.
 * `--no-deprecation`
 * `--no-experimental-fetch`
 * `--no-experimental-global-customevent`
+* `--no-experimental-global-navigator`
 * `--no-experimental-global-webcrypto`
 * `--no-experimental-repl-await`
+* `--no-experimental-websocket`
 * `--no-extra-info-on-fatal-exception`
 * `--no-force-async-hooks-checks`
 * `--no-global-search-paths`
@@ -2805,7 +3108,6 @@ one is included in the list below.
 * `--openssl-legacy-provider`
 * `--openssl-shared-config`
 * `--pending-deprecation`
-* `--policy-integrity`
 * `--preserve-symlinks-main`
 * `--preserve-symlinks`
 * `--prof-process`
@@ -2822,10 +3124,17 @@ one is included in the list below.
 * `--secure-heap-min`
 * `--secure-heap`
 * `--snapshot-blob`
+* `--test-coverage-branches`
+* `--test-coverage-exclude`
+* `--test-coverage-functions`
+* `--test-coverage-include`
+* `--test-coverage-lines`
+* `--test-name-pattern`
 * `--test-only`
 * `--test-reporter-destination`
 * `--test-reporter`
 * `--test-shard`
+* `--test-skip-pattern`
 * `--throw-deprecation`
 * `--title`
 * `--tls-cipher-list`
@@ -2949,7 +3258,7 @@ added:
  - v12.16.0
 changes:
   - version:
-     - v20.16.0
+     - v22.3.0
     pr-url: https://github.com/nodejs/node/pull/52905
     description:
       Remove the possibility to use this env var with
@@ -3291,6 +3600,7 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [Module customization hooks]: module.md#customization-hooks
 [Module customization hooks: enabling]: module.md#enabling
 [Modules loaders]: packages.md#modules-loaders
+[Navigator API]: globals.md#navigator
 [Node.js issue tracker]: https://github.com/nodejs/node/issues
 [OSSL_PROVIDER-legacy]: https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html
 [Permission Model]: permissions.md#permission-model
@@ -3298,11 +3608,12 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
 [ShadowRealm]: https://github.com/tc39/proposal-shadowrealm
 [Source Map]: https://sourcemaps.info/spec.html
-[Subresource Integrity]: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+[TypeScript type-stripping]: typescript.md#type-stripping
 [V8 Inspector integration for Node.js]: debugger.md#v8-inspector-integration-for-nodejs
 [V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
 [Web Crypto API]: webcrypto.md
 [`"type"`]: packages.md#type
+[`--allow-addons`]: #--allow-addons
 [`--allow-child-process`]: #--allow-child-process
 [`--allow-fs-read`]: #--allow-fs-read
 [`--allow-fs-write`]: #--allow-fs-write
@@ -3311,8 +3622,11 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`--build-snapshot`]: #--build-snapshot
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory
+[`--env-file-if-exists`]: #--env-file-if-existsconfig
+[`--env-file`]: #--env-fileconfig
 [`--experimental-default-type=module`]: #--experimental-default-typetype
 [`--experimental-sea-config`]: single-executable-applications.md#generating-single-executable-preparation-blobs
+[`--experimental-strip-types`]: #--experimental-strip-types
 [`--experimental-wasm-modules`]: #--experimental-wasm-modules
 [`--heap-prof-dir`]: #--heap-prof-dir
 [`--import`]: #--importmodule
@@ -3321,19 +3635,23 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`--print`]: #-p---print-script
 [`--redirect-warnings`]: #--redirect-warningsfile
 [`--require`]: #-r---require-module
+[`AsyncLocalStorage`]: async_context.md#class-asynclocalstorage
 [`Atomics.wait()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
 [`Buffer`]: buffer.md#class-buffer
 [`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man3.0/man3/CRYPTO_secure_malloc_init.html
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer
+[`Web Storage`]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
 [`WebSocket`]: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
 [`YoungGenerationSizeFromSemiSpaceSize`]: https://chromium.googlesource.com/v8/v8.git/+/refs/tags/10.3.129/src/heap/heap.cc#328
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`dns.setDefaultResultOrder()`]: dns.md#dnssetdefaultresultorderorder
 [`dnsPromises.lookup()`]: dns.md#dnspromiseslookuphostname-options
+[`import.meta.url`]: esm.md#importmetaurl
 [`import` specifier]: esm.md#import-specifiers
 [`net.getDefaultAutoSelectFamilyAttemptTimeout()`]: net.md#netgetdefaultautoselectfamilyattempttimeout
+[`node:sqlite`]: sqlite.md
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn
 [`process.setuid()`]: process.md#processsetuidid
 [`setuid(2)`]: https://man7.org/linux/man-pages/man2/setuid.2.html
@@ -3353,13 +3671,17 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [filtering tests by name]: test.md#filtering-tests-by-name
 [jitless]: https://v8.dev/blog/jitless
 [libuv threadpool documentation]: https://docs.libuv.org/en/latest/threadpool.html
+[module compile cache]: module.md#module-compile-cache
 [remote code execution]: https://www.owasp.org/index.php/Code_Injection
 [running tests from the command line]: test.md#running-tests-from-the-command-line
 [scavenge garbage collector]: https://v8.dev/blog/orinoco-parallel-scavenger
 [security warning]: #warning-binding-inspector-to-a-public-ipport-combination-is-insecure
 [semi-space]: https://www.memorymanagement.org/glossary/s.html#semi.space
 [single executable application]: single-executable-applications.md
+[snapshot testing]: test.md#snapshot-testing
+[syntax detection]: packages.md#syntax-detection
 [test reporters]: test.md#test-reporters
+[test runner execution model]: test.md#test-runner-execution-model
 [timezone IDs]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 [tracking issue for user-land snapshots]: https://github.com/nodejs/node/issues/44014
 [ways that `TZ` is handled in other environments]: https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html

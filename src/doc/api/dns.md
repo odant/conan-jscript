@@ -218,7 +218,7 @@ section if a custom port is used.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `verbatim` option is now deprecated in favor of the new `order` option.
   - version: v18.4.0
@@ -852,7 +852,7 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
   - version: v17.0.0
@@ -881,7 +881,7 @@ added:
   - v20.1.0
   - v18.17.0
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
 -->
@@ -1045,7 +1045,7 @@ section if a custom port is used.
 <!-- YAML
 added: v10.6.0
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `verbatim` option is now deprecated in favor of the new `order` option.
 -->
@@ -1486,7 +1486,7 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
-  - version: v20.13.0
+  - version: v22.1.0
     pr-url: https://github.com/nodejs/node/pull/52492
     description: The `ipv6first` value is supported now.
   - version: v17.0.0
@@ -1511,7 +1511,9 @@ default dns orders in workers.
 ### `dnsPromises.getDefaultResultOrder()`
 
 <!-- YAML
-added: v20.1.0
+added:
+  - v20.1.0
+  - v18.17.0
 -->
 
 Get the value of `dnsOrder`.

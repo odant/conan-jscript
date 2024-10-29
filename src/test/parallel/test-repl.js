@@ -220,7 +220,10 @@ const errorTests = [
   // should throw
   {
     send: 'JSON.parse(\'{invalid: \\\'json\\\'}\');',
-    expect: [/^Uncaught SyntaxError: /]
+    expect: [
+      'Uncaught:',
+      /^SyntaxError: /,
+    ],
   },
   // End of input to JSON.parse error is special case of syntax error,
   // should throw
@@ -231,7 +234,10 @@ const errorTests = [
   // should throw
   {
     send: 'JSON.parse(\'{\');',
-    expect: [/^Uncaught SyntaxError: /]
+    expect: [
+      'Uncaught:',
+      /^SyntaxError: /,
+    ],
   },
   // invalid RegExps are a special case of syntax error,
   // should throw
@@ -592,10 +598,12 @@ const errorTests = [
       /^Uncaught Error: Cannot find module 'internal\/repl'/,
       /^Require stack:/,
       /^- <repl>/,
-      /^ {4}at .*/,
-      /^ {4}at .*/,
-      /^ {4}at .*/,
-      /^ {4}at .*/,
+      /^ {4}at .*/, // at Module._resolveFilename
+      /^ {4}at .*/, // at Module._load
+      /^ {4}at .*/, // at TracingChannel.traceSync
+      /^ {4}at .*/, // at wrapModuleLoad
+      /^ {4}at .*/, // at Module.require
+      /^ {4}at .*/, // at require
       "  code: 'MODULE_NOT_FOUND',",
       "  requireStack: [ '<repl>' ]",
       '}',
@@ -785,7 +793,6 @@ const errorTests = [
       'Object [console] {',
       '  log: [Function: log],',
       '  warn: [Function: warn],',
-      '  error: [Function: error],',
       '  dir: [Function: dir],',
       '  time: [Function: time],',
       '  timeEnd: [Function: timeEnd],',
@@ -801,6 +808,7 @@ const errorTests = [
       / {2}debug: \[Function: (debug|log)],/,
       / {2}info: \[Function: (info|log)],/,
       / {2}dirxml: \[Function: (dirxml|log)],/,
+      / {2}error: \[Function: (error|warn)],/,
       / {2}groupCollapsed: \[Function: (groupCollapsed|group)],/,
       / {2}Console: \[Function: Console],?/,
       ...process.features.inspector ? [

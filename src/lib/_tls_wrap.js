@@ -58,23 +58,25 @@ const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 const { owner_symbol } = require('internal/async_hooks').symbols;
 const { isArrayBufferView } = require('internal/util/types');
 const { SecureContext: NativeSecureContext } = internalBinding('crypto');
-const { ConnResetException, codes } = require('internal/errors');
 const {
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_ARG_VALUE,
-  ERR_MULTIPLE_CALLBACK,
-  ERR_SOCKET_CLOSED,
-  ERR_TLS_ALPN_CALLBACK_INVALID_RESULT,
-  ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS,
-  ERR_TLS_DH_PARAM_SIZE,
-  ERR_TLS_HANDSHAKE_TIMEOUT,
-  ERR_TLS_INVALID_CONTEXT,
-  ERR_TLS_RENEGOTIATION_DISABLED,
-  ERR_TLS_REQUIRED_SERVER_NAME,
-  ERR_TLS_SESSION_ATTACK,
-  ERR_TLS_SNI_FROM_SERVER,
-  ERR_TLS_INVALID_STATE,
-} = codes;
+  ConnResetException,
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_MULTIPLE_CALLBACK,
+    ERR_SOCKET_CLOSED,
+    ERR_TLS_ALPN_CALLBACK_INVALID_RESULT,
+    ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS,
+    ERR_TLS_DH_PARAM_SIZE,
+    ERR_TLS_HANDSHAKE_TIMEOUT,
+    ERR_TLS_INVALID_CONTEXT,
+    ERR_TLS_INVALID_STATE,
+    ERR_TLS_RENEGOTIATION_DISABLED,
+    ERR_TLS_REQUIRED_SERVER_NAME,
+    ERR_TLS_SESSION_ATTACK,
+    ERR_TLS_SNI_FROM_SERVER,
+  },
+} = require('internal/errors');
 const { onpskexchange: kOnPskExchange } = internalBinding('symbols');
 const {
   getOptionValue,
@@ -487,7 +489,7 @@ function initRead(tlsSocket, socket) {
     return;
 
   // Socket already has some buffered data - emulate receiving it
-  if (socket && socket.readableLength) {
+  if (socket?.readableLength) {
     let buf;
     while ((buf = socket.read()) !== null)
       tlsSocket._handle.receive(buf);
@@ -1681,7 +1683,7 @@ function onConnectSecure() {
   if (!verifyError && !this.isSessionReused()) {
     const hostname = options.servername ||
                    options.host ||
-                   (options.socket && options.socket._host) ||
+                   (options.socket?._host) ||
                    'localhost';
     const cert = this.getPeerCertificate(true);
     verifyError = options.checkServerIdentity(hostname, cert);
@@ -1756,12 +1758,8 @@ exports.connect = function connect(...args) {
   if (!options.keepAlive)
     options.singleUse = true;
 
-  assert(typeof options.checkServerIdentity === 'function');
-  assert(typeof options.minDHSize === 'number',
-         'options.minDHSize is not a number: ' + options.minDHSize);
-  assert(options.minDHSize > 0,
-         'options.minDHSize is not a positive number: ' +
-         options.minDHSize);
+  validateFunction(options.checkServerIdentity, 'options.checkServerIdentity');
+  validateNumber(options.minDHSize, 'options.minDHSize', 1);
 
   const context = options.secureContext || tls.createSecureContext(options);
 

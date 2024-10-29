@@ -2,9 +2,9 @@
 
 const {
   ArrayIsArray,
+  ObjectFreeze,
   SafeSet,
   SafeWeakMap,
-  ObjectFreeze,
 } = primordials;
 
 const {
@@ -83,6 +83,9 @@ function initializeDefaultConditions() {
     ...userConditions,
   ]);
   defaultConditionsSet = new SafeSet(defaultConditions);
+  if (getOptionValue('--experimental-require-module')) {
+    defaultConditionsSet.add('module-sync');
+  }
 }
 
 /**
@@ -320,9 +323,7 @@ async function initializeHooks() {
     );
   }
 
-  const preloadScripts = hooks.initializeGlobalPreload();
-
-  return { __proto__: null, hooks, preloadScripts };
+  return hooks;
 }
 
 /**
@@ -343,7 +344,7 @@ function compileSourceTextModule(url, source, cascadedLoader) {
   }
   // Cache the source map for the module if present.
   if (wrap.sourceMapURL) {
-    maybeCacheSourceMap(url, source, null, false, undefined, wrap.sourceMapURL);
+    maybeCacheSourceMap(url, source, wrap, false, undefined, wrap.sourceMapURL);
   }
   return wrap;
 }

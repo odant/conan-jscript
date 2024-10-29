@@ -65,14 +65,16 @@ const {
   traceEnd,
   getNextTraceEventId,
 } = require('internal/http');
-const { ConnResetException, codes } = require('internal/errors');
 const {
-  ERR_HTTP_HEADERS_SENT,
-  ERR_INVALID_ARG_TYPE,
-  ERR_INVALID_HTTP_TOKEN,
-  ERR_INVALID_PROTOCOL,
-  ERR_UNESCAPED_CHARACTERS,
-} = codes;
+  ConnResetException,
+  codes: {
+    ERR_HTTP_HEADERS_SENT,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_HTTP_TOKEN,
+    ERR_INVALID_PROTOCOL,
+    ERR_UNESCAPED_CHARACTERS,
+  },
+} = require('internal/errors');
 const {
   validateInteger,
   validateBoolean,
@@ -172,7 +174,7 @@ function ClientRequest(input, options, cb) {
 
   const protocol = options.protocol || defaultAgent.protocol;
   let expectedProtocol = defaultAgent.protocol;
-  if (this.agent && this.agent.protocol)
+  if (this.agent?.protocol)
     expectedProtocol = this.agent.protocol;
 
   if (options.path) {
@@ -188,7 +190,7 @@ function ClientRequest(input, options, cb) {
   }
 
   const defaultPort = options.defaultPort ||
-                    (this.agent && this.agent.defaultPort);
+                    (this.agent?.defaultPort);
 
   const optsWithoutSignal = { __proto__: null, ...options };
 
@@ -551,7 +553,7 @@ function socketOnData(d) {
     socket.destroy();
     req.socket._hadError = true;
     emitErrorEvent(req, ret);
-  } else if (parser.incoming && parser.incoming.upgrade) {
+  } else if (parser.incoming?.upgrade) {
     // Upgrade (if status code 101) or CONNECT
     const bytesParsed = ret;
     const res = parser.incoming;
@@ -589,7 +591,7 @@ function socketOnData(d) {
       // Requested Upgrade or used CONNECT method, but have no handler.
       socket.destroy();
     }
-  } else if (parser.incoming && parser.incoming.complete &&
+  } else if (parser.incoming?.complete &&
              // When the status code is informational (100, 102-199),
              // the server will send a final response after this client
              // sends a request body, so we must not free the parser.
@@ -836,7 +838,7 @@ function tickOnSocket(req, socket) {
 
   if (
     req.timeout !== undefined ||
-    (req.agent && req.agent.options && req.agent.options.timeout)
+    (req.agent?.options?.timeout)
   ) {
     listenSocketTimeout(req);
   }

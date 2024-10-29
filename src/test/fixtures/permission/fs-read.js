@@ -5,10 +5,11 @@ const common = require('../../common');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const blockedFile = process.env.BLOCKEDFILE;
 const bufferBlockedFile = Buffer.from(process.env.BLOCKEDFILE);
-const blockedFileURL = new URL('file://' + process.env.BLOCKEDFILE);
+const blockedFileURL = pathToFileURL(process.env.BLOCKEDFILE);
 const blockedFolder = process.env.BLOCKEDFOLDER;
 const allowedFolder = process.env.ALLOWEDFOLDER;
 const regularFile = __filename;
@@ -162,7 +163,6 @@ const regularFile = __filename;
   }, common.expectsError({
     code: 'ERR_ACCESS_DENIED',
     permission: 'FileSystemRead',
-    // cpSync calls lstatSync before reading blockedFile
     resource: path.toNamespacedPath(blockedFile),
   }));
   assert.throws(() => {
@@ -170,7 +170,6 @@ const regularFile = __filename;
   }, common.expectsError({
     code: 'ERR_ACCESS_DENIED',
     permission: 'FileSystemRead',
-    // cpSync calls lstatSync before reading blockedFile
     resource: path.toNamespacedPath(blockedFile),
   }));
   assert.throws(() => {

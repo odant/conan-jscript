@@ -21,11 +21,11 @@
 
 'use strict';
 
-const tls = require('tls');
-
 const {
   JSONParse,
 } = primordials;
+
+const tls = require('tls');
 
 const {
   codes: {

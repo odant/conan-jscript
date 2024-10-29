@@ -257,6 +257,11 @@ changes:
     - v18.14.0
     pr-url: https://github.com/nodejs/node/pull/46205
     description: Added support for `ReadableStream` and `WritableStream`.
+  - version:
+    - v19.1.0
+    - v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/44862
+    description: The `cleanup` option was added.
 -->
 
 * `stream` {Stream|ReadableStream|WritableStream} A readable and/or writable
@@ -265,7 +270,9 @@ changes:
   * `error` {boolean|undefined}
   * `readable` {boolean|undefined}
   * `writable` {boolean|undefined}
-  * `signal`: {AbortSignal|undefined}
+  * `signal` {AbortSignal|undefined}
+  * `cleanup` {boolean|undefined} If `true`, removes the listeners registered by
+    this function before the promise is fulfilled. **Default:** `false`.
 * Returns: {Promise} Fulfills when the stream is no
   longer readable or writable.
 
@@ -300,6 +307,17 @@ rs.resume(); // Drain the stream.
 ```
 
 The `finished` API also provides a [callback version][stream-finished].
+
+`stream.finished()` leaves dangling event listeners (in particular
+`'error'`, `'end'`, `'finish'` and `'close'`) after the returned promise is
+resolved or rejected. The reason for this is so that unexpected `'error'`
+events (due to incorrect stream implementations) do not cause unexpected
+crashes. If this is unwanted behavior then `options.cleanup` should be set to
+`true`:
+
+```js
+await finished(rs, { cleanup: true });
+```
 
 ### Object mode
 
@@ -743,7 +761,7 @@ console.log(myStream.destroyed); // true
 <!-- YAML
 added: v0.9.4
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51866
     description: The `chunk` argument can now be a `TypedArray` or `DataView` instance.
   - version: v15.0.0
@@ -958,7 +976,7 @@ Getter for the property `objectMode` of a given `Writable` stream.
 ##### `writable[Symbol.asyncDispose]()`
 
 <!-- YAML
-added: v20.16.0
+added: v22.4.0
 -->
 
 > Stability: 1 - Experimental
@@ -971,7 +989,7 @@ a promise that fulfills when the stream is finished.
 <!-- YAML
 added: v0.9.4
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51866
     description: The `chunk` argument can now be a `TypedArray` or `DataView` instance.
   - version: v8.0.0
@@ -1814,7 +1832,7 @@ setTimeout(() => {
 <!-- YAML
 added: v0.9.11
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51866
     description: The `chunk` argument can now be a `TypedArray` or `DataView` instance.
   - version: v8.0.0
@@ -1961,7 +1979,9 @@ has less then 64 KiB of data because no `highWaterMark` option is provided to
 ##### `readable[Symbol.asyncDispose]()`
 
 <!-- YAML
-added: v20.4.0
+added:
+ - v20.4.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -2067,7 +2087,9 @@ added:
   - v17.4.0
   - v16.14.0
 changes:
-  - version: v20.7.0
+  - version:
+    - v20.7.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/49249
     description: added `highWaterMark` in options.
 -->
@@ -2120,7 +2142,9 @@ added:
   - v17.4.0
   - v16.14.0
 changes:
-  - version: v20.7.0
+  - version:
+    - v20.7.0
+    - v18.19.0
     pr-url: https://github.com/nodejs/node/pull/49249
     description: added `highWaterMark` in options.
 -->
@@ -2524,37 +2548,6 @@ import { Readable } from 'node:stream';
 await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
 ```
 
-##### `readable.asIndexedPairs([options])`
-
-<!-- YAML
-added:
-  - v17.5.0
-  - v16.15.0
-changes:
-  - version: v20.3.0
-    pr-url: https://github.com/nodejs/node/pull/48102
-    description: Using the `asIndexedPairs` method emits a runtime warning that
-                  it will be removed in a future version.
--->
-
-> Stability: 1 - Experimental
-
-* `options` {Object}
-  * `signal` {AbortSignal} allows destroying the stream if the signal is
-    aborted.
-* Returns: {Readable} a stream of indexed pairs.
-
-This method returns a new stream with chunks of the underlying stream paired
-with a counter in the form `[index, chunk]`. The first index value is 0 and it
-increases by 1 for each chunk produced.
-
-```mjs
-import { Readable } from 'node:stream';
-
-const pairs = await Readable.from(['a', 'b', 'c']).asIndexedPairs().toArray();
-console.log(pairs); // [[0, 'a'], [1, 'b'], [2, 'c']]
-```
-
 ##### `readable.reduce(fn[, initial[, options]])`
 
 <!-- YAML
@@ -2706,7 +2699,7 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 #### `stream.duplexPair([options])`
 
 <!-- YAML
-added: v20.17.0
+added: v22.6.0
 -->
 
 * `options` {Object} A value to pass to both [`Duplex`][] constructors,
@@ -2769,8 +2762,6 @@ changes:
     underlying stream will _not_ be aborted if the signal is aborted. The
     callback will get called with an `AbortError`. All registered
     listeners added by this function will also be removed.
-  * `cleanup` {boolean} remove all registered stream listeners.
-    **Default:** `false`.
 * `callback` {Function} A callback function that takes an optional error
   argument.
 * Returns: {Function} A cleanup function which removes all registered
@@ -2823,7 +2814,9 @@ const cleanup = finished(rs, (err) => {
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v19.7.0
+  - version:
+    - v19.7.0
+    - v18.16.0
     pr-url: https://github.com/nodejs/node/pull/46307
     description: Added support for webstreams.
   - version: v18.0.0
@@ -2924,7 +2917,9 @@ const server = http.createServer((req, res) => {
 <!-- YAML
 added: v16.9.0
 changes:
-  - version: v20.10.0
+  - version:
+    - v21.1.0
+    - v20.10.0
     pr-url: https://github.com/nodejs/node/pull/50187
     description: Added support for stream class.
   - version:
@@ -3182,7 +3177,9 @@ added: v17.0.0
 <!-- YAML
 added: v16.8.0
 changes:
-  - version: v19.5.0
+  - version:
+    - v19.5.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/46190
     description: The `src` argument can now be a `ReadableStream` or
                  `WritableStream`.
@@ -3370,7 +3367,9 @@ readable.getReader().read().then((result) => {
 <!-- YAML
 added: v15.4.0
 changes:
-  - version: v19.7.0
+  - version:
+    - v19.7.0
+    - v18.16.0
     pr-url: https://github.com/nodejs/node/pull/46273
     description: Added support for `ReadableStream` and
                  `WritableStream`.
@@ -3457,7 +3456,9 @@ reader.read().then(({ value, done }) => {
 ### `stream.getDefaultHighWaterMark(objectMode)`
 
 <!-- YAML
-added: v19.9.0
+added:
+  - v19.9.0
+  - v18.17.0
 -->
 
 * `objectMode` {boolean}
@@ -3469,7 +3470,9 @@ Defaults to `65536` (64 KiB), or `16` for `objectMode`.
 ### `stream.setDefaultHighWaterMark(objectMode, value)`
 
 <!-- YAML
-added: v19.9.0
+added:
+  - v19.9.0
+  - v18.17.0
 -->
 
 * `objectMode` {boolean}
@@ -3570,6 +3573,9 @@ method.
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/52037
+    description: bump default highWaterMark.
   - version: v15.5.0
     pr-url: https://github.com/nodejs/node/pull/36431
     description: support passing in an AbortSignal.
@@ -3591,7 +3597,7 @@ changes:
 * `options` {Object}
   * `highWaterMark` {number} Buffer level when
     [`stream.write()`][stream-write] starts returning `false`. **Default:**
-    `16384` (16 KiB), or `16` for `objectMode` streams.
+    `65536` (64 KiB), or `16` for `objectMode` streams.
   * `decodeStrings` {boolean} Whether to encode `string`s passed to
     [`stream.write()`][stream-write] to `Buffer`s (with the encoding
     specified in the [`stream.write()`][stream-write] call) before passing
@@ -3947,6 +3953,9 @@ constructor and implement the [`readable._read()`][] method.
 
 <!-- YAML
 changes:
+  - version: v22.0.0
+    pr-url: https://github.com/nodejs/node/pull/52037
+    description: bump default highWaterMark.
   - version: v15.5.0
     pr-url: https://github.com/nodejs/node/pull/36431
     description: support passing in an AbortSignal.
@@ -3964,7 +3973,7 @@ changes:
 * `options` {Object}
   * `highWaterMark` {number} The maximum [number of bytes][hwm-gotcha] to store
     in the internal buffer before ceasing to read from the underlying resource.
-    **Default:** `16384` (16 KiB), or `16` for `objectMode` streams.
+    **Default:** `65536` (64 KiB), or `16` for `objectMode` streams.
   * `encoding` {string} If specified, then buffers will be decoded to
     strings using the specified encoding. **Default:** `null`.
   * `objectMode` {boolean} Whether this stream should behave
@@ -4153,7 +4162,7 @@ It can be overridden by child classes but it **must not** be called directly.
 
 <!-- YAML
 changes:
-  - version: v20.13.0
+  - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/51866
     description: The `chunk` argument can now be a `TypedArray` or `DataView` instance.
   - version: v8.0.0

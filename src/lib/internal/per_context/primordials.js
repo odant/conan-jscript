@@ -172,6 +172,7 @@ function copyPrototype(src, dest, prefix) {
 
 // Create copies of the namespace objects
 [
+  'Atomics',
   'JSON',
   'Math',
   'Proxy',
@@ -228,11 +229,6 @@ function copyPrototype(src, dest, prefix) {
   copyPrototype(original.prototype, primordials, `${name}Prototype`);
 });
 
-// Define Symbol.dispose and Symbol.asyncDispose
-// Until these are defined by the environment.
-// TODO(MoLow): Remove this polyfill once Symbol.dispose and Symbol.asyncDispose are available in V8.
-primordials.SymbolDispose ??= primordials.SymbolFor('nodejs.dispose');
-primordials.SymbolAsyncDispose ??= primordials.SymbolFor('nodejs.asyncDispose');
 
 // Create copies of intrinsic objects that require a valid `this` to call
 // static methods.
@@ -286,8 +282,8 @@ const {
   PromiseResolve,
   ReflectApply,
   ReflectConstruct,
-  ReflectSet,
   ReflectGet,
+  ReflectSet,
   RegExp,
   RegExpPrototype,
   RegExpPrototypeExec,

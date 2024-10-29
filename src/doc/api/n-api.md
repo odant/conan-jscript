@@ -794,7 +794,10 @@ handle and/or callback scope inside a `napi_callback` is not necessary.
 #### `node_api_basic_finalize`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.6.0
+  - v20.12.0
+  - v18.20.0
 -->
 
 > Stability: 1 - Experimental
@@ -2928,7 +2931,9 @@ The JavaScript `string` type is described in
 #### `node_api_create_external_string_latin1`
 
 <!-- YAML
-added: v20.4.0
+added:
+ - v20.4.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -3006,7 +3011,9 @@ The JavaScript `string` type is described in
 #### `node_api_create_external_string_utf16`
 
 <!-- YAML
-added: v20.4.0
+added:
+ - v20.4.0
+ - v18.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -3099,7 +3106,7 @@ creation methods.
 #### `node_api_create_property_key_latin1`
 
 <!-- YAML
-added: v20.18.0
+added: v22.9.0
 -->
 
 > Stability: 1 - Experimental
@@ -3132,7 +3139,9 @@ The JavaScript `string` type is described in
 #### `node_api_create_property_key_utf16`
 
 <!-- YAML
-added: v20.12.0
+added:
+  - v21.7.0
+  - v20.12.0
 -->
 
 > Stability: 1 - Experimental
@@ -3163,7 +3172,7 @@ The JavaScript `string` type is described in
 #### `node_api_create_property_key_utf8`
 
 <!-- YAML
-added: v20.18.0
+added: v22.9.0
 -->
 
 > Stability: 1 - Experimental
@@ -5622,7 +5631,10 @@ required in order to enable correct disposal of the reference.
 #### `node_api_post_finalizer`
 
 <!-- YAML
-added: v20.10.0
+added:
+  - v21.0.0
+  - v20.10.0
+  - v18.19.0
 -->
 
 > Stability: 1 - Experimental

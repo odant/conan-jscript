@@ -29,7 +29,6 @@ const {
   ObjectSetPrototypeOf,
   ReflectApply,
   Symbol,
-  SymbolAsyncDispose,
   SymbolFor,
 } = primordials;
 
@@ -68,20 +67,21 @@ const {
 const { IncomingMessage } = require('_http_incoming');
 const {
   ConnResetException,
-  codes,
+  codes: {
+    ERR_HTTP_HEADERS_SENT,
+    ERR_HTTP_INVALID_STATUS_CODE,
+    ERR_HTTP_REQUEST_TIMEOUT,
+    ERR_HTTP_SOCKET_ASSIGNED,
+    ERR_HTTP_SOCKET_ENCODING,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_CHAR,
+    ERR_OUT_OF_RANGE,
+  },
 } = require('internal/errors');
-const {
-  ERR_HTTP_REQUEST_TIMEOUT,
-  ERR_HTTP_HEADERS_SENT,
-  ERR_HTTP_INVALID_STATUS_CODE,
-  ERR_HTTP_SOCKET_ENCODING,
-  ERR_HTTP_SOCKET_ASSIGNED,
-  ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_CHAR,
-} = codes;
 const {
   kEmptyObject,
   promisify,
+  SymbolAsyncDispose,
 } = require('internal/util');
 const {
   validateInteger,
@@ -372,9 +372,18 @@ function writeHead(statusCode, reason, obj) {
         throw new ERR_INVALID_ARG_VALUE('headers', obj);
       }
 
+      // Headers in obj should override previous headers but still
+      // allow explicit duplicates. To do so, we first remove any
+      // existing conflicts, then use appendHeader.
+
       for (let n = 0; n < obj.length; n += 2) {
         k = obj[n + 0];
-        if (k) this.setHeader(k, obj[n + 1]);
+        this.removeHeader(k);
+      }
+
+      for (let n = 0; n < obj.length; n += 2) {
+        k = obj[n + 0];
+        if (k) this.appendHeader(k, obj[n + 1]);
       }
     } else if (obj) {
       const keys = ObjectKeys(obj);
@@ -457,7 +466,7 @@ function storeHTTPOptions(options) {
   }
 
   if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout > this.requestTimeout) {
-    throw new codes.ERR_OUT_OF_RANGE('headersTimeout', '<= requestTimeout', headersTimeout);
+    throw new ERR_OUT_OF_RANGE('headersTimeout', '<= requestTimeout', headersTimeout);
   }
 
   const keepAliveTimeout = options.keepAliveTimeout;
@@ -729,7 +738,7 @@ function connectionListenerInternal(server, socket) {
   socket.setEncoding = socketSetEncoding;
 
   // We only consume the socket if it has never been consumed before.
-  if (socket._handle && socket._handle.isStreamBase &&
+  if (socket._handle?.isStreamBase &&
       !socket._handle._consumed) {
     parser._consumed = true;
     socket._handle._consumed = true;
@@ -774,7 +783,7 @@ function socketOnDrain(socket, state) {
 }
 
 function socketOnTimeout() {
-  const req = this.parser && this.parser.incoming;
+  const req = this.parser?.incoming;
   const reqTimeout = req && !req.complete && req.emit('timeout', this);
   const res = this._httpMessage;
   const resTimeout = res && res.emit('timeout', this);
@@ -909,7 +918,7 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
     prepareError(ret, parser, d);
     debug('parse error', ret);
     socketOnError.call(socket, ret);
-  } else if (parser.incoming && parser.incoming.upgrade) {
+  } else if (parser.incoming?.upgrade) {
     // Upgrade or CONNECT
     const req = parser.incoming;
     debug('SERVER upgrade or connect', req.method);
@@ -954,7 +963,7 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
 
 function clearIncoming(req) {
   req = req || this;
-  const parser = req.socket && req.socket.parser;
+  const parser = req.socket?.parser;
   // Reset the .incoming property so that the request object can be gc'ed.
   if (parser && parser.incoming === req) {
     if (req.readableEnded) {
@@ -1171,7 +1180,7 @@ function onSocketResume() {
 }
 
 function onSocketPause() {
-  if (this._handle && this._handle.reading) {
+  if (this._handle?.reading) {
     this._handle.reading = false;
     this._handle.readStop();
   }

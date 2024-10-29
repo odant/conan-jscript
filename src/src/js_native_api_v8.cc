@@ -1161,7 +1161,8 @@ napi_status NAPI_CDECL napi_set_property(napi_env env,
 
   v8::Maybe<bool> set_maybe = obj->Set(context, k, val);
 
-  RETURN_STATUS_IF_FALSE(env, set_maybe.FromMaybe(false), napi_generic_failure);
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+      env, set_maybe.FromMaybe(false), napi_generic_failure);
   return GET_RETURN_STATUS(env);
 }
 
@@ -1181,7 +1182,7 @@ napi_status NAPI_CDECL napi_has_property(napi_env env,
   v8::Local<v8::Value> k = v8impl::V8LocalValueFromJsValue(key);
   v8::Maybe<bool> has_maybe = obj->Has(context, k);
 
-  CHECK_MAYBE_NOTHING(env, has_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, has_maybe, napi_generic_failure);
 
   *result = has_maybe.FromMaybe(false);
   return GET_RETURN_STATUS(env);
@@ -1203,7 +1204,7 @@ napi_status NAPI_CDECL napi_get_property(napi_env env,
 
   auto get_maybe = obj->Get(context, k);
 
-  CHECK_MAYBE_EMPTY(env, get_maybe, napi_generic_failure);
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, get_maybe, napi_generic_failure);
 
   v8::Local<v8::Value> val = get_maybe.ToLocalChecked();
   *result = v8impl::JsValueFromV8LocalValue(val);
@@ -1223,7 +1224,7 @@ napi_status NAPI_CDECL napi_delete_property(napi_env env,
 
   CHECK_TO_OBJECT(env, context, obj, object);
   v8::Maybe<bool> delete_maybe = obj->Delete(context, k);
-  CHECK_MAYBE_NOTHING(env, delete_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, delete_maybe, napi_generic_failure);
 
   if (result != nullptr) *result = delete_maybe.FromMaybe(false);
 
@@ -1245,7 +1246,7 @@ napi_status NAPI_CDECL napi_has_own_property(napi_env env,
   v8::Local<v8::Value> k = v8impl::V8LocalValueFromJsValue(key);
   RETURN_STATUS_IF_FALSE(env, k->IsName(), napi_name_expected);
   v8::Maybe<bool> has_maybe = obj->HasOwnProperty(context, k.As<v8::Name>());
-  CHECK_MAYBE_NOTHING(env, has_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, has_maybe, napi_generic_failure);
   *result = has_maybe.FromMaybe(false);
 
   return GET_RETURN_STATUS(env);
@@ -1270,7 +1271,8 @@ napi_status NAPI_CDECL napi_set_named_property(napi_env env,
 
   v8::Maybe<bool> set_maybe = obj->Set(context, key, val);
 
-  RETURN_STATUS_IF_FALSE(env, set_maybe.FromMaybe(false), napi_generic_failure);
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+      env, set_maybe.FromMaybe(false), napi_generic_failure);
   return GET_RETURN_STATUS(env);
 }
 
@@ -1291,7 +1293,7 @@ napi_status NAPI_CDECL napi_has_named_property(napi_env env,
 
   v8::Maybe<bool> has_maybe = obj->Has(context, key);
 
-  CHECK_MAYBE_NOTHING(env, has_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, has_maybe, napi_generic_failure);
 
   *result = has_maybe.FromMaybe(false);
   return GET_RETURN_STATUS(env);
@@ -1315,7 +1317,7 @@ napi_status NAPI_CDECL napi_get_named_property(napi_env env,
 
   auto get_maybe = obj->Get(context, key);
 
-  CHECK_MAYBE_EMPTY(env, get_maybe, napi_generic_failure);
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, get_maybe, napi_generic_failure);
 
   v8::Local<v8::Value> val = get_maybe.ToLocalChecked();
   *result = v8impl::JsValueFromV8LocalValue(val);
@@ -1337,7 +1339,8 @@ napi_status NAPI_CDECL napi_set_element(napi_env env,
   v8::Local<v8::Value> val = v8impl::V8LocalValueFromJsValue(value);
   auto set_maybe = obj->Set(context, index, val);
 
-  RETURN_STATUS_IF_FALSE(env, set_maybe.FromMaybe(false), napi_generic_failure);
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+      env, set_maybe.FromMaybe(false), napi_generic_failure);
 
   return GET_RETURN_STATUS(env);
 }
@@ -1356,7 +1359,7 @@ napi_status NAPI_CDECL napi_has_element(napi_env env,
 
   v8::Maybe<bool> has_maybe = obj->Has(context, index);
 
-  CHECK_MAYBE_NOTHING(env, has_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, has_maybe, napi_generic_failure);
 
   *result = has_maybe.FromMaybe(false);
   return GET_RETURN_STATUS(env);
@@ -1376,7 +1379,7 @@ napi_status NAPI_CDECL napi_get_element(napi_env env,
 
   auto get_maybe = obj->Get(context, index);
 
-  CHECK_MAYBE_EMPTY(env, get_maybe, napi_generic_failure);
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, get_maybe, napi_generic_failure);
 
   *result = v8impl::JsValueFromV8LocalValue(get_maybe.ToLocalChecked());
   return GET_RETURN_STATUS(env);
@@ -1393,7 +1396,7 @@ napi_status NAPI_CDECL napi_delete_element(napi_env env,
 
   CHECK_TO_OBJECT(env, context, obj, object);
   v8::Maybe<bool> delete_maybe = obj->Delete(context, index);
-  CHECK_MAYBE_NOTHING(env, delete_maybe, napi_generic_failure);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, delete_maybe, napi_generic_failure);
 
   if (result != nullptr) *result = delete_maybe.FromMaybe(false);
 
@@ -1441,9 +1444,8 @@ napi_define_properties(napi_env env,
       auto define_maybe =
           obj->DefineProperty(context, property_name, descriptor);
 
-      if (!define_maybe.FromMaybe(false)) {
-        return napi_set_last_error(env, napi_invalid_arg);
-      }
+      RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+          env, define_maybe.FromMaybe(false), napi_invalid_arg);
     } else if (p->method != nullptr) {
       v8::Local<v8::Function> method;
       STATUS_CALL(v8impl::FunctionCallbackWrapper::NewFunction(
@@ -1456,34 +1458,28 @@ napi_define_properties(napi_env env,
       auto define_maybe =
           obj->DefineProperty(context, property_name, descriptor);
 
-      if (!define_maybe.FromMaybe(false)) {
-        return napi_set_last_error(env, napi_generic_failure);
-      }
+      RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+          env, define_maybe.FromMaybe(false), napi_generic_failure);
     } else {
       v8::Local<v8::Value> value = v8impl::V8LocalValueFromJsValue(p->value);
-      bool defined_successfully = false;
+      v8::Maybe<bool> define_maybe = v8::Just(false);
 
       if ((p->attributes & napi_enumerable) &&
           (p->attributes & napi_writable) &&
           (p->attributes & napi_configurable)) {
         // Use a fast path for this type of data property.
-        auto define_maybe =
-            obj->CreateDataProperty(context, property_name, value);
-        defined_successfully = define_maybe.FromMaybe(false);
+        define_maybe = obj->CreateDataProperty(context, property_name, value);
       } else {
         v8::PropertyDescriptor descriptor(value,
                                           (p->attributes & napi_writable) != 0);
         descriptor.set_enumerable((p->attributes & napi_enumerable) != 0);
         descriptor.set_configurable((p->attributes & napi_configurable) != 0);
 
-        auto define_maybe =
-            obj->DefineProperty(context, property_name, descriptor);
-        defined_successfully = define_maybe.FromMaybe(false);
+        define_maybe = obj->DefineProperty(context, property_name, descriptor);
       }
 
-      if (!defined_successfully) {
-        return napi_set_last_error(env, napi_invalid_arg);
-      }
+      RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+          env, define_maybe.FromMaybe(false), napi_invalid_arg);
     }
   }
 
@@ -1580,6 +1576,7 @@ napi_status NAPI_CDECL napi_get_prototype(napi_env env,
   v8::Local<v8::Object> obj;
   CHECK_TO_OBJECT(env, context, obj, object);
 
+  // This doesn't invokes Proxy's [[GetPrototypeOf]] handler.
   v8::Local<v8::Value> val = obj->GetPrototype();
   *result = v8impl::JsValueFromV8LocalValue(val);
   return GET_RETURN_STATUS(env);
@@ -2132,15 +2129,11 @@ napi_status NAPI_CDECL napi_call_function(napi_env env,
       argc,
       reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
 
-  if (try_catch.HasCaught()) {
-    return napi_set_last_error(env, napi_pending_exception);
-  } else {
-    if (result != nullptr) {
-      CHECK_MAYBE_EMPTY(env, maybe, napi_generic_failure);
-      *result = v8impl::JsValueFromV8LocalValue(maybe.ToLocalChecked());
-    }
-    return napi_clear_last_error(env);
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, maybe, napi_generic_failure);
+  if (result != nullptr) {
+    *result = v8impl::JsValueFromV8LocalValue(maybe.ToLocalChecked());
   }
+  return napi_clear_last_error(env);
 }
 
 napi_status NAPI_CDECL napi_get_global(napi_env env, napi_value* result) {
@@ -3327,7 +3320,7 @@ napi_status NAPI_CDECL napi_get_version(node_api_basic_env env,
                                         uint32_t* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, result);
-  *result = NAPI_VERSION;
+  *result = NODE_API_SUPPORTED_VERSION_MAX;
   return napi_clear_last_error(env);
 }
 

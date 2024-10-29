@@ -36,7 +36,7 @@ const errorHandler = common.mustCall((err) => {
   if (common.hasOpenSSL(3, 2)) {
     expectedErrorCode = 'ERR_SSL_PACKET_LENGTH_TOO_LONG';
     expectedErrorReason = 'packet length too long';
-  }
+  };
 
   assert.strictEqual(err.code, expectedErrorCode);
   assert.strictEqual(err.library, 'SSL routines');

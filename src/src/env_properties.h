@@ -21,7 +21,11 @@
   V(arrow_message_private_symbol, "node:arrowMessage")                         \
   V(contextify_context_private_symbol, "node:contextify:context")              \
   V(decorated_private_symbol, "node:decorated")                                \
+  V(transfer_mode_private_symbol, "node:transfer_mode")                        \
   V(host_defined_option_symbol, "node:host_defined_option_symbol")             \
+  V(js_transferable_wrapper_private_symbol, "node:js_transferable_wrapper")    \
+  V(entry_point_module_private_symbol, "node:entry_point_module")              \
+  V(entry_point_promise_private_symbol, "node:entry_point_promise")            \
   V(module_source_private_symbol, "node:module_source")                        \
   V(module_export_names_private_symbol, "node:module_export_names")            \
   V(module_circular_visited_private_symbol, "node:module_circular_visited")    \
@@ -32,13 +36,14 @@
   V(untransferable_object_private_symbol, "node:untransferableObject")         \
   V(exit_info_private_symbol, "node:exit_info_private_symbol")                 \
   V(promise_trace_id, "node:promise_trace_id")                                 \
-  V(require_private_symbol, "node:require_private_symbol")
+  V(source_map_data_private_symbol, "node:source_map_data_private_symbol")
 
 // Symbols are per-isolate primitives but Environment proxies them
 // for the sake of convenience.
 #define PER_ISOLATE_SYMBOL_PROPERTIES(V)                                       \
   V(fs_use_promises_symbol, "fs_use_promises_symbol")                          \
   V(async_id_symbol, "async_id_symbol")                                        \
+  V(constructor_key_symbol, "constructor_key_symbol")                          \
   V(handle_onclose_symbol, "handle_onclose")                                   \
   V(no_message_symbol, "no_message_symbol")                                    \
   V(messaging_deserialize_symbol, "messaging_deserialize_symbol")              \
@@ -71,6 +76,7 @@
   V(args_string, "args")                                                       \
   V(asn1curve_string, "asn1Curve")                                             \
   V(async_ids_stack_string, "async_ids_stack")                                 \
+  V(attributes_string, "attributes")                                           \
   V(base_string, "base")                                                       \
   V(bits_string, "bits")                                                       \
   V(block_list_string, "blockList")                                            \
@@ -86,8 +92,13 @@
   V(change_string, "change")                                                   \
   V(channel_string, "channel")                                                 \
   V(chunks_sent_since_last_write_string, "chunksSentSinceLastWrite")           \
-  V(clone_unsupported_type_str, "Cannot transfer object of unsupported type.") \
+  V(clone_unsupported_type_str, "Cannot clone object of unsupported type.")    \
+  V(clone_transfer_needed_str,                                                 \
+    "Object that needs transfer was found in message but not listed in "       \
+    "transferList")                                                            \
+  V(clone_untransferable_str, "Found invalid value in transferList.")          \
   V(code_string, "code")                                                       \
+  V(column_string, "column")                                                   \
   V(commonjs_string, "commonjs")                                               \
   V(config_string, "config")                                                   \
   V(constants_string, "constants")                                             \
@@ -156,6 +167,7 @@
   V(fragment_string, "fragment")                                               \
   V(frames_received_string, "framesReceived")                                  \
   V(frames_sent_string, "framesSent")                                          \
+  V(function_name_string, "functionName")                                      \
   V(function_string, "function")                                               \
   V(get_string, "get")                                                         \
   V(get_data_clone_error_string, "_getDataCloneError")                         \
@@ -205,6 +217,7 @@
   V(kind_string, "kind")                                                       \
   V(length_string, "length")                                                   \
   V(library_string, "library")                                                 \
+  V(line_number_string, "lineNumber")                                          \
   V(loop_count, "loopCount")                                                   \
   V(mac_string, "mac")                                                         \
   V(max_buffer_string, "maxBuffer")                                            \
@@ -250,6 +263,7 @@
   V(openssl_error_stack, "opensslErrorStack")                                  \
   V(options_string, "options")                                                 \
   V(order_string, "order")                                                     \
+  V(original_string, "original")                                               \
   V(output_string, "output")                                                   \
   V(overlapped_string, "overlapped")                                           \
   V(parse_error_string, "Parse Error")                                         \
@@ -283,12 +297,18 @@
   V(regexp_string, "regexp")                                                   \
   V(rename_string, "rename")                                                   \
   V(replacement_string, "replacement")                                         \
+  V(required_module_facade_url_string,                                         \
+    "node:internal/require_module_default_facade")                             \
+  V(required_module_facade_source_string,                                      \
+    "export * from 'original'; export { default } from 'original'; export "    \
+    "const __esModule = true;")                                                \
   V(require_string, "require")                                                 \
   V(resource_string, "resource")                                               \
   V(retry_string, "retry")                                                     \
   V(salt_length_string, "saltLength")                                          \
   V(scheme_string, "scheme")                                                   \
   V(scopeid_string, "scopeid")                                                 \
+  V(script_name_string, "scriptName")                                          \
   V(serial_number_string, "serialNumber")                                      \
   V(serial_string, "serial")                                                   \
   V(servername_string, "servername")                                           \
@@ -303,6 +323,7 @@
   V(sni_context_string, "sni_context")                                         \
   V(source_string, "source")                                                   \
   V(source_map_url_string, "sourceMapURL")                                     \
+  V(specifier_string, "specifier")                                             \
   V(stack_string, "stack")                                                     \
   V(standard_name_string, "standardName")                                      \
   V(start_time_string, "startTime")                                            \
@@ -324,6 +345,8 @@
   V(time_to_first_header_string, "timeToFirstHeader")                          \
   V(tls_ticket_string, "tlsTicket")                                            \
   V(transfer_string, "transfer")                                               \
+  V(transfer_unsupported_type_str,                                             \
+    "Cannot transfer object of unsupported type.")                             \
   V(ttl_string, "ttl")                                                         \
   V(type_string, "type")                                                       \
   V(uid_string, "uid")                                                         \
@@ -375,8 +398,10 @@
   V(http2ping_constructor_template, v8::ObjectTemplate)                        \
   V(i18n_converter_template, v8::ObjectTemplate)                               \
   V(intervalhistogram_constructor_template, v8::FunctionTemplate)              \
+  V(js_transferable_constructor_template, v8::FunctionTemplate)                \
   V(libuv_stream_wrap_ctor_template, v8::FunctionTemplate)                     \
   V(message_port_constructor_template, v8::FunctionTemplate)                   \
+  V(module_wrap_constructor_template, v8::FunctionTemplate)                    \
   V(microtask_queue_ctor_template, v8::FunctionTemplate)                       \
   V(pipe_constructor_template, v8::FunctionTemplate)                           \
   V(promise_wrap_template, v8::ObjectTemplate)                                 \
@@ -385,6 +410,7 @@
   V(secure_context_constructor_template, v8::FunctionTemplate)                 \
   V(shutdown_wrap_template, v8::ObjectTemplate)                                \
   V(socketaddress_constructor_template, v8::FunctionTemplate)                  \
+  V(sqlite_statement_sync_constructor_template, v8::FunctionTemplate)          \
   V(streambaseentry_ctor_template, v8::FunctionTemplate)                       \
   V(streambaseoutputstream_constructor_template, v8::ObjectTemplate)           \
   V(streamentry_ctor_template, v8::FunctionTemplate)                           \

@@ -3,7 +3,9 @@
 const {
   ArrayBuffer,
   ArrayBufferPrototypeGetByteLength,
+  ArrayBufferPrototypeGetDetached,
   ArrayBufferPrototypeSlice,
+  ArrayBufferPrototypeTransfer,
   ArrayPrototypePush,
   ArrayPrototypeShift,
   DataView,
@@ -15,13 +17,11 @@ const {
   ObjectSetPrototypeOf,
   Promise,
   PromisePrototypeThen,
-  PromiseResolve,
   PromiseReject,
-  ReflectConstruct,
+  PromiseResolve,
   SafePromiseAll,
   Symbol,
   SymbolAsyncIterator,
-  SymbolDispose,
   SymbolToStringTag,
   TypedArrayPrototypeGetLength,
   Uint8Array,
@@ -31,8 +31,8 @@ const {
   AbortError,
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_STATE,
     ERR_INVALID_THIS,
     ERR_OUT_OF_RANGE,
@@ -51,10 +51,10 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
-  isArrayBufferDetached,
   kEmptyObject,
   kEnumerableProperty,
   SideEffectFreeRegExpPrototypeSymbolReplace,
+  SymbolDispose,
 } = require('internal/util');
 
 const {
@@ -73,7 +73,7 @@ const {
   kDeserialize,
   kTransfer,
   kTransferList,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const {
@@ -104,11 +104,9 @@ const {
   extractHighWaterMark,
   extractSizeAlgorithm,
   lazyTransfer,
-  isViewedArrayBufferDetached,
   isBrandCheck,
   resetQueue,
   setPromiseHandled,
-  transferArrayBuffer,
   nonOpCancel,
   nonOpPull,
   nonOpStart,
@@ -250,6 +248,7 @@ class ReadableStream {
    * @param {QueuingStrategy} [strategy]
    */
   constructor(source = kEmptyObject, strategy = kEmptyObject) {
+    markTransferMode(this, false, true);
     validateObject(source, 'source', kValidateObjectAllowObjects);
     validateObject(strategy, 'strategy', kValidateObjectAllowObjectsAndNull);
     this[kState] = createReadableStreamState();
@@ -283,9 +282,6 @@ class ReadableStream {
         extractHighWaterMark(highWaterMark, 1),
         extractSizeAlgorithm(size));
     }
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   get [kIsDisturbed]() {
@@ -642,15 +638,26 @@ ObjectDefineProperties(ReadableStream, {
   from: kEnumerableProperty,
 });
 
-function TransferredReadableStream() {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kType] = 'ReadableStream';
-      this[kState] = createReadableStreamState();
-      this[kIsClosedPromise] = createDeferredPromise();
-    },
-    [], ReadableStream));
+function InternalTransferredReadableStream() {
+  ObjectSetPrototypeOf(this, ReadableStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'ReadableStream';
+  this[kState] = createReadableStreamState();
+
+  this[kIsClosedPromise] = createDeferredPromise();
 }
+
+ObjectSetPrototypeOf(InternalTransferredReadableStream.prototype, ReadableStream.prototype);
+ObjectSetPrototypeOf(InternalTransferredReadableStream, ReadableStream);
+
+function TransferredReadableStream() {
+  const stream = new InternalTransferredReadableStream();
+
+  stream.constructor = ReadableStream;
+
+  return stream;
+}
+
 TransferredReadableStream.prototype[kDeserialize] = () => {};
 
 class ReadableStreamBYOBRequest {
@@ -691,7 +698,7 @@ class ReadableStreamBYOBRequest {
     const viewBuffer = ArrayBufferViewGetBuffer(view);
     const viewBufferByteLength = ArrayBufferPrototypeGetByteLength(viewBuffer);
 
-    if (isArrayBufferDetached(viewBuffer)) {
+    if (ArrayBufferPrototypeGetDetached(viewBuffer)) {
       throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
     }
 
@@ -718,7 +725,7 @@ class ReadableStreamBYOBRequest {
 
     validateBuffer(view, 'view');
 
-    if (isViewedArrayBufferDetached(view)) {
+    if (ArrayBufferPrototypeGetDetached(view.buffer)) {
       throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
     }
 
@@ -1220,6 +1227,8 @@ ObjectDefineProperties(ReadableByteStreamController.prototype, {
 });
 
 function InternalReadableStream(start, pull, cancel, highWaterMark, size) {
+  ObjectSetPrototypeOf(this, ReadableStream.prototype);
+  markTransferMode(this, false, true);
   this[kType] = 'ReadableStream';
   this[kState] = createReadableStreamState();
   this[kIsClosedPromise] = createDeferredPromise();
@@ -1232,7 +1241,6 @@ function InternalReadableStream(start, pull, cancel, highWaterMark, size) {
     cancel,
     highWaterMark,
     size);
-  return makeTransferable(this);
 }
 
 ObjectSetPrototypeOf(InternalReadableStream.prototype, ReadableStream.prototype);
@@ -1247,6 +1255,8 @@ function createReadableStream(start, pull, cancel, highWaterMark = 1, size = () 
 }
 
 function InternalReadableByteStream(start, pull, cancel) {
+  ObjectSetPrototypeOf(this, ReadableStream.prototype);
+  markTransferMode(this, false, true);
   this[kType] = 'ReadableStream';
   this[kState] = createReadableStreamState();
   this[kIsClosedPromise] = createDeferredPromise();
@@ -1259,7 +1269,6 @@ function InternalReadableByteStream(start, pull, cancel) {
     cancel,
     0,
     undefined);
-  return makeTransferable(this);
 }
 
 ObjectSetPrototypeOf(InternalReadableByteStream.prototype, ReadableStream.prototype);
@@ -1974,7 +1983,7 @@ function readableByteStreamControllerConvertPullIntoDescriptor(desc) {
   if (bytesFilled > byteLength)
     throw new ERR_INVALID_STATE.RangeError('The buffer size is invalid');
   assert(!(bytesFilled % elementSize));
-  const transferredBuffer = transferArrayBuffer(buffer);
+  const transferredBuffer = ArrayBufferPrototypeTransfer(buffer);
 
   if (ctor === Buffer) {
     return Buffer.from(transferredBuffer, byteOffset, bytesFilled / elementSize);
@@ -2643,7 +2652,7 @@ function readableByteStreamControllerPullInto(
 
   let transferredBuffer;
   try {
-    transferredBuffer = transferArrayBuffer(buffer);
+    transferredBuffer = ArrayBufferPrototypeTransfer(buffer);
   } catch (error) {
     readIntoRequest[kError](error);
     return;
@@ -2736,7 +2745,7 @@ function readableByteStreamControllerRespond(controller, bytesWritten) {
       throw new ERR_INVALID_ARG_VALUE.RangeError('bytesWritten', bytesWritten);
   }
 
-  desc.buffer = transferArrayBuffer(desc.buffer);
+  desc.buffer = ArrayBufferPrototypeTransfer(desc.buffer);
 
   readableByteStreamControllerRespondInternal(controller, bytesWritten);
 }
@@ -2786,12 +2795,12 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
   if (closeRequested || stream[kState].state !== 'readable')
     return;
 
-  const transferredBuffer = transferArrayBuffer(buffer);
+  const transferredBuffer = ArrayBufferPrototypeTransfer(buffer);
 
   if (pendingPullIntos.length) {
     const firstPendingPullInto = pendingPullIntos[0];
 
-    if (isArrayBufferDetached(firstPendingPullInto.buffer)) {
+    if (ArrayBufferPrototypeGetDetached(firstPendingPullInto.buffer)) {
       throw new ERR_INVALID_STATE.TypeError(
         'Destination ArrayBuffer is detached',
       );
@@ -2799,7 +2808,7 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
 
     readableByteStreamControllerInvalidateBYOBRequest(controller);
 
-    firstPendingPullInto.buffer = transferArrayBuffer(
+    firstPendingPullInto.buffer = ArrayBufferPrototypeTransfer(
       firstPendingPullInto.buffer,
     );
 
@@ -3097,7 +3106,7 @@ function readableByteStreamControllerRespondWithNewView(controller, view) {
   if (bufferByteLength !== viewBufferByteLength)
     throw new ERR_INVALID_ARG_VALUE.RangeError('view', view);
 
-  desc.buffer = transferArrayBuffer(viewBuffer);
+  desc.buffer = ArrayBufferPrototypeTransfer(viewBuffer);
 
   readableByteStreamControllerRespondInternal(controller, viewByteLength);
 }

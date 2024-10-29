@@ -1,13 +1,19 @@
 'use strict';
 
 const {
+  ArrayPrototypeFilter,
+  ArrayPrototypeMap,
+  Boolean,
+  ObjectEntries,
   PromisePrototypeThen,
   PromiseResolve,
   SafePromiseAll,
   SafePromisePrototypeFinally,
+  SafeSet,
+  TypeError,
   TypedArrayPrototypeGetBuffer,
-  TypedArrayPrototypeGetByteOffset,
   TypedArrayPrototypeGetByteLength,
+  TypedArrayPrototypeGetByteOffset,
   Uint8Array,
 } = primordials;
 
@@ -47,6 +53,7 @@ const {
 } = require('buffer');
 
 const {
+  AbortError,
   ErrnoException,
   codes: {
     ERR_INVALID_ARG_TYPE,
@@ -54,7 +61,6 @@ const {
     ERR_INVALID_STATE,
     ERR_STREAM_PREMATURE_CLOSE,
   },
-  AbortError,
 } = require('internal/errors');
 
 const {
@@ -82,6 +88,38 @@ const finished = require('internal/streams/end-of-stream');
 const { UV_EOF } = internalBinding('uv');
 
 const encoder = new TextEncoder();
+
+// Collect all negative (error) ZLIB codes and Z_NEED_DICT
+const ZLIB_FAILURES = new SafeSet([
+  ...ArrayPrototypeFilter(
+    ArrayPrototypeMap(
+      ObjectEntries(internalBinding('constants').zlib),
+      ({ 0: code, 1: value }) => (value < 0 ? code : null),
+    ),
+    Boolean,
+  ),
+  'Z_NEED_DICT',
+]);
+
+/**
+ * @param {Error|null} cause
+ * @returns {Error|null}
+ */
+function handleKnownInternalErrors(cause) {
+  switch (true) {
+    case cause?.code === 'ERR_STREAM_PREMATURE_CLOSE': {
+      return new AbortError(undefined, { cause });
+    }
+    case ZLIB_FAILURES.has(cause?.code): {
+      // eslint-disable-next-line no-restricted-syntax
+      const error = new TypeError(undefined, { cause });
+      error.code = cause.code;
+      return error;
+    }
+    default:
+      return cause;
+  }
+}
 
 /**
  * @typedef {import('../../stream').Writable} Writable
@@ -138,10 +176,7 @@ function newWritableStreamFromStreamWritable(streamWritable) {
   }
 
   const cleanup = finished(streamWritable, (error) => {
-    if (error?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
-      const err = new AbortError(undefined, { cause: error });
-      error = err;
-    }
+    error = handleKnownInternalErrors(error);
 
     cleanup();
     // This is a protection against non-standard, legacy streams
@@ -438,10 +473,7 @@ function newReadableStreamFromStreamReadable(streamReadable, options = kEmptyObj
   streamReadable.pause();
 
   const cleanup = finished(streamReadable, (error) => {
-    if (error?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
-      const err = new AbortError(undefined, { cause: error });
-      error = err;
-    }
+    error = handleKnownInternalErrors(error);
 
     cleanup();
     // This is a protection against non-standard, legacy streams

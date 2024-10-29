@@ -23,6 +23,7 @@
 
 const {
   Array,
+  ArrayBufferIsView,
   ArrayIsArray,
   ArrayPrototypeForEach,
   MathFloor,
@@ -42,10 +43,10 @@ const {
   StringPrototypeTrim,
   SymbolSpecies,
   SymbolToPrimitive,
+  TypedArrayPrototypeFill,
   TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeGetByteLength,
   TypedArrayPrototypeGetByteOffset,
-  TypedArrayPrototypeFill,
   TypedArrayPrototypeGetLength,
   TypedArrayPrototypeSet,
   TypedArrayPrototypeSlice,
@@ -57,6 +58,7 @@ const {
   byteLengthUtf8,
   compare: _compare,
   compareOffset,
+  copy: _copy,
   fill: bindingFill,
   isAscii: bindingIsAscii,
   isUtf8: bindingIsUtf8,
@@ -103,8 +105,8 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_BUFFER_SIZE,
-    ERR_OUT_OF_RANGE,
     ERR_MISSING_ARGS,
+    ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_ENCODING,
   },
   genericNodeError,
@@ -200,10 +202,10 @@ function toInteger(n, defaultVal) {
   return defaultVal;
 }
 
-function _copy(source, target, targetStart, sourceStart, sourceEnd) {
-  if (!isUint8Array(source))
+function copyImpl(source, target, targetStart, sourceStart, sourceEnd) {
+  if (!ArrayBufferIsView(source))
     throw new ERR_INVALID_ARG_TYPE('source', ['Buffer', 'Uint8Array'], source);
-  if (!isUint8Array(target))
+  if (!ArrayBufferIsView(target))
     throw new ERR_INVALID_ARG_TYPE('target', ['Buffer', 'Uint8Array'], target);
 
   if (targetStart === undefined) {
@@ -218,37 +220,37 @@ function _copy(source, target, targetStart, sourceStart, sourceEnd) {
     sourceStart = 0;
   } else {
     sourceStart = NumberIsInteger(sourceStart) ? sourceStart : toInteger(sourceStart, 0);
-    if (sourceStart < 0 || sourceStart > source.length)
-      throw new ERR_OUT_OF_RANGE('sourceStart', `>= 0 && <= ${source.length}`, sourceStart);
+    if (sourceStart < 0 || sourceStart > source.byteLength)
+      throw new ERR_OUT_OF_RANGE('sourceStart', `>= 0 && <= ${source.byteLength}`, sourceStart);
   }
 
   if (sourceEnd === undefined) {
-    sourceEnd = source.length;
+    sourceEnd = source.byteLength;
   } else {
     sourceEnd = NumberIsInteger(sourceEnd) ? sourceEnd : toInteger(sourceEnd, 0);
     if (sourceEnd < 0)
       throw new ERR_OUT_OF_RANGE('sourceEnd', '>= 0', sourceEnd);
   }
 
-  if (targetStart >= target.length || sourceStart >= sourceEnd)
+  if (targetStart >= target.byteLength || sourceStart >= sourceEnd)
     return 0;
 
   return _copyActual(source, target, targetStart, sourceStart, sourceEnd);
 }
 
 function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
-  if (sourceEnd - sourceStart > target.length - targetStart)
-    sourceEnd = sourceStart + target.length - targetStart;
+  if (sourceEnd - sourceStart > target.byteLength - targetStart)
+    sourceEnd = sourceStart + target.byteLength - targetStart;
 
   let nb = sourceEnd - sourceStart;
-  const sourceLen = source.length - sourceStart;
+  const sourceLen = source.byteLength - sourceStart;
   if (nb > sourceLen)
     nb = sourceLen;
 
-  if (sourceStart !== 0 || sourceEnd < source.length)
-    source = new Uint8Array(source.buffer, source.byteOffset + sourceStart, nb);
+  if (nb <= 0)
+    return 0;
 
-  TypedArrayPrototypeSet(target, source, targetStart);
+  _copy(source, target, targetStart, sourceStart, nb);
 
   return nb;
 }
@@ -822,7 +824,7 @@ ObjectDefineProperty(Buffer.prototype, 'offset', {
 
 Buffer.prototype.copy =
   function copy(target, targetStart, sourceStart, sourceEnd) {
-    return _copy(this, target, targetStart, sourceStart, sourceEnd);
+    return copyImpl(this, target, targetStart, sourceStart, sourceEnd);
   };
 
 // No need to verify that "buf.length <= MAX_UINT32" since it's a read-only
@@ -841,12 +843,12 @@ Buffer.prototype.toString = function toString(encoding, start, end) {
   else if (start >= len)
     return '';
   else
-    start |= 0;
+    start = MathTrunc(start) || 0;
 
   if (end === undefined || end > len)
     end = len;
   else
-    end |= 0;
+    end = MathTrunc(end) || 0;
 
   if (end <= start)
     return '';

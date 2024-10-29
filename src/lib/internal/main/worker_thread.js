@@ -7,12 +7,12 @@ const {
   ArrayPrototypeForEach,
   ArrayPrototypePushApply,
   ArrayPrototypeSplice,
+  AtomicsLoad,
   ObjectDefineProperty,
   PromisePrototypeThen,
   RegExpPrototypeExec,
   SafeWeakMap,
   globalThis: {
-    Atomics,
     SharedArrayBuffer,
   },
 } = primordials;
@@ -44,8 +44,12 @@ const {
   kStdioWantsMoreDataCallback,
 } = workerIo;
 
+const { setupMainThreadPort } = require('internal/worker/messaging');
+
 const {
   onGlobalUncaughtException,
+  evalScript,
+  evalModuleEntryPoint,
 } = require('internal/process/execution');
 
 let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
@@ -53,6 +57,7 @@ let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
 });
 
 const assert = require('internal/assert');
+const { getOptionValue } = require('internal/options');
 const { exitCodes: { kGenericUserError } } = internalBinding('errors');
 
 prepareWorkerThreadExecution();
@@ -94,10 +99,9 @@ port.on('message', (message) => {
       environmentData,
       filename,
       hasStdin,
-      manifestSrc,
-      manifestURL,
       publicPort,
       workerData,
+      mainThreadPort,
     } = message;
 
     if (doEval !== 'internal') {
@@ -111,8 +115,9 @@ port.on('message', (message) => {
     }
 
     require('internal/worker').assignEnvironmentData(environmentData);
+    setupMainThreadPort(mainThreadPort);
 
-    if (SharedArrayBuffer !== undefined && Atomics !== undefined) {
+    if (SharedArrayBuffer !== undefined) {
       // The counter is only passed to the workers created by the main thread,
       // not to workers created by other workers.
       let cachedCwd = '';
@@ -120,7 +125,7 @@ port.on('message', (message) => {
       const originalCwd = process.cwd;
 
       process.cwd = function() {
-        const currentCounter = Atomics.load(cwdCounter, 0);
+        const currentCounter = AtomicsLoad(cwdCounter, 0);
         if (currentCounter === lastCounter)
           return cachedCwd;
         lastCounter = currentCounter;
@@ -130,9 +135,6 @@ port.on('message', (message) => {
       workerIo.sharedCwdCounter = cwdCounter;
     }
 
-    if (manifestSrc) {
-      require('internal/process/policy').setup(manifestSrc, manifestURL);
-    }
     const isLoaderWorker =
       doEval === 'internal' &&
       filename === require('internal/modules/esm/utils').loaderWorkerId;
@@ -153,8 +155,7 @@ port.on('message', (message) => {
         break;
       }
 
-      case 'classic': {
-        const { evalScript } = require('internal/process/execution');
+      case 'classic': if (getOptionValue('--input-type') !== 'module') {
         const name = '[worker eval]';
         // This is necessary for CJS module compilation.
         // TODO: pass this with something really internal.
@@ -169,8 +170,8 @@ port.on('message', (message) => {
         break;
       }
 
+      // eslint-disable-next-line no-fallthrough
       case 'module': {
-        const { evalModuleEntryPoint } = require('internal/process/execution');
         PromisePrototypeThen(evalModuleEntryPoint(filename), undefined, (e) => {
           workerOnGlobalUncaughtException(e, true);
         });

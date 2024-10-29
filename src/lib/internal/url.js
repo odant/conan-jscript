@@ -46,7 +46,16 @@ const {
   kEnumerableProperty,
   kEmptyObject,
   SideEffectFreeRegExpPrototypeSymbolReplace,
+  isWindows,
 } = require('internal/util');
+
+const {
+  platform,
+} = require('internal/process/per_thread');
+
+const {
+  markTransferMode,
+} = require('internal/worker/js_transferable');
 
 const {
   codes: {
@@ -80,9 +89,6 @@ const {
 } = require('internal/validators');
 
 const querystring = require('querystring');
-
-const { platform } = process;
-const isWindows = platform === 'win32';
 
 const bindingUrl = internalBinding('url');
 
@@ -328,6 +334,8 @@ class URLSearchParams {
   // Default parameter is necessary to keep URLSearchParams.length === 0 in
   // accordance with Web IDL spec.
   constructor(init = undefined) {
+    markTransferMode(this, false, false);
+
     if (init == null) {
       // Do nothing
     } else if (typeof init === 'object' || typeof init === 'function') {
@@ -791,6 +799,8 @@ class URL {
   }
 
   constructor(input, base = undefined, parseSymbol = undefined) {
+    markTransferMode(this, false, false);
+
     if (arguments.length === 0) {
       throw new ERR_MISSING_ARGS('url');
     }
@@ -1604,6 +1614,7 @@ module.exports = {
   installObjectURLMethods,
   URL,
   URLSearchParams,
+  URLParse: URL.parse,
   domainToASCII,
   domainToUnicode,
   urlToHttpOptions,

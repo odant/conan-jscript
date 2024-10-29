@@ -9,9 +9,8 @@ const {
   ObjectSetPrototypeOf,
   Promise,
   PromisePrototypeThen,
-  PromiseResolve,
   PromiseReject,
-  ReflectConstruct,
+  PromiseResolve,
   Symbol,
   SymbolToStringTag,
 } = primordials;
@@ -19,8 +18,8 @@ const {
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_STATE,
     ERR_INVALID_THIS,
   },
@@ -52,7 +51,7 @@ const {
   kDeserialize,
   kTransfer,
   kTransferList,
-  makeTransferable,
+  markTransferMode,
 } = require('internal/worker/js_transferable');
 
 const {
@@ -162,6 +161,7 @@ class WritableStream {
    * @param {QueuingStrategy} [strategy]
    */
   constructor(sink = kEmptyObject, strategy = kEmptyObject) {
+    markTransferMode(this, false, true);
     validateObject(sink, 'sink', kValidateObjectAllowObjects);
     validateObject(strategy, 'strategy', kValidateObjectAllowObjectsAndNull);
     const type = sink?.type;
@@ -181,9 +181,6 @@ class WritableStream {
       sink,
       highWaterMark,
       size);
-
-    // eslint-disable-next-line no-constructor-return
-    return makeTransferable(this);
   }
 
   /**
@@ -302,16 +299,26 @@ ObjectDefineProperties(WritableStream.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStream.name),
 });
 
-function TransferredWritableStream() {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kType] = 'WritableStream';
-      this[kState] = createWritableStreamState();
-      this[kIsClosedPromise] = createDeferredPromise();
-      this[kControllerErrorFunction] = () => {};
-    },
-    [], WritableStream));
+function InternalTransferredWritableStream() {
+  ObjectSetPrototypeOf(this, WritableStream.prototype);
+  markTransferMode(this, false, true);
+  this[kType] = 'WritableStream';
+  this[kState] = createWritableStreamState();
+
+  this[kIsClosedPromise] = createDeferredPromise();
 }
+
+ObjectSetPrototypeOf(InternalTransferredWritableStream.prototype, WritableStream.prototype);
+ObjectSetPrototypeOf(InternalTransferredWritableStream, WritableStream);
+
+function TransferredWritableStream() {
+  const stream = new InternalTransferredWritableStream();
+
+  stream.constructor = WritableStream;
+
+  return stream;
+}
+
 TransferredWritableStream.prototype[kDeserialize] = () => {};
 
 class WritableStreamDefaultWriter {
@@ -510,9 +517,12 @@ ObjectDefineProperties(WritableStreamDefaultController.prototype, {
 });
 
 function InternalWritableStream(start, write, close, abort, highWaterMark, size) {
+  ObjectSetPrototypeOf(this, WritableStream.prototype);
+  markTransferMode(this, false, true);
   this[kType] = 'WritableStream';
   this[kState] = createWritableStreamState();
   this[kIsClosedPromise] = createDeferredPromise();
+
   const controller = new WritableStreamDefaultController(kSkipThrow);
   setupWritableStreamDefaultController(
     this,
@@ -524,7 +534,6 @@ function InternalWritableStream(start, write, close, abort, highWaterMark, size)
     highWaterMark,
     size,
   );
-  return makeTransferable(this);
 }
 
 ObjectSetPrototypeOf(InternalWritableStream.prototype, WritableStream.prototype);

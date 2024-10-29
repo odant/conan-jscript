@@ -45,7 +45,6 @@ const {
 const normalizeHashName = require('internal/crypto/hashnames');
 
 const {
-  hideStackFrames,
   codes: {
     ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED,
     ERR_CRYPTO_ENGINE_UNKNOWN,
@@ -53,6 +52,7 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE,
   },
+  hideStackFrames,
 } = require('internal/errors');
 
 const {

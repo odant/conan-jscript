@@ -5,12 +5,16 @@
 <!-- YAML
 added: v16.5.0
 changes:
+  - version:
+    - v21.0.0
+    pr-url: https://github.com/nodejs/node/pull/45684
+    description: No longer experimental.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/42225
     description: Use of this API no longer emit a runtime warning.
 -->
 
-> Stability: 1 - Experimental.
+> Stability: 2 - Stable
 
 An implementation of the [WHATWG Streams Standard][].
 
@@ -618,8 +622,8 @@ added: v16.5.0
 <!-- YAML
 added: v16.5.0
 changes:
-  - version: v20.17.0
-    pr-url: https://github.com/nodejs/node/pull/54044
+  - version: v21.7.0
+    pr-url: https://github.com/nodejs/node/pull/50888
     description: Added `min` option.
 -->
 
@@ -1426,7 +1430,9 @@ changes:
 <!-- YAML
 added: v17.0.0
 changes:
-  - version: v20.12.0
+  - version:
+    - v21.2.0
+    - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/50097
     description: format now accepts `deflate-raw` value.
 -->
@@ -1464,7 +1470,9 @@ changes:
 <!-- YAML
 added: v17.0.0
 changes:
-  - version: v20.12.0
+  - version:
+    - v21.2.0
+    - v20.12.0
     pr-url: https://github.com/nodejs/node/pull/50097
     description: format now accepts `deflate-raw` value.
 -->

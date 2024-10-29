@@ -22,6 +22,7 @@ try {
   supportedHashes = crypto.getHashes().filter((hash) => possibleRelevantHashes.includes(hash))
 /* c8 ignore next 3 */
 } catch {
+
 }
 
 function responseURL (response) {
@@ -1339,6 +1340,14 @@ function buildContentRange (rangeStart, rangeEnd, fullLength) {
 // interpreted as a zlib stream, otherwise it's interpreted as a
 // raw deflate stream.
 class InflateStream extends Transform {
+  #zlibOptions
+
+  /** @param {zlib.ZlibOptions} [zlibOptions] */
+  constructor (zlibOptions) {
+    super()
+    this.#zlibOptions = zlibOptions
+  }
+
   _transform (chunk, encoding, callback) {
     if (!this._inflateStream) {
       if (chunk.length === 0) {
@@ -1346,8 +1355,8 @@ class InflateStream extends Transform {
         return
       }
       this._inflateStream = (chunk[0] & 0x0F) === 0x08
-        ? zlib.createInflate()
-        : zlib.createInflateRaw()
+        ? zlib.createInflate(this.#zlibOptions)
+        : zlib.createInflateRaw(this.#zlibOptions)
 
       this._inflateStream.on('data', this.push.bind(this))
       this._inflateStream.on('end', () => this.push(null))
@@ -1366,8 +1375,12 @@ class InflateStream extends Transform {
   }
 }
 
-function createInflate () {
-  return new InflateStream()
+/**
+ * @param {zlib.ZlibOptions} [zlibOptions]
+ * @returns {InflateStream}
+ */
+function createInflate (zlibOptions) {
+  return new InflateStream(zlibOptions)
 }
 
 /**

@@ -528,7 +528,7 @@ The arguments of `createBenchmark` are:
         source: ['buffer', 'string'],
         len: [2048],
         n: [50, 2048],
-      },
+      }
     }, { byGroups: true });
     ```
 

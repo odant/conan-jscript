@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayBufferPrototypeGetByteLength,
   ArrayFrom,
   ArrayIsArray,
   ArrayPrototypePush,
@@ -12,10 +11,10 @@ const {
   FunctionPrototypeCall,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
   ObjectGetPrototypeOf,
-  ObjectFreeze,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   ObjectValues,
@@ -28,9 +27,9 @@ const {
   RegExpPrototypeGetHasIndices,
   RegExpPrototypeGetIgnoreCase,
   RegExpPrototypeGetMultiline,
+  RegExpPrototypeGetSource,
   RegExpPrototypeGetSticky,
   RegExpPrototypeGetUnicode,
-  RegExpPrototypeGetSource,
   SafeMap,
   SafeSet,
   SafeWeakMap,
@@ -52,12 +51,11 @@ const {
     ERR_UNKNOWN_SIGNAL,
   },
   isErrorStackTraceLimitWritable,
-  uvErrmapGet,
   overrideStackTrace,
+  uvErrmapGet,
 } = require('internal/errors');
 const { signals } = internalBinding('constants').os;
 const {
-  isArrayBufferDetached: _isArrayBufferDetached,
   guessHandleType: _guessHandleType,
   privateSymbols: {
     arrow_message_private_symbol,
@@ -65,11 +63,14 @@ const {
   },
   sleep: _sleep,
 } = internalBinding('util');
-const { isNativeError } = internalBinding('types');
+const { isNativeError, isPromise } = internalBinding('types');
 const { getOptionValue } = require('internal/options');
 const { encodings } = internalBinding('string_decoder');
 
 const noCrypto = !process.versions.openssl;
+
+const isWindows = process.platform === 'win32';
+const isMacOS = process.platform === 'darwin';
 
 const experimentalWarnings = new SafeSet();
 
@@ -429,7 +430,10 @@ function promisify(original) {
           resolve(values[0]);
         }
       });
-      ReflectApply(original, this, args);
+      if (isPromise(ReflectApply(original, this, args))) {
+        process.emitWarning('Calling promisify on a function that returns a Promise is likely a mistake.',
+                            'DeprecationWarning', 'DEP0174');
+      }
     });
   }
 
@@ -764,9 +768,9 @@ function SideEffectFreeRegExpPrototypeExec(regex, string) {
   return FunctionPrototypeCall(RegExpFromAnotherRealm.prototype.exec, regex, string);
 }
 
-const crossRelmRegexes = new SafeWeakMap();
-function getCrossRelmRegex(regex) {
-  const cached = crossRelmRegexes.get(regex);
+const crossRealmRegexes = new SafeWeakMap();
+function getCrossRealmRegex(regex) {
+  const cached = crossRealmRegexes.get(regex);
   if (cached) return cached;
 
   let flagString = '';
@@ -779,26 +783,17 @@ function getCrossRelmRegex(regex) {
   if (RegExpPrototypeGetSticky(regex)) flagString += 'y';
 
   const { RegExp: RegExpFromAnotherRealm } = getInternalGlobal();
-  const crossRelmRegex = new RegExpFromAnotherRealm(RegExpPrototypeGetSource(regex), flagString);
-  crossRelmRegexes.set(regex, crossRelmRegex);
-  return crossRelmRegex;
+  const crossRealmRegex = new RegExpFromAnotherRealm(RegExpPrototypeGetSource(regex), flagString);
+  crossRealmRegexes.set(regex, crossRealmRegex);
+  return crossRealmRegex;
 }
 
 function SideEffectFreeRegExpPrototypeSymbolReplace(regex, string, replacement) {
-  return getCrossRelmRegex(regex)[SymbolReplace](string, replacement);
+  return getCrossRealmRegex(regex)[SymbolReplace](string, replacement);
 }
 
 function SideEffectFreeRegExpPrototypeSymbolSplit(regex, string, limit = undefined) {
-  return getCrossRelmRegex(regex)[SymbolSplit](string, limit);
-}
-
-
-function isArrayBufferDetached(value) {
-  if (ArrayBufferPrototypeGetByteLength(value) === 0) {
-    return _isArrayBufferDetached(value);
-  }
-
-  return false;
+  return getCrossRealmRegex(regex)[SymbolSplit](string, limit);
 }
 
 /**
@@ -849,6 +844,7 @@ function guessHandleType(fd) {
 
 class WeakReference {
   #weak = null;
+  // eslint-disable-next-line no-unused-private-class-members
   #strong = null;
   #refCount = 0;
   constructor(object) {
@@ -910,9 +906,10 @@ module.exports = {
   getSystemErrorMap,
   getSystemErrorName,
   guessHandleType,
-  isArrayBufferDetached,
   isError,
   isInsideNodeModules,
+  isMacOS,
+  isWindows,
   join,
   lazyDOMException,
   lazyDOMExceptionClass,
@@ -926,6 +923,14 @@ module.exports = {
   spliceOne,
   setupCoverageHooks,
   removeColors,
+
+  // Define Symbol.dispose and Symbol.asyncDispose
+  // Until these are defined by the environment.
+  // TODO(MoLow): Remove this polyfill once Symbol.dispose and Symbol.asyncDispose are available in primordials.
+  // eslint-disable-next-line node-core/prefer-primordials
+  SymbolDispose: Symbol.dispose || SymbolFor('nodejs.dispose'),
+  // eslint-disable-next-line node-core/prefer-primordials
+  SymbolAsyncDispose: Symbol.asyncDispose || SymbolFor('nodejs.asyncDispose'),
 
   // Symbol used to customize promisify conversion
   customPromisifyArgs: kCustomPromisifyArgsSymbol,

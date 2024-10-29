@@ -1,3 +1,4 @@
+#include "async_context_frame.h"
 #include "async_wrap-inl.h"
 #include "env-inl.h"
 #define NAPI_EXPERIMENTAL
@@ -159,7 +160,7 @@ void ThrowNodeApiVersionError(node::Environment* node_env,
   error_message += " requires Node-API version ";
   error_message += std::to_string(module_api_version);
   error_message += ", but this version of Node.js only supports version ";
-  error_message += NODE_STRINGIFY(NAPI_VERSION) " add-ons.";
+  error_message += NODE_STRINGIFY(NODE_API_SUPPORTED_VERSION_MAX) " add-ons.";
   node_env->ThrowError(error_message.c_str());
 }
 
@@ -171,7 +172,7 @@ inline napi_env NewEnv(v8::Local<v8::Context> context,
   // Validate module_api_version.
   if (module_api_version < NODE_API_DEFAULT_MODULE_API_VERSION) {
     module_api_version = NODE_API_DEFAULT_MODULE_API_VERSION;
-  } else if (module_api_version > NAPI_VERSION &&
+  } else if (module_api_version > NODE_API_SUPPORTED_VERSION_MAX &&
              module_api_version != NAPI_VERSION_EXPERIMENTAL) {
     node::Environment* node_env = node::Environment::GetCurrent(context);
     CHECK_NOT_NULL(node_env);
@@ -540,7 +541,9 @@ class AsyncContext {
       : env_(env) {
     async_id_ = node_env()->new_async_id();
     trigger_async_id_ = node_env()->get_default_trigger_async_id();
-    resource_.Reset(node_env()->isolate(), resource_object);
+    v8::Isolate* isolate = node_env()->isolate();
+    resource_.Reset(isolate, resource_object);
+    context_frame_.Reset(isolate, node::async_context_frame::current(isolate));
     lost_reference_ = false;
     if (externally_managed_resource) {
       resource_.SetWeak(
@@ -566,13 +569,15 @@ class AsyncContext {
       int argc,
       v8::Local<v8::Value> argv[]) {
     EnsureReference();
-    return node::InternalMakeCallback(node_env(),
-                                      resource(),
-                                      recv,
-                                      callback,
-                                      argc,
-                                      argv,
-                                      {async_id_, trigger_async_id_});
+    return node::InternalMakeCallback(
+        node_env(),
+        resource(),
+        recv,
+        callback,
+        argc,
+        argv,
+        {async_id_, trigger_async_id_},
+        context_frame_.Get(node_env()->isolate()));
   }
 
   inline napi_callback_scope OpenCallbackScope() {
@@ -628,6 +633,7 @@ class AsyncContext {
   double trigger_async_id_;
   v8::Global<v8::Object> resource_;
   bool lost_reference_;
+  v8::Global<v8::Value> context_frame_;
 };
 
 }  // end of anonymous namespace
@@ -672,15 +678,16 @@ node::addon_context_register_func get_node_api_context_register_func(
     const char* module_name,
     int32_t module_api_version) {
   static_assert(
-      NAPI_VERSION == 9,
+      NODE_API_SUPPORTED_VERSION_MAX == 9,
       "New version of Node-API requires adding another else-if statement below "
       "for the new version and updating this assert condition.");
-  if (module_api_version <= NODE_API_DEFAULT_MODULE_API_VERSION) {
-    return node_api_context_register_func<NODE_API_DEFAULT_MODULE_API_VERSION>;
-  } else if (module_api_version == 9) {
+  if (module_api_version == 9) {
     return node_api_context_register_func<9>;
   } else if (module_api_version == NAPI_VERSION_EXPERIMENTAL) {
     return node_api_context_register_func<NAPI_VERSION_EXPERIMENTAL>;
+  } else if (module_api_version >= NODE_API_SUPPORTED_VERSION_MIN &&
+             module_api_version <= NODE_API_DEFAULT_MODULE_API_VERSION) {
+    return node_api_context_register_func<NODE_API_DEFAULT_MODULE_API_VERSION>;
   } else {
     v8impl::ThrowNodeApiVersionError(node_env, module_name, module_api_version);
     return nullptr;

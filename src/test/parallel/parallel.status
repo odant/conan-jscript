@@ -16,17 +16,20 @@ test-worker-arraybuffer-zerofill: PASS, FLAKY
 # https://github.com/nodejs/node/issues/51862
 test-fs-read-stream-concurrent-reads: PASS, FLAKY
 
-# https://github.com/nodejs/node/issues/52630
-test-error-serdes: PASS, FLAKY
-
-# https://github.com/nodejs/node/issues/54006
-test-sqlite: PASS, FLAKY
+# Until V8 provides a better way to check for flag mismatch without
+# making the code cache/snapshot unreproducible, disable the test
+# for a preemptive check now. It should ideally fail more gracefully
+# with a better checking mechanism.
+# https://github.com/nodejs/build/issues/3043
+test-snapshot-incompatible: SKIP
 
 [$system==win32]
 # https://github.com/nodejs/node/issues/54807
 test-runner-watch-mode-complex: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54808
 test-async-context-frame: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
 
 # Windows on x86
 [$system==win32 && $arch==ia32]
@@ -40,6 +43,8 @@ test-worker-nearheaplimit-deadlock: PASS, FLAKY
 test-performance-function: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54346
 test-esm-loader-hooks-inspect-wait: PASS, FLAKY
+# https://github.com/nodejs/node/issues/54810
+test-sqlite-statement-sync: PASS, FLAKY
 # https://github.com/nodejs/node/issues/54534
 test-runner-run-watch: PASS, FLAKY
 # https://github.com/nodejs/node/issues/37692
@@ -83,6 +88,10 @@ test-domain-no-error-handler-abort-on-uncaught-8: PASS, FLAKY
 test-domain-no-error-handler-abort-on-uncaught-9: PASS, FLAKY
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: PASS, FLAKY
 test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
+# https://github.com/nodejs/node/issues/50050
+test-tick-processor-arguments: SKIP
+# https://github.com/nodejs/node/issues/54534
+test-runner-run-watch: PASS, FLAKY
 
 [$system==freebsd]
 

@@ -10,6 +10,7 @@ This a list of all the dependencies:
 
 * [acorn][]
 * [ada][]
+* [amaro][]
 * [base64][]
 * [brotli][]
 * [c-ares][]
@@ -27,7 +28,9 @@ This a list of all the dependencies:
 * [npm][]
 * [openssl][]
 * [postject][]
+* [simdjson][]
 * [simdutf][]
+* [sqlite][]
 * [undici][]
 * [uvwasi][]
 * [V8][]
@@ -123,6 +126,17 @@ can be added by:
   paste one of the existing entries and then update to match the
   import name for the dependency and the #define generated.
 
+* if the version of the dependency is reported in `process.versions`,
+  update `src/node_metadata.h` and `src/node_metadata.cc` so that the
+  version is not reported when the dependency is externalized.
+  Not reporting the version is better than incorrectly reporting
+  the version of the dependency bundled with Node.js, instead of the
+  version for the externalized dependency. Use one of the existing
+  externalized dependencies, like Undici, as an example of how to
+  update these files correctly. Make sure to run the tests with the
+  dependency externalized, as the tests will also need to be updated
+  to handle this properly.
+
 ## Supporting non-externalized dependencies with JavaScript code
 
 If the dependency consists of JavaScript in the
@@ -166,12 +180,10 @@ an abstract syntax tree walker for the ESTree format.
 The [ada](https://github.com/ada-url/ada) dependency is a
 fast and spec-compliant URL parser written in C++.
 
-### base64
+### amaro
 
-The [base64](https://github.com/aklomp/base64) dependency is a base64
-stream encoding/decoding library in C99 with SIMD and OpenMP acceleration.
-It also contains wrapper functions to encode/decode simple
-length-delimited strings.
+The [amaro](https://www.npmjs.com/package/amaro) dependency is a wrapper around the
+WebAssembly version of the SWC JavaScript/TypeScript parser.
 
 ### brotli
 
@@ -297,10 +309,20 @@ See [maintaining-openssl][] for more information.
 The [postject](https://github.com/nodejs/postject) dependency is used for the
 [Single Executable strategic initiative](https://github.com/nodejs/single-executable).
 
+### simdjson
+
+The [simdjson](https://github.com/simdjson/simdjson) dependency is
+a C++ library for fast JSON parsing.
+
 ### simdutf
 
 The [simdutf](https://github.com/simdutf/simdutf) dependency is
 a C++ library for fast UTF-8 decoding and encoding.
+
+### sqlite
+
+The [sqlite](https://github.com/sqlite/sqlite) dependency is
+an embedded SQL database engine written in C.
 
 ### undici
 
@@ -331,6 +353,7 @@ performance improvements not currently available in standard zlib.
 
 [acorn]: #acorn
 [ada]: #ada
+[amaro]: #amaro
 [base64]: #base64
 [brotli]: #brotli
 [c-ares]: #c-ares
@@ -355,7 +378,9 @@ performance improvements not currently available in standard zlib.
 [npm]: #npm
 [openssl]: #openssl
 [postject]: #postject
+[simdjson]: #simdjson
 [simdutf]: #simdutf
+[sqlite]: #sqlite
 [undici]: #undici
 [update-openssl-action]: ../../../.github/workflows/update-openssl.yml
 [uvwasi]: #uvwasi

@@ -877,7 +877,7 @@ might impact an LTS release.
 | `src/node_api.*`                                                           | @nodejs/node-api                                                              |
 | `src/node_crypto.*`, `src/crypto`                                          | @nodejs/crypto                                                                |
 | `test/*`                                                                   | @nodejs/testing                                                               |
-| `tools/node_modules/eslint`, `.eslintrc`                                   | @nodejs/linting                                                               |
+| `tools/eslint`, `eslint.config.mjs`                                        | @nodejs/linting                                                               |
 | build                                                                      | @nodejs/build                                                                 |
 | `src/module_wrap.*`, `lib/internal/modules/*`, `lib/internal/vm/module.js` | @nodejs/modules                                                               |
 | GYP                                                                        | @nodejs/gyp                                                                   |
@@ -974,10 +974,9 @@ need to be attached anymore, as only important bugfixes will be included.
 ### Other labels
 
 * Operating system labels
-  * `macos`, `windows`, `smartos`, `aix`
-  * No `linux` label because it is the implied default
+  * `macos`, `windows`, `smartos`, `aix`, `linux`, etc.
 * Architecture labels
-  * `arm`, `mips`, `s390`, `ppc`
+  * `arm`, `mips`, `s390`, `ppc`, etc.
   * No `x86{_64}` label because it is the implied default
 
 ["Merge pull request"]: https://help.github.com/articles/merging-a-pull-request/#merging-a-pull-request-on-github

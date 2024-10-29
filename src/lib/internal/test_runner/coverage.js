@@ -5,6 +5,8 @@ const {
   ArrayPrototypePush,
   JSONParse,
   MathFloor,
+  MathMax,
+  MathMin,
   NumberParseInt,
   ObjectAssign,
   RegExpPrototypeExec,
@@ -14,8 +16,6 @@ const {
   StringPrototypeIncludes,
   StringPrototypeLocaleCompare,
   StringPrototypeStartsWith,
-  MathMax,
-  MathMin,
 } = primordials;
 const {
   copyFileSync,
@@ -27,9 +27,15 @@ const {
 } = require('fs');
 const { setupCoverageHooks } = require('internal/util');
 const { tmpdir } = require('os');
-const { join, resolve } = require('path');
+const { join, resolve, relative, matchesGlob } = require('path');
 const { fileURLToPath } = require('internal/url');
 const { kMappings, SourceMap } = require('internal/source_map/source_map');
+const {
+  codes: {
+    ERR_SOURCE_MAP_CORRUPT,
+    ERR_SOURCE_MAP_MISSING_SOURCE,
+  },
+} = require('internal/errors');
 const kCoverageFileRegex = /^coverage-(\d+)-(\d{13})-(\d+)\.json$/;
 const kIgnoreRegex = /\/\* node:coverage ignore next (?<count>\d+ )?\*\//;
 const kLineEndingRegex = /\r?\n$/u;
@@ -51,10 +57,13 @@ class CoverageLine {
 }
 
 class TestCoverage {
-  constructor(coverageDirectory, originalCoverageDirectory, workingDirectory) {
+  constructor(coverageDirectory, originalCoverageDirectory, workingDirectory, excludeGlobs, includeGlobs, thresholds) {
     this.coverageDirectory = coverageDirectory;
     this.originalCoverageDirectory = originalCoverageDirectory;
     this.workingDirectory = workingDirectory;
+    this.excludeGlobs = excludeGlobs;
+    this.includeGlobs = includeGlobs;
+    this.thresholds = thresholds;
   }
 
   #sourceLines = new SafeMap();
@@ -141,6 +150,7 @@ class TestCoverage {
         coveredBranchPercent: 0,
         coveredFunctionPercent: 0,
       },
+      thresholds: this.thresholds,
     };
 
     if (!coverage) {
@@ -316,7 +326,7 @@ class TestCoverage {
 
         const coverageFile = join(this.coverageDirectory, entry.name);
         const coverage = JSONParse(readFileSync(coverageFile, 'utf8'));
-        mergeCoverage(result, this.mapCoverageWithSourceMap(coverage));
+        this.mergeCoverage(result, this.mapCoverageWithSourceMap(coverage));
       }
 
       return ArrayFrom(result.values());
@@ -339,15 +349,16 @@ class TestCoverage {
       const script = result[i];
       const { url, functions } = script;
 
-      if (shouldSkipFileCoverage(url) || sourceMapCache[url] == null) {
+      if (this.shouldSkipFileCoverage(url) || sourceMapCache[url] == null) {
         newResult.set(url, script);
         continue;
       }
       const { data, lineLengths } = sourceMapCache[url];
+      if (!data) throw new ERR_SOURCE_MAP_CORRUPT(url);
       let offset = 0;
       const executedLines = ArrayPrototypeMap(lineLengths, (length, i) => {
-        const coverageLine = new CoverageLine(i + 1, offset, null, length);
-        offset += length;
+        const coverageLine = new CoverageLine(i + 1, offset, null, length + 1);
+        offset += length + 1;
         return coverageLine;
       });
       if (data.sourcesContent != null) {
@@ -386,6 +397,9 @@ class TestCoverage {
 
           newUrl ??= startEntry?.originalSource;
           const mappedLines = this.getLines(newUrl);
+          if (!mappedLines) {
+            throw new ERR_SOURCE_MAP_MISSING_SOURCE(newUrl, url);
+          }
           const mappedStartOffset = this.entryToOffset(startEntry, mappedLines);
           const mappedEndOffset = this.entryToOffset(endEntry, mappedLines) + 1;
           for (let l = startEntry.originalLine; l <= endEntry.originalLine; l++) {
@@ -415,6 +429,54 @@ class TestCoverage {
     return MathMin(lines[line].startOffset + entry.originalColumn, lines[line].endOffset);
   }
 
+  mergeCoverage(merged, coverage) {
+    for (let i = 0; i < coverage.length; ++i) {
+      const newScript = coverage[i];
+      const { url } = newScript;
+
+      if (this.shouldSkipFileCoverage(url)) {
+        continue;
+      }
+
+      const oldScript = merged.get(url);
+
+      if (oldScript === undefined) {
+        merged.set(url, newScript);
+      } else {
+        mergeCoverageScripts(oldScript, newScript);
+      }
+    }
+  }
+
+  shouldSkipFileCoverage(url) {
+    // This check filters out core modules, which start with 'node:' in
+    // coverage reports, as well as any invalid coverages which have been
+    // observed on Windows.
+    if (!StringPrototypeStartsWith(url, 'file:')) return true;
+
+    const absolutePath = fileURLToPath(url);
+    const relativePath = relative(this.workingDirectory, absolutePath);
+
+    // This check filters out files that match the exclude globs.
+    if (this.excludeGlobs?.length > 0) {
+      for (let i = 0; i < this.excludeGlobs.length; ++i) {
+        if (matchesGlob(relativePath, this.excludeGlobs[i]) ||
+            matchesGlob(absolutePath, this.excludeGlobs[i])) return true;
+      }
+    }
+
+    // This check filters out files that do not match the include globs.
+    if (this.includeGlobs?.length > 0) {
+      for (let i = 0; i < this.includeGlobs.length; ++i) {
+        if (matchesGlob(relativePath, this.includeGlobs[i]) ||
+            matchesGlob(absolutePath, this.includeGlobs[i])) return false;
+      }
+      return true;
+    }
+
+    // This check filters out the node_modules/ directory, unless it is explicitly included.
+    return StringPrototypeIncludes(url, '/node_modules/');
+  }
 }
 
 function toPercentage(covered, total) {
@@ -425,7 +487,7 @@ function sortCoverageFiles(a, b) {
   return StringPrototypeLocaleCompare(a.path, b.path);
 }
 
-function setupCoverage() {
+function setupCoverage(options) {
   let originalCoverageDirectory = process.env.NODE_V8_COVERAGE;
   const cwd = process.cwd();
 
@@ -449,7 +511,19 @@ function setupCoverage() {
   // child processes.
   process.env.NODE_V8_COVERAGE = coverageDirectory;
 
-  return new TestCoverage(coverageDirectory, originalCoverageDirectory, cwd);
+  return new TestCoverage(
+    coverageDirectory,
+    originalCoverageDirectory,
+    cwd,
+    options.coverageExcludeGlobs,
+    options.coverageIncludeGlobs,
+    {
+      __proto__: null,
+      line: options.lineCoverage,
+      branch: options.branchCoverage,
+      function: options.functionCoverage,
+    },
+  );
 }
 
 function mapRangeToLines(range, lines) {
@@ -491,35 +565,6 @@ function mapRangeToLines(range, lines) {
   }
 
   return { __proto__: null, lines: mappedLines, ignoredLines };
-}
-
-function shouldSkipFileCoverage(url) {
-  // The first part of this check filters out the node_modules/ directory
-  // from the results. This filter is applied first because most real world
-  // applications will be dominated by third party dependencies. The second
-  // part of the check filters out core modules, which start with 'node:' in
-  // coverage reports, as well as any invalid coverages which have been
-  // observed on Windows.
-  return StringPrototypeIncludes(url, '/node_modules/') || !StringPrototypeStartsWith(url, 'file:');
-}
-
-function mergeCoverage(merged, coverage) {
-  for (let i = 0; i < coverage.length; ++i) {
-    const newScript = coverage[i];
-    const { url } = newScript;
-
-    if (shouldSkipFileCoverage(url)) {
-      continue;
-    }
-
-    const oldScript = merged.get(url);
-
-    if (oldScript === undefined) {
-      merged.set(url, newScript);
-    } else {
-      mergeCoverageScripts(oldScript, newScript);
-    }
-  }
 }
 
 function mergeCoverageScripts(oldScript, newScript) {

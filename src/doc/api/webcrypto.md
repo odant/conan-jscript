@@ -2,7 +2,9 @@
 
 <!-- YAML
 changes:
-  - version: v20.0.0
+  - version:
+    - v20.0.0
+    - v18.17.0
     pr-url: https://github.com/nodejs/node/pull/46067
     description: Arguments are now coerced and validated as per their WebIDL
       definitions like in other Web Crypto API implementations.
@@ -572,7 +574,7 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v20.17.0
+  - version: v22.5.0
     pr-url: https://github.com/nodejs/node/pull/53601
     description: The length parameter is now optional for `'ECDH'`, `'X25519'`,
                  and `'X448'`.
