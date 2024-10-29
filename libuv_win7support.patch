@@ -2,7 +2,7 @@ diff --git a/src/deps/uv/src/win/util.c b/src/deps/uv/src/win/util.c
 index f6ec79cd5..7365c0175 100644
 --- a/src/deps/uv/src/win/util.c
 +++ b/src/deps/uv/src/win/util.c
-@@ -521,7 +521,7 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
+@@ -446,7 +446,7 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
        ts->tv_nsec = t % 1000000000;
        return 0;
      case UV_CLOCK_REALTIME:

@@ -2,18 +2,18 @@ diff --git a/src/deps/undici/undici.js b/src/deps/undici/undici.js
 index cccf3f104..6967976a6 100644
 --- a/src/deps/undici/undici.js
 +++ b/src/deps/undici/undici.js
-@@ -2339,6 +2339,7 @@ var require_pool_base = __commonJS({
+@@ -2185,6 +2185,7 @@ var require_pool_base = __commonJS({
  var require_timers = __commonJS({
    "lib/util/timers.js"(exports2, module2) {
      "use strict";
 +    const {setTimeout, clearTimeout, setInterval, clearInterval } = require('timers');
-     var TICK_MS = 499;
-     var fastNow = Date.now();
-     var fastNowTimeout;
-@@ -2378,7 +2379,7 @@ var require_timers = __commonJS({
+     var fastNow = 0;
+     var RESOLUTION_MS = 1e3;
+     var TICK_MS = (RESOLUTION_MS >> 1) - 1;
+@@ -2230,7 +2231,7 @@ var require_timers = __commonJS({
        } else {
          clearTimeout(fastNowTimeout);
-         fastNowTimeout = setTimeout(onTimeout, TICK_MS);
+         fastNowTimeout = setTimeout(onTick, TICK_MS);
 -        if (fastNowTimeout.unref) {
 +        if (fastNowTimeout && fastNowTimeout.unref) {
            fastNowTimeout.unref();

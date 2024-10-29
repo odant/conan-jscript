@@ -2,7 +2,7 @@ diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/
 index acb5ddca8..75c79fe7a 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -849,6 +849,36 @@ function packageResolve(specifier, base, conditions) {
+@@ -835,6 +835,38 @@ function packageResolve(specifier, base, conditions) {
      // Cross-platform root check.
    } while (packageJSONPath.length !== lastPath.length);
  
@@ -19,8 +19,10 @@ index acb5ddca8..75c79fe7a 100644
 +
 +      const packageJSONPath = fileURLToPath(packageJSONUrl);
 +
-+      const stat = internalModuleStat(toNamespacedPath(StringPrototypeSlice(packageJSONPath, 0,
-+                                                                            packageJSONPath.length - 13)));
++      const stat = internalFsBinding.internalModuleStat(
++                       internalFsBinding,
++                       StringPrototypeSlice(packageJSONPath, 0, packageJSONPath.length - 13),
++      );
 +      if (stat !== 1) {
 +        continue;
 +      }
@@ -36,6 +38,6 @@ index acb5ddca8..75c79fe7a 100644
 +    }
 +  }
 +
-   // eslint can't handle the above code.
-   // eslint-disable-next-line no-unreachable
    throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+ }
+ 
