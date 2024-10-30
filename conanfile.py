@@ -8,7 +8,7 @@ import os, glob, re
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "20.18.0.0"
+    version = "22.10.0.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -36,7 +36,6 @@ class JScriptConan(ConanFile):
     }
     exports_patches = [
         "oda.patch",
-        "experimental.patch",
         "use_nodepath_for_esm.patch",
         "add_v8_options.patch"
     ]
