@@ -31,7 +31,7 @@ using namespace ::node;
 
 std::atomic<bool> is_initilized{ false };
 
-std::unique_ptr<InitializationResult> initializationResult;
+std::shared_ptr<InitializationResult> initializationResult;
 
 class NodeInstanceData
 {
@@ -523,7 +523,7 @@ void JSInstanceImpl::initSSID(v8::Local<v8::Context> context) {
     v8::Local<v8::Object> globalObj = context->Global();
     DCHECK(!globalObj.IsEmpty());
 
-    v8::Local<v8::String> ssidName  = v8::String::NewFromUtf8Literal(_isolate, u8"SSID");
+    v8::Local<v8::String> ssidName  = v8::String::NewFromUtf8Literal(_isolate, "SSID");
     v8::Local<v8::String> ssidValue = v8::String::NewFromUtf8(_isolate, _ssid.data(), v8::NewStringType::kNormal, _ssid.size()).ToLocalChecked();
 
     globalObj->Set(context, ssidName, ssidValue).Check();
