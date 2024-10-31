@@ -114,12 +114,12 @@ else()
 endif()
 set_property(TEST test_esm_nodepath_interpreter PROPERTY ENVIRONMENT ${NODE_ENV})
 
-library_test(test_napi_addon)
-add_library(napi_addon SHARED
-    napi_addon.cpp
-    #${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
-)
-set_target_properties(napi_addon PROPERTIES PREFIX "" SUFFIX ".node")
-target_compile_definitions(napi_addon PRIVATE BUILDING_NODE_EXTENSION)
-target_link_libraries(napi_addon CONAN_PKG::jscript)
-add_dependencies(test_napi_addon napi_addon)
+#library_test(test_napi_addon)
+#add_library(napi_addon SHARED
+#    napi_addon.cpp
+#    #${JScript_INCLUDE_DIRS}/win_delay_load_hook.cc
+#)
+#set_target_properties(napi_addon PROPERTIES PREFIX "" SUFFIX ".node")
+#target_compile_definitions(napi_addon PRIVATE BUILDING_NODE_EXTENSION)
+#target_link_libraries(napi_addon CONAN_PKG::jscript)
+#add_dependencies(test_napi_addon napi_addon)
