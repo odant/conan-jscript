@@ -14,7 +14,6 @@ const {
   ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
   String,
-  StringPrototypeStartsWith,
   Symbol,
   globalThis,
 } = primordials;
@@ -242,8 +241,7 @@ function patchProcessObject(expandArgv1) {
   let mainEntry;
   // If requested, update process.argv[1] to replace whatever the user provided with the resolved absolute file path of
   // the entry point.
-  if (expandArgv1 && process.argv[1] &&
-      !StringPrototypeStartsWith(process.argv[1], '-')) {
+  if (expandArgv1 && process.argv[1] && process.argv[1][0] !== '-') {
     // Expand process.argv[1] into a full path.
     const path = require('path');
     try {
@@ -384,7 +382,7 @@ function setupWebCrypto() {
 }
 
 function setupSQLite() {
-  if (!getOptionValue('--experimental-sqlite')) {
+  if (getOptionValue('--no-experimental-sqlite')) {
     return;
   }
 
@@ -612,14 +610,13 @@ function initializeClusterIPC() {
 }
 
 function initializePermission() {
-  const experimentalPermission = getOptionValue('--experimental-permission');
-  if (experimentalPermission) {
+  const permission = getOptionValue('--permission');
+  if (permission) {
     process.binding = function binding(_module) {
       throw new ERR_ACCESS_DENIED('process.binding');
     };
     // Guarantee path module isn't monkey-patched to bypass permission model
     ObjectFreeze(require('path'));
-    emitExperimentalWarning('Permission');
     const { has } = require('internal/process/permission');
     const warnFlags = [
       '--allow-addons',
@@ -671,7 +668,7 @@ function initializePermission() {
     ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
       const value = getOptionValue(flag);
       if (value.length) {
-        throw new ERR_MISSING_OPTION('--experimental-permission');
+        throw new ERR_MISSING_OPTION('--permission');
       }
     });
   }

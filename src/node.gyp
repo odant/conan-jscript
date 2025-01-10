@@ -481,6 +481,7 @@
         '-Wno-unused-parameter',
         '-Werror=undefined-inline',
         '-Werror=extra-semi',
+        '-Werror=ctad-maybe-unsupported',
       ],
     },
 
@@ -857,10 +858,6 @@
       'dependencies': [
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
-        'deps/simdjson/simdjson.gyp:simdjson',
-        'deps/simdutf/simdutf.gyp:simdutf',
-        'deps/ada/ada.gyp:ada',
         'deps/nbytes/nbytes.gyp:nbytes',
         'node_js2c#host',
       ],
@@ -892,6 +889,7 @@
         # Warn when using deprecated V8 APIs.
         'V8_DEPRECATION_WARNINGS=1',
         'NODE_OPENSSL_SYSTEM_CERT_PATH="<(openssl_system_ca_path)"',
+        "SQLITE_ENABLE_SESSION"
       ],
 
       # - "C4244: conversion from 'type1' to 'type2', possible loss of data"
@@ -1047,7 +1045,6 @@
       'dependencies': [
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
       ],
 
       'includes': [
@@ -1059,7 +1056,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/sqlite',
         'test/cctest',
       ],
 
@@ -1092,7 +1088,6 @@
       'dependencies': [
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
       ],
       'includes': [
@@ -1103,7 +1098,6 @@
         'tools/msvs/genfiles',
         'deps/v8/include',
         'deps/cares/include',
-        'deps/sqlite',
         'deps/uv/include',
         'deps/uvwasi/include',
         'test/cctest',
@@ -1138,9 +1132,7 @@
         '<(node_lib_target_name)',
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
-        'deps/ada/ada.gyp:ada',
         'deps/nbytes/nbytes.gyp:nbytes',
       ],
       'includes': [
@@ -1151,7 +1143,6 @@
         'tools/msvs/genfiles',
         'deps/v8/include',
         'deps/cares/include',
-        'deps/sqlite',
         'deps/uv/include',
         'deps/uvwasi/include',
         'test/cctest',
@@ -1188,10 +1179,6 @@
         'deps/googletest/googletest.gyp:gtest',
         'deps/googletest/googletest.gyp:gtest_main',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
-        'deps/simdjson/simdjson.gyp:simdjson',
-        'deps/simdutf/simdutf.gyp:simdutf',
-        'deps/ada/ada.gyp:ada',
         'deps/nbytes/nbytes.gyp:nbytes',
       ],
 
@@ -1205,7 +1192,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/sqlite',
         'test/cctest',
       ],
 
@@ -1270,8 +1256,6 @@
       'dependencies': [
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
-        'deps/ada/ada.gyp:ada',
         'deps/nbytes/nbytes.gyp:nbytes',
       ],
 
@@ -1286,7 +1270,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/sqlite',
         'test/embedding',
       ],
 
@@ -1323,6 +1306,26 @@
     }, # embedtest
 
     {
+      'target_name': 'sqlite_extension',
+      'type': 'shared_library',
+      'sources': [
+        'test/sqlite/extension.c'
+      ],
+
+      'include_dirs': [
+        'test/sqlite',
+        'deps/sqlite',
+      ],
+
+      'cflags': [
+        '-fPIC',
+        '-Wall',
+        '-Wextra',
+        '-O3',
+      ],
+    }, # sqlitetest
+
+    {
       'target_name': 'overlapped-checker',
       'type': 'executable',
 
@@ -1347,9 +1350,6 @@
       'target_name': 'node_js2c',
       'type': 'executable',
       'toolsets': ['host'],
-      'dependencies': [
-        'deps/simdutf/simdutf.gyp:simdutf#host',
-      ],
       'include_dirs': [
         'tools',
         'src',
@@ -1361,6 +1361,9 @@
         'src/embedded_data.cc',
       ],
       'conditions': [
+        [ 'node_shared_simdutf=="false"', {
+          'dependencies': [ 'deps/simdutf/simdutf.gyp:simdutf#host' ],
+        }],
         [ 'node_shared_libuv=="false"', {
           'dependencies': [ 'deps/uv/uv.gyp:libuv#host' ],
         }],
@@ -1386,11 +1389,7 @@
       'dependencies': [
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
-        'deps/sqlite/sqlite.gyp:sqlite',
-        'deps/ada/ada.gyp:ada',
         'deps/nbytes/nbytes.gyp:nbytes',
-        'deps/simdjson/simdjson.gyp:simdjson',
-        'deps/simdutf/simdutf.gyp:simdutf',
       ],
 
       'includes': [
@@ -1403,7 +1402,6 @@
         'deps/v8/include',
         'deps/cares/include',
         'deps/uv/include',
-        'deps/sqlite',
       ],
 
       'defines': [ 'NODE_WANT_INTERNALS=1' ],
