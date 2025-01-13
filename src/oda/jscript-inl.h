@@ -614,7 +614,32 @@ NODE_EXTERN void Initialize(const std::vector<std::string>&         argv,
     }
 
     // Paths to node modules
-    CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
+    size_t init_sz = 256;
+    MaybeStackBuffer<char, 256> val;
+    int ret = ::uv_os_getenv("NODE_PATH", *val, &init_sz);
+
+    if (ret == UV_ENOBUFS) {
+        // Buffer is not large enough, reallocate to the updated init_sz
+        // and fetch env value again.
+        val.AllocateSufficientStorage(init_sz);
+        ret = ::uv_os_getenv("NODE_PATH", *val, &init_sz);
+    }
+
+    if (ret >= 0 && init_sz > 0) {  // Env key value fetch success.
+        std::string nodePath;
+        nodePath.reserve(init_sz + 1 + nodeFolder.size());
+        nodePath.append(*val, init_sz);
+#ifdef _WIN32
+        const char delimiter = ';';
+#else
+        const char delimiter = ':';
+#endif
+        nodePath.append(1, delimiter);
+        nodePath.append(nodeFolder);
+        CHECK_EQ(::uv_os_setenv("NODE_PATH", nodePath.c_str()), 0);
+    }    
+    else
+        CHECK_EQ(::uv_os_setenv("NODE_PATH", nodeFolder.c_str()), 0);
 
     // categories is ','-separated list of C++ core debug categories that should print debug output
     // 'none' - category for oda log callback
