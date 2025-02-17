@@ -142,14 +142,14 @@ If `cacheDir` is not specified, Node.js will either use the directory specified 
 [`NODE_COMPILE_CACHE=dir`][] environment variable if it's set, or use
 `path.join(os.tmpdir(), 'node-compile-cache')` otherwise. For general use cases, it's
 recommended to call `module.enableCompileCache()` without specifying the `cacheDir`,
-so that the directory can be overriden by the `NODE_COMPILE_CACHE` environment
+so that the directory can be overridden by the `NODE_COMPILE_CACHE` environment
 variable when necessary.
 
 Since compile cache is supposed to be a quiet optimization that is not required for the
 application to be functional, this method is designed to not throw any exception when the
 compile cache cannot be enabled. Instead, it will return an object containing an error
 message in the `message` field to aid debugging.
-If compile cache is enabled successefully, the `directory` field in the returned object
+If compile cache is enabled successfully, the `directory` field in the returned object
 contains the path to the directory where the compile cache is stored. The `status`
 field in the returned object would be one of the `module.constants.compileCacheStatus`
 values to indicate the result of the attempt to enable the [module compile cache][].
@@ -157,7 +157,7 @@ values to indicate the result of the attempt to enable the [module compile cache
 This method only affects the current Node.js instance. To enable it in child worker threads,
 either call this method in child worker threads too, or set the
 `process.env.NODE_COMPILE_CACHE` value to compile cache directory so the behavior can
-be inheritend into the child workers. The directory can be obtained either from the
+be inherited into the child workers. The directory can be obtained either from the
 `directory` field returned by this method, or with [`module.getCompileCacheDir()`][].
 
 #### Module compile cache
@@ -217,6 +217,92 @@ added: v22.8.0
 * Returns: {string|undefined} Path to the [module compile cache][] directory if it is enabled,
   or `undefined` otherwise.
 
+### `module.findPackageJSON(specifier[, base])`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+> Stability: 1.1 - Active Development
+
+* `specifier` {string|URL} The specifier for the module whose `package.json` to
+  retrieve. When passing a _bare specifier_, the `package.json` at the root of
+  the package is returned. When passing a _relative specifier_ or an _absolute specifier_,
+  the closest parent `package.json` is returned.
+* `base` {string|URL} The absolute location (`file:` URL string or FS path) of the
+  containing  module. For CJS, use `__filename` (not `__dirname`!); for ESM, use
+  `import.meta.url`. You do not need to pass it if `specifier` is an `absolute specifier`.
+* Returns: {string|undefined} A path if the `package.json` is found. When `specifier`
+  is a package, the package's root `package.json`; when a relative or unresolved, the closest
+  `package.json` to the `specifier`.
+
+> **Caveat**: Do not use this to try to determine module format. There are many things affecting
+> that determination; the `type` field of package.json is the _least_ definitive (ex file extension
+> supersedes it, and a loader hook supersedes that).
+
+> **Caveat**: This currently leverages only the built-in default resolver; if
+> [`resolve` customization hooks][resolve hook] are registered, they will not affect the resolution.
+> This may change in the future.
+
+```text
+/path/to/project
+  ├ packages/
+    ├ bar/
+      ├ bar.js
+      └ package.json // name = '@foo/bar'
+    └ qux/
+      ├ node_modules/
+        └ some-package/
+          └ package.json // name = 'some-package'
+      ├ qux.js
+      └ package.json // name = '@foo/qux'
+  ├ main.js
+  └ package.json // name = '@foo'
+```
+
+```mjs
+// /path/to/project/packages/bar/bar.js
+import { findPackageJSON } from 'node:module';
+
+findPackageJSON('..', import.meta.url);
+// '/path/to/project/package.json'
+// Same result when passing an absolute specifier instead:
+findPackageJSON(new URL('../', import.meta.url));
+findPackageJSON(import.meta.resolve('../'));
+
+findPackageJSON('some-package', import.meta.url);
+// '/path/to/project/packages/bar/node_modules/some-package/package.json'
+// When passing an absolute specifier, you might get a different result if the
+// resolved module is inside a subfolder that has nested `package.json`.
+findPackageJSON(import.meta.resolve('some-package'));
+// '/path/to/project/packages/bar/node_modules/some-package/some-subfolder/package.json'
+
+findPackageJSON('@foo/qux', import.meta.url);
+// '/path/to/project/packages/qux/package.json'
+```
+
+```cjs
+// /path/to/project/packages/bar/bar.js
+const { findPackageJSON } = require('node:module');
+const { pathToFileURL } = require('node:url');
+const path = require('node:path');
+
+findPackageJSON('..', __filename);
+// '/path/to/project/package.json'
+// Same result when passing an absolute specifier instead:
+findPackageJSON(pathToFileURL(path.join(__dirname, '..')));
+
+findPackageJSON('some-package', __filename);
+// '/path/to/project/packages/bar/node_modules/some-package/package.json'
+// When passing an absolute specifier, you might get a different result if the
+// resolved module is inside a subfolder that has nested `package.json`.
+findPackageJSON(pathToFileURL(require.resolve('some-package')));
+// '/path/to/project/packages/bar/node_modules/some-package/some-subfolder/package.json'
+
+findPackageJSON('@foo/qux', __filename);
+// '/path/to/project/packages/qux/package.json'
+```
+
 ### `module.isBuiltin(moduleName)`
 
 <!-- YAML
@@ -242,6 +328,10 @@ added:
   - v20.6.0
   - v18.19.0
 changes:
+  - version: v22.13.1
+    pr-url: https://github.com/nodejs-private/node-private/pull/629
+    description: Using this feature with the permission model enabled requires
+                 passing `--allow-worker`.
   - version:
     - v20.8.0
     - v18.19.0
@@ -264,11 +354,13 @@ changes:
     **Default:** `'data:'`
   * `data` {any} Any arbitrary, cloneable JavaScript value to pass into the
     [`initialize`][] hook.
-  * `transferList` {Object\[]} [transferrable objects][] to be passed into the
+  * `transferList` {Object\[]} [transferable objects][] to be passed into the
     `initialize` hook.
 
 Register a module that exports [hooks][] that customize Node.js module
 resolution and loading behavior. See [Customization hooks][].
+
+This feature requires `--allow-worker` if used with the [Permission Model][].
 
 ### `module.stripTypeScriptTypes(code[, options])`
 
@@ -737,7 +829,7 @@ affect the other thread(s), and message channels must be used to communicate
 between the threads.
 
 The `register` method can be used to pass data to an [`initialize`][] hook. The
-data passed to the hook may include transferrable objects like ports.
+data passed to the hook may include transferable objects like ports.
 
 ```mjs
 import { register } from 'node:module';
@@ -835,7 +927,7 @@ the hooks thread when the hooks module is initialized. Initialization happens
 when the hooks module is registered via [`register`][].
 
 This hook can receive data from a [`register`][] invocation, including
-ports and other transferrable objects. The return value of `initialize` can be a
+ports and other transferable objects. The return value of `initialize` can be a
 {Promise}, in which case it will be awaited before the main application thread
 execution resumes.
 
@@ -1042,13 +1134,13 @@ validating the import attributes.
 
 The final value of `format` must be one of the following:
 
-| `format`     | Description                    | Acceptable types for `source` returned by `load`                           |
-| ------------ | ------------------------------ | -------------------------------------------------------------------------- |
-| `'builtin'`  | Load a Node.js builtin module  | Not applicable                                                             |
-| `'commonjs'` | Load a Node.js CommonJS module | { [`string`][], [`ArrayBuffer`][], [`TypedArray`][], `null`, `undefined` } |
-| `'json'`     | Load a JSON file               | { [`string`][], [`ArrayBuffer`][], [`TypedArray`][] }                      |
-| `'module'`   | Load an ES module              | { [`string`][], [`ArrayBuffer`][], [`TypedArray`][] }                      |
-| `'wasm'`     | Load a WebAssembly module      | { [`ArrayBuffer`][], [`TypedArray`][] }                                    |
+| `format`     | Description                    | Acceptable types for `source` returned by `load`   |
+| ------------ | ------------------------------ | -------------------------------------------------- |
+| `'builtin'`  | Load a Node.js builtin module  | {null}                                             |
+| `'commonjs'` | Load a Node.js CommonJS module | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
+| `'json'`     | Load a JSON file               | {string\|ArrayBuffer\|TypedArray}                  |
+| `'module'`   | Load an ES module              | {string\|ArrayBuffer\|TypedArray}                  |
+| `'wasm'`     | Load a WebAssembly module      | {ArrayBuffer\|TypedArray}                          |
 
 The value of `source` is ignored for type `'builtin'` because currently it is
 not possible to replace the value of a Node.js builtin (core) module.
@@ -1091,8 +1183,8 @@ export async function load(url, context, nextLoad) {
 
 > These types all correspond to classes defined in ECMAScript.
 
-* The specific [`ArrayBuffer`][] object is a [`SharedArrayBuffer`][].
-* The specific [`TypedArray`][] object is a [`Uint8Array`][].
+* The specific {ArrayBuffer} object is a {SharedArrayBuffer}.
+* The specific {TypedArray} object is a {Uint8Array}.
 
 If the source value of a text-based format (i.e., `'json'`, `'module'`)
 is not a string, it is converted to a string using [`util.TextDecoder`][].
@@ -1354,6 +1446,20 @@ import { findSourceMap, SourceMap } from 'node:module';
 const { findSourceMap, SourceMap } = require('node:module');
 ```
 
+### `module.getSourceMapsSupport()`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+* Returns: {Object}
+  * `enabled` {boolean} If the source maps support is enabled
+  * `nodeModules` {boolean} If the support is enabled for files in `node_modules`.
+  * `generatedCode` {boolean} If the support is enabled for generated code from `eval` or `new Function`.
+
+This method returns whether the [Source Map v3][Source Map] support for stack
+traces is enabled.
+
 <!-- Anchors to make sure old links find a target -->
 
 <a id="module_module_findsourcemap_path_error"></a>
@@ -1372,6 +1478,31 @@ added:
 
 `path` is the resolved path for the file for which a corresponding source map
 should be fetched.
+
+### `module.setSourceMapsSupport(enabled[, options])`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+* `enabled` {boolean} Enable the source map support.
+* `options` {Object} Optional
+  * `nodeModules` {boolean} If enabling the support for files in
+    `node_modules`. **Default:** `false`.
+  * `generatedCode` {boolean} If enabling the support for generated code from
+    `eval` or `new Function`. **Default:** `false`.
+
+This function enables or disables the [Source Map v3][Source Map] support for
+stack traces.
+
+It provides same features as launching Node.js process with commandline options
+`--enable-source-maps`, with additional options to alter the support for files
+in `node_modules` or generated codes.
+
+Only source maps in JavaScript files that are loaded after source maps has been
+enabled will be parsed and loaded. Preferably, use the commandline options
+`--enable-source-maps` to avoid losing track of source maps of modules loaded
+before this API call.
 
 ### Class: `module.SourceMap`
 
@@ -1472,19 +1603,17 @@ returned object contains the following keys:
 [Conditional exports]: packages.md#conditional-exports
 [Customization hooks]: #customization-hooks
 [ES Modules]: esm.md
+[Permission Model]: permissions.md#permission-model
+[Source Map]: https://sourcemaps.info/spec.html
 [Source map v3 format]: https://sourcemaps.info/spec.html#h.mofvlxcwqzej
 [V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
 [V8 code cache]: https://v8.dev/blog/code-caching-for-devs
 [`"exports"`]: packages.md#exports
 [`--enable-source-maps`]: cli.md#--enable-source-maps
-[`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
 [`NODE_COMPILE_CACHE=dir`]: cli.md#node_compile_cachedir
 [`NODE_DISABLE_COMPILE_CACHE=1`]: cli.md#node_disable_compile_cache1
 [`NODE_V8_COVERAGE=dir`]: cli.md#node_v8_coveragedir
-[`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`SourceMap`]: #class-modulesourcemap
-[`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
-[`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [`initialize`]: #initialize
 [`module.constants.compileCacheStatus`]: #moduleconstantscompilecachestatus
 [`module.enableCompileCache()`]: #moduleenablecompilecachecachedir
@@ -1493,7 +1622,6 @@ returned object contains the following keys:
 [`module`]: #the-module-object
 [`os.tmpdir()`]: os.md#ostmpdir
 [`register`]: #moduleregisterspecifier-parenturl-options
-[`string`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
 [`util.TextDecoder`]: util.md#class-utiltextdecoder
 [chain]: #chaining
 [hooks]: #customization-hooks
@@ -1502,7 +1630,8 @@ returned object contains the following keys:
 [module wrapper]: modules.md#the-module-wrapper
 [prefix-only modules]: modules.md#built-in-modules-with-mandatory-node-prefix
 [realm]: https://tc39.es/ecma262/#realm
+[resolve hook]: #resolvespecifier-context-nextresolve
 [source map include directives]: https://sourcemaps.info/spec.html#h.lmz475t4mvbx
-[transferrable objects]: worker_threads.md#portpostmessagevalue-transferlist
+[transferable objects]: worker_threads.md#portpostmessagevalue-transferlist
 [transform TypeScript features]: typescript.md#typescript-features
 [type-stripping]: typescript.md#type-stripping

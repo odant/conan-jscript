@@ -101,6 +101,9 @@ const kIsMainSymbol = Symbol('kIsMainSymbol');
 const kIsCachedByESMLoader = Symbol('kIsCachedByESMLoader');
 const kRequiredModuleSymbol = Symbol('kRequiredModuleSymbol');
 const kIsExecuting = Symbol('kIsExecuting');
+
+const kFormat = Symbol('kFormat');
+
 // Set first due to cycle with ESM loader functions.
 module.exports = {
   kModuleSource,
@@ -432,14 +435,12 @@ function initializeCJS() {
 
   const tsEnabled = getOptionValue('--experimental-strip-types');
   if (tsEnabled) {
-    emitExperimentalWarning('Type Stripping');
     Module._extensions['.cts'] = loadCTS;
     Module._extensions['.ts'] = loadTS;
   }
   if (getOptionValue('--experimental-require-module')) {
-    Module._extensions['.mjs'] = loadESMFromCJS;
     if (tsEnabled) {
-      Module._extensions['.mts'] = loadESMFromCJS;
+      Module._extensions['.mts'] = loadMTS;
     }
   }
 }
@@ -603,11 +604,11 @@ function trySelf(parentPath, request) {
   try {
     const { packageExportsResolve } = require('internal/modules/esm/resolve');
     return finalizeEsmResolution(packageExportsResolve(
-      pathToFileURL(pkg.path + '/package.json'), expansion, pkg.data,
+      pathToFileURL(pkg.path), expansion, pkg.data,
       pathToFileURL(parentPath), getCjsConditions()), parentPath, pkg.path);
   } catch (e) {
     if (e.code === 'ERR_MODULE_NOT_FOUND') {
-      throw createEsmNotFoundErr(request, pkg.path + '/package.json');
+      throw createEsmNotFoundErr(request, pkg.path);
     }
     throw e;
   }
@@ -654,8 +655,6 @@ function getDefaultExtensions() {
   if (tsEnabled) {
     // remove .ts and .cts from the default extensions
     // to avoid extensionless require of .ts and .cts files.
-    // it behaves similarly to how .mjs is handled when --experimental-require-module
-    // is enabled.
     extensions = ArrayPrototypeFilter(extensions, (ext) =>
       (ext !== '.ts' || Module._extensions['.ts'] !== loadTS) &&
       (ext !== '.cts' || Module._extensions['.cts'] !== loadCTS),
@@ -668,14 +667,10 @@ function getDefaultExtensions() {
 
   if (tsEnabled) {
     extensions = ArrayPrototypeFilter(extensions, (ext) =>
-      ext !== '.mts' || Module._extensions['.mts'] !== loadESMFromCJS,
+      ext !== '.mts' || Module._extensions['.mts'] !== loadMTS,
     );
   }
-  // If the .mjs extension is added by --experimental-require-module,
-  // remove it from the supported default extensions to maintain
-  // compatibility.
-  // TODO(joyeecheung): allow both .mjs and .cjs?
-  return ArrayPrototypeFilter(extensions, (ext) => ext !== '.mjs' || Module._extensions['.mjs'] !== loadESMFromCJS);
+  return extensions;
 }
 
 /**
@@ -713,18 +708,8 @@ Module._findPath = function(request, paths, isMain) {
       )
     ));
 
-  const isRelative = StringPrototypeCharCodeAt(request, 0) === CHAR_DOT &&
-    (
-      request.length === 1 ||
-      StringPrototypeCharCodeAt(request, 1) === CHAR_FORWARD_SLASH ||
-      (isWindows && StringPrototypeCharCodeAt(request, 1) === CHAR_BACKWARD_SLASH) ||
-      (StringPrototypeCharCodeAt(request, 1) === CHAR_DOT && ((
-        request.length === 2 ||
-        StringPrototypeCharCodeAt(request, 2) === CHAR_FORWARD_SLASH) ||
-        (isWindows && StringPrototypeCharCodeAt(request, 2) === CHAR_BACKWARD_SLASH)))
-    );
   let insidePath = true;
-  if (isRelative) {
+  if (isRelative(request)) {
     const normalizedRequest = path.normalize(request);
     if (StringPrototypeStartsWith(normalizedRequest, '..')) {
       insidePath = false;
@@ -1164,12 +1149,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
 
   if (typeof options === 'object' && options !== null) {
     if (ArrayIsArray(options.paths)) {
-      const isRelative = StringPrototypeStartsWith(request, './') ||
-          StringPrototypeStartsWith(request, '../') ||
-          ((isWindows && StringPrototypeStartsWith(request, '.\\')) ||
-          StringPrototypeStartsWith(request, '..\\'));
-
-      if (isRelative) {
+      if (isRelative(request)) {
         paths = options.paths;
       } else {
         const fakeParent = new Module('', null);
@@ -1199,14 +1179,15 @@ Module._resolveFilename = function(request, parent, isMain, options) {
 
   if (request[0] === '#' && (parent?.filename || parent?.id === '<repl>')) {
     const parentPath = parent?.filename ?? process.cwd() + path.sep;
-    const pkg = packageJsonReader.getNearestParentPackageJSON(parentPath) || { __proto__: null };
-    if (pkg.data?.imports != null) {
+    const pkg = packageJsonReader.getNearestParentPackageJSON(parentPath);
+    if (pkg?.data.imports != null) {
       try {
         const { packageImportsResolve } = require('internal/modules/esm/resolve');
         return finalizeEsmResolution(
-          packageImportsResolve(request, pathToFileURL(parentPath),
-                                getCjsConditions()), parentPath,
-          pkg.path);
+          packageImportsResolve(request, pathToFileURL(parentPath), getCjsConditions()),
+          parentPath,
+          pkg.path,
+        );
       } catch (e) {
         if (e.code === 'ERR_MODULE_NOT_FOUND') {
           throw createEsmNotFoundErr(request);
@@ -1266,8 +1247,7 @@ function finalizeEsmResolution(resolved, parentPath, pkgPath) {
   if (actual) {
     return actual;
   }
-  const err = createEsmNotFoundErr(filename,
-                                   path.resolve(pkgPath, 'package.json'));
+  const err = createEsmNotFoundErr(filename, pkgPath);
   throw err;
 }
 
@@ -1299,10 +1279,6 @@ Module.prototype.load = function(filename) {
   this.paths = Module._nodeModulePaths(path.dirname(filename));
 
   const extension = findLongestRegisteredExtension(filename);
-  // allow .mjs to be overridden
-  if (StringPrototypeEndsWith(filename, '.mjs') && !Module._extensions['.mjs']) {
-    throw new ERR_REQUIRE_ESM(filename, true);
-  }
 
   if (getOptionValue('--experimental-strip-types')) {
     if (StringPrototypeEndsWith(filename, '.mts') && !Module._extensions['.mts']) {
@@ -1343,12 +1319,10 @@ let requireModuleWarningMode;
  * Resolve and evaluate it synchronously as ESM if it's ESM.
  * @param {Module} mod CJS module instance
  * @param {string} filename Absolute path of the file.
+ * @param {string} format Format of the module. If it had types, this would be what it is after type-stripping.
+ * @param {string} source Source the module. If it had types, this would have the type stripped.
  */
-function loadESMFromCJS(mod, filename) {
-  let source = getMaybeCachedSource(mod, filename);
-  if (getOptionValue('--experimental-strip-types') && path.extname(filename) === '.mts') {
-    source = stripTypeScriptModuleTypes(source, filename);
-  }
+function loadESMFromCJS(mod, filename, format, source) {
   const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
   const isMain = mod[kIsMainSymbol];
   if (isMain) {
@@ -1524,9 +1498,29 @@ function wrapSafe(filename, content, cjsModuleInstance, format) {
  * `exports`) to the file. Returns exception, if any.
  * @param {string} content The source code of the module
  * @param {string} filename The file path of the module
- * @param {'module'|'commonjs'|undefined} format Intended format of the module.
+ * @param {'module'|'commonjs'|'commonjs-typescript'|'module-typescript'|'typescript'} format
+ * Intended format of the module.
  */
 Module.prototype._compile = function(content, filename, format) {
+  if (format === 'commonjs-typescript' || format === 'module-typescript' || format === 'typescript') {
+    content = stripTypeScriptModuleTypes(content, filename);
+    switch (format) {
+      case 'commonjs-typescript': {
+        format = 'commonjs';
+        break;
+      }
+      case 'module-typescript': {
+        format = 'module';
+        break;
+      }
+      // If the format is still unknown i.e. 'typescript', detect it in
+      // wrapSafe using the type-stripped source.
+      default:
+        format = undefined;
+        break;
+    }
+  }
+
   let redirects;
 
   let compiledWrapper;
@@ -1539,9 +1533,7 @@ Module.prototype._compile = function(content, filename, format) {
   }
 
   if (format === 'module') {
-    // Pass the source into the .mjs extension handler indirectly through the cache.
-    this[kModuleSource] = content;
-    loadESMFromCJS(this, filename);
+    loadESMFromCJS(this, filename, format, content);
     return;
   }
 
@@ -1569,72 +1561,76 @@ Module.prototype._compile = function(content, filename, format) {
 
 /**
  * Get the source code of a module, using cached ones if it's cached.
+ * After this returns, mod[kFormat], mod[kModuleSource] and mod[kURL] will be set.
  * @param {Module} mod Module instance whose source is potentially already cached.
  * @param {string} filename Absolute path to the file of the module.
- * @returns {string}
+ * @returns {{source: string, format?: string}}
  */
-function getMaybeCachedSource(mod, filename) {
-  // If already analyzed the source, then it will be cached.
-  let content;
-  if (mod[kModuleSource] !== undefined) {
-    content = mod[kModuleSource];
+function loadSource(mod, filename, formatFromNode) {
+  if (formatFromNode !== undefined) {
+    mod[kFormat] = formatFromNode;
+  }
+  const format = mod[kFormat];
+
+  let source = mod[kModuleSource];
+  if (source !== undefined) {
     mod[kModuleSource] = undefined;
   } else {
     // TODO(joyeecheung): we can read a buffer instead to speed up
     // compilation.
-    content = fs.readFileSync(filename, 'utf8');
+    source = fs.readFileSync(filename, 'utf8');
   }
-  return content;
+  return { source, format };
 }
 
+/**
+ * Built-in handler for `.mts` files.
+ * @param {Module} mod CJS module instance
+ * @param {string} filename The file path of the module
+ */
+function loadMTS(mod, filename) {
+  const loadResult = loadSource(mod, filename, 'module-typescript');
+  mod._compile(loadResult.source, filename, loadResult.format);
+}
+
+/**
+ * Built-in handler for `.cts` files.
+ * @param {Module} module CJS module instance
+ * @param {string} filename The file path of the module
+ */
+
 function loadCTS(module, filename) {
-  const source = getMaybeCachedSource(module, filename);
-  const code = stripTypeScriptModuleTypes(source, filename);
-  module._compile(code, filename, 'commonjs');
+  const loadResult = loadSource(module, filename, 'commonjs-typescript');
+  module._compile(loadResult.source, filename, loadResult.format);
 }
 
 /**
  * Built-in handler for `.ts` files.
- * @param {Module} module The module to compile
+ * @param {Module} module CJS module instance
  * @param {string} filename The file path of the module
  */
 function loadTS(module, filename) {
-  // If already analyzed the source, then it will be cached.
-  const source = getMaybeCachedSource(module, filename);
-  const content = stripTypeScriptModuleTypes(source, filename);
-  let format;
   const pkg = packageJsonReader.getNearestParentPackageJSON(filename);
-  // Function require shouldn't be used in ES modules.
-  if (pkg?.data.type === 'module') {
-    if (getOptionValue('--experimental-require-module')) {
-      module._compile(content, filename, 'module');
-      return;
-    }
+  const typeFromPjson = pkg?.data.type;
 
-    const parent = module[kModuleParent];
-    const parentPath = parent?.filename;
-    const packageJsonPath = path.resolve(pkg.path, 'package.json');
-    const usesEsm = containsModuleSyntax(content, filename);
-    const err = new ERR_REQUIRE_ESM(filename, usesEsm, parentPath,
-                                    packageJsonPath);
-      // Attempt to reconstruct the parent require frame.
-    if (Module._cache[parentPath]) {
-      let parentSource;
-      try {
-        parentSource = stripTypeScriptModuleTypes(fs.readFileSync(parentPath, 'utf8'), parentPath);
-      } catch {
-        // Continue regardless of error.
-      }
-      if (parentSource) {
-        reconstructErrorStack(err, parentPath, parentSource);
-      }
-    }
+  let format;
+  if (typeFromPjson === 'module') {
+    format = 'module-typescript';
+  } else if (typeFromPjson === 'commonjs') {
+    format = 'commonjs-typescript';
+  } else {
+    format = 'typescript';
+  }
+  const loadResult = loadSource(module, filename, format);
+
+  // Function require shouldn't be used in ES modules when require(esm) is disabled.
+  if (typeFromPjson === 'module' && !getOptionValue('--experimental-require-module')) {
+    const err = getRequireESMError(module, pkg, loadResult.source, filename);
     throw err;
-  } else if (pkg?.data.type === 'commonjs') {
-    format = 'commonjs';
   }
 
-  module._compile(content, filename, format);
+  module[kFormat] = loadResult.format;
+  module._compile(loadResult.source, filename, loadResult.format);
 };
 
 function reconstructErrorStack(err, parentPath, parentSource) {
@@ -1651,52 +1647,63 @@ function reconstructErrorStack(err, parentPath, parentSource) {
 }
 
 /**
+ * Generate the legacy ERR_REQUIRE_ESM for the cases where require(esm) is disabled.
+ * @param {Module} mod The module being required.
+ * @param {undefined|object} pkg Data of the nearest package.json of the module.
+ * @param {string} content Source code of the module.
+ * @param {string} filename Filename of the module
+ * @returns {Error}
+ */
+function getRequireESMError(mod, pkg, content, filename) {
+  // This is an error path because `require` of a `.js` file in a `"type": "module"` scope is not allowed.
+  const parent = mod[kModuleParent];
+  const parentPath = parent?.filename;
+  const packageJsonPath = pkg?.path;
+  const usesEsm = containsModuleSyntax(content, filename);
+  const err = new ERR_REQUIRE_ESM(filename, usesEsm, parentPath,
+                                  packageJsonPath);
+  // Attempt to reconstruct the parent require frame.
+  const parentModule = Module._cache[parentPath];
+  if (parentModule) {
+    let parentSource;
+    try {
+      ({ source: parentSource } = loadSource(parentModule, parentPath));
+    } catch {
+      // Continue regardless of error.
+    }
+    if (parentSource) {
+      // TODO(joyeecheung): trim off internal frames from the stack.
+      reconstructErrorStack(err, parentPath, parentSource);
+    }
+  }
+  return err;
+}
+
+/**
  * Built-in handler for `.js` files.
  * @param {Module} module The module to compile
  * @param {string} filename The file path of the module
  */
 Module._extensions['.js'] = function(module, filename) {
-  // If already analyzed the source, then it will be cached.
-  const content = getMaybeCachedSource(module, filename);
-
-  let format;
-  if (StringPrototypeEndsWith(filename, '.js')) {
-    const pkg = packageJsonReader.getNearestParentPackageJSON(filename);
-    // Function require shouldn't be used in ES modules.
-    if (pkg?.data.type === 'module') {
-      if (getOptionValue('--experimental-require-module')) {
-        module._compile(content, filename, 'module');
-        return;
-      }
-
-      // This is an error path because `require` of a `.js` file in a `"type": "module"` scope is not allowed.
-      const parent = module[kModuleParent];
-      const parentPath = parent?.filename;
-      const packageJsonPath = path.resolve(pkg.path, 'package.json');
-      const usesEsm = containsModuleSyntax(content, filename);
-      const err = new ERR_REQUIRE_ESM(filename, usesEsm, parentPath,
-                                      packageJsonPath);
-      // Attempt to reconstruct the parent require frame.
-      if (Module._cache[parentPath]) {
-        let parentSource;
-        try {
-          parentSource = fs.readFileSync(parentPath, 'utf8');
-        } catch {
-          // Continue regardless of error.
-        }
-        if (parentSource) {
-          reconstructErrorStack(err, parentPath, parentSource);
-        }
-      }
-      throw err;
-    } else if (pkg?.data.type === 'commonjs') {
-      format = 'commonjs';
-    }
-  } else if (StringPrototypeEndsWith(filename, '.cjs')) {
+  let format, pkg;
+  if (StringPrototypeEndsWith(filename, '.cjs')) {
     format = 'commonjs';
+  } else if (StringPrototypeEndsWith(filename, '.mjs')) {
+    format = 'module';
+  } else if (StringPrototypeEndsWith(filename, '.js')) {
+    pkg = packageJsonReader.getNearestParentPackageJSON(filename);
+    const typeFromPjson = pkg?.data.type;
+    if (typeFromPjson === 'module' || typeFromPjson === 'commonjs' || !typeFromPjson) {
+      format = typeFromPjson;
+    }
   }
-
-  module._compile(content, filename, format);
+  const { source, format: loadedFormat } = loadSource(module, filename, format);
+  // Function require shouldn't be used in ES modules when require(esm) is disabled.
+  if (loadedFormat === 'module' && !getOptionValue('--experimental-require-module')) {
+    const err = getRequireESMError(module, pkg, source, filename);
+    throw err;
+  }
+  module._compile(source, filename, loadedFormat);
 };
 
 /**
@@ -1772,6 +1779,21 @@ function createRequire(filename) {
     filepath = filename;
   }
   return createRequireFromPath(filepath);
+}
+
+/**
+ * Checks if a path is relative
+ * @param {string} path the target path
+ * @returns {boolean} true if the path is relative, false otherwise
+ */
+function isRelative(path) {
+  if (StringPrototypeCharCodeAt(path, 0) !== CHAR_DOT) { return false; }
+
+  return path.length === 1 || path === '..' ||
+  StringPrototypeStartsWith(path, './') ||
+  StringPrototypeStartsWith(path, '../') ||
+  ((isWindows && StringPrototypeStartsWith(path, '.\\')) ||
+  StringPrototypeStartsWith(path, '..\\'));
 }
 
 Module.createRequire = createRequire;

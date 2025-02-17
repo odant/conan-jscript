@@ -8,6 +8,7 @@ const {
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
   ArrayPrototypeUnshiftApply,
+  Error,
   FunctionPrototype,
   MathMax,
   Number,
@@ -58,11 +59,16 @@ const {
 const { isPromise } = require('internal/util/types');
 const {
   validateAbortSignal,
+  validateFunction,
   validateNumber,
+  validateObject,
   validateOneOf,
   validateUint32,
 } = require('internal/validators');
-const { setTimeout } = require('timers');
+const {
+  clearTimeout,
+  setTimeout,
+} = require('timers');
 const { TIMEOUT_MAX } = require('internal/timers');
 const { fileURLToPath } = require('internal/url');
 const { availableParallelism } = require('os');
@@ -100,34 +106,19 @@ function lazyFindSourceMap(file) {
 
 function lazyAssertObject(harness) {
   if (assertObj === undefined) {
-    assertObj = new SafeMap();
-    const assert = require('assert');
+    const { getAssertionMap } = require('internal/test_runner/assert');
     const { SnapshotManager } = require('internal/test_runner/snapshot');
-    const methodsToCopy = [
-      'deepEqual',
-      'deepStrictEqual',
-      'doesNotMatch',
-      'doesNotReject',
-      'doesNotThrow',
-      'equal',
-      'fail',
-      'ifError',
-      'match',
-      'notDeepEqual',
-      'notDeepStrictEqual',
-      'notEqual',
-      'notStrictEqual',
-      'partialDeepStrictEqual',
-      'rejects',
-      'strictEqual',
-      'throws',
-    ];
-    for (let i = 0; i < methodsToCopy.length; i++) {
-      assertObj.set(methodsToCopy[i], assert[methodsToCopy[i]]);
+
+    assertObj = getAssertionMap();
+    harness.snapshotManager = new SnapshotManager(harness.config.updateSnapshots);
+
+    if (!assertObj.has('snapshot')) {
+      assertObj.set('snapshot', harness.snapshotManager.createAssert());
     }
 
-    harness.snapshotManager = new SnapshotManager(harness.config.updateSnapshots);
-    assertObj.set('snapshot', harness.snapshotManager.createAssert());
+    if (!assertObj.has('fileSnapshot')) {
+      assertObj.set('fileSnapshot', harness.snapshotManager.createFileAssert());
+    }
   }
   return assertObj;
 }
@@ -264,15 +255,18 @@ class TestContext {
         };
       });
 
-      // This is a hack. It allows the innerOk function to collect the stacktrace from the correct starting point.
-      function ok(...args) {
-        if (plan !== null) {
-          plan.actual++;
+      if (!map.has('ok')) {
+        // This is a hack. It allows the innerOk function to collect the
+        // stacktrace from the correct starting point.
+        function ok(...args) {
+          if (plan !== null) {
+            plan.actual++;
+          }
+          innerOk(ok, args.length, ...args);
         }
-        innerOk(ok, args.length, ...args);
-      }
 
-      assert.ok = ok;
+        assert.ok = ok;
+      }
     }
     return this.#assert;
   }
@@ -351,6 +345,60 @@ class TestContext {
       hookType: 'afterEach',
       loc: getCallerLocation(),
     });
+  }
+
+  waitFor(condition, options = kEmptyObject) {
+    validateFunction(condition, 'condition');
+    validateObject(options, 'options');
+
+    const {
+      interval = 50,
+      timeout = 1000,
+    } = options;
+
+    validateNumber(interval, 'options.interval', 0, TIMEOUT_MAX);
+    validateNumber(timeout, 'options.timeout', 0, TIMEOUT_MAX);
+
+    const { promise, resolve, reject } = PromiseWithResolvers();
+    const noError = Symbol();
+    let cause = noError;
+    let pollerId;
+    let timeoutId;
+    const done = (err, result) => {
+      clearTimeout(pollerId);
+      clearTimeout(timeoutId);
+
+      if (err === noError) {
+        resolve(result);
+      } else {
+        reject(err);
+      }
+    };
+
+    timeoutId = setTimeout(() => {
+      // eslint-disable-next-line no-restricted-syntax
+      const err = new Error('waitFor() timed out');
+
+      if (cause !== noError) {
+        err.cause = cause;
+      }
+
+      done(err);
+    }, timeout);
+
+    const poller = async () => {
+      try {
+        const result = await condition();
+
+        done(noError, result);
+      } catch (err) {
+        cause = err;
+        pollerId = setTimeout(poller, interval);
+      }
+    };
+
+    poller();
+    return promise;
   }
 }
 

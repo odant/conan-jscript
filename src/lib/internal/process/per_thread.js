@@ -13,6 +13,7 @@ const {
   ArrayPrototypeSplice,
   BigUint64Array,
   Float64Array,
+  FunctionPrototypeCall,
   NumberMAX_SAFE_INTEGER,
   ObjectDefineProperty,
   ObjectFreeze,
@@ -26,6 +27,7 @@ const {
   StringPrototypeReplace,
   StringPrototypeSlice,
   Symbol,
+  SymbolFor,
   SymbolIterator,
 } = primordials;
 
@@ -422,6 +424,20 @@ function toggleTraceCategoryState(asyncHooksEnabled) {
 
 const { arch, platform, version } = process;
 
+let refSymbol;
+function ref(maybeRefable) {
+  if (maybeRefable == null) return;
+  const fn = maybeRefable[refSymbol ??= SymbolFor('nodejs.ref')] || maybeRefable.ref;
+  if (typeof fn === 'function') FunctionPrototypeCall(fn, maybeRefable);
+}
+
+let unrefSymbol;
+function unref(maybeRefable) {
+  if (maybeRefable == null) return;
+  const fn = maybeRefable[unrefSymbol ??= SymbolFor('nodejs.unref')] || maybeRefable.unref;
+  if (typeof fn === 'function') FunctionPrototypeCall(fn, maybeRefable);
+}
+
 module.exports = {
   toggleTraceCategoryState,
   assert,
@@ -432,4 +448,6 @@ module.exports = {
   arch,
   platform,
   version,
+  ref,
+  unref,
 };

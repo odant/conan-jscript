@@ -371,6 +371,12 @@ util.formatWithOptions({ colors: true }, 'See object %O', { foo: 42 });
 <!-- YAML
 added: v22.9.0
 changes:
+  - version: v22.14.0
+    pr-url: https://github.com/nodejs/node/pull/56584
+    description: Property `column` is deprecated in favor of `columnNumber`.
+  - version: v22.14.0
+    pr-url: https://github.com/nodejs/node/pull/56551
+    description: Property `CallSite.scriptId` is exposed.
   - version: v22.12.0
     pr-url: https://github.com/nodejs/node/pull/55626
     description: The API is renamed from `util.getCallSite` to `util.getCallSites()`.
@@ -385,8 +391,9 @@ changes:
   * `functionName` {string} Returns the name of the function associated with this call site.
   * `scriptName` {string} Returns the name of the resource that contains the script for the
     function for this call site.
-  * `lineNumber` {number} Returns the number, 1-based, of the line for the associate function call.
-  * `column` {number} Returns the 1-based column offset on the line for the associated function call.
+  * `scriptId` {string} Returns the unique id of the script, as in Chrome DevTools protocol [`Runtime.ScriptId`][].
+  * `lineNumber` {number} Returns the JavaScript script line number (1-based).
+  * `columnNumber` {number} Returns the JavaScript script column number (1-based).
 
 Returns an array of call site objects containing the stack of
 the caller function.
@@ -403,7 +410,7 @@ function exampleFunction() {
     console.log(`Function Name: ${callSite.functionName}`);
     console.log(`Script Name: ${callSite.scriptName}`);
     console.log(`Line Number: ${callSite.lineNumber}`);
-    console.log(`Column Number: ${callSite.column}`);
+    console.log(`Column Number: ${callSite.columnNumber}`);
   });
   // CallSite 1:
   // Function Name: exampleFunction
@@ -1533,9 +1540,10 @@ changes:
       times. If `true`, all values will be collected in an array. If
       `false`, values for the option are last-wins. **Default:** `false`.
     * `short` {string} A single character alias for the option.
-    * `default` {string | boolean | string\[] | boolean\[]} The default option
-      value when it is not set by args. It must be of the same type as the
-      `type` property. When `multiple` is `true`, it must be an array.
+    * `default` {string | boolean | string\[] | boolean\[]} The default value to
+      be used if (and only if) the option does not appear in the arguments to be
+      parsed. It must be of the same type as the `type` property. When `multiple`
+      is `true`, it must be an array.
   * `strict` {boolean} Should an error be thrown when unknown arguments
     are encountered, or when arguments are passed that do not match the
     `type` configured in `options`.
@@ -1956,7 +1964,7 @@ const errorMessage = styleText(
   // Validate if process.stderr has TTY
   { stream: stderr },
 );
-console.error(successMessage);
+console.error(errorMessage);
 ```
 
 ```cjs
@@ -3601,6 +3609,7 @@ util.log('Timestamped message.');
 [`Object.freeze()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze
 [`Promise`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
 [`Proxy`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
+[`Runtime.ScriptId`]: https://chromedevtools.github.io/devtools-protocol/1-3/Runtime/#type-ScriptId
 [`Set`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray

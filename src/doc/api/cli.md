@@ -174,18 +174,17 @@ node:internal/child_process:388
                            ^
 Error: Access to this API has been restricted
     at ChildProcess.spawn (node:internal/child_process:388:28)
-    at Object.spawn (node:child_process:723:9)
-    at Object.<anonymous> (/home/index.js:3:14)
-    at Module._compile (node:internal/modules/cjs/loader:1120:14)
-    at Module._extensions..js (node:internal/modules/cjs/loader:1174:10)
-    at Module.load (node:internal/modules/cjs/loader:998:32)
-    at Module._load (node:internal/modules/cjs/loader:839:12)
-    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:81:12)
     at node:internal/main/run_main_module:17:47 {
   code: 'ERR_ACCESS_DENIED',
   permission: 'ChildProcess'
 }
 ```
+
+Unlike `child_process.spawn`, the `child_process.fork` API copies the execution
+arguments from the parent process. This means that if you start Node.js with the
+Permission Model enabled and include the `--allow-child-process` flag, calling
+`child_process.fork()` will propagate all Permission Model flags to the child
+process.
 
 ### `--allow-fs-read`
 
@@ -566,6 +565,17 @@ added:
 Disable the `Object.prototype.__proto__` property. If `mode` is `delete`, the
 property is removed entirely. If `mode` is `throw`, accesses to the
 property throw an exception with the code `ERR_PROTO_ACCESS`.
+
+### `--disable-sigusr1`
+
+<!-- YAML
+added: v22.14.0
+-->
+
+> Stability: 1.2 - Release candidate
+
+Disable the ability of starting a debugging session by sending a
+`SIGUSR1` signal to the process.
 
 ### `--disable-warning=code-or-type`
 
@@ -952,6 +962,10 @@ Previously gated the entire `import.meta.resolve` feature.
 <!-- YAML
 added: v8.8.0
 changes:
+  - version: v22.13.1
+    pr-url: https://github.com/nodejs-private/node-private/pull/629
+    description: Using this feature with the permission model enabled requires
+                 passing `--allow-worker`.
   - version: v12.11.1
     pr-url: https://github.com/nodejs/node/pull/29752
     description: This flag was renamed from `--loader` to
@@ -964,6 +978,8 @@ changes:
 
 Specify the `module` containing exported [module customization hooks][].
 `module` may be any string accepted as an [`import` specifier][].
+
+This feature requires `--allow-worker` if used with the [Permission Model][].
 
 ### `--experimental-network-inspection`
 
@@ -1072,6 +1088,11 @@ present. See the [test runner execution model][] section for more information.
 
 <!-- YAML
 added: v22.3.0
+changes:
+  - version: v22.13.1
+    pr-url: https://github.com/nodejs-private/node-private/pull/629
+    description: Using this feature with the permission model enabled requires
+                 passing `--allow-worker`.
 -->
 
 > Stability: 1.0 - Early development
@@ -1393,8 +1414,23 @@ added: v12.0.0
 -->
 
 This configures Node.js to interpret `--eval` or `STDIN` input as CommonJS or
-as an ES module. Valid values are `"commonjs"` or `"module"`. The default is
-`"commonjs"` unless [`--experimental-default-type=module`][] is used.
+as an ES module. Valid values are `"commonjs"`, `"module"`, `"module-typescript"` and `"commonjs-typescript"`.
+The `"-typescript"` values are available only in combination with the flag `--experimental-strip-types`.
+The default is `"commonjs"` unless [`--experimental-default-type=module`][] is used.
+If `--experimental-strip-types` is enabled and `--input-type` is not provided,
+Node.js will try to detect the syntax with the following steps:
+
+1. Run the input as CommonJS.
+2. If step 1 fails, run the input as an ES module.
+3. If step 2 fails with a SyntaxError, strip the types.
+4. If step 3 fails with an error code [`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`][]
+   or [`ERR_INVALID_TYPESCRIPT_SYNTAX`][],
+   throw the error from step 2, including the TypeScript error in the message,
+   else run as CommonJS.
+5. If step 4 fails, run the input as an ES module.
+
+To avoid the delay of multiple syntax detection passes, the `--input-type=type` flag can be used to specify
+how the `--eval` input should be interpreted.
 
 The REPL does not support this option. Usage of `--input-type=module` with
 [`--print`][] will throw an error, as `--print` does not support ES module
@@ -1447,6 +1483,7 @@ added: v7.6.0
 
 Set the `host:port` to be used when the inspector is activated.
 Useful when activating the inspector by sending the `SIGUSR1` signal.
+Except when [`--disable-sigusr1`][] is passed.
 
 Default host is `127.0.0.1`. If port `0` is specified,
 a random available port will be used.
@@ -3086,6 +3123,7 @@ one is included in the list below.
 * `--conditions`, `-C`
 * `--diagnostic-dir`
 * `--disable-proto`
+* `--disable-sigusr1`
 * `--disable-warning`
 * `--disable-wasm-trap-handler`
 * `--dns-result-order`
@@ -3671,6 +3709,7 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`--build-snapshot`]: #--build-snapshot
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory
+[`--disable-sigusr1`]: #--disable-sigusr1
 [`--env-file-if-exists`]: #--env-file-if-existsconfig
 [`--env-file`]: #--env-fileconfig
 [`--experimental-default-type=module`]: #--experimental-default-typetype
@@ -3688,6 +3727,8 @@ node --stack-trace-limit=12 -p -e "Error.stackTraceLimit" # prints 12
 [`Atomics.wait()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
 [`Buffer`]: buffer.md#class-buffer
 [`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man3.0/man3/CRYPTO_secure_malloc_init.html
+[`ERR_INVALID_TYPESCRIPT_SYNTAX`]: errors.md#err_invalid_typescript_syntax
+[`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`]: errors.md#err_unsupported_typescript_syntax
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer
