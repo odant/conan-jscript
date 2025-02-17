@@ -1,43 +1,66 @@
 diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/esm/resolve.js
-index acb5ddca8..75c79fe7a 100644
+index bfd9bd3d1..f7fda9d92 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -854,6 +854,38 @@ function packageResolve(specifier, base, conditions) {
-     // Cross-platform root check.
-   } while (packageJSONPath.length !== lastPath.length);
- 
-+  if (CJSModule && CJSModule.globalPaths && Array.isArray(CJSModule.globalPaths)) {
-+    for (const path of CJSModule.globalPaths) {
-+      if (!path) {
-+          continue;
-+      }
-+      const baseUrl =
-+        path.startsWith('file:') ? path
-+                                 : 'file://' + path;
-+      const packageJSONUrl =
-+        new URL(baseUrl + '/' + packageName + '/package.json');
-+
-+      const packageJSONPath = fileURLToPath(packageJSONUrl);
-+
-+      const stat = internalFsBinding.internalModuleStat(
-+                       internalFsBinding,
-+                       StringPrototypeSlice(packageJSONPath, 0, packageJSONPath.length - 13),
-+      );
-+      if (stat !== 1) {
-+        continue;
-+      }
-+
-+      // Package match.
-+      const packageConfig = packageJsonReader.read(packageJSONPath, { __proto__: null, specifier, base, isESM: true });
-+      if (packageConfig.exports != null)
-+        return packageExportsResolve(
-+          packageJSONUrl, packageSubpath, packageConfig, base, conditions);
-+      if (packageSubpath === '.')
-+        return legacyMainResolve(packageJSONUrl, packageConfig, base);
-+      return new URL(packageSubpath, packageJSONUrl);
-+    }
+@@ -764,8 +764,48 @@ function packageResolve(specifier, base, conditions) {
+   if (BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
+     return new URL('node:' + specifier);
+   }
++  
++  let packageJSONUrl, packageJSONPath, packageSubpath;
++  try { 
++    ({ packageJSONUrl, packageJSONPath, packageSubpath } = packageJsonReader.getPackageJSONURL(specifier, base));
 +  }
++  catch(error) {
++    if (error instanceof ERR_MODULE_NOT_FOUND) {
++      if (CJSModule && CJSModule.globalPaths && Array.isArray(CJSModule.globalPaths)) {
++        const { packageName, packageSubpath, isScoped } = packageJsonReader.parsePackageName(specifier, base);
++        for (const path of CJSModule.globalPaths) {
++          if (!path) {
++              continue;
++          }
++          const baseUrl =
++            path.startsWith('file:') ? path
++                                     : 'file://' + path;
++          const packageJSONUrl =
++            new URL(baseUrl + '/' + packageName + '/package.json');
 +
-   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
- }
++          const packageJSONPath = fileURLToPath(packageJSONUrl);
++
++          const stat = internalFsBinding.internalModuleStat(
++                           internalFsBinding,
++                           StringPrototypeSlice(packageJSONPath, 0, packageJSONPath.length - 13),
++          );
++          if (stat !== 1) {
++            continue;
++          }
  
+-  const { packageJSONUrl, packageJSONPath, packageSubpath } = packageJsonReader.getPackageJSONURL(specifier, base);
++          // Package match.
++          const packageConfig = packageJsonReader.read(packageJSONPath, { __proto__: null, specifier, base, isESM: true });
++          if (packageConfig.exports != null)
++            return packageExportsResolve(
++              packageJSONUrl, packageSubpath, packageConfig, base, conditions);
++          if (packageSubpath === '.')
++            return legacyMainResolve(packageJSONUrl, packageConfig, base);
++          return new URL(packageSubpath, packageJSONUrl);
++        }
++      }
++    }
++    throw error;
++  }
+ 
+   const packageConfig = packageJsonReader.read(packageJSONPath, { __proto__: null, specifier, base, isESM: true });
+ 
+diff --git a/src/lib/internal/modules/package_json_reader.js b/src/lib/internal/modules/package_json_reader.js
+index 3c746fa0e..7f272c9f8 100644
+--- a/src/lib/internal/modules/package_json_reader.js
++++ b/src/lib/internal/modules/package_json_reader.js
+@@ -325,6 +325,7 @@ module.exports = {
+   getNearestParentPackageJSON,
+   getPackageScopeConfig,
+   getPackageType,
++  parsePackageName,
+   getPackageJSONURL,
+   findPackageJSON,
+ };

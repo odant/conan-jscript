@@ -188,8 +188,8 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 22
- #define NODE_MINOR_VERSION 13
- #define NODE_PATCH_VERSION 1
+ #define NODE_MINOR_VERSION 14
+ #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
  #define NODE_VERSION_IS_LTS 1
@@ -290,7 +290,7 @@ diff --git a/src/tools/v8_gypfiles/v8.gyp b/src/tools/v8_gypfiles/v8.gyp
 index 48ec392b6..73c3f072f 100644
 --- a/src/tools/v8_gypfiles/v8.gyp
 +++ b/src/tools/v8_gypfiles/v8.gyp
-@@ -1389,6 +1389,13 @@
+@@ -1407,6 +1407,13 @@
                '-lrt'
              ],
            },
