@@ -2,8 +2,8 @@
 # Dmitriy Vetutnev, Odant, 2018-2021
 
 
-from conans import ConanFile, tools, MSBuild, CMake
-import os, glob, re
+from conan import ConanFile, tools
+import os, glob, re, platform
 
 
 class JScriptConan(ConanFile):
@@ -12,12 +12,7 @@ class JScriptConan(ConanFile):
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
-    settings = {
-        "os": ["Windows", "Linux"],
-        "compiler": ["Visual Studio", "gcc"],
-        "build_type": ["Debug", "Release"],
-        "arch": ["x86_64", "x86", "mips", "armv7"]
-    }
+    settings = "os", "compiler", "build_type", "arch"
     options = {
         "dll_sign": [False, True],
         "ninja": [False, True],
@@ -41,7 +36,6 @@ class JScriptConan(ConanFile):
     ]
     exports_sources = [
         "src/*",
-        "FindJScript.cmake",
         "win_delay_load_hook.cc",
         *exports_patches,
         "fix_no_optimization_build.patch",
@@ -54,60 +48,109 @@ class JScriptConan(ConanFile):
     ]
     no_copy_source = False
     build_policy = "missing"
-    short_paths = True
-    #
-    _openssl_version = "[>=3.0.13]"
-    _openssl_channel = "stable"
-    _zlib_version = "[>=1.3.1]"
-    _zlib_channel = "stable"
+    package_type = "shared-library"
+    python_requires = "windows_signtool/[>=1.2]@odant/stable"
+    _internal_build_type = None
+    
+    def config_options(self):
+        if self.settings.os != "Windows":
+            self.options.ninja = True
+            self.options.rm_safe("dll_sign")
+        else:
+            self.options.rm_safe("disable_sys_random")
+        #
+        if self.settings.os == "Windows" and self.settings.compiler == "msvc" and not self.options.ninja and not self.options.cmake:
+            self._internal_build_type = "Release" if self.settings.build_type == "RelWithDebInfo" else self.settings.build_type
+        else:
+            self._internal_build_type = self.settings.build_type
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.dll_sign
-            self.options.ninja = True
+            self.options.rm_safe("dll_sign")
         else:
-            del self.options.disable_sys_random
-        if self.settings.build_type != "Debug":
-            del self.options.disable_v8_slow_dcheck
+            self.options.rm_safe("disable_sys_random")
+        if self._internal_build_type != "Debug":
+            self.options.rm_safe("disable_v8_slow_dcheck")
 
     def requirements(self):
-        self.requires("openssl/%s@%s/%s" % (self._openssl_version, self.user, self._openssl_channel))
-        self.requires("zlib/%s@%s/%s" % (self._zlib_version, self.user, self._zlib_channel))
+        self.requires("openssl/[>=3.0.16]@%s/stable" % self.user)
+        self.requires("zlib-ng/[>=2.2.4]@%s/stable" % self.user)
 
     def build_requirements(self):
         if self.options.ninja:
             self.build_requires("ninja/[>=1.12.1]")
-        if self.options.get_safe("dll_sign"):
-            self.build_requires("windows_signtool/[>=1.2]@%s/stable" % self.user)
 
     def source(self):
         self.patch_version()
         for p in self.exports_patches:
-            tools.patch(patch_file=p)
-        if self.settings.os == "Windows":
-            tools.patch(patch_file="fix_gen_node_def.patch")
-            tools.patch(patch_file="libuv_win7support.patch")
-            tools.patch(patch_file="fix_v8_windows_build.patch")
-        elif self.options.get_safe("disable_sys_random"):
-            tools.patch(patch_file="disable_sys_random.patch")
-        if self.settings.build_type == "Debug":
-#            if self.settings.os == "Windows":
-#                tools.patch(patch_file="fix_no_optimization_build.patch")
-            if self.options.disable_v8_slow_dcheck:    
-                tools.patch(patch_file="disable_v8_slow_dcheck.patch")
-        tools.patch(patch_file="fix_deps_undici.patch")
+            tools.files.patch(self, patch_file=p)
+        if platform.system() == "Windows":
+            tools.files.patch(self, patch_file="fix_gen_node_def.patch")
+            tools.files.patch(self, patch_file="libuv_win7support.patch")
+            tools.files.patch(self, patch_file="fix_v8_windows_build.patch")
+        tools.files.patch(self, patch_file="fix_deps_undici.patch")
             
     def patch_version(self):
         build_version = self.version.split(".")[3]
-        content = tools.load("oda.patch")
+        content = tools.files.load(self, "oda.patch")
         r = re.compile(r"\+#define NODE_BUILD_VERSION \d+")
         content = r.sub("+#define NODE_BUILD_VERSION %s" % build_version, content)
-        tools.save("oda.patch", content)
+        tools.files.save(self, "oda.patch", content)
+        
+    def generate(self):
+        benv = tools.env.VirtualBuildEnv(self)
+        if self.settings.compiler == "gcc":
+            env = benv.environment()
+            env.append("CFLAGS", "-Wno-unused-but-set-parameter")
+            env.append("CXXFLAGS", "-Wno-unused-but-set-parameter")
+            env.append("CXXFLAGS", "-Wno-template-id-cdtor")
+            env.append("CXXFLAGS", "-Wno-deprecated-declarations")
+            env.append("CXXFLAGS", "-Wno-unused-variable")
+            env.append("CXXFLAGS", "-Wno-unused-value")
+        benv.generate()
+        renv = tools.env.VirtualRunEnv(self)
+        renv.generate()
+        if tools.microsoft.is_msvc(self):
+            if not self.options.ninja and not self.options.cmake:
+                msbuild_tc = tools.microsoft.MSBuildToolchain(self)
+                msbuild_tc.preprocessor_definitions["WINVER"] = "0x0601"
+                msbuild_tc.preprocessor_definitions["_WIN32_WINNT"] = "0x0601"
+                msbuild_tc.preprocessor_definitions["NTDDI_VERSION"] = "0x06010000"
+                msbuild_tc.generate()
+            else:    
+                vc = tools.microsoft.VCVars(self)
+                vc.generate()
 
+    @property
+    def _msvc_ide_version(self):
+        compiler_version = str(self.settings.compiler.version)
+        return {"194": "2022",
+                "193": "2022",
+                "192": "2019",
+                "191": "2017",
+                "190": "2015",
+                "180": "2013"}.get(compiler_version) 
+    @property
+    def _msvc_ide_path(self):
+        ide_version = self._msvc_ide_version
+        ide_path = os.environ.get(f"VS{ide_version}INSTALLDIR", "")
+        if not ide_path:
+            ide_path = {"2019": "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community",
+                        "2022": "C:\Program Files\Microsoft Visual Studio\2022\Community" }.get(ide_version)
+        return ide_path
+                    
     def build(self):
+        if self.settings.os != "Windows" and self.options.get_safe("disable_sys_random"):
+            tools.files.patch(self, patch_file="disable_sys_random.patch")
+            
+        if self._internal_build_type == "Debug":
+#            if self.settings.os == "Windows":
+#                tools.patch(patch_file="fix_no_optimization_build.patch")
+            if self.options.disable_v8_slow_dcheck:    
+                tools.files.patch(self, patch_file="disable_v8_slow_dcheck.patch")
         output_name = "jscript"
         if self.settings.os == "Windows":
-            if self.settings.build_type == "Debug":
+            if self._internal_build_type == "Debug":
                 output_name += "d"
         #
         flags = [
@@ -126,30 +169,30 @@ class JScriptConan(ConanFile):
             "--node_core_target_name=%s" % output_name
         ]
         # External OpenSSL
-        openssl_includes = self.deps_cpp_info["openssl"].include_paths[0].replace("\\", "/")
-        openssl_libpath = self.deps_cpp_info["openssl"].lib_paths[0].replace("\\", "/")
+        openssl_includes = self.dependencies["openssl"].cpp_info.includedirs[0]
+        openssl_libpath = self.dependencies["openssl"].cpp_info.libdirs[0]
         flags.extend([
             "--shared-openssl",
-            "--shared-openssl-includes=%s" % openssl_includes,
-            "--shared-openssl-libpath=%s" % openssl_libpath
+            '--shared-openssl-includes="%s"' % openssl_includes,
+            '--shared-openssl-libpath="%s"' % openssl_libpath
         ])
         if self.settings.os == "Windows":
             flags.append("--shared-openssl-libname=libcrypto.lib,libssl.lib")
         # External zlib
-        zlib_includes = self.deps_cpp_info["zlib"].include_paths[0].replace("\\", "/")
-        zlib_libpath = self.deps_cpp_info["zlib"].lib_paths[0].replace("\\", "/")
+        zlib_includes = self.dependencies["zlib-ng"].cpp_info.includedirs[0]
+        zlib_libpath = self.dependencies["zlib-ng"].cpp_info.libdirs[0]
         flags.extend([
             "--shared-zlib",
-            "--shared-zlib-includes=%s" % zlib_includes,
-            "--shared-zlib-libpath=%s" % zlib_libpath
+            '--shared-zlib-includes="%s"' % zlib_includes,
+            '--shared-zlib-libpath="%s"' % zlib_libpath
         ])
         if self.settings.os == "Windows":
-            zlib_libname = "zlibstatic.lib" if self.settings.build_type == "Release" else "zlibstaticd.lib"
+            zlib_libname = ",".join(self.dependencies["zlib-ng"].cpp_info.aggregated_components().libs)
             flags.append("--shared-zlib-libname=%s" % zlib_libname)
             if self.settings.arch == "x86":
                 flags.append("--no-cross-compiling")
         # Build type, debug/release
-        if self.settings.build_type == "Debug":
+        if self._internal_build_type == "Debug":
             flags.append("--debug")
             flags.append("--v8-non-optimized-debug")
             if self.settings.os == "Linux":
@@ -159,42 +202,22 @@ class JScriptConan(ConanFile):
             flags.append("--ninja")
         elif self.options.cmake:
             flags.append("--cmake")
-        #
-        env = { }
-        if self.settings.os == "Linux":
-            env["LD_LIBRARY_PATH"] = openssl_libpath
-            ld_env_path = os.environ.get("LD_LIBRARY_PATH")
-            if ld_env_path is not None:
-                env["LD_LIBRARY_PATH"] += ":" + ld_env_path
-        if self.settings.compiler == "Visual Studio":
-            env = tools.vcvars_dict(self, force=True)
-            if not "PATH" in env:
-                env["PATH"] = []
-            versions = { "15":"2017", "16":"2019", "17":"2022" }
-            toolsets = { "15":"v141", "16":"v142", "17":"v143" }
-            compilerVersion = str(self.settings.compiler.version)
-            env["GYP_MSVS_VERSION"] = versions[compilerVersion]
-            env["PLATFORM_TOOLSET"] = toolsets[compilerVersion] if not self.settings.compiler.toolset or self.settings.compiler.toolset is None else str(self.settings.compiler.toolset)
-            # Explicit use external Ninja
-            if self.options.ninja:
-                ninja_binpath = self.deps_cpp_info["ninja"].bin_paths[0].replace("\\", "/")
-                env["PATH"].append(ninja_binpath)
-            # OpenSSL DLL in PATH for run gen_node_def, tests
-            openssl_binpath = self.deps_cpp_info["openssl"].bin_paths[0].replace("\\", "/")
-            env["PATH"].append(openssl_binpath)
-        if self.settings.compiler == "gcc":
-            env["CFLAGS"] = "-Wno-unused-but-set-parameter"
-            env["CXXFLAGS"] = "-Wno-unused-but-set-parameter"
+        
+        env = tools.env.Environment()
+        if self.settings.compiler == "msvc":
+             env.define("GYP_MSVS_VERSION", self._msvc_ide_version)
+             env.define("GYP_MSVS_OVERRIDE_PATH", self._msvc_ide_path)
+
         # Run build
-        with tools.chdir("src"), tools.environment_append(env):
+        with tools.files.chdir(self, os.path.join(self.build_folder, "src")), env.vars(self).apply():
             self.run("python --version")
             #
             self.run("python configure.py %s" % " ".join(flags))
             if self.options.ninja:
                 self.run("ninja --version")
-                self.run("ninja -C out/%s" % str(self.settings.build_type))
+                self.run("ninja -C out/%s" % str(self._internal_build_type))
             elif self.options.cmake:
-                cmake_src_folder = os.path.join(self.build_folder, "src", "out", str(self.settings.build_type))
+                cmake_src_folder = os.path.join(self.build_folder, "src", "out", str(self._internal_build_type))
                 self.patch_cmake_script(os.path.join(cmake_src_folder, "CMakeLists.txt"))
                 #
                 self.output.info("CMakeLists.txt and working folder: %s" % cmake_src_folder)
@@ -206,15 +229,32 @@ class JScriptConan(ConanFile):
                 # Manual build target before use it. Otherwise parallel build failed.
                 cmake.build(target="icudata__icupkg") 
                 cmake.build()
-            elif self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
-                msbuild = MSBuild(self)
-                defines = { "WINVER": "0x0601", "_WIN32_WINNT": "0x0601", "NTDDI_VERSION": "0x06010000" }
-                msbuild.build("node.sln", targets=["Build"], upgrade_project=False, verbosity="normal", use_env=False, platforms={"x86" : "Win32"}, definitions=defines)
+            elif self.settings.os == "Windows" and self.settings.compiler == "msvc":
+                # import dll dependencies to bin folder
+                output_folder = os.path.join(self.build_folder, "src/out/%s" % str(self._internal_build_type))
+                tools.files.mkdir(self, output_folder)
+                for dependency in self.dependencies.values():
+                    if not dependency.is_build_context:
+                        deps_cpp_info = dependency.cpp_info.aggregated_components()
+                        for bindir in deps_cpp_info.bindirs:
+                            tools.files.copy(self, "*.dll", src=bindir, dst=output_folder, keep_path=False)
+                
+                msbuild = tools.microsoft.MSBuild(self)
+                # use Release instead of the RelWithDebInfo
+                msbuild.build_type = self._internal_build_type
+                # use Win32 instead of the default value when building x86
+                msbuild.platform = "Win32" if self.settings.arch == "x86" else msbuild.platform                
+                cmd = msbuild.command("node.sln", targets=["Build"])
+                props_file = os.path.join(self.build_folder, "conantoolchain.props")
+                if os.path.isfile(props_file):
+                    cmd += ' /p:ForceImportBeforeCppTargets="%s"' % props_file
+                self.output.info(f"Runc MSBuild command: {cmd}")    
+                self.run(cmd)
             else:
                 self.run("make -j %s" % tools.cpu_count())
             # Tests
             if self.options.with_unit_tests:
-                shell = str(self.settings.build_type) + "/" + output_name
+                shell = str(self._internal_build_type) + "/" + output_name
                 if self.options.ninja:
                     shell = "out/" + shell
                 if self.settings.os == "Windows":
@@ -222,7 +262,7 @@ class JScriptConan(ConanFile):
                 self.run("python tools/test.py --shell=%s --progress=color --time --report -j %s" % (shell, tools.cpu_count()))
 
     def patch_cmake_script(self, cmake_script_path):
-        content = tools.load(cmake_script_path)
+        content = tools.files.load(cmake_script_path)
         lines = content.splitlines()
         def pred(l):
             return False if "../../deps/v8/src/heap/remembered-set.h" in l else True
@@ -236,66 +276,49 @@ class JScriptConan(ConanFile):
                 return l
         lines = map(patch, lines)
         content = "\n".join(lines)
-        tools.save(cmake_script_path, content);
+        tools.files.save(cmake_script_path, content);
 
     def package(self):
-        if not self.in_local_cache:
-            tools.rmdir(self.package_folder)
-            tools.mkdir(self.package_folder)
-        # CMake script
-        self.copy("FindJScript.cmake", dst=".", src=".")
         # Headers
-        self.copy("jscript.h", dst="include", src="src/oda")
-        self.copy("*.h", dst="include", src="src/src", keep_path=True)
-        self.copy("*.h", dst="include", src="src/deps/v8/include", keep_path=True)
-        self.copy("*.h", dst="include", src="src/deps/uv/include", keep_path=True)
+        tools.files.copy(self, "jscript.h", dst=os.path.join(self.package_folder, "include"), src=os.path.join(self.source_folder,"src/oda"))
+        tools.files.copy(self, "*.h", dst=os.path.join(self.package_folder, "include"), src=os.path.join(self.source_folder, "src/src"), keep_path=True)
+        tools.files.copy(self, "*.h", dst=os.path.join(self.package_folder, "include"), src=os.path.join(self.source_folder, "src/deps/v8/include"), keep_path=True)
+        tools.files.copy(self, "*.h", dst=os.path.join(self.package_folder, "include"), src=os.path.join(self.source_folder, "src/deps/uv/include"), keep_path=True)
         #
-        self.copy("win_delay_load_hook.cc", dst="include", src=".", keep_path=False)
+        tools.files.copy(self, "win_delay_load_hook.cc", dst=os.path.join(self.package_folder, "include"), src=self.export_sources_folder, keep_path=False)
         # Libraries
-        output_folder = "src/out/%s" % str(self.settings.build_type)
+        output_folder = os.path.join(self.build_folder, "src/out/%s" % str(self._internal_build_type))
         if self.settings.os == "Windows":
-            self.copy("jscript.dll.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("libjscript.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscript.dll", dst="bin", src=output_folder, keep_path=False)
-            self.copy("libjscriptd.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscriptd.dll.lib", dst="lib", src=output_folder, keep_path=False)
-            self.copy("jscriptd.dll", dst="bin", src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscript.dll.lib", dst=os.path.join(self.package_folder, "lib"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "libjscript.lib", dst=os.path.join(self.package_folder, "lib"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscript.dll", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "libjscriptd.lib", dst=os.path.join(self.package_folder, "lib"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscriptd.dll.lib", dst=os.path.join(self.package_folder, "lib"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscriptd.dll", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
             # PDB
-            self.copy("jscript.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("libjscript.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscriptd.dll.pdb", dst="bin", src=output_folder, keep_path=False)
-            self.copy("libjscriptd.pdb", dst="bin", src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscript.dll.pdb", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "libjscript.pdb", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscriptd.dll.pdb", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "libjscriptd.pdb", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
             # interpreter
-            self.copy("jscript.exe", dst="bin", src=output_folder, keep_path=False)
-            self.copy("jscriptd.exe", dst="bin", src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscript.exe", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
+            tools.files.copy(self, "jscriptd.exe", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
         if self.settings.os == "Linux":
-            self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib", keep_path=False, excludes="*.TOC")
-            self.copy("libjscript.so.*", dst="lib", src=output_folder + "/lib.target", keep_path=False, excludes="*.TOC")
-            self.copy("libjscript.so.*", dst="lib", src=output_folder, keep_path=False, excludes="*.TOC")
+            tools.files.copy(self, "libjscript.so.*", dst=os.path.join(self.package_folder, "lib"), src=os.path.join(output_folder, "lib"), keep_path=False, excludes="*.TOC")
+            tools.files.copy(self, "libjscript.so.*", dst=os.path.join(self.package_folder, "lib"), src=os.path.join(output_folder, "lib.target"), keep_path=False, excludes="*.TOC")
+            tools.files.copy(self, "libjscript.so.*", dst=os.path.join(self.package_folder, "lib"), src=output_folder, keep_path=False, excludes="*.TOC")
+            tools.files.copy(self, "jscript", dst=os.path.join(self.package_folder, "bin"), src=output_folder, keep_path=False)
             # Symlink
             lib_folder = os.path.join(self.package_folder, "lib")
-            if not os.path.isdir(lib_folder):
-                return
-            with tools.chdir(lib_folder):
-                for fname in os.listdir("."):
-                    extension = ".so"
-                    symlink = fname[0:fname.rfind(extension) + len(extension)]
-                    self.run("ln --symbolic --force \"%s\" \"%s\"" % (fname, symlink))
-            self.copy("jscript", dst="bin", src=output_folder, keep_path=False)
-        # Local build
-        if not self.in_local_cache:
-            self.copy("conanfile.py", dst=".", keep_path=False)
+            if os.path.isdir(lib_folder):
+                with tools.files.chdir(self, lib_folder):
+                    for fname in os.listdir("."):
+                        extension = ".so"
+                        symlink = fname[0:fname.rfind(extension) + len(extension)]
+                        self.run("ln --symbolic --force \"%s\" \"%s\"" % (fname, symlink))
         # Sign DLL
         if self.options.get_safe("dll_sign"):
-            import windows_signtool
-            pattern = os.path.join(self.package_folder, "bin", "*.dll")
-            for fpath in glob.glob(pattern):
-                fpath = fpath.replace("\\", "/")
-                for alg in ["sha1", "sha256"]:
-                    is_timestamp = True if self.settings.build_type == "Release" else False
-                    cmd = windows_signtool.get_sign_command(fpath, digest_algorithm=alg, timestamp=is_timestamp)
-                    self.output.info("Sign %s" % fpath)
-                    self.run(cmd)
+            self.python_requires["windows_signtool"].module.sign(self, [os.path.join(self.package_folder, "bin", "*.dll")])
 
     def package_id(self):
         self.info.options.ninja = "any"
@@ -303,4 +326,8 @@ class JScriptConan(ConanFile):
         self.info.options.with_unit_tests = "any"
 
     def package_info(self):
-        self.cpp_info.libs = tools.collect_libs(self)
+        self.cpp_info.set_property("cmake_find_mode", "both")
+        self.cpp_info.set_property("cmake_file_name", "JScript")
+        self.cpp_info.set_property("cmake_target_name", "JScript::JScript")
+        self.cpp_info.requires = ["openssl::ssl", "openssl::crypto", "zlib-ng::zlib-ng"]
+        self.cpp_info.libs = tools.files.collect_libs(self)
