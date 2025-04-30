@@ -8,7 +8,7 @@ import os, glob, re, platform
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "22.14.0.0"
+    version = "22.15.0.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
@@ -44,7 +44,8 @@ class JScriptConan(ConanFile):
         "fix_deps_undici.patch",
         "libuv_win7support.patch",
         "fix_v8_windows_build.patch",
-        "disable_sys_random.patch"
+        "disable_sys_random.patch",
+        "fix_using_shared_openssl.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -88,6 +89,7 @@ class JScriptConan(ConanFile):
             tools.files.patch(self, patch_file="fix_gen_node_def.patch")
             tools.files.patch(self, patch_file="libuv_win7support.patch")
             tools.files.patch(self, patch_file="fix_v8_windows_build.patch")
+            tools.files.patch(self, patch_file="fix_using_shared_openssl.patch")
         tools.files.patch(self, patch_file="fix_deps_undici.patch")
             
     def patch_version(self):
