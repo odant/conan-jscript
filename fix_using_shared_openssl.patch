@@ -1,0 +1,12 @@
+diff --git a/src/node.gyp b/src/node.gyp
+index ec1f90b73..b8d4465ee 100644
+--- a/src/node.gyp
++++ b/src/node.gyp
+@@ -937,6 +937,7 @@
+             'Psapi',
+             'Winmm',
+             'Ws2_32',
++            'Crypt32'
+           ],
+         }],
+         [ 'node_use_openssl=="true"', {
