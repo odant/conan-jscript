@@ -578,6 +578,10 @@ address such failures, a non-operational
 `resource.loaded`, which would prevent the `'unhandledRejection'` event from
 being emitted.
 
+If an `'unhandledRejection'` event is emitted but not handled it will
+be raised as an uncaught exception. This alongside other behaviors of
+`'unhandledRejection'` events can changed via the [`--unhandled-rejections`][] flag.
+
 ### Event: `'warning'`
 
 <!-- YAML
@@ -1126,12 +1130,13 @@ added:
   - v19.6.0
   - v18.15.0
 changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
   - version: v22.0.0
     pr-url: https://github.com/nodejs/node/pull/52039
     description: Aligned return value with `uv_get_constrained_memory`.
 -->
-
-> Stability: 1 - Experimental
 
 * {number}
 
@@ -1146,9 +1151,11 @@ information.
 
 <!-- YAML
 added: v22.0.0
+changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
 -->
-
-> Stability: 1 - Experimental
 
 * {number}
 
@@ -2271,9 +2278,11 @@ setup();
 added:
   - v17.3.0
   - v16.14.0
+changes:
+  - version: v22.16.0
+    pr-url: https://github.com/nodejs/node/pull/57765
+    description: Change stability index for this feature from Experimental to Stable.
 -->
-
-> Stability: 1 - Experimental
 
 * Returns: {string\[]}
 
@@ -3338,7 +3347,7 @@ any exit or close events and without running any cleanup handler.
 
 This function will never return, unless an error occurred.
 
-This function is only available on POSIX platforms (i.e. not Windows or Android).
+This function is not available on Windows or IBM i.
 
 ## `process.report`
 

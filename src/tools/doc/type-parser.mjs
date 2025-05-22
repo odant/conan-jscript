@@ -19,7 +19,7 @@ const jsGlobalTypes = [
   'TypeError', 'URIError', 'WeakMap', 'WeakSet',
 
   'TypedArray',
-  'Float32Array', 'Float64Array',
+  'Float16Array', 'Float32Array', 'Float64Array',
   'Int8Array', 'Int16Array', 'Int32Array',
   'Uint8Array', 'Uint8ClampedArray', 'Uint16Array', 'Uint32Array',
 ];
@@ -118,6 +118,7 @@ const customTypesMap = {
   'Channel': 'diagnostics_channel.html#class-channel',
   'TracingChannel': 'diagnostics_channel.html#class-tracingchannel',
 
+  'DatabaseSync': 'sqlite.html#class-databasesync',
   'Domain': 'domain.html#class-domain',
 
   'errors.Error': 'errors.html#class-error',

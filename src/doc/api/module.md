@@ -1178,9 +1178,6 @@ changes:
     description: Add support for import assertions.
 -->
 
-> Stability: 1.2 - Release candidate (asynchronous version)
-> Stability: 1.1 - Active development (synchronous version)
-
 * `specifier` {string}
 * `context` {Object}
   * `conditions` {string\[]} Export conditions of the relevant `package.json`
@@ -1294,9 +1291,6 @@ changes:
       its return.
 -->
 
-> Stability: 1.2 - Release candidate (asynchronous version)
-> Stability: 1.1 - Active development (synchronous version)
-
 * `url` {string} The URL returned by the `resolve` chain
 * `context` {Object}
   * `conditions` {string\[]} Export conditions of the relevant `package.json`
@@ -1327,13 +1321,15 @@ validating the import attributes.
 
 The final value of `format` must be one of the following:
 
-| `format`     | Description                    | Acceptable types for `source` returned by `load`   |
-| ------------ | ------------------------------ | -------------------------------------------------- |
-| `'builtin'`  | Load a Node.js builtin module  | {null}                                             |
-| `'commonjs'` | Load a Node.js CommonJS module | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
-| `'json'`     | Load a JSON file               | {string\|ArrayBuffer\|TypedArray}                  |
-| `'module'`   | Load an ES module              | {string\|ArrayBuffer\|TypedArray}                  |
-| `'wasm'`     | Load a WebAssembly module      | {ArrayBuffer\|TypedArray}                          |
+| `format`                | Description                                           | Acceptable types for `source` returned by `load`   |
+| ----------------------- | ----------------------------------------------------- | -------------------------------------------------- |
+| `'builtin'`             | Load a Node.js builtin module                         | {null}                                             |
+| `'commonjs-typescript'` | Load a Node.js CommonJS module with TypeScript syntax | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
+| `'commonjs'`            | Load a Node.js CommonJS module                        | {string\|ArrayBuffer\|TypedArray\|null\|undefined} |
+| `'json'`                | Load a JSON file                                      | {string\|ArrayBuffer\|TypedArray}                  |
+| `'module-typescript'`   | Load an ES module with TypeScript syntax              | {string\|ArrayBuffer\|TypedArray}                  |
+| `'module'`              | Load an ES module                                     | {string\|ArrayBuffer\|TypedArray}                  |
+| `'wasm'`                | Load a WebAssembly module                             | {ArrayBuffer\|TypedArray}                          |
 
 The value of `source` is ignored for type `'builtin'` because currently it is
 not possible to replace the value of a Node.js builtin (core) module.

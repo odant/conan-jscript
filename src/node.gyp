@@ -105,6 +105,7 @@
       'src/node_buffer.cc',
       'src/node_builtins.cc',
       'src/node_config.cc',
+      'src/node_config_file.cc',
       'src/node_constants.cc',
       'src/node_contextify.cc',
       'src/node_credentials.cc',
@@ -228,6 +229,7 @@
       'src/node_blob.h',
       'src/node_buffer.h',
       'src/node_builtins.h',
+      'src/node_config_file.h',
       'src/node_constants.h',
       'src/node_context_data.h',
       'src/node_contextify.h',
@@ -838,6 +840,7 @@
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
         'deps/nbytes/nbytes.gyp:nbytes',
+        'tools/v8_gypfiles/abseil.gyp:abseil',
         'node_js2c#host',
       ],
 
@@ -1160,6 +1163,7 @@
         'deps/googletest/googletest.gyp:gtest_main',
         'deps/histogram/histogram.gyp:histogram',
         'deps/nbytes/nbytes.gyp:nbytes',
+        'tools/v8_gypfiles/abseil.gyp:abseil',
       ],
 
       'includes': [
