@@ -79,7 +79,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index 4e614df1a..fa722ae93 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -534,6 +534,7 @@
+@@ -536,6 +536,7 @@
        'include_dirs': [
          'src',
          'deps/v8/include',
@@ -87,7 +87,7 @@ index 4e614df1a..fa722ae93 100644
          'deps/postject'
        ],
  
-@@ -911,6 +912,13 @@
+@@ -914,6 +915,13 @@
          ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],
@@ -176,7 +176,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1563,3 +1563,5 @@ void Initialize() {}
+@@ -1604,3 +1604,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -188,7 +188,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 22
- #define NODE_MINOR_VERSION 15
+ #define NODE_MINOR_VERSION 16
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  
@@ -268,7 +268,7 @@ diff --git a/src/tools/gyp/pylib/gyp/generator/cmake.py b/src/tools/gyp/pylib/gy
 index f5ceacfca..53c9a3151 100644
 --- a/src/tools/gyp/pylib/gyp/generator/cmake.py
 +++ b/src/tools/gyp/pylib/gyp/generator/cmake.py
-@@ -1036,17 +1036,6 @@ def WriteTarget(
+@@ -1037,17 +1037,6 @@ def WriteTarget(
          if ldflags is not None:
              SetTargetProperty(output, cmake_target_name, "LINK_FLAGS", ldflags, " ")
  
