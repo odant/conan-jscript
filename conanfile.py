@@ -60,7 +60,7 @@ class JScriptConan(ConanFile):
         else:
             self.options.rm_safe("disable_sys_random")
         #
-        if self.settings.os == "Windows" and self.settings.compiler == "msvc" and not self.options.ninja and not self.options.cmake:
+        if self.settings.os == "Windows" and not self.options.ninja and not self.options.cmake:
             self._internal_build_type = "Release" if self.settings.build_type == "RelWithDebInfo" else self.settings.build_type
         else:
             self._internal_build_type = self.settings.build_type
@@ -112,12 +112,9 @@ class JScriptConan(ConanFile):
         benv.generate()
         renv = tools.env.VirtualRunEnv(self)
         renv.generate()
-        if tools.microsoft.is_msvc(self):
+        if self.settings.os == "Windows" and (self.settings.compiler == "msvc" or ( self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime_version"))):
             if not self.options.ninja and not self.options.cmake:
                 msbuild_tc = tools.microsoft.MSBuildToolchain(self)
-                msbuild_tc.preprocessor_definitions["WINVER"] = "0x0601"
-                msbuild_tc.preprocessor_definitions["_WIN32_WINNT"] = "0x0601"
-                msbuild_tc.preprocessor_definitions["NTDDI_VERSION"] = "0x06010000"
                 msbuild_tc.generate()
             else:    
                 vc = tools.microsoft.VCVars(self)
@@ -205,8 +202,12 @@ class JScriptConan(ConanFile):
         elif self.options.cmake:
             flags.append("--cmake")
         
+        #
+        if self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime_version"):
+            flags.append("--clang-cl=%s" % self.settings.compiler.version)
+        
         env = tools.env.Environment()
-        if self.settings.compiler == "msvc":
+        if self.settings.os == "Windows" and self.settings.compiler == "msvc":
              env.define("GYP_MSVS_VERSION", self._msvc_ide_version)
              env.define("GYP_MSVS_OVERRIDE_PATH", self._msvc_ide_path)
 
@@ -214,7 +215,8 @@ class JScriptConan(ConanFile):
         with tools.files.chdir(self, os.path.join(self.build_folder, "src")), env.vars(self).apply():
             self.run("python --version")
             #
-            self.run("python configure.py %s" % " ".join(flags))
+            configure_flags = " ".join(flags)
+            self.run("python configure.py %s" % configure_flags)
             if self.options.ninja:
                 self.run("ninja --version")
                 self.run("ninja -C out/%s" % str(self._internal_build_type))
@@ -231,7 +233,7 @@ class JScriptConan(ConanFile):
                 # Manual build target before use it. Otherwise parallel build failed.
                 cmake.build(target="icudata__icupkg") 
                 cmake.build()
-            elif self.settings.os == "Windows" and self.settings.compiler == "msvc":
+            elif self.settings.os == "Windows" and (self.settings.compiler == "msvc" or ( self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime_version"))):
                 # import dll dependencies to bin folder
                 output_folder = os.path.join(self.build_folder, "src/out/%s" % str(self._internal_build_type))
                 tools.files.mkdir(self, output_folder)
@@ -249,8 +251,9 @@ class JScriptConan(ConanFile):
                 cmd = msbuild.command("node.sln", targets=["Build"])
                 props_file = os.path.join(self.build_folder, "conantoolchain.props")
                 if os.path.isfile(props_file):
-                    cmd += ' /p:ForceImportBeforeCppTargets="%s"' % props_file
-                self.output.info(f"Runc MSBuild command: {cmd}")    
+                    cmd += ' -p:ForceImportBeforeCppTargets="%s"' % props_file
+                cmd += ' -clp:NoItemAndPropertyList;PerformanceSummary;Verbosity=minimal -nologo'
+                self.output.info(f"Run MSBuild command: {cmd}")    
                 self.run(cmd)
             else:
                 self.run("make -j %s" % tools.cpu_count())

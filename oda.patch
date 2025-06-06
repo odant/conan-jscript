@@ -58,10 +58,18 @@ index e6f7e4db0..265a27182 100755
    gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
  else:
 diff --git a/src/deps/uv/uv.gyp b/src/deps/uv/uv.gyp
-index 7fc7e0601..7fd5e575a 100644
+index 8c8d7d00f..fd644f586 100644
 --- a/src/deps/uv/uv.gyp
 +++ b/src/deps/uv/uv.gyp
-@@ -287,6 +287,13 @@
+@@ -195,7 +195,6 @@
+       'conditions': [
+         [ 'OS=="win"', {
+           'defines': [
+-            '_WIN32_WINNT=0x0602',
+             '_GNU_SOURCE',
+           ],
+           'sources': [
+@@ -287,6 +286,13 @@
            'link_settings': {
              'libraries': [ '-ldl', '-lrt' ],
            },
@@ -304,3 +312,15 @@ index 48ec392b6..73c3f072f 100644
          }],
          ['OS in "aix os400"', {
            'variables': {
+diff --git a/src/tools/v8_gypfiles/toolchain.gypi b/src/tools/v8_gypfiles/toolchain.gypi
+index 5bf396e07..a02783164 100644
+--- a/src/tools/v8_gypfiles/toolchain.gypi
++++ b/src/tools/v8_gypfiles/toolchain.gypi
+@@ -537,7 +537,6 @@
+         'defines': [
+           'WIN32',
+           'NOMINMAX',  # Refs: https://chromium-review.googlesource.com/c/v8/v8/+/1456620
+-          '_WIN32_WINNT=0x0602',  # Windows 8
+           '_SILENCE_ALL_CXX20_DEPRECATION_WARNINGS',
+         ],
+         # 4351: VS 2005 and later are warning us that they've fixed a bug
