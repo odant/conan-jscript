@@ -2,7 +2,7 @@ diff --git a/src/tools/v8_gypfiles/toolchain.gypi b/src/tools/v8_gypfiles/toolch
 index 26c6866fa..9aa76e35b 100644
 --- a/src/tools/v8_gypfiles/toolchain.gypi
 +++ b/src/tools/v8_gypfiles/toolchain.gypi
-@@ -746,7 +746,7 @@
+@@ -744,7 +744,7 @@
                },
              },
              'variables': {
@@ -10,4 +10,4 @@ index 26c6866fa..9aa76e35b 100644
 +              'v8_enable_slow_dchecks%': 0,
              },
              'conditions': [
-               ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd" or \
+               ['OS in "linux freebsd openbsd netbsd qnx aix os400 openharmony"', {

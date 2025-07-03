@@ -2,7 +2,7 @@ diff --git a/src/configure.py b/src/configure.py
 index e6f7e4db0..265a27182 100755
 --- a/src/configure.py
 +++ b/src/configure.py
-@@ -870,6 +870,12 @@ parser.add_argument('--ninja',
+@@ -876,6 +876,12 @@ parser.add_argument('--ninja',
      default=None,
      help='generate build files for use with Ninja')
  
@@ -15,7 +15,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--enable-asan',
      action='store_true',
      dest='enable_asan',
-@@ -1015,6 +1021,13 @@ parser.add_option('-C',
+@@ -1021,6 +1027,13 @@ parser.add_option('-C',
      default=None,
      help=argparse.SUPPRESS)
  
@@ -29,7 +29,7 @@ index e6f7e4db0..265a27182 100755
  parser.add_argument('--clang-cl',
      action='store',
      dest='clang_cl',
-@@ -1655,6 +1668,8 @@ def configure_node(o):
+@@ -1661,6 +1674,8 @@ def configure_node(o):
    if options.node_builtin_modules_path:
      print('Warning! Loading builtin modules from disk is for development')
      o['variables']['node_builtin_modules_path'] = options.node_builtin_modules_path
@@ -38,7 +38,7 @@ index e6f7e4db0..265a27182 100755
  
  def configure_napi(output):
    version = getnapibuildversion.get_napi_version()
-@@ -2335,6 +2350,9 @@ if options.prefix:
+@@ -2359,6 +2374,9 @@ if options.prefix:
  if options.use_ninja:
    config['BUILD_WITH'] = 'ninja'
  
@@ -48,7 +48,7 @@ index e6f7e4db0..265a27182 100755
  # On Windows there is another find.exe in C:\Windows\System32
  if sys.platform == 'win32':
    config['FIND'] = '/usr/bin/find'
-@@ -2369,6 +2425,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+@@ -2393,6 +2449,8 @@ gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
  
  if options.use_ninja:
    gyp_args += ['-f', 'ninja-' + flavor]
@@ -87,7 +87,7 @@ diff --git a/src/node.gyp b/src/node.gyp
 index 4e614df1a..fa722ae93 100644
 --- a/src/node.gyp
 +++ b/src/node.gyp
-@@ -536,6 +536,7 @@
+@@ -539,6 +539,7 @@
        'include_dirs': [
          'src',
          'deps/v8/include',
@@ -95,7 +95,7 @@ index 4e614df1a..fa722ae93 100644
          'deps/postject'
        ],
  
-@@ -914,6 +915,13 @@
+@@ -923,6 +924,13 @@
          ['node_shared=="true" and OS in "aix os400"', {
            'product_name': 'node_base',
          }],
@@ -116,7 +116,7 @@ index 43dbda7bb..23d1612cc 100644
 @@ -368,7 +368,7 @@
        'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
      }],
-     [ 'OS=="linux"', {
+     [ 'OS=="linux" or OS=="openharmony"', {
 -      'libraries!': [
 +      'libraries': [
          '-lrt'
@@ -147,7 +147,7 @@ diff --git a/src/src/debug_utils.cc b/src/src/debug_utils.cc
 index a601c5ecf..13a1a81da 100644
 --- a/src/src/debug_utils.cc
 +++ b/src/src/debug_utils.cc
-@@ -539,6 +539,12 @@ void FWrite(FILE* file, const std::string& str) {
+@@ -538,6 +538,12 @@ void FWrite(FILE* file, const std::string& str) {
    simple_fwrite();
  }
  
@@ -184,7 +184,7 @@ diff --git a/src/src/node.cc b/src/src/node.cc
 index 905afd8c2..7784b41ba 100644
 --- a/src/src/node.cc
 +++ b/src/src/node.cc
-@@ -1604,3 +1604,5 @@ void Initialize() {}
+@@ -1603,3 +1603,5 @@ void Initialize() {}
  
  NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
  #endif  // !HAVE_INSPECTOR
@@ -196,7 +196,7 @@ index 0f72abc0b..4375a1415 100644
 +++ b/src/src/node_version.h
 @@ -25,6 +25,7 @@
  #define NODE_MAJOR_VERSION 22
- #define NODE_MINOR_VERSION 16
+ #define NODE_MINOR_VERSION 17
  #define NODE_PATCH_VERSION 0
 +#define NODE_BUILD_VERSION 0
  

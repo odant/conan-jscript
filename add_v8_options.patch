@@ -2,7 +2,7 @@ diff --git a/src/src/node_options.cc b/src/src/node_options.cc
 index cd537ad68..47a63b6c0 100644
 --- a/src/src/node_options.cc
 +++ b/src/src/node_options.cc
-@@ -979,6 +979,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
+@@ -982,6 +982,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
              kAllowedInEnvvar);
    AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
    AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
