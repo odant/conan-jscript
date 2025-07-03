@@ -115,6 +115,7 @@ class JScriptConan(ConanFile):
         if self.settings.os == "Windows" and (self.settings.compiler == "msvc" or ( self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime_version"))):
             if not self.options.ninja and not self.options.cmake:
                 msbuild_tc = tools.microsoft.MSBuildToolchain(self)
+                msbuild_tc.configuration = self._internal_build_type
                 msbuild_tc.generate()
             else:    
                 vc = tools.microsoft.VCVars(self)
