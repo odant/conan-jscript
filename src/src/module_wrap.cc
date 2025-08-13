@@ -765,11 +765,10 @@ void ModuleWrap::GetNamespaceSync(const FunctionCallbackInfo<Value>& args) {
       return realm->env()->ThrowError(
           "Cannot get namespace, module has not been instantiated");
     case Module::Status::kInstantiated:
+    case Module::Status::kEvaluating:
     case Module::Status::kEvaluated:
     case Module::Status::kErrored:
       break;
-    case Module::Status::kEvaluating:
-      UNREACHABLE();
   }
 
   if (module->IsGraphAsync()) {
@@ -823,6 +822,27 @@ void ModuleWrap::IsGraphAsync(const FunctionCallbackInfo<Value>& args) {
   Local<Module> module = obj->module_.Get(isolate);
 
   args.GetReturnValue().Set(module->IsGraphAsync());
+}
+
+void ModuleWrap::HasTopLevelAwait(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  Local<Module> module = obj->module_.Get(isolate);
+
+  // Check if module is valid
+  if (module.IsEmpty()) {
+    args.GetReturnValue().Set(false);
+    return;
+  }
+
+  // For source text modules, check if the graph is async
+  // For synthetic modules, it's always false
+  bool has_top_level_await =
+      module->IsSourceTextModule() && module->IsGraphAsync();
+
+  args.GetReturnValue().Set(has_top_level_await);
 }
 
 void ModuleWrap::GetError(const FunctionCallbackInfo<Value>& args) {
@@ -1182,6 +1202,8 @@ void ModuleWrap::CreatePerIsolateProperties(IsolateData* isolate_data,
   SetProtoMethodNoSideEffect(isolate, tpl, "getNamespace", GetNamespace);
   SetProtoMethodNoSideEffect(isolate, tpl, "getStatus", GetStatus);
   SetProtoMethodNoSideEffect(isolate, tpl, "isGraphAsync", IsGraphAsync);
+  SetProtoMethodNoSideEffect(
+      isolate, tpl, "hasTopLevelAwait", HasTopLevelAwait);
   SetProtoMethodNoSideEffect(isolate, tpl, "getError", GetError);
   SetConstructorFunction(isolate, target, "ModuleWrap", tpl);
   isolate_data->set_module_wrap_constructor_template(tpl);
@@ -1239,6 +1261,7 @@ void ModuleWrap::RegisterExternalReferences(
   registry->Register(GetStatus);
   registry->Register(GetError);
   registry->Register(IsGraphAsync);
+  registry->Register(HasTopLevelAwait);
 
   registry->Register(CreateRequiredModuleFacade);
 
