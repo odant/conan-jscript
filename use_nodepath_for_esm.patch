@@ -2,7 +2,7 @@ diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/
 index bfd9bd3d1..f7fda9d92 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -764,8 +764,48 @@ function packageResolve(specifier, base, conditions) {
+@@ -763,8 +763,48 @@ function packageResolve(specifier, base, conditions) {
    if (BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
      return new URL('node:' + specifier);
    }
@@ -56,7 +56,7 @@ diff --git a/src/lib/internal/modules/package_json_reader.js b/src/lib/internal/
 index 3c746fa0e..7f272c9f8 100644
 --- a/src/lib/internal/modules/package_json_reader.js
 +++ b/src/lib/internal/modules/package_json_reader.js
-@@ -312,6 +312,7 @@ module.exports = {
+@@ -311,6 +311,7 @@ module.exports = {
    getNearestParentPackageJSON,
    getPackageScopeConfig,
    getPackageType,
