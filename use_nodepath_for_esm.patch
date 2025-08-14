@@ -2,7 +2,7 @@ diff --git a/src/lib/internal/modules/esm/resolve.js b/src/lib/internal/modules/
 index bfd9bd3d1..f7fda9d92 100644
 --- a/src/lib/internal/modules/esm/resolve.js
 +++ b/src/lib/internal/modules/esm/resolve.js
-@@ -763,8 +763,48 @@ function packageResolve(specifier, base, conditions) {
+@@ -763,8 +763,47 @@ function packageResolve(specifier, base, conditions) {
    if (BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
      return new URL('node:' + specifier);
    }
@@ -28,7 +28,6 @@ index bfd9bd3d1..f7fda9d92 100644
 +          const packageJSONPath = fileURLToPath(packageJSONUrl);
 +
 +          const stat = internalFsBinding.internalModuleStat(
-+                           internalFsBinding,
 +                           StringPrototypeSlice(packageJSONPath, 0, packageJSONPath.length - 13),
 +          );
 +          if (stat !== 1) {
