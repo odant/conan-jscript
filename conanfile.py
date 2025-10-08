@@ -8,7 +8,7 @@ import os, glob, re, platform
 
 class JScriptConan(ConanFile):
     name = "jscript"
-    version = "22.18.0.1"
+    version = "22.20.0.0"
     license = "Node.js https://raw.githubusercontent.com/nodejs/node/master/LICENSE"
     description = "Odant Jscript"
     url = "https://github.com/odant/conan-jscript"
