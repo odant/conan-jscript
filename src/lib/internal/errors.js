@@ -1146,6 +1146,7 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
   RangeError);
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
+E('ERR_CONSTRUCT_CALL_REQUIRED', 'Class constructor %s cannot be invoked without `new`', TypeError);
 E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
@@ -1475,7 +1476,10 @@ E('ERR_INVALID_FD',
 E('ERR_INVALID_FD_TYPE', 'Unsupported fd type: %s', TypeError);
 E('ERR_INVALID_FILE_URL_HOST',
   'File URL host must be "localhost" or empty on %s', TypeError);
-E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
+E('ERR_INVALID_FILE_URL_PATH', function(reason, input) {
+  this.input = input;
+  return `File URL path ${reason}`;
+}, TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError, HideStackFramesError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);

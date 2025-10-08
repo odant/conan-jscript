@@ -3272,6 +3272,9 @@ Convert them to primitive strings.
 
 <!-- YAML
 changes:
+  - version: v22.20.0
+    pr-url: https://github.com/nodejs/node/pull/59758
+    description: Deprecation revoked.
   - version:
     - v18.7.0
     - v16.17.0
@@ -3279,14 +3282,12 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Deprecation revoked
 
-These methods were deprecated because they can be used in a way which does not
-hold the channel reference alive long enough to receive the events.
-
-Use [`diagnostics_channel.subscribe(name, onMessage)`][] or
-[`diagnostics_channel.unsubscribe(name, onMessage)`][] which does the same
-thing instead.
+These methods were deprecated because their use could leave the channel object
+vulnerable to being garbage-collected if not strongly referenced by the user.
+The deprecation was revoked because channel objects are now resistant to
+garbage collection when the channel has active subscribers.
 
 ### DEP0164: `process.exit(code)`, `process.exitCode` coercion to integer
 
@@ -3865,6 +3866,21 @@ Type: Documentation-only (supports [`--pending-deprecation`][])
 
 Creating SHAKE-128 and SHAKE-256 digests without an explicit `options.outputLength` is deprecated.
 
+### DEP0199: `require('node:_http_*')`
+
+<!-- YAML
+changes:
+  - version: v22.19.0
+    pr-url: https://github.com/nodejs/node/pull/59293
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+The `node:_http_agent`, `node:_http_client`, `node:_http_common`, `node:_http_incoming`,
+`node:_http_outgoing` and `node:_http_server` modules are deprecated as they should be considered
+an internal nodejs implementation rather than a public facing API, use `node:http` instead.
+
 [DEP0142]: #dep0142-repl_builtinlibs
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [RFC 6066]: https://tools.ietf.org/html/rfc6066#section-3
@@ -3915,8 +3931,6 @@ Creating SHAKE-128 and SHAKE-256 digests without an explicit `options.outputLeng
 [`crypto.setEngine()`]: crypto.md#cryptosetengineengine-flags
 [`decipher.final()`]: crypto.md#decipherfinaloutputencoding
 [`decipher.setAuthTag()`]: crypto.md#deciphersetauthtagbuffer-encoding
-[`diagnostics_channel.subscribe(name, onMessage)`]: diagnostics_channel.md#diagnostics_channelsubscribename-onmessage
-[`diagnostics_channel.unsubscribe(name, onMessage)`]: diagnostics_channel.md#diagnostics_channelunsubscribename-onmessage
 [`dirent.parentPath`]: fs.md#direntparentpath
 [`dirent.path`]: fs.md#direntpath
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback

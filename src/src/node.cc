@@ -826,6 +826,11 @@ static ExitCode ProcessGlobalArgsInternal(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
+  // Support stable Phase 5 WebAssembly proposals
+  v8_args.emplace_back("--experimental-wasm-imported-strings");
+  v8_args.emplace_back("--experimental-wasm-memory64");
+  v8_args.emplace_back("--experimental-wasm-exnref");
+
 #ifdef __POSIX__
   // Block SIGPROF signals when sleeping in epoll_wait/kevent/etc.  Avoids the
   // performance penalty of frequent EINTR wakeups when the profiler is running.
@@ -912,6 +917,15 @@ static ExitCode InitializeNodeWithArgsInternal(
   // default value.
   V8::SetFlagsFromString("--rehash-snapshot");
 
+#if HAVE_OPENSSL
+  // TODO(joyeecheung): make this a per-env option and move the normalization
+  // into HandleEnvOptions.
+  std::string use_system_ca;
+  if (credentials::SafeGetenv("NODE_USE_SYSTEM_CA", &use_system_ca) &&
+      use_system_ca == "1") {
+    per_process::cli_options->use_system_ca = true;
+  }
+#endif  // HAVE_OPENSSL
   HandleEnvOptions(per_process::cli_options->per_isolate->per_env);
 
   std::string node_options;
@@ -975,7 +989,17 @@ static ExitCode InitializeNodeWithArgsInternal(
   }
 
 #if !defined(NODE_WITHOUT_NODE_OPTIONS)
-  if (!(flags & ProcessInitializationFlags::kDisableNodeOptionsEnv)) {
+  bool should_parse_node_options =
+      !(flags & ProcessInitializationFlags::kDisableNodeOptionsEnv);
+#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
+  if (sea::IsSingleExecutable()) {
+    sea::SeaResource sea_resource = sea::FindSingleExecutableResource();
+    if (sea_resource.exec_argv_extension != sea::SeaExecArgvExtension::kEnv) {
+      should_parse_node_options = false;
+    }
+  }
+#endif
+  if (should_parse_node_options) {
     // NODE_OPTIONS environment variable is preferred over the file one.
     if (credentials::SafeGetenv("NODE_OPTIONS", &node_options) ||
         !node_options.empty()) {
@@ -1231,6 +1255,20 @@ InitializeOncePerProcessInternal(const std::vector<std::string>& args,
       return result;
     }
 
+    if (per_process::cli_options->use_system_ca) {
+      // Load the system CA certificates eagerly off the main thread to avoid
+      // blocking the main thread when the first TLS connection is made. We
+      // don't need to wait for the thread to finish with code here, as
+      // GetSystemStoreCACertificates() has a function-local static and any
+      // actual user of it will wait for that to complete initialization.
+      int r = crypto::LoadSystemCACertificatesOffThread();
+      if (r != 0) {
+        FPrintF(
+            stderr,
+            "Warning: Failed to load system CA certificates off thread: %s\n",
+            uv_strerror(r));
+      }
+    }
     // Ensure CSPRNG is properly seeded.
     CHECK(ncrypto::CSPRNG(nullptr, 0));
 

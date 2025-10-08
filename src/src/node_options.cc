@@ -319,10 +319,6 @@ void Parse(
 // TODO(addaleax): Make that unnecessary.
 
 DebugOptionsParser::DebugOptionsParser() {
-#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
-  if (sea::IsSingleExecutable()) return;
-#endif
-
   AddOption("--inspect-port",
             "set host:port for inspector",
             &DebugOptions::host_port,
@@ -428,6 +424,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "Treat the entrypoint as a URL",
             &EnvironmentOptions::entry_is_url,
             kAllowedInEnvvar);
+  AddOption("--experimental-addon-modules",
+            "experimental import support for addons",
+            &EnvironmentOptions::experimental_addon_modules,
+            kAllowedInEnvvar);
   AddOption("--experimental-abortcontroller", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-eventsource",
             "experimental EventSource API",
@@ -479,10 +479,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             kAllowedInEnvvar);
   AddAlias("--loader", "--experimental-loader");
   AddOption("--experimental-modules", "", NoOp{}, kAllowedInEnvvar);
-  AddOption("--experimental-wasm-modules",
-            "experimental ES Module support for webassembly modules",
-            &EnvironmentOptions::experimental_wasm_modules,
-            kAllowedInEnvvar);
+  AddOption("--experimental-wasm-modules", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-import-meta-resolve",
             "experimental ES Module import.meta.resolve() parentURL support",
             &EnvironmentOptions::experimental_import_meta_resolve,
@@ -650,6 +647,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-worker-inspection",
             "experimental worker inspection support",
             &EnvironmentOptions::experimental_worker_inspection);
+  AddOption("--experimental-inspector-network-resource",
+            "experimental load network resources via the inspector",
+            &EnvironmentOptions::experimental_inspector_network_resource);
   AddOption(
       "--heap-prof",
       "Start the V8 heap profiler on start up, and write the heap profile "
