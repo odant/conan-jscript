@@ -2,7 +2,7 @@ diff --git a/src/deps/undici/undici.js b/src/deps/undici/undici.js
 index cccf3f104..6967976a6 100644
 --- a/src/deps/undici/undici.js
 +++ b/src/deps/undici/undici.js
-@@ -2185,6 +2185,7 @@ var require_pool_base = __commonJS({
+@@ -2301,6 +2301,7 @@ var require_pool_base = __commonJS({
  var require_timers = __commonJS({
    "lib/util/timers.js"(exports2, module2) {
      "use strict";
@@ -10,7 +10,7 @@ index cccf3f104..6967976a6 100644
      var fastNow = 0;
      var RESOLUTION_MS = 1e3;
      var TICK_MS = (RESOLUTION_MS >> 1) - 1;
-@@ -2230,7 +2231,7 @@ var require_timers = __commonJS({
+@@ -2346,7 +2347,7 @@ var require_timers = __commonJS({
        } else {
          clearTimeout(fastNowTimeout);
          fastNowTimeout = setTimeout(onTick, TICK_MS);

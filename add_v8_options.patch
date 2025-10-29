@@ -2,12 +2,11 @@ diff --git a/src/src/node_options.cc b/src/src/node_options.cc
 index cd537ad68..47a63b6c0 100644
 --- a/src/src/node_options.cc
 +++ b/src/src/node_options.cc
-@@ -988,6 +988,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
+@@ -1047,6 +1047,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
+             &PerIsolateOptions::max_old_space_size_percentage,
              kAllowedInEnvvar);
-   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
    AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
 +  AddOption("--max-heap-size", "", V8Option{}, kAllowedInEnvvar);
    AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
    AddOption(
        "--perf-basic-prof-only-functions", "", V8Option{}, kAllowedInEnvvar);
-   AddOption("--perf-prof", "", V8Option{}, kAllowedInEnvvar);
