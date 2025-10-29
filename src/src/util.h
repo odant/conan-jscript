@@ -330,21 +330,29 @@ class KVStore {
 };
 
 // Convenience wrapper around v8::String::NewFromOneByte().
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
 // For the people that compile with -funsigned-char.
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const signed char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const signed char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           const unsigned char* data,
-                                           int length = -1);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    const unsigned char* data,
+    int length = -1,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
-inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
-                                           std::string_view str);
+inline v8::Local<v8::String> OneByteString(
+    v8::Isolate* isolate,
+    std::string_view str,
+    v8::NewStringType type = v8::NewStringType::kNormal);
 
 // Used to be a macro, hence the uppercase name.
 template <std::size_t N>
@@ -352,24 +360,18 @@ template <std::size_t N>
 inline v8::Local<v8::String> FIXED_ONE_BYTE_STRING(v8::Isolate* isolate,
                                                    const char (&data)[N]) {
   CHECK_EQ(data[N - 1], '\0');
-  return OneByteString(isolate, data, N - 1);
-}
-
-template <std::size_t N>
-  requires(N > 0)
-inline v8::Local<v8::String> FIXED_ONE_BYTE_STRING(
-    v8::Isolate* isolate, const std::array<char, N>& arr) {
-  CHECK_EQ(arr[N - 1], '\0');
-  return OneByteString(isolate, arr.data(), N - 1);
+  return OneByteString(isolate, data, N - 1, v8::NewStringType::kInternalized);
 }
 
 // tolower() is locale-sensitive.  Use ToLower() instead.
 inline char ToLower(char c);
-inline std::string ToLower(const std::string& in);
+template <typename T>
+inline std::string ToLower(const T& in);
 
 // toupper() is locale-sensitive.  Use ToUpper() instead.
 inline char ToUpper(char c);
-inline std::string ToUpper(const std::string& in);
+template <typename T>
+inline std::string ToUpper(const T& in);
 
 // strcasecmp() is locale-sensitive.  Use StringEqualNoCase() instead.
 inline bool StringEqualNoCase(const char* a, const char* b);
@@ -552,11 +554,6 @@ class Utf8Value : public MaybeStackBuffer<char> {
  public:
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
-  inline std::string ToString() const { return std::string(out(), length()); }
-  inline std::string_view ToStringView() const {
-    return std::string_view(out(), length());
-  }
-
   inline bool operator==(const char* a) const { return strcmp(out(), a) == 0; }
   inline bool operator!=(const char* a) const { return !(*this == a); }
 };
@@ -570,10 +567,6 @@ class BufferValue : public MaybeStackBuffer<char> {
  public:
   explicit BufferValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
-  inline std::string ToString() const { return std::string(out(), length()); }
-  inline std::string_view ToStringView() const {
-    return std::string_view(out(), length());
-  }
   inline std::u8string_view ToU8StringView() const {
     return std::u8string_view(reinterpret_cast<const char8_t*>(out()),
                               length());
@@ -660,13 +653,9 @@ struct MallocedBuffer {
 };
 
 // Test whether some value can be called with ().
-template <typename T, typename = void>
-struct is_callable : std::is_function<T> { };
-
 template <typename T>
-struct is_callable<T, typename std::enable_if<
-    std::is_same<decltype(void(&T::operator())), void>::value
-    >::type> : std::true_type { };
+concept is_callable =
+    std::is_function<T>::value || requires { &T::operator(); };
 
 template <typename T, void (*function)(T*)>
 struct FunctionDeleter {

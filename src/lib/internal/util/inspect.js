@@ -780,10 +780,20 @@ function getPrefix(constructor, tag, fallback, size = '') {
     return `[${fallback}${size}: null prototype] `;
   }
 
-  if (tag !== '' && constructor !== tag) {
-    return `${constructor}${size} [${tag}] `;
+  let result = `${constructor}${size} `;
+  if (tag !== '') {
+    const position = constructor.indexOf(tag);
+    if (position === -1) {
+      result += `[${tag}] `;
+    } else {
+      const endPos = position + tag.length;
+      if (endPos !== constructor.length &&
+        constructor[endPos] === constructor[endPos].toLowerCase()) {
+        result += `[${tag}] `;
+      }
+    }
   }
-  return `${constructor}${size} `;
+  return result;
 }
 
 // Look up the keys of the object.
@@ -2012,11 +2022,12 @@ function formatArray(ctx, value, recurseTimes) {
   const remaining = valLen - len;
   const output = [];
   for (let i = 0; i < len; i++) {
-    // Special handle sparse arrays.
-    if (!ObjectPrototypeHasOwnProperty(value, i)) {
+    const desc = ObjectGetOwnPropertyDescriptor(value, i);
+    if (desc === undefined) {
+      // Special handle sparse arrays.
       return formatSpecialArray(ctx, value, recurseTimes, len, output, i);
     }
-    ArrayPrototypePush(output, formatProperty(ctx, value, recurseTimes, i, kArrayType));
+    ArrayPrototypePush(output, formatProperty(ctx, value, recurseTimes, i, kArrayType, desc));
   }
   if (remaining > 0) {
     ArrayPrototypePush(output, remainingText(remaining));
