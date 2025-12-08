@@ -45,7 +45,8 @@ class JScriptConan(ConanFile):
         "libuv_win7support.patch",
         "fix_v8_windows_build.patch",
         "disable_sys_random.patch",
-        "fix_using_shared_openssl.patch"
+        "fix_using_shared_openssl.patch",
+        "vs2026.patch"
     ]
     no_copy_source = False
     build_policy = "missing"
@@ -90,6 +91,7 @@ class JScriptConan(ConanFile):
             tools.files.patch(self, patch_file="libuv_win7support.patch")
             tools.files.patch(self, patch_file="fix_v8_windows_build.patch")
             tools.files.patch(self, patch_file="fix_using_shared_openssl.patch")
+            tools.files.patch(self, patch_file="vs2026.patch")
         tools.files.patch(self, patch_file="fix_deps_undici.patch")
             
     def patch_version(self):
@@ -124,7 +126,8 @@ class JScriptConan(ConanFile):
     @property
     def _msvc_ide_version(self):
         compiler_version = str(self.settings.compiler.version)
-        return {"194": "2022",
+        return {"195": "2026",
+                "194": "2022",
                 "193": "2022",
                 "192": "2019",
                 "191": "2017",
@@ -136,7 +139,8 @@ class JScriptConan(ConanFile):
         ide_path = os.environ.get(f"VS{ide_version}INSTALLDIR", "")
         if not ide_path:
             ide_path = {"2019": "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community",
-                        "2022": "C:\Program Files\Microsoft Visual Studio\2022\Community" }.get(ide_version)
+                        "2022": "C:\Program Files\Microsoft Visual Studio\2022\Community",
+                        "2026": "C:\Program Files\Microsoft Visual Studio\18\Community" }.get(ide_version)
         return ide_path
                     
     def build(self):

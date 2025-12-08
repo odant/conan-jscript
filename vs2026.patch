@@ -1,0 +1,78 @@
+diff --git a/src/deps/npm/node_modules/node-gyp/gyp/pylib/gyp/MSVSVersion.py b/src/deps/npm/node_modules/node-gyp/gyp/pylib/gyp/MSVSVersion.py
+index 93f48bc05..4f5cb0ff9 100644
+--- a/src/deps/npm/node_modules/node-gyp/gyp/pylib/gyp/MSVSVersion.py
++++ b/src/deps/npm/node_modules/node-gyp/gyp/pylib/gyp/MSVSVersion.py
+@@ -269,6 +269,18 @@ def _CreateVersion(name, path, sdk_based=False):
+     if path:
+         path = os.path.normpath(path)
+     versions = {
++        "2026": VisualStudioVersion(
++            "2026",
++            "Visual Studio 2026",
++            solution_version="12.00",
++            project_version="18.0",
++            flat_sln=False,
++            uses_vcxproj=True,
++            path=path,
++            sdk_based=sdk_based,
++            default_toolset="v145",
++            compatible_sdks=["v8.1", "v10.0"],
++        ),
+         "2022": VisualStudioVersion(
+             "2022",
+             "Visual Studio 2022",
+@@ -461,6 +473,7 @@ def _DetectVisualStudioVersions(versions_to_check, force_express):
+         "15.0": "2017",
+         "16.0": "2019",
+         "17.0": "2022",
++        "18.0": "2026",
+     }
+     versions = []
+     for version in versions_to_check:
+@@ -551,6 +564,7 @@ def SelectVisualStudioVersion(version="auto", allow_fallback=True):
+         "2017": ("15.0",),
+         "2019": ("16.0",),
+         "2022": ("17.0",),
++        "2026": ("18.0",),
+     }
+     override_path = os.environ.get("GYP_MSVS_OVERRIDE_PATH")
+     if override_path:
+diff --git a/src/tools/gyp/pylib/gyp/MSVSVersion.py b/src/tools/gyp/pylib/gyp/MSVSVersion.py
+index 09baf44b2..a06b058fa 100644
+--- a/src/tools/gyp/pylib/gyp/MSVSVersion.py
++++ b/src/tools/gyp/pylib/gyp/MSVSVersion.py
+@@ -270,6 +270,18 @@ def _CreateVersion(name, path, sdk_based=False):
+     if path:
+         path = os.path.normpath(path)
+     versions = {
++        "2026": VisualStudioVersion(
++            "2026",
++            "Visual Studio 2026",
++            solution_version="12.00",
++            project_version="18.0",
++            flat_sln=False,
++            uses_vcxproj=True,
++            path=path,
++            sdk_based=sdk_based,
++            default_toolset="v145",
++            compatible_sdks=["v8.1", "v10.0"],
++        ),
+         "2022": VisualStudioVersion(
+             "2022",
+             "Visual Studio 2022",
+@@ -462,6 +474,7 @@ def _DetectVisualStudioVersions(versions_to_check, force_express):
+         "15.0": "2017",
+         "16.0": "2019",
+         "17.0": "2022",
++        "18.0": "2026",
+     }
+     versions = []
+     for version in versions_to_check:
+@@ -552,6 +565,7 @@ def SelectVisualStudioVersion(version="auto", allow_fallback=True):
+         "2017": ("15.0",),
+         "2019": ("16.0",),
+         "2022": ("17.0",),
++        "2026": ("18.0",),
+     }
+     if override_path := os.environ.get("GYP_MSVS_OVERRIDE_PATH"):
+         msvs_version = os.environ.get("GYP_MSVS_VERSION")
